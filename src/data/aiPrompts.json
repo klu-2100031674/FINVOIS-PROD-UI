@@ -1,0 +1,112 @@
+[
+  {
+    "id": "firm_constitution",
+    "title": "1. Constitution of the Firm",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nGenerate the section exactly in the following structure and format:\n\nTitle:\n\"1. Constitution of the Firm\"\n\nFirst write one short paragraph describing the firm and ownership.\n\nThen provide bullet points exactly in this format with label, colon, and value:\n\n• Firm Name            : {{firm_name}}\n• Type of Organisation : {{organisation_type}}\n• Proprietor Name      : {{proprietor_name}}\n• PAN No.              : {{pan_number}}\n• Aadhar No.           : {{aadhar_number}}\n• Caste                : {{caste}}\n• Residential Address  : {{residential_address}}\n\nRules:\n- Use only the above structure.\n- Maintain exact labels and spacing before colon.\n- Do not add extra headings, tables, or explanations.\n- Language must be formal and suitable for bank DPR."
+  },
+  {
+    "id": "proprietor_background",
+    "title": "2. Proprietor’s Background",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nGenerate the section exactly in the following structure and format:\n\nTitle:\n\"2. Proprietor’s Background\"\n\nFirst write one detailed professional paragraph describing the proprietor’s personality, industry background, business experience, and ability to successfully manage the proposed manufacturing unit.\n\nThen provide exactly three bullet points in this format (bold the labels):\n\n• Education Background: {{education_background}}\n• Experience: {{experience_details}}\n• Key Attributes: {{key_attributes}}\n\nRules:\n- Keep only one paragraph before bullets.\n- Do not add extra bullet points.\n- Do not change bullet labels.\n- Use professional banking report language.\n- Do not add any other headings or explanations."
+  },
+  {
+    "id": "partners_education",
+    "title": "3. Education Background of Each Partner",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nGenerate the section exactly in the following structure and format:\n\nTitle:\n\"3. Education Background of Each Partner\"\n\nFirst write one short professional paragraph stating that the partners are suitably qualified and capable of managing the proposed business based on their educational background.\n\nThen provide bullet points in the following format (one bullet for each partner):\n\n• Partner {{index}} – Name: {{partner_name}}, Education: {{education_qualification}}\n\nRules:\n- Keep only one paragraph before bullets.\n- Show each partner in a separate bullet point.\n- Do not include experience details in this section.\n- Do not add extra headings or explanations.\n- Use professional banking report language.\n- Maintain same bullet style and punctuation."
+  },
+  {
+    "id": "product_details",
+    "title": "4. Details of Product Manufactured / Finished Product",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nGenerate the section exactly in the following structure and format:\n\nTitle:\n\"4. Details of Product Manufactured / Finished Product\"\n\nFirst write one professional paragraph explaining what products are manufactured, their importance in the market, and how they are used by customers.\n\nThen provide bullet points in the following format:\n\n• Product Category           : {{product_category}}\n• Key Products Manufactured  : {{product_list}}\n• Manufacturing Capacity     : {{manufacturing_capacity}}\n• End Use / Applications     : {{end_use_applications}}\n\nRules:\n- Keep only one paragraph before bullets.\n- Maintain exact bullet labels and alignment.\n- Do not add extra bullet points.\n- Do not include marketing or sales discussion in this section.\n- Language must be formal and suitable for bank DPR.\n- Do not add extra headings or explanations."
+  },
+  {
+    "id": "product_characteristics",
+    "title": "5. Key Characteristics of the Product Manufactured",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nBased on the following business information from previous sections:\nIndustry Type: {{industry_type}}\nProducts Manufactured: {{product_list}}\nRaw Materials Used: {{raw_materials}}\nTarget Market: {{target_market}}\n\nGenerate the section exactly in the following structure and format:\n\nTitle:\n\"5. Key Characteristics of the Product Manufactured\"\n\nDo not write any paragraph.\n\nProvide bullet points only, in the following format, and generate suitable content automatically:\n\n• Customization        : <auto-generate based on product type and market>\n• Quality Standards    : <auto-generate based on raw materials and industry>\n• Versatility of Use   : <auto-generate based on applications>\n• Sustainability       : <auto-generate based on manufacturing nature>\n\nRules:\n- Do not ask user for inputs.\n- Do not repeat earlier sentences.\n- Maintain professional bank DPR tone.\n- Do not add extra bullets or explanations."
+  },
+  {
+    "id": "manufacturing_capacity",
+    "title": "Manufacturing Capacity of the Product",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nBased on the following production details from previous inputs:\nProduct and Capacity Details:\n{{product_capacity_list}}\n\nGenerate the section exactly in the following structure and format:\n\nTitle:\n\"Manufacturing Capacity of the Product\"\n\nFirst write one professional paragraph explaining that the proposed capacity is planned based on machinery capability, market demand, and operational feasibility.\n\nThen provide bullet points in the following format (one line per product):\n\n• {{product_name_1}} : {{capacity_1}}\n• {{product_name_2}} : {{capacity_2}}\n• {{product_name_3}} : {{capacity_3}}\n\nRules:\n- Keep only one paragraph before bullets.\n- Do not change the bullet format.\n- Do not add marketing or financial details.\n- Use formal bank DPR language.\n- Do not add extra headings or explanations."
+  },
+  {
+    "id": "manufacturing_process_flowchart",
+    "title": "Flowchart of Product Manufactured",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nBased on the following information from previous sections:\nIndustry Type: {{industry_type}}\nProducts Manufactured: {{product_list}}\nRaw Materials Used: {{raw_materials}}\nMajor Machinery: {{machinery_list}}\n\nGenerate the section exactly in the following structure and format:\n\nTitle:\n\"Flowchart of Product Manufactured\"\n\nThen list the manufacturing process in numbered steps from raw material procurement to final dispatch.\n\nFormat must be exactly like this:\n\n1. <Step description>\n2. <Step description>\n3. <Step description>\n4. <Step description>\n5. <Step description>\n6. <Step description>\n7. <Step description>\n\nRules:\n- Do not write any paragraph before steps.\n- Minimum 6 steps, maximum 8 steps.\n- Steps must follow logical manufacturing sequence.\n- Use professional bank DPR language.\n- Do not add extra headings or explanations."
+  },
+  {
+    "id": "swot_analysis",
+    "title": "SWOT Analysis of Product / Service",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nBased on the following business information from previous sections:\nIndustry Type: {{industry_type}}\nProducts / Services: {{product_or_service_list}}\nLocation: {{district_and_state}}\nUser SWOT Notes: {{swot_user_description}}\n\nGenerate the section exactly in the following structure and format:\n\nTitle:\n\"SWOT Analysis of Product / Service\"\n\nThen write four subheadings and bullet points under each:\n\nStrengths\n• <point 1>\n• <point 2>\n• <point 3>\n\nWeaknesses\n• <point 1>\n• <point 2>\n• <point 3>\n\nOpportunities\n• <point 1>\n• <point 2>\n• <point 3>\n\nThreats\n• <point 1>\n• <point 2>\n• <point 3>\n\nRules:\n- Do not write any paragraph before or after SWOT.\n- Keep exactly 3 bullet points under each heading.\n- Incorporate user SWOT notes where relevant.\n- Points must be relevant to the given industry and location.\n- Use professional bank DPR language.\n- Do not add extra headings, tables, or explanations."
+  },
+  {
+    "id": "competitor_overview",
+    "title": "7. Overview of Competitors",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nUsing the following inputs from previous sections:\nIndustry Type: {{industry_type}}\nDistrict and State: {{district_and_state}}\nUser Business/Competitor Notes: {{competitor_notes}}\n\nGenerate the section exactly in the following structure and format:\n\nTitle:\n\"7. Overview of Competitors in {{industry_type}} Manufacturing in {{district_and_state}}\"\n\nFirst write one detailed professional paragraph describing:\n- industrial importance of the district\n- presence of manufacturing units\n- market competitiveness\n- role of nearby towns and infrastructure\n\nThen write a subheading:\n\"Key Trends:\"\n\nUnder Key Trends, provide bullet points in this format:\n• Category 1: <trend description>\n• Category 2: <trend description>\n• Category 3: <trend description>\n• Others: <trend description>\n\nThen write one short paragraph stating that a categorized table of prominent manufacturers is provided below and that details may vary.\n\nThen generate a table with exactly these column headers:\nCategory | Company Name | Key Products/Services | Location in District | Notable Details\n\nThe table must contain multiple rows across different categories relevant to the industry.\n\nRules:\n- Incorporate user notes where relevant.\n- Do not include contact numbers or addresses.\n- Company names must look realistic.\n- Locations must be towns or industrial areas in the district.\n- Maintain formal bank DPR language.\n- Do not add extra headings or explanations."
+  },
+  {
+    "id": "market_trend",
+    "title": "Market Trend for the Product / Service",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nBased on the following information from previous sections:\nIndustry Type: {{industry_type}}\nProducts / Services: {{product_or_service_list}}\nLocation: {{district_and_state}}\nUser Market Trend Notes: {{market_trend_notes}}\n\nGenerate the section exactly in the following structure and format:\n\nTitle:\n\"Market Trend for the Product / Service\"\n\nFirst write one detailed professional paragraph explaining:\n- current demand situation\n- growth drivers in the region\n- infrastructure and construction activity impact\n- suitability of market for new unit\n\nThen provide bullet points in the following format:\n\n• Demand Trend        : <auto-generate>\n• Growth Factors      : <auto-generate>\n• Customer Segments   : <auto-generate>\n• Future Outlook      : <auto-generate>\n\nRules:\n- Keep only one paragraph before bullets.\n- Incorporate user notes where relevant.\n- Do not ask user for inputs.\n- Generate all bullet content automatically.\n- Maintain formal bank DPR language.\n- Do not add extra bullets or explanations."
+  },
+  {
+    "id": "statutory_approvals",
+    "title": "10. Statutory Government Approvals",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nUsing the business information from previous sections:\nIndustry Type: {{industry_type}}\nNature of Activity: {{manufacturing_activity}}\nState: {{state}}\n\nGenerate the section exactly in the following structure and format:\n\nTitle:\n\"10. Statutory Government Approvals\"\n\nThen write this exact introductory line:\n\"The following approvals are required to establish and operate the manufacturing unit:\"\n\nThen provide bullet points in this format (bold the approval name and give one-line explanation):\n\n• GST Registration: <purpose related to tax compliance and invoicing>\n• Pollution License (CFE and CFO): <explain consent for establishment and operation from Pollution Control Board>\n• Factory License: <explain approval from Department of Factories>\n• Fire Safety Clearance: <explain fire department safety compliance>\n• Municipal Approvals: <explain construction and operation permission>\n• UDYAM Registration: <explain MSME benefits and subsidies>\n\nRules:\n- Maintain exact structure: title → intro line → bullets.\n- Approval names must be bold.\n- Do not add or remove approvals.\n- Keep professional bank DPR language.\n- Do not add extra headings or explanations."
+  },
+  {
+    "id": "marketing_techniques",
+    "title": "5. Marketing Techniques",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nBased on the following inputs provided by the applicant:\nPrevious Industry Experience: {{has_previous_experience}} (details: {{experience_details}})\nPurchase Orders Available: {{has_purchase_orders}} (details: {{po_details}})\nMarketing Through Marketing Team: {{has_marketing_team}}\nOther Marketing Methods: {{other_marketing_methods}}\n\nIf any of the above fields are missing, empty, or marked as \"No\",\nyou must generate suitable standard industry practices instead of leaving gaps.\n\nGenerate the section exactly in the following structure and format:\n\nTitle:\n\"5. Marketing Techniques\"\n\nFirst write one professional paragraph stating that the firm will adopt suitable marketing strategies based on market conditions and business development plans, even if prior experience or orders are limited.\n\nThen provide bullet points in the following format (bold the heading words):\n\n• Online Marketing: \n  - If online marketing is not provided, mention basic digital presence and local promotion methods.\n\n• Government Contracts / Purchase Orders:\n  - If no purchase orders are available, state that the firm will actively participate in tenders and approach government and institutional buyers.\n\n• Networking:\n  - If no previous experience is provided, state that the firm will develop relationships with contractors, suppliers, and local builders.\n\n• Branding:\n  - If no marketing team or branding method is provided, state that quality, timely delivery, and customer satisfaction will be used to build reputation.\n\nRules:\n- Never write negative statements like \"no marketing\" or \"no plan\".\n- Always convert missing inputs into future-focused strategies.\n- Keep professional bank DPR tone.\n- Do not ask user questions.\n- Do not add extra bullets or explanations."
+  },
+  {
+    "id": "targeted_customers",
+    "title": "Targeted Customers / Audience",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nBased on the following information from previous sections:\nProducts / Services: {{product_or_service_list}}\nIndustry Type: {{industry_type}}\nLocation: {{district_and_state}}\nTarget Market Type: {{target_market_type}} (e.g., industrial, commercial, residential, mixed)\n\nGenerate the section exactly in the following structure and format:\n\nTitle:\n\"Targeted Customers / Audience\"\n\nFirst write one professional paragraph explaining who the primary customers are and why the products/services are suitable for them in the given region.\n\nThen provide bullet points in the following format (bold the customer category):\n\n• Contractors and Builders: <explain demand and usage>\n• Industrial Units / Factories: <explain requirement for products/services>\n• Infrastructure Projects / Government Bodies: <explain institutional demand>\n• Retailers / Dealers (if applicable): <explain resale or distribution role>\n\nRules:\n- Keep only one paragraph before bullets.\n- Bullet headings must be exactly as listed above.\n- Generate explanations automatically using given inputs.\n- Do not ask user questions.\n- Use professional bank DPR language.\n- Do not add extra bullets or explanations."
+  },
+  {
+    "id": "power_requirements",
+    "title": "9. Power Requirements",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nUse the following power input if provided:\nPower Load Required: {{power_load_required}}\n\nGenerate the section in exactly the following format:\n\nTitle:\n\"9. Power Requirements\"\n\nWrite only ONE sentence in this format:\n\"The manufacturing unit requires a power supply of {{power_load_required}} to operate machinery and support production activities efficiently.\"\n\nRules:\n- Use the provided value exactly if available; only estimate if missing.\n- Do not ask the user any questions.\n- Do not add bullet points.\n- Do not add extra sentences or explanations."
+  },
+  {
+    "id": "plant_machinery",
+    "title": "11. Plant and Machinery",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nUsing information already generated in previous sections:\n- Product types\n- Manufacturing process\n- Scale of operations\n- Machinery Details: {{machinery_items_list}}\n\nGenerate the section in exactly the following structure:\n\nTitle:\n\"11. Plant and Machinery\"\n\nFirst write ONE professional paragraph describing the machinery type, technology level, and its role in production.\n\nThen provide a table with the following columns:\n\nMachinery/Equipment | Supplier | Cost | Quotations Taken | Origin | Purpose\n\nRules:\n- Use the provided machinery list; if any fields are missing, estimate realistic values.\n- Maintain professional banking DPR tone.\n- Do not add extra headings or explanations."
+  },
+  {
+    "id": "raw_materials",
+    "title": "12. Raw Materials",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nUsing earlier sections such as:\n- Product description\n- Manufacturing process\n- Industry standards\n\nGenerate the section in exactly the following structure:\n\nTitle:\n\"12. Raw Materials\"\n\nSubheading:\n\"Description of Raw Materials\"\n\nWrite ONE professional paragraph covering:\n- Primary raw materials\n- Quality standards\n- Supplier reliability\n\nSubheading:\n\"Demand and Supply Availability\"\n\nProvide exactly THREE bullet points in this format:\n\n• Demand: <market demand drivers>\n• Supply: <availability and supplier network>\n• Procurement Strategy: <methods to ensure uninterrupted supply>\n\nRules:\n- Do not ask the user for details.\n- Do not add extra bullets or paragraphs.\n- Formal DPR language only."
+  },
+  {
+    "id": "production_capacity",
+    "title": "14. Production Capacity",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nUsing:\n- Product list\n- Machinery capacity\n- Expected operating hours\n\nGenerate the section in exactly the following format:\n\nTitle:\n\"14. Production Capacity\"\n\nThen generate a table with ONLY these columns:\n\nSl.No | Product Name | Production capacity per Annum (Specify the capacity along with units of measurement)\n\nRules:\n- Automatically estimate realistic annual capacities.\n- Use industry-appropriate measurement units.\n- Do not write any explanation outside the table."
+  },
+  {
+    "id": "transportation",
+    "title": "15. Transportation",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nBased on:\n- Raw material sourcing\n- Finished goods distribution requirements\n\nGenerate the section in exactly the following format:\n\nTitle:\n\"15. Transportation\"\n\nWrite ONE professional paragraph explaining:\n- How raw materials are transported to the unit\n- How finished goods are delivered to customers\n\nRules:\n- No bullet points.\n- No extra sentences.\n- Professional DPR tone only."
+  },
+  {
+    "id": "manpower",
+    "title": "16. Manpower",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nUsing:\n- Production volume\n- Machinery automation level\n- Operational requirements\n\nGenerate the section in exactly the following structure:\n\nTitle:\n\"16. Manpower\"\n\nFirst write ONE paragraph explaining:\n- Total employment generation\n- Skill mix and sourcing\n\nThen generate TWO tables:\n\nTable 1 Title:\n\"Direct and Indirect Employment\"\n\nColumns:\nSl.No | Employment | No of Employees\n\nTable 2 Title:\n\"Employment details (Direct)\"\n\nColumns:\nSl.No | Category of employment | No of employees\n\nRules:\n- Auto-calculate realistic workforce size.\n- Do not request user input.\n- Do not include extra text outside structure."
+  },
+  {
+    "id": "land_requirements",
+    "title": "17. Justification of Land Requirements",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nUsing:\n- Machinery layout needs\n- Storage requirements\n- Administrative facilities\n\nGenerate the section in exactly this structure:\n\nTitle:\n\"17. Justification of Land Requirements\"\n\nFirst write ONE justification sentence.\n\nThen generate a table with columns:\n\nSl.No | Land Requirement Details | Area (Square Meters)\n\nThen provide exactly FOUR bullet explanations with headings:\n\n• Plant and Factory  \n• Administration  \n• Storage and Warehousing  \n• Open Areas and Greenery  \n\nRules:\n- Automatically estimate reasonable industrial land usage.\n- No user questions.\n- Maintain formal DPR tone."
+  },
+  {
+    "id": "implementation_timeline",
+    "title": "18. Implementation Timeline",
+    "prompt": "You are preparing a Detailed Project Report (DPR) for bank loan purposes.\n\nBased on:\n- Construction period\n- Machinery installation time\n- Trial production stage\n\nGenerate the section in exactly the following format:\n\nTitle:\n\"18. Implementation Timeline\"\n\nThen generate a table with columns:\n\nSl.No | Description | Start Date | End Date\n\nInclude exactly these phases:\nConstruction\nMachinery Erection\nTrial Run Production\nCommercial Production\n\nRules:\n- Generate logical project schedule automatically.\n- Do not add any explanation text."
+  },
+  {
+    "id": "conclusion",
+    "title": "Conclusion",
+    "prompt": "You are preparing a Detailed Project Report (DPR) conclusion for bank loan purposes.\n\nBased on:\n- Market demand\n- Management capability\n- Financial planning\n- Statutory compliance readiness\n\nWrite ONE professional paragraph concluding:\n- Project viability\n- Sustainability\n- Suitability for bank financing\n\nRules:\n- No bullet points.\n- No sub-headings.\n- Professional formal language only."
+  }
+]

@@ -1,0 +1,50 @@
+{
+  "title": "Simple, transparent pricing",
+  "subtitle": "Choose the plan that works best for you",
+  "addOnsText": "💡 Add-ons available: Advanced graphs (+₹199) • Extra sections (+₹149 each)",
+  "plans": [
+    {
+      "name": "Pay Per DPR",
+      "price": "999",
+      "period": "per report",
+      "features": [
+        "Single DPR generation",
+        "AI-generated content",
+        "Financial projections",
+        "PDF & Excel export",
+        "Email support"
+      ],
+      "cta": "Get Started",
+      "popular": false
+    },
+    {
+      "name": "Credit Pack",
+      "price": "7,999",
+      "period": "10 DPR credits",
+      "savings": "Save 20%",
+      "features": [
+        "10 DPR generations",
+        "All standard features",
+        "Priority support",
+        "Credits never expire",
+        "Advanced analytics"
+      ],
+      "cta": "Most Popular",
+      "popular": true
+    },
+    {
+      "name": "Enterprise",
+      "price": "Custom",
+      "period": "unlimited access",
+      "features": [
+        "Unlimited DPRs",
+        "Custom templates",
+        "Dedicated support",
+        "API access",
+        "White-label options"
+      ],
+      "cta": "Contact Sales",
+      "popular": false
+    }
+  ]
+}

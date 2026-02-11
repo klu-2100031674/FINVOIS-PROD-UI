@@ -1,0 +1,30 @@
+{
+  "title": "Frequently asked questions",
+  "subtitle": "Everything you need to know about the platform",
+  "faqs": [
+    {
+      "question": "What is a DPR?",
+      "answer": "A Detailed Project Report (DPR) is a comprehensive document outlining your business plan, financial projections, and funding requirements. It's essential for securing loans and government subsidies."
+    },
+    {
+      "question": "How accurate are the financial projections?",
+      "answer": "Our AI uses industry-standard formulas and benchmarks. You can review and edit all projections before finalizing."
+    },
+    {
+      "question": "Do banks accept AI-generated DPRs?",
+      "answer": "Yes! Our templates follow standard banking formats and include all required sections."
+    },
+    {
+      "question": "How is pricing calculated?",
+      "answer": "Base price varies by template complexity. You can add optional sections, and the final price updates in real-time."
+    },
+    {
+      "question": "Is my data secure?",
+      "answer": "We use bank-level encryption. Your information is never shared, and you can delete your data anytime."
+    },
+    {
+      "question": "Can I get a refund if I'm not satisfied?",
+      "answer": "Yes, we offer a 7-day money-back guarantee if the DPR doesn't meet your expectations."
+    }
+  ]
+}

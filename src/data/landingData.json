@@ -1,0 +1,398 @@
+{
+  "navigation": {
+    "logo": "DPR Platform",
+    "links": [
+      {
+        "label": "Features",
+        "href": "#features"
+      },
+      {
+        "label": "How it works",
+        "href": "#how-it-works"
+      },
+      {
+        "label": "Pricing",
+        "href": "/pricing"
+      },
+      {
+        "label": "Schemes",
+        "href": "/schemes"
+      },
+      {
+        "label": "FAQ",
+        "href": "/faq"
+      }
+    ],
+    "loginText": {
+      "text": "Log in",
+      "href": "/auth"
+    },
+    "ctaText": {
+      "text": "Get Started",
+      "href": "/auth"
+    }
+  },
+  "hero": {
+    "badge": "AI-Powered DPR Generation",
+    "title": "Generate Professional DPRs in",
+    "titleHighlight": "Minutes",
+    "subtitle": "Identify schemes, auto-generate financials & get bank-approved PDFs. No Excel knowledge needed.",
+    "primaryCTA": "Get started for free",
+    "primaryLink": "/auth",
+    "secondaryCTA": "Contact Sales",
+    "secondaryLink": "/contact",
+    "benefits": [
+      "No credit card required",
+      "Free scheme discovery",
+      "Bank-approved formats"
+    ],
+    "stats": [
+      {
+        "value": "5,247",
+        "label": "DPRs Generated",
+        "icon": "FileText",
+        "color": "purple"
+      },
+      {
+        "value": "98%",
+        "label": "Success Rate",
+        "icon": "CheckCircle",
+        "color": "green"
+      },
+      {
+        "value": "15 min",
+        "label": "Avg. Time",
+        "icon": "Clock",
+        "color": "blue"
+      }
+    ]
+  },
+  "trustedBy": [
+    "MSME",
+    "Startup India",
+    "SIDBI",
+    "PMEGP",
+    "Mudra"
+  ],
+  "features": {
+    "title": "Everything you need to create professional DPRs",
+    "subtitle": "Powerful features that help you generate bank-approved reports in minutes",
+    "items": [
+      {
+        "icon": "Sparkles",
+        "title": "AI-Powered Content",
+        "description": "Automated SWOT analysis, introductions, and market research"
+      },
+      {
+        "icon": "BarChart3",
+        "title": "Financial Projections",
+        "description": "Auto-calculated with Excel export and visual charts"
+      },
+      {
+        "icon": "Search",
+        "title": "Scheme Matching",
+        "description": "Find government subsidies and funding opportunities"
+      },
+      {
+        "icon": "FileCheck",
+        "title": "Professional PDFs",
+        "description": "Bank-approved formats with embedded Excel sheets"
+      },
+      {
+        "icon": "Wallet",
+        "title": "Flexible Pricing",
+        "description": "Pay-per-DPR or prepaid wallet credits"
+      },
+      {
+        "icon": "Users",
+        "title": "Partner Program",
+        "description": "Earn commissions with our channel partner system"
+      }
+    ]
+  },
+  "howItWorks": {
+    "title": "From idea to DPR in 6 simple steps",
+    "subtitle": "Our streamlined process makes DPR creation effortless",
+    "steps": [
+      {
+        "step": "1",
+        "title": "Enter Details",
+        "desc": "Basic business and investment information"
+      },
+      {
+        "step": "2",
+        "title": "AI Matches Schemes",
+        "desc": "Get eligible subsidies and funding"
+      },
+      {
+        "step": "3",
+        "title": "Fill Template",
+        "desc": "Guided 30-35 field smart form"
+      },
+      {
+        "step": "4",
+        "title": "AI Generates Content",
+        "desc": "SWOT, intro, and market analysis"
+      },
+      {
+        "step": "5",
+        "title": "Review & Pay",
+        "desc": "Confirm projections and choose payment"
+      },
+      {
+        "step": "6",
+        "title": "Download PDF",
+        "desc": "Get your professional DPR instantly"
+      }
+    ]
+  },
+  "aiShowcase": {
+    "badge": "AI-Powered",
+    "title": "Watch AI generate your DPR content in real-time",
+    "subtitle": "Our advanced AI creates professional SWOT analysis, introductions, and market research tailored to your business.",
+    "features": [
+      {
+        "icon": "FileText",
+        "title": "SWOT Analysis",
+        "desc": "Comprehensive business evaluation"
+      },
+      {
+        "icon": "TrendingUp",
+        "title": "Market Overview",
+        "desc": "Industry trends and competition"
+      },
+      {
+        "icon": "BarChart3",
+        "title": "Financial Projections",
+        "desc": "5-year revenue forecasts"
+      }
+    ]
+  },
+  "financialProjections": {
+    "badge": "Auto-Calculated",
+    "title": "Financial projections made simple",
+    "subtitle": "No Excel knowledge needed. Our system auto-calculates projections with interactive visualizations and detailed breakdowns.",
+    "data": [
+      {
+        "year": 1,
+        "revenue": "45,00,000",
+        "profit": "8,50,000"
+      },
+      {
+        "year": 2,
+        "revenue": "67,50,000",
+        "profit": "15,75,000"
+      },
+      {
+        "year": 3,
+        "revenue": "89,00,000",
+        "profit": "24,20,000"
+      },
+      {
+        "year": 4,
+        "revenue": "1,12,00,000",
+        "profit": "34,50,000"
+      },
+      {
+        "year": 5,
+        "revenue": "1,40,00,000",
+        "profit": "47,80,000"
+      }
+    ],
+    "breakEven": "18 Months",
+    "benefits": [
+      "5-year revenue and profit forecasts",
+      "Break-even analysis with timelines",
+      "Cost distribution and cash flow",
+      "Interactive charts and graphs",
+      "Editable percentage-based parameters"
+    ]
+  },
+  "whyChooseUs": [
+    {
+      "badge": "CA Verified",
+      "title": "Every Template Is Reviewed And Approved By Experienced Chartered Accountants",
+      "color": "purple",
+      "illustration": "ca-verified"
+    },
+    {
+      "badge": "Payments",
+      "title": "Real-Time Payments Process And Fund Transfers",
+      "color": "blue",
+      "illustration": "payments"
+    },
+    {
+      "badge": "Security",
+      "title": "Advanced Security Features",
+      "color": "orange",
+      "illustration": "security"
+    }
+  ],
+  "reportTypes": {
+    "title": "COMPREHENSIVE DPR SOLUTIONS FOR EVERY LOAN SCHEME",
+    "subtitle": "OUR REPORTS",
+    "reports": [
+      {
+        "title": "Mudra Loan DPR",
+        "description": "Bank-ready project reports for Mudra loans up to ₹10 lakhs. Instant download for just ₹100.",
+        "image": "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=1200"
+      },
+      {
+        "title": "PMEGP Loan Reports",
+        "description": "Complete project reports for PMEGP scheme with detailed financial projections and market analysis.",
+        "image": "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80&w=1200"
+      },
+      {
+        "title": "CGTMSE Reports",
+        "description": "Collateral-free loan project reports meeting CGTMSE guidelines and bank requirements.",
+        "image": "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=1200"
+      },
+      {
+        "title": "CMA Reports",
+        "description": "Working capital assessment reports for credit enhancement and overdraft facilities.",
+        "image": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=1200"
+      },
+      {
+        "title": "Stand-Up India DPR",
+        "description": "Specialized project reports for women and SC/ST entrepreneurs under Stand-Up India scheme.",
+        "image": "https://images.unsplash.com/photo-1573164713988-8665fc963095?auto=format&fit=crop&q=80&w=1200"
+      }
+    ]
+  },
+  "appDownload": {
+    "title": "DOWNLOAD DPR BANKING APP",
+    "subtitle": "Experience banking at your fingertips—download the DPR banking App today! Manage your finances easily and securely, anytime, anywhere.",
+    "appStoreText": "App Store",
+    "googlePlayText": "Google Play"
+  },
+  "testimonials": [
+    {
+      "name": "Rajesh Kumar",
+      "role": "Startup Founder",
+      "content": "Generated a professional DPR in 20 minutes. Got my loan approved within a week!",
+      "rating": 5,
+      "avatar": "RK"
+    },
+    {
+      "name": "Priya Sharma",
+      "role": "Channel Partner",
+      "content": "The commission system is transparent. I've helped 50+ clients and earned consistently.",
+      "rating": 5,
+      "avatar": "PS"
+    },
+    {
+      "name": "Amit Patel",
+      "role": "Business Consultant",
+      "content": "This platform saved me countless hours. The AI-generated content is surprisingly accurate.",
+      "rating": 5,
+      "avatar": "AP"
+    }
+  ],
+  "cta": {
+    "title": "Ready to create your professional DPR?",
+    "subtitle": "Join thousands of entrepreneurs who have successfully generated DPRs with AI",
+    "primaryCTA": "Get started for free",
+    "primaryLink": "/auth",
+    "secondaryCTA": "Contact Sales",
+    "secondaryLink": "/contact",
+    "benefits": [
+      "No credit card required",
+      "Setup in minutes",
+      "Cancel anytime"
+    ]
+  },
+  "footer": {
+    "description": "AI-powered DPR generation for entrepreneurs and startups. Create professional project reports in minutes.",
+    "contact": {
+      "email": "support@dprplatform.com",
+      "phone": "+91-9876543210",
+      "address": "Finvois Solutions LLP, Business Hub, 123 Innovation Street, Bangalore, Karnataka 560001, India"
+    },
+    "social": [
+      "Twitter",
+      "LinkedIn",
+      "Facebook",
+      "Instagram"
+    ],
+    "sections": [
+      {
+        "title": "Product",
+        "links": [
+          {
+            "label": "Features",
+            "href": "/#features"
+          },
+          {
+            "label": "Pricing",
+            "href": "/pricing"
+          },
+          {
+            "label": "Templates",
+            "href": "/templates"
+          },
+          {
+            "label": "Schemes",
+            "href": "/schemes"
+          }
+        ]
+      },
+      {
+        "title": "Resources",
+        "links": [
+          {
+            "label": "Documentation",
+            "href": "/documentation"
+          },
+          {
+            "label": "Blog",
+            "href": "/blog"
+          },
+          {
+            "label": "Help Center",
+            "href": "/help-center"
+          },
+          {
+            "label": "API",
+            "href": "/api"
+          }
+        ]
+      },
+      {
+        "title": "Company",
+        "links": [
+          {
+            "label": "About",
+            "href": "/about"
+          },
+          {
+            "label": "Careers",
+            "href": "/careers"
+          },
+          {
+            "label": "Partners",
+            "href": "/partners"
+          },
+          {
+            "label": "Contact",
+            "href": "/contact"
+          }
+        ]
+      }
+    ],
+    "legal": [
+      {
+        "label": "Privacy Policy",
+        "href": "/privacy"
+      },
+      {
+        "label": "Terms of Service",
+        "href": "/terms"
+      },
+      {
+        "label": "Cookies",
+        "href": "/cookies"
+      }
+    ],
+    "copyright": "© 2025 DPR Platform. All rights reserved. Built by Finvois Solutions Pvt Ltd."
+  }
+}

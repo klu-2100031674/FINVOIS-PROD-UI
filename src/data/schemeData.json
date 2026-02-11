@@ -1,0 +1,49 @@
+{
+  "title": "Find subsidies & schemes you qualify for",
+  "subtitle": "AI-powered matching engine identifies government schemes and funding opportunities",
+  "filters": {
+    "sector": {
+      "label": "Sector",
+      "options": ["Manufacturing", "Agriculture", "Technology", "Renewable Energy", "Healthcare", "Retail"]
+    },
+    "investment": {
+      "label": "Investment",
+      "options": ["Under ₹10L", "₹10L - ₹50L", "₹50L - ₹1Cr", "Above ₹1Cr"]
+    },
+    "state": {
+      "label": "State",
+      "options": ["Maharashtra", "Karnataka", "Tamil Nadu", "Gujarat", "All India"]
+    }
+  },
+  "ctaText": "Check Eligibility",
+  "schemes": [
+    {
+      "title": "PMEGP Scheme",
+      "description": "Manufacturing & service sector subsidy",
+      "subsidy": "Up to ₹25 Lakhs subsidy",
+      "color": "purple",
+      "icon": "Award"
+    },
+    {
+      "title": "Startup India",
+      "description": "Tax benefits and funding support",
+      "subsidy": "Up to ₹10 Crores funding",
+      "color": "blue",
+      "icon": "Building2"
+    },
+    {
+      "title": "Mudra Loan",
+      "description": "Micro-enterprise financial assistance",
+      "subsidy": "Up to ₹10 Lakhs loan",
+      "color": "green",
+      "icon": "Wallet"
+    },
+    {
+      "title": "Stand-Up India",
+      "description": "For SC/ST and women entrepreneurs",
+      "subsidy": "₹10L to ₹1Cr funding",
+      "color": "orange",
+      "icon": "Users"
+    }
+  ]
+}
