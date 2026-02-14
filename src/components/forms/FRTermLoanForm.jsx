@@ -220,7 +220,10 @@ const FRTermLoanForm = ({
   const defaultFormData = {
     'General Information': {},
     'Expected Employment Generation': {},
+    'General Information': {},
+    'Expected Employment Generation': {},
     'Term Loan Details': {},
+    'Prepared By': {},
     'Indirect Expenses Increment': {},
     'Cost of Project': {},
     'Schedule for Assets': {},
@@ -372,7 +375,8 @@ const FRTermLoanForm = ({
     { key: 'term', title: 'Means of Finance details', icon: CreditCardIcon },
     { key: 'assets', title: 'Schedule for Assets', icon: BuildingOfficeIcon },
     { key: 'employment', title: 'Expected Employment Generation', icon: ChartBarIcon },
-    { key: 'expenses', title: 'Schedule for Indirect Expenses (Per Month)', icon: CurrencyDollarIcon }
+    { key: 'expenses', title: 'Schedule for Indirect Expenses (Per Month)', icon: CurrencyDollarIcon },
+    { key: 'prepared_by', title: 'Prepared By', icon: BuildingOfficeIcon }
   ];
 
   useEffect(() => {
@@ -832,6 +836,11 @@ const FRTermLoanForm = ({
         'i8': 'John Doe',
         'i9': '9876543210',
         'i10': 'ABC123456',
+        'bank_name': 'SBI',
+        'branch_name': 'Main Branch',
+        'j136': 'Partner A',
+        'j137': 'Partner B',
+        'j138': '9876543210',
         'i11': 'DEF789012',
         'i12': 35,
         'i13': 'Male',
@@ -1115,88 +1124,113 @@ const FRTermLoanForm = ({
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            PAN of firm/Company (Optional)
+            Bank Name / Department Name
           </label>
           <input
             type="text"
-            value={(formData['General Information'] && formData['General Information']['i18']) || ''}
-            onChange={(e) => handleFieldChange('General Information', 'i18', e.target.value)}
+            value={(formData['General Information'] && formData['General Information']['bank_name']) || ''}
+            onChange={(e) => handleFieldChange('General Information', 'bank_name', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-            placeholder="Enter PAN"
+            placeholder="Enter bank or department name"
           />
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Education Qualification
+            Branch Name
           </label>
-          <select
-            value={(formData['General Information'] && formData['General Information']['i19']) || ''}
-            onChange={(e) => handleFieldChange('General Information', 'i19', e.target.value)}
+          <input
+            type="text"
+            value={(formData['General Information'] && formData['General Information']['branch_name']) || ''}
+            onChange={(e) => handleFieldChange('General Information', 'branch_name', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-          >
-            <option value="">Select Education</option>
-            <option value="Below 8th">Below 8th</option>
-            <option value="Above 8th">Above 8th</option>
-            <option value="SSC 10th+2">SSC 10th</option>
-            <option value="SSC 10th+2">intermediate +2</option>
-            <option value="Graduate">Graduate</option>
-            <option value="Post Graduate">Post Graduate</option>
-          </select>
-        </div>
-        <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-gray-800">
-            Project covered under which Scheme
-          </label>
-          <select
-            value={(formData['General Information'] && formData['General Information']['i20']) || ''}
-            onChange={(e) => handleFieldChange('General Information', 'i20', e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-          >
-            <option value="">Select Scheme</option>
-            <option value="AP IDP 4.0">AP IDP 4.0</option>
-            <option value="Industrial park Land Allotment">Industrial park Land Allotment</option>
-            <option value="PMEGP">PMEGP</option>
-            <option value="Mudra">Mudra</option>
-            <option value="Mudra">PMFME</option>
-            <option value="Mudra">PMMSY</option>
-            <option value="Mudra">Startup India</option>
-            <option value="NLM scheme">NLM scheme</option>
-            <option value="Other MSME">Other MSME</option>
-          </select>
-        </div>
-        <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-gray-800">
-            Caste
-          </label>
-          <select
-            value={(formData['General Information'] && formData['General Information']['i21']) || ''}
-            onChange={(e) => handleFieldChange('General Information', 'i21', e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-          >
-            <option value="">Select Caste</option>
-            <option value="OC">OC</option>
-            <option value="SC">SC</option>
-            <option value="ST">ST</option>
-            <option value="BC">BC</option>
-            <option value="Minority">Minority</option>
-          </select>
-        </div>
-        <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-gray-800">
-            Unit location
-          </label>
-          <select
-            value={(formData['General Information'] && formData['General Information']['i22']) || ''}
-            onChange={(e) => handleFieldChange('General Information', 'i22', e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-          >
-            <option value="">Select Location</option>
-            <option value="Rural(Panchayat)">Rural(Panchayat)</option>
-            <option value="Urban(Other than Panchayat)">Urban(Other than Panchayat)</option>
-          </select>
+            placeholder="Enter branch name"
+          />
         </div>
       </div>
+      <div className="space-y-1.5">
+        <label className="block text-xs font-semibold text-gray-800">
+          PAN of firm/Company (Optional)
+        </label>
+        <input
+          type="text"
+          value={(formData['General Information'] && formData['General Information']['i18']) || ''}
+          onChange={(e) => handleFieldChange('General Information', 'i18', e.target.value)}
+          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+          placeholder="Enter PAN"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <label className="block text-xs font-semibold text-gray-800">
+          Education Qualification
+        </label>
+        <select
+          value={(formData['General Information'] && formData['General Information']['i19']) || ''}
+          onChange={(e) => handleFieldChange('General Information', 'i19', e.target.value)}
+          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+        >
+          <option value="">Select Education</option>
+          <option value="Below 8th">Below 8th</option>
+          <option value="Above 8th">Above 8th</option>
+          <option value="SSC 10th+2">SSC 10th</option>
+          <option value="SSC 10th+2">intermediate +2</option>
+          <option value="Graduate">Graduate</option>
+          <option value="Post Graduate">Post Graduate</option>
+        </select>
+      </div>
+      <div className="space-y-1.5">
+        <label className="block text-xs font-semibold text-gray-800">
+          Project covered under which Scheme
+        </label>
+        <select
+          value={(formData['General Information'] && formData['General Information']['i20']) || ''}
+          onChange={(e) => handleFieldChange('General Information', 'i20', e.target.value)}
+          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+        >
+          <option value="">Select Scheme</option>
+          <option value="AP IDP 4.0">AP IDP 4.0</option>
+          <option value="Industrial park Land Allotment">Industrial park Land Allotment</option>
+          <option value="PMEGP">PMEGP</option>
+          <option value="Mudra">Mudra</option>
+          <option value="Mudra">PMFME</option>
+          <option value="Mudra">PMMSY</option>
+          <option value="Mudra">Startup India</option>
+          <option value="NLM scheme">NLM scheme</option>
+          <option value="Other MSME">Other MSME</option>
+        </select>
+      </div>
+      <div className="space-y-1.5">
+        <label className="block text-xs font-semibold text-gray-800">
+          Caste
+        </label>
+        <select
+          value={(formData['General Information'] && formData['General Information']['i21']) || ''}
+          onChange={(e) => handleFieldChange('General Information', 'i21', e.target.value)}
+          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+        >
+          <option value="">Select Caste</option>
+          <option value="OC">OC</option>
+          <option value="SC">SC</option>
+          <option value="ST">ST</option>
+          <option value="BC">BC</option>
+          <option value="Minority">Minority</option>
+        </select>
+      </div>
+      <div className="space-y-1.5">
+        <label className="block text-xs font-semibold text-gray-800">
+          Unit location
+        </label>
+        <select
+          value={(formData['General Information'] && formData['General Information']['i22']) || ''}
+          onChange={(e) => handleFieldChange('General Information', 'i22', e.target.value)}
+          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+        >
+          <option value="">Select Location</option>
+          <option value="Rural(Panchayat)">Rural(Panchayat)</option>
+          <option value="Urban(Other than Panchayat)">Urban(Other than Panchayat)</option>
+        </select>
+      </div>
     </div>
+
   );
 
   const renderEmploymentGeneration = () => (
@@ -1857,6 +1891,49 @@ const FRTermLoanForm = ({
     );
   };
 
+  const renderPreparedBy = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            Partner Name 1 (Prepared By)
+          </label>
+          <input
+            type="text"
+            value={(formData['Prepared By'] && formData['Prepared By']['j136']) || ''}
+            onChange={(e) => handleFieldChange('Prepared By', 'j136', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="Enter partner name 1"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            Partner Name 2 (Prepared By)
+          </label>
+          <input
+            type="text"
+            value={(formData['Prepared By'] && formData['Prepared By']['j137']) || ''}
+            onChange={(e) => handleFieldChange('Prepared By', 'j137', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="Enter partner name 2"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            Mobile Number (Prepared By)
+          </label>
+          <input
+            type="text"
+            value={(formData['Prepared By'] && formData['Prepared By']['j138']) || ''}
+            onChange={(e) => handleFieldChange('Prepared By', 'j138', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="Enter mobile number"
+          />
+        </div>
+      </div>
+    </div>
+  );
+
   const renderCurrentStep = () => {
     const currentSectionKey = sections[currentStep].key;
 
@@ -1866,6 +1943,7 @@ const FRTermLoanForm = ({
       case 'assets': return renderScheduleForAssets();
       case 'employment': return renderEmploymentGeneration();
       case 'expenses': return renderScheduleForIndirectExpenses();
+      case 'prepared_by': return renderPreparedBy();
       default: return null;
     }
   };
@@ -1899,6 +1977,10 @@ const FRTermLoanForm = ({
 
     let excelData = extractCellData(formData);
 
+    excelData['j136'] = formData['Prepared By']?.['j136'] || '';
+    excelData['j137'] = formData['Prepared By']?.['j137'] || '';
+    excelData['j138'] = formData['Prepared By']?.['j138'] || '';
+
     if (excelData['i52'] && excelData['i52'].includes('-')) {
       const [year, month] = excelData['i52'].split('-');
       if (year && month) {
@@ -1921,8 +2003,11 @@ const FRTermLoanForm = ({
     });
 
     // Send in backend expected format with loan percentages and amounts
+    // Send in backend expected format with loan percentages and amounts
     onSubmit({
       excelData,
+      bank_name: formData['General Information']['bank_name'],
+      branch_name: formData['General Information']['branch_name'],
       'Asset Loan Percentages': loanPercentages,
       'Loan Percentage Cells': loanPercentageCells
     });

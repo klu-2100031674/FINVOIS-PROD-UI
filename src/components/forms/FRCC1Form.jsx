@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  ChevronLeftIcon, 
-  ChevronRightIcon, 
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
   CheckCircleIcon,
   DocumentTextIcon,
   CurrencyDollarIcon,
@@ -33,6 +33,8 @@ const sections = [
       { id: 'i4', label: 'Name of Firm', type: 'text', required: true, note: 'Enter your company/firm name' },
       { id: 'i5', label: 'Status of Concern', type: 'select', options: ['Soleproprietorship', 'Partnership', 'LLP', 'Company'], required: true, note: 'Select the legal status' },
       { id: 'i6', label: 'Proprietor / MP / MD Name', type: 'text', required: true, note: 'Enter the owner name' },
+      { id: 'bank_name', label: 'Bank Name / Department Name', type: 'text', required: true, note: 'Enter bank or department name' },
+      { id: 'branch_name', label: 'Branch Name', type: 'text', required: true, note: 'Enter branch name' },
       { id: 'i7', label: 'Firm Address', type: 'textarea', required: true, note: 'Enter complete business address' },
       { id: 'i8', label: 'Sector', type: 'select', options: ['Manufacturing sector', 'Service sector (with stock)', 'Trading sector'], required: true, note: 'Select your primary business sector' },
       { id: 'i9', label: 'Nature of Business', type: 'text', required: true, note: 'Describe your business activity' }
@@ -107,6 +109,16 @@ const sections = [
       { idPrefix: 'R47C2', title: 'Other Assets', itemCount: 10, startIndex: 180, excelField: 'i48' },
       { idPrefix: 'R48C2', title: 'Other Assets (Including Amortisable Assets)', itemCount: 10, startIndex: 190, excelField: 'i49' }
     ]
+  },
+  {
+    key: 'prepared_by',
+    title: 'Prepared By',
+    icon: UsersIcon,
+    fields: [
+      { id: 'j136', label: 'Partner Name 1 (Prepared By)', type: 'text', required: true, note: 'Enter partner name 1' },
+      { id: 'j137', label: 'Partner Name 2 (Prepared By)', type: 'text', required: true, note: 'Enter partner name 2' },
+      { id: 'j138', label: 'Mobile Number (Prepared By)', type: 'text', required: true, note: 'Enter mobile number' }
+    ]
   }
 ];
 
@@ -125,8 +137,8 @@ const fixedAssetsMapping = {
   "Other Assets (Including Amortisable Assets)": { headerRow: 190, dataStartRow: 190, maxItems: 10 }
 };
 
-const FRCC1Form = ({ 
-  onSubmit, 
+const FRCC1Form = ({
+  onSubmit,
   templateId = 'frcc1-financial-form',
   initialData = null,
   isEditMode = false,
@@ -140,6 +152,8 @@ const FRCC1Form = ({
       "i4": "",
       "i5": "",
       "i6": "",
+      "bank_name": "",
+      "branch_name": "",
       "i7": "",
       "i8": "",
       "i9": ""
@@ -183,6 +197,11 @@ const FRCC1Form = ({
       "Live stock": { items: [], total: 0 },
       "Other Assets": { items: [], total: 0 },
       "Other Assets (Including Amortisable Assets)": { items: [], total: 0 }
+    },
+    "Prepared By": {
+      "j136": "",
+      "j137": "",
+      "j138": ""
     }
   });
 
@@ -240,14 +259,14 @@ const FRCC1Form = ({
   // Validate current section
   const validateCurrentSection = useCallback(() => {
     const currentSection = sections[currentStep];
-    
+
     if (currentSection.key === 'fixed') {
       // Fixed assets section is optional, always allow to proceed
       return true;
     }
-    
+
     const sectionData = formData[currentSection.title];
-    
+
     // Check all required fields
     for (const field of currentSection.fields) {
       if (field.required) {
@@ -261,7 +280,7 @@ const FRCC1Form = ({
         }
       }
     }
-    
+
     return true;
   }, [currentStep, formData]);
 
@@ -291,6 +310,8 @@ const FRCC1Form = ({
         "i4": "MEDICAID LABS LLP",
         "i5": "Soleproprietorship",
         "i6": "N Apuroop",
+        "bank_name": "SBI",
+        "branch_name": "Main Branch",
         "i7": "Autonagar,Vijayawada,Andhrapradesh",
         "i8": "Trading sector",
         "i9": "Trading in Pharmaceutical products"
@@ -340,6 +361,11 @@ const FRCC1Form = ({
         "Live stock": { items: [], total: 0 },
         "Other Assets": { items: [], total: 0 },
         "Other Assets (Including Amortisable Assets)": { items: [], total: 0 }
+      },
+      "Prepared By": {
+        "j136": "Partner X",
+        "j137": "Partner Y",
+        "j138": "9876543210"
       }
     });
   }, []);
@@ -348,34 +374,34 @@ const FRCC1Form = ({
   const updateFixedAsset = useCallback((categoryTitle, itemIndex, field, value, startIndex) => {
     setFormData(prev => {
       const newData = { ...prev };
-      
+
       if (!newData["Fixed Assets Schedule"][categoryTitle]) {
         newData["Fixed Assets Schedule"][categoryTitle] = { items: [], total: 0 };
       }
-      
+
       while (newData["Fixed Assets Schedule"][categoryTitle].items.length <= itemIndex) {
         newData["Fixed Assets Schedule"][categoryTitle].items.push({ description: '', amount: 0 });
       }
-      
+
       const item = newData["Fixed Assets Schedule"][categoryTitle].items[itemIndex];
       item[field] = value;
       item.descriptionField = `d${startIndex + itemIndex}`;
       item.amountField = `e${startIndex + itemIndex}`;
-      
+
       newData[`d${startIndex + itemIndex}`] = item.description || '';
       newData[`e${startIndex + itemIndex}`] = item.amount || 0;
-      
+
       let categoryTotal = 0;
       newData["Fixed Assets Schedule"][categoryTitle].items.forEach(item => {
         categoryTotal += item.amount || 0;
       });
       newData["Fixed Assets Schedule"][categoryTitle].total = categoryTotal;
-      
+
       const category = sections.find(s => s.key === 'fixed')?.categories.find(c => c.title === categoryTitle);
       if (category) {
         newData[category.excelField] = categoryTotal;
       }
-      
+
       return newData;
     });
   }, []);
@@ -386,13 +412,13 @@ const FRCC1Form = ({
       const newData = { ...prev };
       if (newData["Fixed Assets Schedule"][categoryTitle] && newData["Fixed Assets Schedule"][categoryTitle].items) {
         newData["Fixed Assets Schedule"][categoryTitle].items.splice(itemIndex, 1);
-        
+
         let categoryTotal = 0;
         newData["Fixed Assets Schedule"][categoryTitle].items.forEach(item => {
           categoryTotal += item.amount || 0;
         });
         newData["Fixed Assets Schedule"][categoryTitle].total = categoryTotal;
-        
+
         const category = sections.find(s => s.key === 'fixed')?.categories.find(c => c.title === categoryTitle);
         if (category) {
           newData[category.excelField] = categoryTotal;
@@ -438,13 +464,17 @@ const FRCC1Form = ({
       h32: { label: "Power charges increament(previous year)", value: formData["Assumptions"]["h32"] || 5 },
       h33: { label: "Sales growth(of previous year)", value: formData["Assumptions"]["h33"] || 5 },
       i34: { label: "No of Months Interest will be paid in first year", value: formData["Assumptions"]["i34"] || 7 },
-      i35: { label: "No of Months Turnover will be done in first year", value: formData["Assumptions"]["i35"] || 7 }
+      i35: { label: "No of Months Turnover will be done in first year", value: formData["Assumptions"]["i35"] || 7 },
+
+      j136: { label: "Partner Name 1 (Prepared By)", value: formData["Prepared By"]?.["j136"] || "" },
+      j137: { label: "Partner Name 2 (Prepared By)", value: formData["Prepared By"]?.["j137"] || "" },
+      j138: { label: "Mobile Number (Prepared By)", value: formData["Prepared By"]?.["j138"] || "" }
     };
 
     Object.keys(fixedAssetsMapping).forEach(categoryTitle => {
       const mapping = fixedAssetsMapping[categoryTitle];
       const categoryData = formData["Fixed Assets Schedule"][categoryTitle];
-      
+
       if (categoryData && categoryData.items) {
         categoryData.items.forEach((item, index) => {
           if (index < mapping.maxItems) {
@@ -469,6 +499,8 @@ const FRCC1Form = ({
         additionalData: {
           formType: 'FRCC1 Complete Financial Form',
           timestamp: new Date().toISOString(),
+          bank_name: formData["General Information"]["bank_name"],
+          branch_name: formData["General Information"]["branch_name"],
           "Fixed Assets Schedule": formData["Fixed Assets Schedule"]
         }
       }
@@ -537,15 +569,15 @@ const FRCC1Form = ({
             <pre className="text-green-400">{JSON.stringify(finalJson, null, 2)}</pre>
           </div>
           <div className="flex justify-between mt-6 gap-3">
-            <button 
-              className="px-5 py-2 border-2 border-gray-800 text-gray-800 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-300 font-medium text-sm" 
+            <button
+              className="px-5 py-2 border-2 border-gray-800 text-gray-800 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-300 font-medium text-sm"
               onClick={() => setShowResult(false)}
             >
               <ChevronLeftIcon className="w-4 h-4 inline mr-1" />
               Back to Form
             </button>
-            <button 
-              className="px-5 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-medium text-sm" 
+            <button
+              className="px-5 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-medium text-sm"
               onClick={copyToClipboard}
             >
               <ClipboardDocumentCheckIcon className="w-4 h-4 inline mr-1" />
@@ -612,12 +644,12 @@ const FRCC1Form = ({
 
         {/* Test Data Button */}
         <div className="mb-4 flex justify-center">
-          {/* <button 
-            className="px-4 py-2 border-2 border-gray-800 text-gray-800 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-300 text-xs font-medium" 
+          <button
+            className="px-4 py-2 border-2 border-gray-800 text-gray-800 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-300 text-xs font-medium"
             onClick={fillTestData}
           >
             Fill Test Data
-          </button> */}
+          </button>
         </div>
 
         {/* Progress Bar */}
@@ -631,9 +663,9 @@ const FRCC1Form = ({
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-            <div 
-              className="bg-gray-900 h-2 rounded-full transition-all duration-500 ease-out" 
-              style={{ width: `${progress}%` }} 
+            <div
+              className="bg-gray-900 h-2 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${progress}%` }}
             />
           </div>
         </div>
@@ -646,13 +678,12 @@ const FRCC1Form = ({
               return (
                 <button
                   key={section.key}
-                  className={`px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 whitespace-nowrap flex items-center gap-1.5 ${
-                    index === currentStep 
-                      ? ' text-black border border-gray-600' 
-                      : index < currentStep
+                  className={`px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 whitespace-nowrap flex items-center gap-1.5 ${index === currentStep
+                    ? ' text-black border border-gray-600'
+                    : index < currentStep
                       ? 'bg-gray-100 text-gray-700 border border-gray-300'
                       : 'bg-white text-gray-500 border border-gray-200 cursor-not-allowed'
-                  }`}
+                    }`}
                   onClick={() => index <= currentStep && goToStep(index)}
                   disabled={index > currentStep}
                 >
@@ -673,7 +704,7 @@ const FRCC1Form = ({
               {currentSection.title}
             </h2>
           </div>
-          
+
           <div className="bg-ghostwhite rounded-lg p-4">
             {currentSection.key === 'fixed' ? (
               <FixedAssetsSection
@@ -694,18 +725,18 @@ const FRCC1Form = ({
 
         {/* Navigation Buttons */}
         <div className="flex justify-between items-center gap-3 pt-4 border-t border-gray-200">
-          <button 
-            className="px-5 py-2 border-2 border-gray-800 text-gray-800 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-transparent font-medium text-sm flex items-center gap-1" 
+          <button
+            className="px-5 py-2 border-2 border-gray-800 text-gray-800 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-transparent font-medium text-sm flex items-center gap-1"
             onClick={() => goToStep(currentStep - 1)}
             disabled={currentStep === 0}
           >
             <ChevronLeftIcon className="w-4 h-4" />
             Previous
           </button>
-          
+
           {isLastStep ? (
-            <button 
-              className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5" 
+            <button
+              className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
               onClick={handleSubmit}
               disabled={isProcessing}
             >
@@ -725,8 +756,8 @@ const FRCC1Form = ({
               )}
             </button>
           ) : (
-            <button 
-              className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-300 font-medium text-sm flex items-center gap-1" 
+            <button
+              className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-300 font-medium text-sm flex items-center gap-1"
               onClick={goToNextStep}
               disabled={!canProceed}
             >
@@ -804,7 +835,7 @@ const RegularFieldsSection = ({ section, data = {}, onUpdate }) => {
 // Fixed assets section component
 const FixedAssetsSection = ({ categories, data = {}, onUpdate, onDelete }) => {
   const [activeTab, setActiveTab] = useState(0);
-  
+
   const maxItems = {
     'Plant and Machinery': 10,
     'Service Equipment': 10,
@@ -842,18 +873,17 @@ const FixedAssetsSection = ({ categories, data = {}, onUpdate, onDelete }) => {
         {categories.map((cat, index) => (
           <button
             key={cat.title}
-            className={`px-3 py-1.5 rounded-lg transition-all duration-300 text-xs font-medium ${
-              index === activeTab 
-                ? 'bg-gray-900 text-white' 
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
+            className={`px-3 py-1.5 rounded-lg transition-all duration-300 text-xs font-medium ${index === activeTab
+              ? 'bg-gray-900 text-white'
+              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
             onClick={() => setActiveTab(index)}
           >
             {cat.title}
           </button>
         ))}
       </div>
-      
+
       {/* Category Content */}
       <div className="bg-white border border-gray-200 rounded-lg p-4">
         <div className="flex justify-between items-center  mb-4 pb-3 border-b border-gray-200">
@@ -866,7 +896,7 @@ const FixedAssetsSection = ({ categories, data = {}, onUpdate, onDelete }) => {
             </span>
           </div>
         </div>
-        
+
         {/* Table Header */}
         <div className="grid grid-cols-12 gap-3 mb-3">
           <div style={{ fontFamily: 'Manrope, sans-serif' }} className="col-span-6 font-semibold text-gray-800 bg-gray-100 p-2 rounded-lg text-xs">
@@ -877,7 +907,7 @@ const FixedAssetsSection = ({ categories, data = {}, onUpdate, onDelete }) => {
           </div>
           <div className="col-span-1"></div>
         </div>
-        
+
         {/* Table Rows */}
         <div className="space-y-2 max-h-72 overflow-y-auto custom-scrollbar pr-1">
           {categoryData.items && categoryData.items.map((item, index) => (
@@ -913,11 +943,10 @@ const FixedAssetsSection = ({ categories, data = {}, onUpdate, onDelete }) => {
         <button
           type="button"
           onClick={addItem}
-          className={`mt-3 px-4 py-2 text-xs rounded-lg font-medium transition-all duration-300 flex items-center gap-1.5 ${
-            (categoryData.items?.length || 0) >= (maxItems[currentCategory.title] || Infinity)
-              ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
-              : 'border-2 border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white'
-          }`}
+          className={`mt-3 px-4 py-2 text-xs rounded-lg font-medium transition-all duration-300 flex items-center gap-1.5 ${(categoryData.items?.length || 0) >= (maxItems[currentCategory.title] || Infinity)
+            ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
+            : 'border-2 border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white'
+            }`}
           disabled={(categoryData.items?.length || 0) >= (maxItems[currentCategory.title] || Infinity)}
         >
           <PlusIcon className="w-4 h-4" />

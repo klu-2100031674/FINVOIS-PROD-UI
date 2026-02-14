@@ -18,7 +18,7 @@ const generateFinancialYearOptions = () => {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
-  
+
   // If we are in Jan/Feb/Mar (months 0, 1, 2), the "current" financial year is still start-year-1
   const startYear = currentMonth < 3 ? currentYear - 1 : currentYear;
 
@@ -239,7 +239,7 @@ const FRTermLoanCCForm = ({
   onFormDataChange = null
 }) => {
   // Extract initial tenure from initialData if available (for initial render)
-  const initialTenure = initialData?.['Means of Finance details']?.i47 !== undefined 
+  const initialTenure = initialData?.['Means of Finance details']?.i47 !== undefined
     ? parseInt(initialData['Means of Finance details'].i47, 10)
     : null;
 
@@ -252,26 +252,27 @@ const FRTermLoanCCForm = ({
 
   const defaultFormData = useMemo(() => ({
     'General Information': {
-        'i7': '', 'i8': '', 'i9': '', 'i10': '', 'i11': '', 'i12': '', 'i13': '', 
-        'i14': '', 'i15': '', 'i16': '', 'i17': '', 'i18': '', 'i19': '', 'i20': '', 
-        'i21': '', 'i22': '', 'i23': ''
+      'i7': '', 'i8': '', 'i9': '', 'i10': '', 'i11': '', 'i12': '', 'i13': '',
+      'i14': '', 'i15': '', 'i16': '', 'i17': '', 'i18': '', 'i19': '', 'i20': '',
+      'i21': '', 'i22': '', 'i23': ''
     },
+    'Prepared By': { 'j136': '', 'j137': '', 'j138': '' },
     'Expected Employment Generation': {
-        'i24': '', 'j24': '', // Skilled
-        'i25': '', 'j25': '', // Semi Skilled
-        'i26': '', 'j26': ''  // Unskilled
+      'i24': '', 'j24': '', // Skilled
+      'i25': '', 'j25': '', // Semi Skilled
+      'i26': '', 'j26': ''  // Unskilled
     },
     'Means of Finance details': {
-        'h45': '', 'i46': '', 'i47': '', 'i48': '', 'i49': '', 
-        'h52': '', 'h53': '',
-        'i58': '', 'i59': '', 'i60': '', 'i63': '', 'i76': ''
+      'h45': '', 'i46': '', 'i47': '', 'i48': '', 'i49': '',
+      'h52': '', 'h53': '',
+      'i58': '', 'i59': '', 'i60': '', 'i63': '', 'i76': ''
     },
     'Indirect Expenses Increment': {
-        'h71': '', 'h72': '', 'h73': '', 'h74': '', 'h75': ''
+      'h71': '', 'h72': '', 'h73': '', 'h74': '', 'h75': ''
     },
     'Cost of Project details': {
-        'i40': '',
-        'k40': ''
+      'i40': '',
+      'k40': ''
     },
     'Schedule for Indirect Expenses': {} // Will be populated with d/e keys
   }), []);
@@ -288,12 +289,12 @@ const FRTermLoanCCForm = ({
       'Schedule for Indirect Expenses': initialIndirect,
       ...initialData
     };
-    
+
     if (initialData && initialData['Schedule for Indirect Expenses']) {
-        mergedData['Schedule for Indirect Expenses'] = {
-            ...initialIndirect,
-            ...initialData['Schedule for Indirect Expenses']
-        };
+      mergedData['Schedule for Indirect Expenses'] = {
+        ...initialIndirect,
+        ...initialData['Schedule for Indirect Expenses']
+      };
     }
     return mergedData;
   });
@@ -301,7 +302,7 @@ const FRTermLoanCCForm = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [assetActiveTab, setAssetActiveTab] = useState(0);
   const [indirectActiveTab, setIndirectActiveTab] = useState(0);
-  
+
   // Loan percentage state for each asset category (maps to K28-K39)
   const [loanPercentages, setLoanPercentages] = useState(() => {
     if (initialData && initialData['Asset Loan Percentages']) {
@@ -335,7 +336,7 @@ const FRTermLoanCCForm = ({
 
   // Error states for validation
   const [assetValidationErrors, setAssetValidationErrors] = useState({});
-  
+
   const [assetItems, setAssetItems] = useState(() => {
     if (initialData && initialData['Fixed Assets Schedule']) {
       return initialData['Fixed Assets Schedule'];
@@ -354,62 +355,62 @@ const FRTermLoanCCForm = ({
   // Update state if initialData changes (e.g. loaded from API)
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
-        if (initialData['Fixed Assets Schedule']) {
-            // Convert and filter assets to match current tenure-based ranges
-            const convertedAssets = {};
-            Object.keys(CURRENT_ASSET_SECTIONS).forEach(key => {
-              const section = CURRENT_ASSET_SECTIONS[key];
-              convertedAssets[key] = {};
-              for (let row = section.start; row <= section.end; row++) {
-                convertedAssets[key][row] = { description: '', amount: '' };
-              }
-            });
-            
-            // Load and validate assets against current tenure-based ranges
-            if (initialData['Fixed Assets Schedule'] && typeof initialData['Fixed Assets Schedule'] === 'object') {
-              Object.keys(initialData['Fixed Assets Schedule']).forEach(category => {
-                const categoryData = initialData['Fixed Assets Schedule'][category];
-                const section = CURRENT_ASSET_SECTIONS[category];
-                
-                if (!section) return; // Skip unknown categories
-                
-                if (categoryData.items) {
-                  // Old format: convert items array to row-keyed format
-                  categoryData.items.forEach((item, index) => {
-                    const row = section.start + index;
-                    if (row <= section.end) {
-                      convertedAssets[category][row] = item;
-                    }
-                  });
-                } else if (typeof categoryData === 'object') {
-                  // New format: row-keyed format
-                  // Filter to ONLY include rows within current tenure-based range
-                  Object.keys(categoryData).forEach(row => {
-                    const rowNum = parseInt(row);
-                    // Only include if row is within valid range for current tenure
-                    if (rowNum >= section.start && rowNum <= section.end) {
-                      convertedAssets[category][rowNum] = categoryData[row];
-                    }
-                    // Silently skip rows outside valid range (they belong to different tenure scenario)
-                  });
-                }
-              });
-            }
-            setAssetItems(convertedAssets);
-        }
-        
-        setFormData(prev => {
-            const newData = { ...prev, ...initialData };
-             if (initialData['Schedule for Indirect Expenses']) {
-                newData['Schedule for Indirect Expenses'] = initialData['Schedule for Indirect Expenses'];
-            }
-            return newData;
+      if (initialData['Fixed Assets Schedule']) {
+        // Convert and filter assets to match current tenure-based ranges
+        const convertedAssets = {};
+        Object.keys(CURRENT_ASSET_SECTIONS).forEach(key => {
+          const section = CURRENT_ASSET_SECTIONS[key];
+          convertedAssets[key] = {};
+          for (let row = section.start; row <= section.end; row++) {
+            convertedAssets[key][row] = { description: '', amount: '' };
+          }
         });
 
-        // Load loan percentages if available
-        if (initialData['Asset Loan Percentages']) {
-            setLoanPercentages(initialData['Asset Loan Percentages']);
+        // Load and validate assets against current tenure-based ranges
+        if (initialData['Fixed Assets Schedule'] && typeof initialData['Fixed Assets Schedule'] === 'object') {
+          Object.keys(initialData['Fixed Assets Schedule']).forEach(category => {
+            const categoryData = initialData['Fixed Assets Schedule'][category];
+            const section = CURRENT_ASSET_SECTIONS[category];
+
+            if (!section) return; // Skip unknown categories
+
+            if (categoryData.items) {
+              // Old format: convert items array to row-keyed format
+              categoryData.items.forEach((item, index) => {
+                const row = section.start + index;
+                if (row <= section.end) {
+                  convertedAssets[category][row] = item;
+                }
+              });
+            } else if (typeof categoryData === 'object') {
+              // New format: row-keyed format
+              // Filter to ONLY include rows within current tenure-based range
+              Object.keys(categoryData).forEach(row => {
+                const rowNum = parseInt(row);
+                // Only include if row is within valid range for current tenure
+                if (rowNum >= section.start && rowNum <= section.end) {
+                  convertedAssets[category][rowNum] = categoryData[row];
+                }
+                // Silently skip rows outside valid range (they belong to different tenure scenario)
+              });
+            }
+          });
         }
+        setAssetItems(convertedAssets);
+      }
+
+      setFormData(prev => {
+        const newData = { ...prev, ...initialData };
+        if (initialData['Schedule for Indirect Expenses']) {
+          newData['Schedule for Indirect Expenses'] = initialData['Schedule for Indirect Expenses'];
+        }
+        return newData;
+      });
+
+      // Load loan percentages if available
+      if (initialData['Asset Loan Percentages']) {
+        setLoanPercentages(initialData['Asset Loan Percentages']);
+      }
     }
   }, [initialData]);
 
@@ -417,13 +418,13 @@ const FRTermLoanCCForm = ({
   const prevTenureRef = useRef(liveTenure);
   // Track if expenses have been initialized for the current tenure range
   const expensesInitializedForGT7Ref = useRef(false);
-  
+
   // Reinitialize indirect expenses when tenure changes
   useEffect(() => {
     const prevTenure = prevTenureRef.current;
     const prevIsGT7 = prevTenure !== null && prevTenure > 7;
     const currentIsGT7 = liveTenure !== null && liveTenure > 7;
-    
+
     console.log('👀 Tenure useEffect triggered:', {
       prevTenure,
       liveTenure,
@@ -431,22 +432,22 @@ const FRTermLoanCCForm = ({
       currentIsGT7,
       wasInitializedForGT7: expensesInitializedForGT7Ref.current
     });
-    
+
     // Skip if liveTenure is null (initial state)
     if (liveTenure === null) {
       prevTenureRef.current = liveTenure;
       return;
     }
-    
+
     // Reinitialize if:
     // 1. First time entering any tenure (prevTenure is null, liveTenure is not null)
     // 2. Crossing the threshold from ≤7 to >7 or vice versa
     // 3. First time entering tenure > 7 (and expenses haven't been initialized for GT7)
-    const shouldReinitialize = 
+    const shouldReinitialize =
       (prevTenure === null) ||
       (prevTenure !== null && prevIsGT7 !== currentIsGT7) ||
       (currentIsGT7 && !expensesInitializedForGT7Ref.current);
-    
+
     if (shouldReinitialize) {
       console.log('🔄 Reinitializing indirect expenses for tenure change', {
         prevTenure,
@@ -455,17 +456,17 @@ const FRTermLoanCCForm = ({
         currentIsGT7,
         wasInitializedForGT7: expensesInitializedForGT7Ref.current
       });
-      
+
       // Get the new expenses data based on current tenure
       const newExpensesData = getIndirectExpensesData(liveTenure);
-      
+
       // Reinitialize the expenses with new cell mappings
       const newIndirect = {};
       Object.values(newExpensesData).flat().forEach(item => {
         newIndirect[item.d] = item.label;
         newIndirect[item.e] = 0;
       });
-      
+
       const totalItems = Object.values(newExpensesData).flat().length;
       console.log('✅ New expenses initialized:', {
         tenure: liveTenure,
@@ -476,16 +477,16 @@ const FRTermLoanCCForm = ({
         sampleCells: Object.keys(newIndirect).filter(k => k.startsWith('d')).slice(0, 5),
         lastCells: Object.keys(newIndirect).filter(k => k.startsWith('d')).slice(-5)
       });
-      
+
       setFormData(prev => ({
         ...prev,
         'Schedule for Indirect Expenses': newIndirect
       }));
-      
+
       // Track that we've initialized for GT7 or reset if not GT7
       expensesInitializedForGT7Ref.current = currentIsGT7;
     }
-    
+
     prevTenureRef.current = liveTenure;
   }, [liveTenure]);
 
@@ -497,7 +498,7 @@ const FRTermLoanCCForm = ({
         [field]: value
       }
     }));
-    
+
     // Update liveTenure when tenure field (i47) changes
     if (section === 'Means of Finance details' && field === 'i47') {
       const newTenure = value !== '' && value !== null && value !== undefined ? parseInt(value, 10) : null;
@@ -511,7 +512,7 @@ const FRTermLoanCCForm = ({
       });
       setLiveTenure(parsedTenure);
     }
-    
+
     if (onFormDataChange) {
       onFormDataChange({ ...formData, [section]: { ...formData[section], [field]: value } });
     }
@@ -545,7 +546,7 @@ const FRTermLoanCCForm = ({
         ...prev,
         [category]: percentage
       }));
-      
+
       // Calculate and set loan amount based on percentage and category total
       const categoryTotal = getCategoryTotal(category);
       if (categoryTotal > 0) {
@@ -624,7 +625,7 @@ const FRTermLoanCCForm = ({
     const categoryItems = assetItems[category] || {};
     const maxItems = section.end - section.start + 1;
     const currentFilled = Object.values(categoryItems).filter(item => item.description || item.amount).length;
-    
+
     if (currentFilled >= maxItems) {
       alert(`Maximum ${maxItems} items allowed for ${category}`);
       return;
@@ -667,7 +668,7 @@ const FRTermLoanCCForm = ({
           break;
         }
       }
-      
+
       if (!hasItems) {
         setCategoriesWithItems(prev => {
           const newSet = new Set(prev);
@@ -703,7 +704,7 @@ const FRTermLoanCCForm = ({
           break;
         }
       }
-      
+
       setCategoriesWithItems(prevSet => {
         const newSet = new Set(prevSet);
         if (hasItems) {
@@ -722,34 +723,34 @@ const FRTermLoanCCForm = ({
     // Extract tenure for conditional row mapping
     const tenure = parseInt(formData['Means of Finance details']?.['i47'] || 0);
     const isTenureGT7 = tenure > 7;
-    
+
     console.log('🔍 handleSubmit: tenure =', tenure, ', isTenureGT7 =', isTenureGT7);
-    
+
     // Remap assets based on tenure at submission time
     const convertedAssets = {};
-    
+
     Object.keys(assetItems).forEach(category => {
       const categoryItems = assetItems[category];
       const tenureGT7Section = ASSET_SECTIONS_TENURE_GT7[category];
       const defaultSection = ASSET_SECTIONS_DEFAULT[category];
-      
+
       convertedAssets[category] = {};
-      
+
       Object.keys(categoryItems)
         .sort((a, b) => a - b)
         .forEach(row => {
           const rowNum = parseInt(row);
           const item = categoryItems[row];
-          
+
           if (item.description || item.amount) {
             let targetRow = rowNum;
-            
+
             if (isTenureGT7) {
               // Check if row is in DEFAULT range (tenure ≤ 7) - needs remapping
               const isInDefaultRange = rowNum >= defaultSection.start && rowNum <= defaultSection.end;
               // Check if row is already in TENURE_GT7 range - no remapping needed
               const isInTenureGT7Range = rowNum >= tenureGT7Section.start && rowNum <= tenureGT7Section.end;
-              
+
               if (isInDefaultRange && !isInTenureGT7Range) {
                 // User entered in old range - remap to new range
                 const offset = rowNum - defaultSection.start;
@@ -770,31 +771,31 @@ const FRTermLoanCCForm = ({
                 return;
               }
             }
-            
+
             convertedAssets[category][targetRow] = item;
           }
         });
     });
-    
+
     // Process indirect expenses - NO remapping needed since form already uses correct cells
     // Form uses CURRENT_INDIRECT_EXPENSES_DATA which already has correct cell refs for current tenure
     let filteredIndirectExpenses = {};
-    
+
     // Define valid ranges based on tenure
     // tenure > 7: 263-283, 285-291, 292-303, 304-311, 312-319 (skip 284)
     // tenure ≤ 7: 251-271, 273-279, 280-291, 292-299, 300-307
     const validExpenseRows = isTenureGT7
       ? { min: 263, max: 319, skip: [284] }  // tenure > 7 range
       : { min: 251, max: 307, skip: [] };     // default range
-    
+
     Object.keys(formData['Schedule for Indirect Expenses'] || {}).forEach(cell => {
       const match = cell.match(/^([de])(\d+)$/);
       if (match) {
         const rowNum = parseInt(match[2]);
-        const isValidRow = rowNum >= validExpenseRows.min && 
-                          rowNum <= validExpenseRows.max && 
-                          !validExpenseRows.skip.includes(rowNum);
-        
+        const isValidRow = rowNum >= validExpenseRows.min &&
+          rowNum <= validExpenseRows.max &&
+          !validExpenseRows.skip.includes(rowNum);
+
         if (isValidRow) {
           filteredIndirectExpenses[cell] = formData['Schedule for Indirect Expenses'][cell];
         } else {
@@ -802,9 +803,9 @@ const FRTermLoanCCForm = ({
         }
       }
     });
-    
+
     console.log('📊 Filtered expenses:', Object.keys(filteredIndirectExpenses).filter(k => k.startsWith('e') && formData['Schedule for Indirect Expenses'][k]).length, 'expense values');
-    
+
     // Convert month inputs to mmm-yy format
     const updatedFormData = {
       ...formData,
@@ -827,7 +828,7 @@ const FRTermLoanCCForm = ({
         updatedFormData['Means of Finance details']['i60'] = `${monthName}-${year.slice(-2)}`;
       }
     }
-    
+
     // Build loan percentages mapping for Excel cells K28-K39
     const loanPercentageCells = {};
     Object.keys(CURRENT_ASSET_SECTIONS).forEach(category => {
@@ -836,15 +837,17 @@ const FRTermLoanCCForm = ({
       // Map to Excel cell (e.g., k28, k29, etc.)
       loanPercentageCells[section.loanCell] = percentage;
     });
-    
+
     // Combine all data
     const payload = {
       ...updatedFormData,
+      bank_name: formData['General Information']['bank_name'],
+      branch_name: formData['General Information']['branch_name'],
       'Fixed Assets Schedule': convertedAssets,
       'Asset Loan Percentages': loanPercentages,
       'Loan Percentage Cells': loanPercentageCells
     };
-    
+
     console.log('📤 Final payload summary:', {
       tenure,
       isTenureGT7,
@@ -852,7 +855,7 @@ const FRTermLoanCCForm = ({
       expenseRowRange: isTenureGT7 ? '263-319' : '251-307',
       expenseCount: Object.keys(filteredIndirectExpenses).filter(k => k.startsWith('e')).length
     });
-    
+
     onSubmit(payload);
   };
 
@@ -876,7 +879,7 @@ const FRTermLoanCCForm = ({
             type={type}
             value={formData[section]?.[field] || ''}
             onChange={(e) => handleInputChange(section, field, e.target.value)}
-            onWheel={(e) => e.target.type === 'number' && e.target.blur()} 
+            onWheel={(e) => e.target.type === 'number' && e.target.blur()}
             className={`w-full p-2 border border-gray-300 rounded-md ${suffix ? 'pr-8' : ''}`}
           />
           {suffix && (
@@ -911,7 +914,8 @@ const FRTermLoanCCForm = ({
     { key: 'assets', title: 'cost of the project', icon: BuildingOfficeIcon },
     { key: 'cost', title: 'working capital requirement', icon: CurrencyDollarIcon },
     { key: 'employment', title: 'Expected Employment Generation', icon: DocumentTextIcon },
-    { key: 'expenses', title: 'Schedule for Indirect Expenses (Per Month)', icon: ChartBarIcon }
+    { key: 'expenses', title: 'Schedule for Indirect Expenses (Per Month)', icon: ChartBarIcon },
+    { key: 'prepared_by', title: 'Prepared By', icon: BuildingOfficeIcon }
   ];
 
   // Define required fields for each section
@@ -929,7 +933,7 @@ const FRTermLoanCCForm = ({
   const canProceed = useMemo(() => {
     const currentSection = sections[currentStep];
     const sectionKey = currentSection.key;
-    
+
     // Map section keys to data keys
     const sectionDataKeys = {
       'general': 'General Information',
@@ -938,21 +942,24 @@ const FRTermLoanCCForm = ({
       'indirect': 'Indirect Expenses Increment',
       'cost': 'Cost of Project details',
       'assets': 'Schedule for Assets',
-      'expenses': 'Schedule for Indirect Expenses'
+      'cost': 'Cost of Project details',
+      'assets': 'Schedule for Assets',
+      'expenses': 'Schedule for Indirect Expenses',
+      'prepared_by': 'Prepared By'
     };
-    
+
     const dataKey = sectionDataKeys[sectionKey];
     const required = requiredFields[dataKey] || [];
-    
+
     // Special validation for Schedule for Assets
     if (sectionKey === 'assets') {
       const assetCategories = Object.keys(CURRENT_ASSET_SECTIONS);
-      
+
       // Check if all categories have been visited
       if (visitedAssetCategories.size < assetCategories.length) {
         return false;
       }
-      
+
       // Check that categories with items have loan percentages set (allow 0%)
       for (const categoryName of categoriesWithItems) {
         const loanPercentage = loanPercentages[categoryName];
@@ -960,10 +967,10 @@ const FRTermLoanCCForm = ({
           return false;
         }
       }
-      
+
       return true;
     }
-    
+
     if (sectionKey === 'expenses') {
       // Validate Increment percentages
       const increments = ['h71', 'h72', 'h73', 'h74', 'h75'];
@@ -975,7 +982,7 @@ const FRTermLoanCCForm = ({
     }
 
     if (required.length === 0) return true; // No required fields for this section
-    
+
     const sectionData = formData[dataKey] || {};
     return required.every(fieldId => {
       const value = sectionData[fieldId];
@@ -997,27 +1004,29 @@ const FRTermLoanCCForm = ({
 
   const handleFillTestData = () => {
     const testTenure = 7; // Test with tenure > 7
-    
+
     // Get the correct expenses data for test tenure
     const testExpensesData = getIndirectExpensesData(testTenure);
-    
+
     // Build the initial indirect expenses with correct cell mappings for test tenure
     const testIndirectExpenses = {};
     Object.values(testExpensesData).flat().forEach(item => {
       testIndirectExpenses[item.d] = item.label;
       testIndirectExpenses[item.e] = 0;
     });
-    
+
     // Add some sample values
     testIndirectExpenses['e263'] = '12000'; // Bank charges
     testIndirectExpenses['e264'] = '5000';  // Software subscription
     testIndirectExpenses['e285'] = '10000'; // Freight and forwarding
     testIndirectExpenses['e292'] = '25000'; // Insurance
     testIndirectExpenses['e300'] = '500';   // Donation
-    
+
     const testData = {
       'General Information': {
-        'i7': 'Sole Proprietorship', 'i8': 'John Doe', 'i9': '9876543210', 'i10': '123456789012', 'i11': 'ABCDE1234F', 'i12': '35', 'i13': 'Male',
+        'i7': 'Sole Proprietorship', 'i8': 'John Doe', 'i9': '9876543210', 'i10': '123456789012',
+        'bank_name': 'ICICI Bank', 'branch_name': 'Industrial Branch',
+        'i11': 'ABCDE1234F', 'i12': '35', 'i13': 'Male',
         'i14': 'Manufacturing sector', 'i15': 'Textile Manufacturing', 'i16': '123 Industrial Area, City', 'i17': 'Doe Textiles', 'i18': 'ABCDE1234F', 'i19': 'Graduate', 'i20': 'PMEGP',
         'i21': 'OC', 'i22': 'Urban(Other than Panchayat)', 'i23': ''
       },
@@ -1039,7 +1048,12 @@ const FRTermLoanCCForm = ({
         'i40': '1',
         'k40': '95'
       },
-      'Schedule for Indirect Expenses': testIndirectExpenses
+      'Schedule for Indirect Expenses': testIndirectExpenses,
+      'Prepared By': {
+        'j136': 'Partner A',
+        'j137': 'Partner B',
+        'j138': '9876543211'
+      }
     };
 
     const testAssets = {
@@ -1056,16 +1070,16 @@ const FRTermLoanCCForm = ({
     expensesInitializedForGT7Ref.current = testTenure > 7;
 
     setFormData(prev => ({
-        ...prev,
-        ...testData
+      ...prev,
+      ...testData
     }));
 
     setAssetItems(prev => {
-        const newAssets = { ...prev };
-        Object.keys(testAssets).forEach(key => {
-            newAssets[key] = { ...newAssets[key], ...testAssets[key] };
-        });
-        return newAssets;
+      const newAssets = { ...prev };
+      Object.keys(testAssets).forEach(key => {
+        newAssets[key] = { ...newAssets[key], ...testAssets[key] };
+      });
+      return newAssets;
     });
 
   };
@@ -1079,7 +1093,7 @@ const FRTermLoanCCForm = ({
       const item = currentItems[row];
       return item.description.trim() !== '' || (item.amount && item.amount !== 0);
     });
-    
+
     // If current category has items, validate loan percentage
     if (hasItems) {
       const loanPercentage = loanPercentages[currentCategoryName];
@@ -1101,7 +1115,7 @@ const FRTermLoanCCForm = ({
 
     // Mark both current and new category as visited
     setVisitedAssetCategories(prev => new Set([...prev, assetActiveTab, newTabIndex]));
-    
+
     // Switch to new tab
     setAssetActiveTab(newTabIndex);
   };
@@ -1115,6 +1129,8 @@ const FRTermLoanCCForm = ({
             {renderInput('General Information', 'i8', 'Name of Proprietor/ partner/Director/Member/trustee')}
             {renderInput('General Information', 'i9', 'Mobile Number')}
             {renderInput('General Information', 'i10', 'Aadhar number (Optional)')}
+            {renderInput('General Information', 'bank_name', 'Bank Name / Department Name')}
+            {renderInput('General Information', 'branch_name', 'Branch Name')}
             {renderInput('General Information', 'i11', 'PAN (Optional)')}
             {renderInput('General Information', 'i12', 'Age')}
             {renderInput('General Information', 'i13', 'Gender', 'text', ['Male', 'Female', 'Others'])}
@@ -1123,10 +1139,10 @@ const FRTermLoanCCForm = ({
             {renderInput('General Information', 'i16', 'Address of office/Factory')}
             {renderInput('General Information', 'i17', 'Name of firm/Company (Optional)')}
             {renderInput('General Information', 'i18', 'PAN of firm/Company (Optional)')}
-            {renderInput('General Information', 'i19', 'Education Qualification', 'text', ['Below 8th', 'Above 8th', 'SSC 10th','intermediate +2', 'Graduate', 'Post Graduate'])}
-            {renderInput('General Information', 'i20', 'Project covered under which Scheme', 'text', ['AP IDP 4.0', 'Industrial park Land Allotment', 'PMEGP', 'Mudra', 'PMFME','PMMSY','Startup India','Other MSME','NLM scheme'])}
+            {renderInput('General Information', 'i19', 'Education Qualification', 'text', ['Below 8th', 'Above 8th', 'SSC 10th', 'intermediate +2', 'Graduate', 'Post Graduate'])}
+            {renderInput('General Information', 'i20', 'Project covered under which Scheme', 'text', ['AP IDP 4.0', 'Industrial park Land Allotment', 'PMEGP', 'Mudra', 'PMFME', 'PMMSY', 'Startup India', 'Other MSME', 'NLM scheme'])}
             {renderInput('General Information', 'i21', 'Caste', 'text', ['OC', 'SC', 'ST', 'BC', 'Minority'])}
-            {renderInput('General Information', 'i22', 'Unit location', 'text', ['Rural(Panchayat)', 'Urban(Other than Panchayat)'])} 
+            {renderInput('General Information', 'i22', 'Unit location', 'text', ['Rural(Panchayat)', 'Urban(Other than Panchayat)'])}
           </div>
         );
 
@@ -1162,7 +1178,7 @@ const FRTermLoanCCForm = ({
             {/* {renderInput('Means of Finance details', 'h50', 'Margin money for Working capital requirement', 'number')} */}
             {renderInput('Means of Finance details', 'h52', 'Working capital Loan Rate of Interest', 'number')}
             {renderInput('Means of Finance details', 'h53', 'Processing fees rate', 'number')}
-            
+
             <div className="col-span-2 border-t pt-4 mt-4">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Schedule Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1184,14 +1200,14 @@ const FRTermLoanCCForm = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {renderInput('Cost of Project details', 'i40', 'Working capital Requirement(Lac)', 'number')}
             {renderInput('Cost of Project details', 'k40', 'Loan Percentage for Working Capital (%)', 'number')}
-            
+
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">Working Capital Loan Amount (Calculated)</label>
               <div className="relative">
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={wcLoanAmount}
-                  readOnly 
+                  readOnly
                   className="w-full p-2 border border-gray-300 rounded-md bg-gray-100"
                   placeholder="Automatically calculated"
                 />
@@ -1207,7 +1223,7 @@ const FRTermLoanCCForm = ({
         const activeItems = assetItems[activeCategoryName] || {};
         const sectionConfig = CURRENT_ASSET_SECTIONS[activeCategoryName];
         const maxItems = sectionConfig.end - sectionConfig.start + 1;
-        
+
         // Calculate total for the current category
         const categoryTotal = Object.values(activeItems).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
 
@@ -1220,7 +1236,7 @@ const FRTermLoanCCForm = ({
               </p>
               <div className="mt-3 p-3 bg-white rounded-lg border border-blue-200">
                 <p className="text-sm text-blue-700">
-                  <strong>Progress:</strong> {visitedAssetCategories.size} of {assetCategories.length} categories visited. 
+                  <strong>Progress:</strong> {visitedAssetCategories.size} of {assetCategories.length} categories visited.
                   {visitedAssetCategories.size < assetCategories.length && (
                     <span className="text-red-600 font-medium">Please visit all categories before proceeding.</span>
                   )}
@@ -1234,11 +1250,10 @@ const FRTermLoanCCForm = ({
                   key={categoryName}
                   onClick={() => handleAssetTabChange(idx)}
                   type="button"
-                  className={`px-3 py-1.5 rounded-lg transition-all duration-300 text-xs font-medium ${
-                    assetActiveTab === idx 
-                      ? 'bg-gray-900 text-white' 
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg transition-all duration-300 text-xs font-medium ${assetActiveTab === idx
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
                 >
                   {categoryName}
                 </button>
@@ -1261,7 +1276,7 @@ const FRTermLoanCCForm = ({
                   <p className="text-sm text-red-700 font-medium">{assetValidationErrors[activeCategoryName]}</p>
                 </div>
               )}
-              
+
               <div className="grid grid-cols-12 gap-3 mb-3">
                 <div className="col-span-6 font-semibold text-gray-800 bg-gray-100 p-2 rounded-lg text-xs">
                   Item Description
@@ -1278,7 +1293,7 @@ const FRTermLoanCCForm = ({
                     No items available.
                   </div>
                 )}
-                {Object.keys(activeItems).sort((a,b) => a - b).map((row) => {
+                {Object.keys(activeItems).sort((a, b) => a - b).map((row) => {
                   const item = activeItems[row];
                   return (
                     <div key={row} className="grid grid-cols-12 gap-3">
@@ -1314,11 +1329,10 @@ const FRTermLoanCCForm = ({
                 type="button"
                 onClick={() => addAssetItem(activeCategoryName)}
                 disabled={Object.values(activeItems).filter(item => item.description || item.amount).length >= maxItems}
-                className={`mt-3 px-4 py-2 text-xs rounded-lg font-medium transition-all duration-300 flex items-center gap-1.5 ${
-                  Object.values(activeItems).filter(item => item.description || item.amount).length >= maxItems
-                    ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
-                    : 'border-2 border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white'
-                }`}
+                className={`mt-3 px-4 py-2 text-xs rounded-lg font-medium transition-all duration-300 flex items-center gap-1.5 ${Object.values(activeItems).filter(item => item.description || item.amount).length >= maxItems
+                  ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
+                  : 'border-2 border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white'
+                  }`}
               >
                 <PlusIcon className="w-4 h-4" />
                 Add Item ({Object.values(activeItems).filter(item => item.description || item.amount).length}/{maxItems})
@@ -1349,7 +1363,7 @@ const FRTermLoanCCForm = ({
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-500 font-medium">%</span>
                         </div>
                       </div>
-                      
+
                       {/* Loan Amount Input */}
                       <div>
                         <label className="block text-xs font-medium text-purple-700 mb-1">
@@ -1367,7 +1381,7 @@ const FRTermLoanCCForm = ({
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Summary Display */}
                     <div className="mt-3 p-3 bg-white rounded-lg border border-purple-200">
                       <div className="flex justify-between items-center text-sm">
@@ -1377,7 +1391,7 @@ const FRTermLoanCCForm = ({
                       <div className="flex justify-between items-center text-sm mt-1">
                         <span className="text-gray-600">Loan Required ({(loanPercentages[activeCategoryName] || 0).toFixed(1)}%):</span>
                         <span className="font-bold text-purple-700">
-                          ₹{loanAmounts[activeCategoryName] && loanAmounts[activeCategoryName] !== '' 
+                          ₹{loanAmounts[activeCategoryName] && loanAmounts[activeCategoryName] !== ''
                             ? parseFloat(loanAmounts[activeCategoryName]).toLocaleString('en-IN', { maximumFractionDigits: 2 })
                             : calculateLoanAmount(activeCategoryName, categoryTotal).toLocaleString('en-IN', { maximumFractionDigits: 2 })
                           } Lakhs
@@ -1387,6 +1401,50 @@ const FRTermLoanCCForm = ({
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        );
+
+      case 'prepared_by':
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-gray-800">
+                  Partner Name 1 (Prepared By)
+                </label>
+                <input
+                  type="text"
+                  value={(formData['Prepared By'] && formData['Prepared By']['j136']) || ''}
+                  onChange={(e) => handleInputChange('Prepared By', 'j136', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+                  placeholder="Enter partner name 1"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-gray-800">
+                  Partner Name 2 (Prepared By)
+                </label>
+                <input
+                  type="text"
+                  value={(formData['Prepared By'] && formData['Prepared By']['j137']) || ''}
+                  onChange={(e) => handleInputChange('Prepared By', 'j137', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+                  placeholder="Enter partner name 2"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-gray-800">
+                  Mobile Number (Prepared By)
+                </label>
+                <input
+                  type="text"
+                  value={(formData['Prepared By'] && formData['Prepared By']['j138']) || ''}
+                  onChange={(e) => handleInputChange('Prepared By', 'j138', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+                  placeholder="Enter mobile number"
+                />
+              </div>
             </div>
           </div>
         );
@@ -1421,11 +1479,10 @@ const FRTermLoanCCForm = ({
                   key={categoryName}
                   onClick={() => setIndirectActiveTab(idx)}
                   type="button"
-                  className={`px-3 py-1.5 rounded-lg transition-all duration-300 text-xs font-medium ${
-                    indirectActiveTab === idx 
-                      ? 'bg-gray-900 text-white' 
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg transition-all duration-300 text-xs font-medium ${indirectActiveTab === idx
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
                 >
                   {categoryName}
                 </button>
@@ -1439,7 +1496,7 @@ const FRTermLoanCCForm = ({
                   (() => {
                     const skilledNum = parseFloat(formData['Expected Employment Generation']?.['i24'] || 0);
                     const skilledCost = parseFloat(formData['Expected Employment Generation']?.['j24'] || 0);
-                    
+
                     const semiSkilledNum = parseFloat(formData['Expected Employment Generation']?.['i25'] || 0);
                     const semiSkilledCost = parseFloat(formData['Expected Employment Generation']?.['j25'] || 0);
 
@@ -1472,8 +1529,8 @@ const FRTermLoanCCForm = ({
                 {activeExpenseItems.map((item) => renderIndirectExpenseInput(item))}
               </div>
 
-               {/* Increment Percentage Field - MOVED TO BOTTOM */}
-               {incrementKey && (
+              {/* Increment Percentage Field - MOVED TO BOTTOM */}
+              {incrementKey && (
                 <div className="mt-6 pt-4 border-t border-gray-200">
                   <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
                     <label className="block text-sm font-semibold text-indigo-700 mb-1">
@@ -1481,7 +1538,7 @@ const FRTermLoanCCForm = ({
                     </label>
                     <div className="relative">
                       <input
-                        type="number" onWheel={(e) => e.target.blur()} 
+                        type="number" onWheel={(e) => e.target.blur()}
                         className="w-full px-3 py-2 text-sm border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         value={formData['Indirect Expenses Increment'][incrementKey]}
                         onChange={(e) => handleInputChange('Indirect Expenses Increment', incrementKey, e.target.value)}
@@ -1561,9 +1618,9 @@ const FRTermLoanCCForm = ({
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-            <div 
-              className="bg-gray-900 h-2 rounded-full transition-all duration-500 ease-out" 
-              style={{ width: `${((currentStep + 1) / sections.length) * 100}%` }} 
+            <div
+              className="bg-gray-900 h-2 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${((currentStep + 1) / sections.length) * 100}%` }}
             />
           </div>
         </div>
@@ -1576,13 +1633,12 @@ const FRTermLoanCCForm = ({
                 <button
                   key={section.key}
                   type="button"
-                  className={`px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 whitespace-nowrap flex items-center gap-1.5 ${
-                    index === currentStep 
-                      ? 'bg-white-900 text-black border border-gray-900'  
-                      : index < currentStep
+                  className={`px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 whitespace-nowrap flex items-center gap-1.5 ${index === currentStep
+                    ? 'bg-white-900 text-black border border-gray-900'
+                    : index < currentStep
                       ? 'bg-gray-100 text-gray-700 border border-gray-300'
                       : 'bg-white text-gray-500 border border-gray-200 cursor-not-allowed'
-                  }`}
+                    }`}
                   onClick={() => index <= currentStep && setCurrentStep(index)}
                   disabled={index > currentStep}
                 >
@@ -1602,27 +1658,27 @@ const FRTermLoanCCForm = ({
               {sections[currentStep].title}
             </h2>
           </div>
-          
+
           <div className="bg-ghostwhite rounded-lg p-4" style={{ backgroundColor: '#F8F8FF' }}>
             {renderCurrentStep()}
           </div>
         </div>
 
         <div className="flex justify-between items-center gap-4 pt-6 border-t border-gray-200">
-          <button 
+          <button
             type="button"
-            className="px-5 py-2 border-2 border-gray-800 text-gray-800 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-transparent font-medium text-sm flex items-center gap-1" 
+            className="px-5 py-2 border-2 border-gray-800 text-gray-800 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-transparent font-medium text-sm flex items-center gap-1"
             onClick={handlePrevious}
             disabled={currentStep === 0}
           >
             <ChevronLeftIcon className="w-4 h-4" />
             Previous
           </button>
-          
+
           {currentStep === sections.length - 1 ? (
-            <button 
+            <button
               type="button"
-              className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5" 
+              className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
               onClick={handleSubmit}
               disabled={isProcessing}
             >
@@ -1642,9 +1698,9 @@ const FRTermLoanCCForm = ({
               )}
             </button>
           ) : (
-            <button 
+            <button
               type="button"
-              className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-300 font-medium text-sm flex items-center gap-1" 
+              className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-300 font-medium text-sm flex items-center gap-1"
               onClick={handleNext}
               disabled={!canProceed}
             >

@@ -101,6 +101,11 @@ const FRTermLoanWithStockForm = ({
       'i22': '', // Caste
       'i23': ''  // Unit location
     },
+    'Prepared By': {
+      'j136': '',
+      'j137': '',
+      'j138': ''
+    },
     'Expected Employment Generation': {
       'i24': '', 'j24': '', // Skilled
       'i25': '', 'j25': '', // Semi Skilled
@@ -269,7 +274,8 @@ const FRTermLoanWithStockForm = ({
     { key: 'term', title: 'Means of Finance details', icon: CreditCardIcon },
     { key: 'assets', title: 'Schedule for Assets', icon: BuildingOfficeIcon },
     { key: 'employment', title: 'Expected Employment Generation', icon: ChartBarIcon },
-    { key: 'expenses', title: 'Schedule for Indirect Expenses (Per Month)', icon: CurrencyDollarIcon }
+    { key: 'expenses', title: 'Schedule for Indirect Expenses (Per Month)', icon: CurrencyDollarIcon },
+    { key: 'prepared_by', title: 'Prepared By', icon: BuildingOfficeIcon }
   ];
 
   useEffect(() => {
@@ -686,6 +692,11 @@ const FRTermLoanWithStockForm = ({
         'i8': 'John Doe',
         'i9': '9876543210',
         'i10': '123456789012',
+        'bank_name': 'HDFC Bank',
+        'branch_name': 'Corporate Branch',
+        'j136': 'Partner X',
+        'j137': 'Partner Y',
+        'j138': '9876543210',
         'i11': 'ABCDE1234F',
         'i12': '35',
         'i13': 'Male',
@@ -810,12 +821,67 @@ const FRTermLoanWithStockForm = ({
       }
     });
 
+
+
+    excelData['j136'] = formData['Prepared By']?.['j136'] || '';
+    excelData['j137'] = formData['Prepared By']?.['j137'] || '';
+    excelData['j138'] = formData['Prepared By']?.['j138'] || '';
+
     onSubmit({
       excelData,
+      bank_name: formData['General Information']['bank_name'],
+      branch_name: formData['General Information']['branch_name'],
       'Asset Loan Percentages': loanPercentages,
       'Loan Percentage Cells': loanPercentageCells
     });
   };
+
+
+
+
+
+  const renderPreparedBy = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            Partner Name 1 (Prepared By)
+          </label>
+          <input
+            type="text"
+            value={(formData['Prepared By'] && formData['Prepared By']['j136']) || ''}
+            onChange={(e) => handleFieldChange('Prepared By', 'j136', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="Enter partner name 1"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            Partner Name 2 (Prepared By)
+          </label>
+          <input
+            type="text"
+            value={(formData['Prepared By'] && formData['Prepared By']['j137']) || ''}
+            onChange={(e) => handleFieldChange('Prepared By', 'j137', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="Enter partner name 2"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            Mobile Number (Prepared By)
+          </label>
+          <input
+            type="text"
+            value={(formData['Prepared By'] && formData['Prepared By']['j138']) || ''}
+            onChange={(e) => handleFieldChange('Prepared By', 'j138', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="Enter mobile number"
+          />
+        </div>
+      </div>
+    </div>
+  );
 
   const renderCurrentStep = () => {
     switch (sections[currentStep].key) {
@@ -864,6 +930,51 @@ const FRTermLoanWithStockForm = ({
                 className="w-full p-2 border border-gray-300 rounded-md"
                 value={formData['General Information']['i10']}
                 onChange={(e) => handleFieldChange('General Information', 'i10', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Bank Name / Department Name</label>
+              <input
+                type="text"
+                className="w-full p-2 border border-gray-300 rounded-md"
+                value={formData['General Information']['bank_name'] || ''}
+                onChange={(e) => handleFieldChange('General Information', 'bank_name', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Branch Name</label>
+              <input
+                type="text"
+                className="w-full p-2 border border-gray-300 rounded-md"
+                value={formData['General Information']['branch_name'] || ''}
+                onChange={(e) => handleFieldChange('General Information', 'branch_name', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Partner Name 1 (Prepared By)</label>
+              <input
+                type="text"
+                className="w-full p-2 border border-gray-300 rounded-md"
+                value={formData['General Information']['j136'] || ''}
+                onChange={(e) => handleFieldChange('General Information', 'j136', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Partner Name 2 (Prepared By)</label>
+              <input
+                type="text"
+                className="w-full p-2 border border-gray-300 rounded-md"
+                value={formData['General Information']['j137'] || ''}
+                onChange={(e) => handleFieldChange('General Information', 'j137', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Mobile Number (Prepared By)</label>
+              <input
+                type="text"
+                className="w-full p-2 border border-gray-300 rounded-md"
+                value={formData['General Information']['j138'] || ''}
+                onChange={(e) => handleFieldChange('General Information', 'j138', e.target.value)}
               />
             </div>
             <div className="space-y-2">
@@ -1029,7 +1140,7 @@ const FRTermLoanWithStockForm = ({
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Skilled Employees</label>
                 <input
-                  type="number" onWheel={(e) => e.target.blur()} 
+                  type="number" onWheel={(e) => e.target.blur()}
                   className="w-full p-2 border border-gray-300 rounded-md"
                   value={formData['Expected Employment Generation']['i24']}
                   onChange={(e) => handleFieldChange('Expected Employment Generation', 'i24', e.target.value)}
@@ -1038,7 +1149,7 @@ const FRTermLoanWithStockForm = ({
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Salary per Employee Per Month</label>
                 <input
-                  type="number" onWheel={(e) => e.target.blur()} 
+                  type="number" onWheel={(e) => e.target.blur()}
                   className="w-full p-2 border border-gray-300 rounded-md"
                   value={formData['Expected Employment Generation']['j24']}
                   onChange={(e) => handleFieldChange('Expected Employment Generation', 'j24', e.target.value)}
@@ -1047,7 +1158,7 @@ const FRTermLoanWithStockForm = ({
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Semi Skilled Employees</label>
                 <input
-                  type="number" onWheel={(e) => e.target.blur()} 
+                  type="number" onWheel={(e) => e.target.blur()}
                   className="w-full p-2 border border-gray-300 rounded-md"
                   value={formData['Expected Employment Generation']['i25']}
                   onChange={(e) => handleFieldChange('Expected Employment Generation', 'i25', e.target.value)}
@@ -1056,7 +1167,7 @@ const FRTermLoanWithStockForm = ({
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Salary per Employee Per Month</label>
                 <input
-                  type="number" onWheel={(e) => e.target.blur()} 
+                  type="number" onWheel={(e) => e.target.blur()}
                   className="w-full p-2 border border-gray-300 rounded-md"
                   value={formData['Expected Employment Generation']['j25']}
                   onChange={(e) => handleFieldChange('Expected Employment Generation', 'j25', e.target.value)}
@@ -1065,7 +1176,7 @@ const FRTermLoanWithStockForm = ({
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Unskilled Employees</label>
                 <input
-                  type="number" onWheel={(e) => e.target.blur()} 
+                  type="number" onWheel={(e) => e.target.blur()}
                   className="w-full p-2 border border-gray-300 rounded-md"
                   value={formData['Expected Employment Generation']['i26']}
                   onChange={(e) => handleFieldChange('Expected Employment Generation', 'i26', e.target.value)}
@@ -1074,7 +1185,7 @@ const FRTermLoanWithStockForm = ({
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Salary per Employee Per Month</label>
                 <input
-                  type="number" onWheel={(e) => e.target.blur()} 
+                  type="number" onWheel={(e) => e.target.blur()}
                   className="w-full p-2 border border-gray-300 rounded-md"
                   value={formData['Expected Employment Generation']['j26']}
                   onChange={(e) => handleFieldChange('Expected Employment Generation', 'j26', e.target.value)}
@@ -1423,7 +1534,7 @@ const FRTermLoanWithStockForm = ({
 
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <h4 className="font-semibold text-gray-800 mb-4">{activeCategory}(Rs per Month)</h4>
-              
+
               <div className="space-y-2">
                 {activeCategory === 'Employee Related Expenses' && (
                   (() => {
@@ -1508,8 +1619,8 @@ const FRTermLoanWithStockForm = ({
           </div>
         );
 
-      default:
-        return null;
+      case 'prepared_by': return renderPreparedBy();
+      default: return null;
     }
   };
 

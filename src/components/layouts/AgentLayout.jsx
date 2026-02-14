@@ -47,10 +47,9 @@ const AgentLayout = ({ children, activeTab }) => {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <aside 
-        className={`${
-          sidebarOpen ? 'w-64' : 'w-16'
-        } bg-white border-r border-gray-200 transition-all duration-300 flex flex-col`}
+      <aside
+        className={`${sidebarOpen ? 'w-64' : 'w-16'
+          } bg-white border-r border-gray-200 transition-all duration-300 flex flex-col`}
       >
         {/* Logo/Header */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
@@ -100,10 +99,9 @@ const AgentLayout = ({ children, activeTab }) => {
                 <NavLink
                   to={item.href}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                      activeTab === item.tab || isActive
-                        ? 'bg-green-50 text-green-600'
-                        : 'text-gray-700 hover:bg-gray-100'
+                    `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === item.tab || isActive
+                      ? 'bg-green-50 text-green-600'
+                      : 'text-gray-700 hover:bg-gray-100'
                     }`
                   }
                 >
@@ -134,35 +132,33 @@ const AgentLayout = ({ children, activeTab }) => {
               </div>
             </div>
           )}
-          
+
           <div className="mt-4 space-y-2">
             <button
-              onClick={() => navigate('/dashboard')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors ${
-                !sidebarOpen && 'justify-center'
-              }`}
+              onClick={() => navigate('/agent/generate')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors ${!sidebarOpen && 'justify-center'
+                }`}
             >
               <HomeIcon className="w-5 h-5" />
               {sidebarOpen && <span className="text-sm">Generate Reports</span>}
             </button>
             <button
               onClick={handleLogout}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors ${
-                !sidebarOpen && 'justify-center'
-              }`}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors ${!sidebarOpen && 'justify-center'
+                }`}
             >
               <ArrowLeftOnRectangleIcon className="w-5 h-5" />
               {sidebarOpen && <span className="text-sm">Logout</span>}
             </button>
           </div>
         </div>
-      </aside>
+      </aside >
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-4">
+      < main className="flex-1 overflow-y-auto p-4" >
         {children}
-      </main>
-    </div>
+      </main >
+    </div >
   );
 };
 

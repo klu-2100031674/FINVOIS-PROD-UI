@@ -1,0 +1,28 @@
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AgentLayout } from '../../components/layouts';
+import AIAssistant from '../../components/dashboard/AIAssistant';
+
+const AgentGeneratePage = () => {
+    const navigate = useNavigate();
+
+    const handleTemplateSelect = (templateId) => {
+        // Navigate to the generic generation page with the selected template
+        navigate(`/generate?templateId=${templateId}`);
+    };
+
+    return (
+        <AgentLayout>
+            <div className="max-w-5xl mx-auto py-8 px-4">
+                <div className="mb-8">
+                    <h1 className="text-2xl font-bold text-gray-800 font-['Manrope']">Report Generator</h1>
+                    <p className="text-gray-500 mt-2">Use our AI Assistant to find the perfect report template for your client.</p>
+                </div>
+
+                <AIAssistant onSelectTemplate={handleTemplateSelect} />
+            </div>
+        </AgentLayout>
+    );
+};
+
+export default AgentGeneratePage;

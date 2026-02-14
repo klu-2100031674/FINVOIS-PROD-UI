@@ -265,7 +265,7 @@ const AuthPage = () => {
         {/* Changed max-w-md to max-w-2xl for register form */}
         <div className={`w-full ${activeTab === 'register' ? 'max-w-3xl' : 'max-w-md'} items-center relative z-10 transition-all duration-300`}>
           {/* Mobile Logo */}
-        
+
 
           <div className="bg-white rounded-3xl shadow-2xl p-8 backdrop-blur-lg bg-opacity-90">
             <div className="text-center mb-6">
@@ -406,7 +406,7 @@ const AuthPage = () => {
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all font-['Inter']"
                     >
                       <option value="user">User</option>
-                      <option value="ca">CA Professional</option>
+                      <option value="agent">CA Professional</option>
                     </select>
                   </div>
                 </div>

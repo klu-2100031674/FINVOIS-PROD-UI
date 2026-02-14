@@ -37,6 +37,7 @@ import {
   AgentCommissionsPage,
   AgentWithdrawalsPage,
   AgentProfilePage,
+  AgentGeneratePage,
 } from "./pages/agent";
 import FRCC2FormPage from "./pages/FRCC2FormPage";
 import FRCC3FormPage from "./pages/FRCC3FormPage";
@@ -426,6 +427,14 @@ function App() {
         <Route
           path="/agent"
           element={<Navigate to="/agent/dashboard" replace />}
+        />
+        <Route
+          path="/agent/generate"
+          element={
+            <AgentRoute>
+              <AgentGeneratePage />
+            </AgentRoute>
+          }
         />
         <Route
           path="/agent/dashboard"
