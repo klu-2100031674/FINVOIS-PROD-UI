@@ -33,12 +33,12 @@ import {
   AgentDashboardPage,
   AgentReferralsPage,
   AgentReferralLinkPage,
-  AgentReportsPage,
   AgentCommissionsPage,
   AgentWithdrawalsPage,
   AgentProfilePage,
   AgentGeneratePage,
 } from "./pages/agent";
+import { AgentLayout } from "./components/layouts";
 import FRCC2FormPage from "./pages/FRCC2FormPage";
 import FRCC3FormPage from "./pages/FRCC3FormPage";
 import FRCC4FormPage from "./pages/FRCC4FormPage";
@@ -448,7 +448,9 @@ function App() {
           path="/agent/reports"
           element={
             <AgentRoute>
-              <AgentReportsPage />
+              <AgentLayout activeTab="reports">
+                <ReportsPage />
+              </AgentLayout>
             </AgentRoute>
           }
         />

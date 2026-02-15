@@ -76,13 +76,13 @@ export const login = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const response = await api.auth.login(credentials);
-      
+
       // Store in localStorage (token is already set by the API)
       const userKey = import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data';
       if (response.data && response.data.user) {
         localStorage.setItem(userKey, JSON.stringify(response.data.user));
       }
-      
+
       return response;
     } catch (error) {
       const message = extractErrorMessage(error) || 'Login failed';
@@ -167,12 +167,37 @@ const authSlice = createSlice({
             ...action.payload.data.user,
             mobile: action.payload.data.user.phone || action.payload.data.user.mobile
           };
-          state.user = userData;
-          state.token = action.payload.data.token;
-          state.isAuthenticated = true;
-          console.log('✅ Auth state updated - isAuthenticated:', true, 'user:', userData);
+
+          // Check if email is verified
+          if (userData.email_verified === false) {
+            console.warn('⚠️ Login prevented: Email not verified');
+            state.user = null;
+            state.token = null;
+            state.isAuthenticated = false;
+            state.error = 'Please verify your email address before logging in.';
+
+            // Ensure we don't save to localStorage if invalid
+            state.user = null;
+            state.token = null;
+            state.isAuthenticated = false;
+            state.error = 'Please verify your email address before logging in.';
+
+            localStorage.removeItem(import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data');
+            localStorage.removeItem('ca_auth_token');
+          } else if (userData.is_active === false) {
+            state.user = null;
+            state.token = null;
+            state.isAuthenticated = false;
+            state.error = 'Your account is disabled. Please contact support.';
+            localStorage.removeItem(import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data');
+            localStorage.removeItem('ca_auth_token');
+          } else {
+            state.user = userData;
+            state.token = action.payload.data.token;
+            state.isAuthenticated = true;
+          }
         } else {
-          console.warn('⚠️ Login response structure unexpected:', action.payload);
+          console.warn('Login response structure unexpected:', action.payload);
         }
         state.error = null;
       })
@@ -196,7 +221,7 @@ const authSlice = createSlice({
             mobile: action.payload.data.phone || action.payload.data.mobile
           };
           state.user = userData;
-          
+
           // Update localStorage to keep it in sync
           const userKey = import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data';
           localStorage.setItem(userKey, JSON.stringify(userData));

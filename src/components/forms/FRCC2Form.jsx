@@ -170,7 +170,6 @@ const FRCC2Form = ({
       "bank_name": "",
       "branch_name": "",
       "i7": "",
-      "i7": "",
       "i8": ""
     },
     "Means of Finance": {

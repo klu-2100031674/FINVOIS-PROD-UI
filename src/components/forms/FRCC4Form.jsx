@@ -365,7 +365,6 @@ const FRCC4Form = ({
       const payload = {
         formData: {
           excelData,
-          excelData,
           formData,
           bank_name: formData['General Information']['bank_name'],
           branch_name: formData['General Information']['branch_name'],

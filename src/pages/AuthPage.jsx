@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 const AuthPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login, register, loading: authLoading, error, clearError } = useAuth();
+  const { login, register, logout, loading: authLoading, error, clearError } = useAuth();
   const [activeTab, setActiveTab] = useState('login');
   const [isVmLoading, setIsVmLoading] = useState(false);
   const [apiError, setApiError] = useState(null);
@@ -113,12 +113,8 @@ const AuthPage = () => {
       }
 
       setIsVmLoading(false);
-      console.log('✅ VM is running. Proceeding to login...');
-      console.log('🔐 Attempting login with:', { email: loginData.email });
       const result = await login(loginData);
-      console.log('✅ Login result:', result);
 
-      // If API returned 200 but indicates failure, show its message
       if (result && (result.success === false || result.status === 'error')) {
         const apiMsg = result.message || result?.data?.message || 'Login failed';
         toast.error(apiMsg);
@@ -126,27 +122,36 @@ const AuthPage = () => {
       }
 
       setApiError(null);
+
+      const userRole = result?.data?.user?.role || result?.role;
+      const emailVerified = result?.data?.user?.email_verified;
+      const isActive = result?.data?.user?.is_active;
+
+      if (emailVerified === false) {
+        toast.error('Please verify your email address before logging in.');
+        logout();
+        return;
+      }
+
+      if (isActive === false) {
+        toast.error('Your account is disabled. Please contact support.');
+        logout();
+        return;
+      }
+
       toast.success('Login successful!');
 
-      // Redirect based on user role
-      const userRole = result?.data?.user?.role || result?.role;
-      console.log('🔄 User role:', userRole);
-
       if (userRole === 'admin') {
-        console.log('🔄 Redirecting to admin dashboard...');
         navigate('/admin/dashboard', { replace: true });
       } else if (userRole === 'agent') {
-        console.log('🔄 Redirecting to agent dashboard...');
         navigate('/agent/dashboard', { replace: true });
       } else {
-        console.log('🔄 Redirecting to user dashboard...');
         navigate('/dashboard', { replace: true });
       }
 
     } catch (err) {
-      console.error('❌ Login error:', err);
+      console.error('Login error:', err);
       const errorMessage = typeof err === 'string' ? err : (err?.message || 'Login failed');
-      // Show API error both as toast and inline
       setApiError(errorMessage);
       toast.error(errorMessage);
     }
@@ -406,7 +411,7 @@ const AuthPage = () => {
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all font-['Inter']"
                     >
                       <option value="user">User</option>
-                      <option value="agent">CA Professional</option>
+                      <option value="agent">Finvois Agent</option>
                     </select>
                   </div>
                 </div>

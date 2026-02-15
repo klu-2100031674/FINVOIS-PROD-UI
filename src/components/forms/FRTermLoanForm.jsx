@@ -220,8 +220,6 @@ const FRTermLoanForm = ({
   const defaultFormData = {
     'General Information': {},
     'Expected Employment Generation': {},
-    'General Information': {},
-    'Expected Employment Generation': {},
     'Term Loan Details': {},
     'Prepared By': {},
     'Indirect Expenses Increment': {},
@@ -469,7 +467,7 @@ const FRTermLoanForm = ({
 
   // Define required fields for each section
   const requiredFields = {
-    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i19', 'i20', 'i21', 'i22'],
+    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i19', 'i20', 'i21', 'i22', 'bank_name', 'branch_name', 'i12', 'i13'],
     'Expected Employment Generation': ['i24', 'i25', 'i26'],
     'Term Loan Details': ['h44', 'i45', 'i46', 'i47', 'i48', 'h49', 'i51', 'i52', 'i53', 'i56'],
     'Indirect Expenses Increment': ['h64', 'h65', 'h66', 'h67', 'h68'],
@@ -527,16 +525,6 @@ const FRTermLoanForm = ({
       const dscrValid = dscr !== undefined && dscr !== '' && dscr !== null;
 
       return termValid && dscrValid;
-    }
-
-    if (sectionKey === 'expenses') {
-      // Validate Increment percentages
-      const increments = ['h64', 'h65', 'h66', 'h67', 'h68'];
-      const incrementsValid = increments.every(key => {
-        const val = formData['Indirect Expenses Increment']?.[key];
-        return val !== undefined && val !== '' && val !== null;
-      });
-      return incrementsValid;
     }
 
     if (required.length === 0) return true; // No required fields for this section
@@ -1146,8 +1134,7 @@ const FRTermLoanForm = ({
             placeholder="Enter branch name"
           />
         </div>
-      </div>
-      <div className="space-y-1.5">
+        <div className="space-y-1.5">
         <label className="block text-xs font-semibold text-gray-800">
           PAN of firm/Company (Optional)
         </label>
@@ -1158,8 +1145,8 @@ const FRTermLoanForm = ({
           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
           placeholder="Enter PAN"
         />
-      </div>
-      <div className="space-y-1.5">
+        </div>
+        <div className="space-y-1.5">
         <label className="block text-xs font-semibold text-gray-800">
           Education Qualification
         </label>
@@ -1176,8 +1163,8 @@ const FRTermLoanForm = ({
           <option value="Graduate">Graduate</option>
           <option value="Post Graduate">Post Graduate</option>
         </select>
-      </div>
-      <div className="space-y-1.5">
+        </div>
+        <div className="space-y-1.5">
         <label className="block text-xs font-semibold text-gray-800">
           Project covered under which Scheme
         </label>
@@ -1197,8 +1184,8 @@ const FRTermLoanForm = ({
           <option value="NLM scheme">NLM scheme</option>
           <option value="Other MSME">Other MSME</option>
         </select>
-      </div>
-      <div className="space-y-1.5">
+        </div>
+        <div className="space-y-1.5">
         <label className="block text-xs font-semibold text-gray-800">
           Caste
         </label>
@@ -1214,8 +1201,8 @@ const FRTermLoanForm = ({
           <option value="BC">BC</option>
           <option value="Minority">Minority</option>
         </select>
-      </div>
-      <div className="space-y-1.5">
+        </div>
+        <div className="space-y-1.5">
         <label className="block text-xs font-semibold text-gray-800">
           Unit location
         </label>
@@ -1228,6 +1215,7 @@ const FRTermLoanForm = ({
           <option value="Rural(Panchayat)">Rural(Panchayat)</option>
           <option value="Urban(Other than Panchayat)">Urban(Other than Panchayat)</option>
         </select>
+        </div>
       </div>
     </div>
 
@@ -1975,24 +1963,27 @@ const FRTermLoanForm = ({
       return result;
     };
 
-    let excelData = extractCellData(formData);
+    const updatedFormData = {
+      ...formData,
+      'Term Loan Details': {
+        ...formData['Term Loan Details']
+      }
+    };
 
-    excelData['j136'] = formData['Prepared By']?.['j136'] || '';
-    excelData['j137'] = formData['Prepared By']?.['j137'] || '';
-    excelData['j138'] = formData['Prepared By']?.['j138'] || '';
-
-    if (excelData['i52'] && excelData['i52'].includes('-')) {
-      const [year, month] = excelData['i52'].split('-');
+    if (updatedFormData['Term Loan Details']?.['i52'] && updatedFormData['Term Loan Details']['i52'].includes('-')) {
+      const [year, month] = updatedFormData['Term Loan Details']['i52'].split('-');
       if (year && month) {
-        excelData['i52'] = `${month.padStart(2, '0')}-01-${year}`;
+        updatedFormData['Term Loan Details']['i52'] = `${month.padStart(2, '0')}-01-${year}`;
       }
     }
-    if (excelData['i53'] && excelData['i53'].includes('-')) {
-      const [year, month] = excelData['i53'].split('-');
+    if (updatedFormData['Term Loan Details']?.['i53'] && updatedFormData['Term Loan Details']['i53'].includes('-')) {
+      const [year, month] = updatedFormData['Term Loan Details']['i53'].split('-');
       const date = new Date(year, month - 1, 1);
       const monthName = date.toLocaleString('en-US', { month: 'short' });
-      excelData['i53'] = `${monthName}-${year.slice(-2)}`;
+      updatedFormData['Term Loan Details']['i53'] = `${monthName}-${year.slice(-2)}`;
     }
+
+    const excelData = extractCellData(updatedFormData);
 
     // Build loan percentages mapping for Excel cells K28-K39
     const loanPercentageCells = {};
@@ -2005,6 +1996,7 @@ const FRTermLoanForm = ({
     // Send in backend expected format with loan percentages and amounts
     // Send in backend expected format with loan percentages and amounts
     onSubmit({
+      ...updatedFormData,
       excelData,
       bank_name: formData['General Information']['bank_name'],
       branch_name: formData['General Information']['branch_name'],
@@ -2055,13 +2047,13 @@ const FRTermLoanForm = ({
         </div>
 
         <div className="mb-4 flex justify-center">
-          {/* <button
+          <button
             className="px-4 py-2 border-2 border-gray-800 text-gray-800 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-300 text-xs font-medium"
             onClick={fillTestData}
             type="button"
           >
             Fill Test Data
-          </button> */}
+          </button>
         </div>
 
         <div className="mb-6">

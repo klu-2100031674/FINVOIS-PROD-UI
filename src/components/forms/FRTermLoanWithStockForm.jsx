@@ -188,7 +188,7 @@ const FRTermLoanWithStockForm = ({
         'd288': 'Warranty & after-sales service expenses', 'e288': 0,
         'd289': 'Bad debts written off', 'e289': 0,
         'd290': 'Business entertainment expenses', 'e290': 0,
-        'd291': 'Other Selling and Distribution Expenses', 'e291': 8000
+        'd291': 'Other Selling and Distribution Expenses', 'e291': 0
       },
       'General Overheads': {
         'd292': 'Insurance (office, employee, general liability)', 'e292': 0,
@@ -198,7 +198,7 @@ const FRTermLoanWithStockForm = ({
         'd296': 'Fuel & maintenance for delivery vehicles', 'e296': 0,
         'd297': 'Rent, rates, and taxes (non-factory premises)', 'e297': 0,
         'd298': 'AMC (Annual Maintenance Contracts)', 'e298': 0,
-        'd299': 'Other General Overhead expenses', 'e299': 10000
+        'd299': 'Other General Overhead expenses', 'e299': 0
       },
       'Miscellaneous Expenses': {
         'd300': 'Donation & charity (if not CSR)', 'e300': 0,
@@ -268,6 +268,8 @@ const FRTermLoanWithStockForm = ({
 
   // Error states for validation
   const [assetValidationErrors, setAssetValidationErrors] = useState({});
+  const [generalInfoErrors, setGeneralInfoErrors] = useState({});
+  const [meansOfFinanceErrors, setMeansOfFinanceErrors] = useState({});
 
   const sections = [
     { key: 'general', title: 'General Information', icon: DocumentTextIcon },
@@ -386,12 +388,175 @@ const FRTermLoanWithStockForm = ({
   };
 
   const requiredFields = {
-    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i18', 'i20', 'i21', 'i22', 'i23'],
+    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i18', 'i20', 'i21', 'i22', 'i23', 'bank_name', 'branch_name', 'i12', 'i13', 'i19'],
     'Expected Employment Generation': ['i24', 'i25', 'i26'],
     'Term Loan Details': ['h44', 'i45', 'i46', 'i47', 'i48', 'h49', 'i51', 'i52', 'i53'],
     'Indirect Expenses Increment': ['h64', 'h65', 'h66', 'h67', 'h68', 'i56'],
     'Schedule for Assets': [],
     'Schedule for Indirect Expenses': []
+  };
+
+  const validateGeneralInformation = useCallback((generalInfo = {}) => {
+    const errors = {};
+
+    const requiredWithLabels = {
+      i7: 'Status of Concern is required',
+      i8: 'Name is required',
+      i9: 'Mobile Number is required',
+      bank_name: 'Bank Name / Department Name is required',
+      branch_name: 'Branch Name is required',
+      i12: 'Age is required',
+      i13: 'Gender is required',
+      i14: 'Sector is required',
+      i15: 'Nature of Business is required',
+      i16: 'Address is required',
+      i19: 'Education Qualification is required',
+      i20: 'Scheme is required',
+      i21: 'Caste is required',
+      i23: 'Unit Location is required'
+    };
+
+    Object.entries(requiredWithLabels).forEach(([field, message]) => {
+      const value = generalInfo[field];
+      if (value === undefined || value === null || String(value).trim() === '') {
+        errors[field] = message;
+      }
+    });
+
+    const name = String(generalInfo.i8 || '').trim();
+    if (name && name.length < 2) {
+      errors.i8 = 'Name must be at least 2 characters';
+    }
+
+    const mobile = String(generalInfo.i9 || '').trim();
+    if (mobile && !/^\d{10}$/.test(mobile)) {
+      errors.i9 = 'Mobile Number must be exactly 10 digits';
+    }
+
+    const ageValue = generalInfo.i12;
+    const age = Number(ageValue);
+    if (ageValue !== undefined && ageValue !== null && String(ageValue).trim() !== '') {
+      if (!Number.isFinite(age) || age < 18 || age > 100) {
+        errors.i12 = 'Age must be between 18 and 100';
+      }
+    }
+
+    const aadhar = String(generalInfo.i10 || '').trim();
+    if (aadhar && !/^\d{12}$/.test(aadhar)) {
+      errors.i10 = 'Aadhar Number must be 12 digits';
+    }
+
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+    const proprietorPan = String(generalInfo.i11 || '').trim().toUpperCase();
+    if (proprietorPan && !panRegex.test(proprietorPan)) {
+      errors.i11 = 'PAN of Proprietor format is invalid';
+    }
+
+    const firmPan = String(generalInfo.i18 || '').trim().toUpperCase();
+    if (firmPan && !panRegex.test(firmPan)) {
+      errors.i18 = 'PAN of Firm/Company format is invalid';
+    }
+
+    return errors;
+  }, []);
+
+  const validateMeansOfFinance = useCallback((allData = formData) => {
+    const errors = {};
+    const term = allData['Term Loan Details'] || {};
+    const indirect = allData['Indirect Expenses Increment'] || {};
+
+    const requiredWithLabels = {
+      h44: 'Interest Rate is required',
+      i45: 'Installment Period is required',
+      i46: 'Tenure is required',
+      i47: 'Repayment Type is required',
+      i48: 'Moratorium Period is required',
+      h49: 'Processing Fees Rate is required',
+      i51: 'Loan Financial Year is required',
+      i52: 'Loan Start Month is required',
+      i53: 'First sale bill month is required'
+    };
+
+    Object.entries(requiredWithLabels).forEach(([field, message]) => {
+      const value = term[field];
+      if (value === undefined || value === null || String(value).trim() === '') {
+        errors[field] = message;
+      }
+    });
+
+    if (indirect.i56 === undefined || indirect.i56 === null || String(indirect.i56).trim() === '') {
+      errors.i56 = 'Average DSCR Ratio Required is required';
+    }
+
+    const interest = Number(term.h44);
+    if (String(term.h44 || '').trim() !== '' && (!Number.isFinite(interest) || interest <= 0 || interest > 100)) {
+      errors.h44 = 'Interest Rate must be greater than 0 and up to 100';
+    }
+
+    const tenure = Number(term.i46);
+    if (String(term.i46 || '').trim() !== '' && (!Number.isFinite(tenure) || tenure <= 0 || tenure > 30)) {
+      errors.i46 = 'Tenure must be between 1 and 30 years';
+    }
+
+    const moratorium = Number(term.i48);
+    if (String(term.i48 || '').trim() !== '' && (!Number.isFinite(moratorium) || moratorium < 0)) {
+      errors.i48 = 'Moratorium Period must be 0 or more';
+    }
+    if (
+      Number.isFinite(tenure) && tenure > 0 &&
+      Number.isFinite(moratorium) && moratorium > tenure * 12
+    ) {
+      errors.i48 = 'Moratorium Period cannot exceed total tenure in months';
+    }
+
+    const processingFee = Number(term.h49);
+    if (String(term.h49 || '').trim() !== '' && (!Number.isFinite(processingFee) || processingFee < 0 || processingFee > 100)) {
+      errors.h49 = 'Processing Fees Rate must be between 0 and 100';
+    }
+
+    if (term.i52 && term.i53 && String(term.i53) < String(term.i52)) {
+      errors.i53 = 'First sale bill month cannot be earlier than Loan Start Month';
+    }
+
+    const dscr = Number(indirect.i56);
+    if (String(indirect.i56 || '').trim() !== '' && (!Number.isFinite(dscr) || dscr < 1.75 || dscr > 5)) {
+      errors.i56 = 'Average DSCR Ratio must be between 1.75 and 5';
+    }
+
+    return errors;
+  }, [formData]);
+
+  const generalInfoFieldLabels = {
+    i7: 'Status of Concern',
+    i8: 'Name',
+    i9: 'Mobile Number',
+    i10: 'Aadhar Number',
+    i11: 'PAN of Proprietor',
+    bank_name: 'Bank Name / Department Name',
+    branch_name: 'Branch Name',
+    i12: 'Age',
+    i13: 'Gender',
+    i14: 'Sector',
+    i15: 'Nature of Business',
+    i16: 'Address',
+    i18: 'PAN of Firm/Company',
+    i19: 'Education Qualification',
+    i20: 'Scheme',
+    i21: 'Caste',
+    i23: 'Unit Location'
+  };
+
+  const meansOfFinanceFieldLabels = {
+    h44: 'Interest Rate',
+    i45: 'Installment Period',
+    i46: 'Tenure',
+    i47: 'Repayment Type',
+    i48: 'Moratorium Period',
+    h49: 'Processing Fees Rate',
+    i51: 'Loan Financial Year',
+    i52: 'Loan Start Month',
+    i53: 'First sale bill month',
+    i56: 'Average DSCR Ratio Required'
   };
 
   const canProceed = useMemo(() => {
@@ -409,6 +574,14 @@ const FRTermLoanWithStockForm = ({
 
     const dataKey = sectionDataKeys[sectionKey];
     const required = requiredFields[dataKey] || [];
+
+    if (sectionKey === 'general') {
+      return Object.keys(validateGeneralInformation(formData['General Information'] || {})).length === 0;
+    }
+
+    if (sectionKey === 'term') {
+      return Object.keys(validateMeansOfFinance(formData)).length === 0;
+    }
 
     // Special validation for Schedule for Assets
     if (sectionKey === 'assets') {
@@ -431,28 +604,6 @@ const FRTermLoanWithStockForm = ({
       return true;
     }
 
-    if (sectionKey === 'term') {
-      const termValid = required.every(field => {
-        const value = formData[dataKey]?.[field];
-        return value !== undefined && value !== '' && value !== null;
-      });
-      // Validate DSCR from Indirect Expenses Increment
-      const dscr = formData['Indirect Expenses Increment']?.['i56'];
-      const dscrValid = dscr !== undefined && dscr !== '' && dscr !== null;
-
-      return termValid && dscrValid;
-    }
-
-    if (sectionKey === 'expenses') {
-      // Validate Increment percentages
-      const increments = ['h64', 'h65', 'h66', 'h67', 'h68'];
-      const incrementsValid = increments.every(key => {
-        const val = formData['Indirect Expenses Increment']?.[key];
-        return val !== undefined && val !== '' && val !== null;
-      });
-      return incrementsValid;
-    }
-
     if (required.length === 0) return true;
 
     const sectionData = formData[dataKey] || {};
@@ -460,17 +611,32 @@ const FRTermLoanWithStockForm = ({
       const value = sectionData[fieldId];
       return value !== undefined && value !== null && value !== '';
     });
-  }, [formData, currentStep, sections, visitedAssetCategories, categoriesWithItems, loanPercentages]);
+  }, [formData, currentStep, sections, visitedAssetCategories, categoriesWithItems, loanPercentages, validateGeneralInformation, validateMeansOfFinance]);
 
   const handleFieldChange = useCallback((sectionTitle, fieldId, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [sectionTitle]: {
-        ...prev[sectionTitle],
-        [fieldId]: value
+    setFormData(prev => {
+      const updatedData = {
+        ...prev,
+        [sectionTitle]: {
+          ...prev[sectionTitle],
+          [fieldId]: value
+        }
+      };
+
+      if (Object.keys(generalInfoErrors).length > 0 && sectionTitle === 'General Information') {
+        setGeneralInfoErrors(validateGeneralInformation(updatedData['General Information'] || {}));
       }
-    }));
-  }, []);
+
+      if (
+        Object.keys(meansOfFinanceErrors).length > 0 &&
+        (sectionTitle === 'Term Loan Details' || (sectionTitle === 'Indirect Expenses Increment' && fieldId === 'i56'))
+      ) {
+        setMeansOfFinanceErrors(validateMeansOfFinance(updatedData));
+      }
+
+      return updatedData;
+    });
+  }, [generalInfoErrors, meansOfFinanceErrors, validateGeneralInformation, validateMeansOfFinance]);
 
   const handleAssetChange = useCallback((assetKey, value) => {
     setFormData(prev => ({
@@ -773,6 +939,20 @@ const FRTermLoanWithStockForm = ({
   };
 
   const handleNext = () => {
+    const currentSection = sections[currentStep];
+
+    if (currentSection.key === 'general') {
+      const errors = validateGeneralInformation(formData['General Information'] || {});
+      setGeneralInfoErrors(errors);
+      if (Object.keys(errors).length > 0) return;
+    }
+
+    if (currentSection.key === 'term') {
+      const errors = validateMeansOfFinance(formData);
+      setMeansOfFinanceErrors(errors);
+      if (Object.keys(errors).length > 0) return;
+    }
+
     if (canProceed && currentStep < sections.length - 1) {
       setCurrentStep(prev => prev + 1);
     }
@@ -796,21 +976,30 @@ const FRTermLoanWithStockForm = ({
       return result;
     };
 
-    let excelData = extractCellData(formData);
+    // Keep nested payload (CC-style) so ReportSectionSelector can prefill from Stage-1 sections
+    const updatedFormData = {
+      ...formData,
+      'Term Loan Details': {
+        ...formData['Term Loan Details']
+      }
+    };
 
-    // Convert month inputs to MM-01-YYYY format (e.g., 04-01-2025)
-    if (excelData['i52'] && excelData['i52'].includes('-')) {
-      const [year, month] = excelData['i52'].split('-');
+    // Convert month inputs to backend-compatible formats
+    if (updatedFormData['Term Loan Details']?.['i52'] && updatedFormData['Term Loan Details']['i52'].includes('-')) {
+      const [year, month] = updatedFormData['Term Loan Details']['i52'].split('-');
       if (year && month) {
-        excelData['i52'] = `${month.padStart(2, '0')}-01-${year}`;
+        updatedFormData['Term Loan Details']['i52'] = `${month.padStart(2, '0')}-01-${year}`;
       }
     }
-    if (excelData['i53'] && excelData['i53'].includes('-')) {
-      const [year, month] = excelData['i53'].split('-');
+    if (updatedFormData['Term Loan Details']?.['i53'] && updatedFormData['Term Loan Details']['i53'].includes('-')) {
+      const [year, month] = updatedFormData['Term Loan Details']['i53'].split('-');
       const date = new Date(year, month - 1, 1);
       const monthName = date.toLocaleString('en-US', { month: 'short' });
-      excelData['i53'] = `${monthName}-${year.slice(-2)}`;
+      updatedFormData['Term Loan Details']['i53'] = `${monthName}-${year.slice(-2)}`;
     }
+
+    // Also prepare flattened excelData for compatibility with existing backend handling
+    const excelData = extractCellData(updatedFormData);
 
     // Build loan percentages mapping for Excel cells K28-K39
     const loanPercentageCells = {};
@@ -821,13 +1010,8 @@ const FRTermLoanWithStockForm = ({
       }
     });
 
-
-
-    excelData['j136'] = formData['Prepared By']?.['j136'] || '';
-    excelData['j137'] = formData['Prepared By']?.['j137'] || '';
-    excelData['j138'] = formData['Prepared By']?.['j138'] || '';
-
     onSubmit({
+      ...updatedFormData,
       excelData,
       bank_name: formData['General Information']['bank_name'],
       branch_name: formData['General Information']['branch_name'],
@@ -887,7 +1071,18 @@ const FRTermLoanWithStockForm = ({
     switch (sections[currentStep].key) {
       case 'general':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-4">
+            {Object.keys(generalInfoErrors).length > 0 && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm font-semibold text-red-700 mb-1">Please fix the following errors:</p>
+                <ul className="list-disc list-inside text-xs text-red-700 space-y-0.5">
+                  {Object.entries(generalInfoErrors).map(([field, error]) => (
+                    <li key={field}>{generalInfoFieldLabels[field] ? `${generalInfoFieldLabels[field]}: ${error}` : error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">Status of Concern</label>
               <select
@@ -906,7 +1101,7 @@ const FRTermLoanWithStockForm = ({
               </select>
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Name of Proprietor/MD</label>
+              <label className="block text-sm font-medium text-gray-700">Name of Proprietor/ partner/Director/Member/trustee</label>
               <input
                 type="text"
                 className="w-full p-2 border border-gray-300 rounded-md"
@@ -950,33 +1145,7 @@ const FRTermLoanWithStockForm = ({
                 onChange={(e) => handleFieldChange('General Information', 'branch_name', e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Partner Name 1 (Prepared By)</label>
-              <input
-                type="text"
-                className="w-full p-2 border border-gray-300 rounded-md"
-                value={formData['General Information']['j136'] || ''}
-                onChange={(e) => handleFieldChange('General Information', 'j136', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Partner Name 2 (Prepared By)</label>
-              <input
-                type="text"
-                className="w-full p-2 border border-gray-300 rounded-md"
-                value={formData['General Information']['j137'] || ''}
-                onChange={(e) => handleFieldChange('General Information', 'j137', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Mobile Number (Prepared By)</label>
-              <input
-                type="text"
-                className="w-full p-2 border border-gray-300 rounded-md"
-                value={formData['General Information']['j138'] || ''}
-                onChange={(e) => handleFieldChange('General Information', 'j138', e.target.value)}
-              />
-            </div>
+
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">PAN of Proprietor (Optional)</label>
               <input
@@ -1048,33 +1217,22 @@ const FRTermLoanWithStockForm = ({
                 onChange={(e) => handleFieldChange('General Information', 'i17', e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Type of Entity</label>
-              <select
-                className="w-full p-2 border border-gray-300 rounded-md"
-                value={formData['General Information']['i18']}
-                onChange={(e) => handleFieldChange('General Information', 'i18', e.target.value)}
-              >
-                <option value="">Select Type</option>
-                <option value="New">New</option>
-                <option value="Existing">Existing</option>
-              </select>
-            </div>
+
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">PAN of Firm/Company (Optional)</label>
               <input
                 type="text"
                 className="w-full p-2 border border-gray-300 rounded-md"
-                value={formData['General Information']['i19']}
-                onChange={(e) => handleFieldChange('General Information', 'i19', e.target.value)}
+                value={formData['General Information']['i18']}
+                onChange={(e) => handleFieldChange('General Information', 'i18', e.target.value)}
               />
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">Education Qualification</label>
               <select
                 className="w-full p-2 border border-gray-300 rounded-md"
-                value={formData['General Information']['i20']}
-                onChange={(e) => handleFieldChange('General Information', 'i20', e.target.value)}
+                value={formData['General Information']['i19']}
+                onChange={(e) => handleFieldChange('General Information', 'i19', e.target.value)}
               >
                 <option value="">Select Qualification</option>
                 <option value="Below 8th">Below 8th</option>
@@ -1089,8 +1247,8 @@ const FRTermLoanWithStockForm = ({
               <label className="block text-sm font-medium text-gray-700">Scheme</label>
               <select
                 className="w-full p-2 border border-gray-300 rounded-md"
-                value={formData['General Information']['i21']}
-                onChange={(e) => handleFieldChange('General Information', 'i21', e.target.value)}
+                value={formData['General Information']['i20']}
+                onChange={(e) => handleFieldChange('General Information', 'i20', e.target.value)}
               >
                 <option value="">Select Scheme</option>
                 <option value="AP IDP 4.0">AP IDP 4.0</option>
@@ -1107,8 +1265,8 @@ const FRTermLoanWithStockForm = ({
               <label className="block text-sm font-medium text-gray-700">Caste</label>
               <select
                 className="w-full p-2 border border-gray-300 rounded-md"
-                value={formData['General Information']['i22']}
-                onChange={(e) => handleFieldChange('General Information', 'i22', e.target.value)}
+                value={formData['General Information']['i21']}
+                onChange={(e) => handleFieldChange('General Information', 'i21', e.target.value)}
               >
                 <option value="">Select Caste</option>
                 <option value="OC">OC</option>
@@ -1130,6 +1288,7 @@ const FRTermLoanWithStockForm = ({
                 <option value="Urban(Other than Panchayat)">Urban(Other than Panchayat)</option>
               </select>
             </div>
+          </div>
           </div>
         );
 
@@ -1197,7 +1356,18 @@ const FRTermLoanWithStockForm = ({
 
       case 'term':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-4">
+            {Object.keys(meansOfFinanceErrors).length > 0 && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm font-semibold text-red-700 mb-1">Please fix the following errors:</p>
+                <ul className="list-disc list-inside text-xs text-red-700 space-y-0.5">
+                  {Object.entries(meansOfFinanceErrors).map(([field, error]) => (
+                    <li key={field}>{meansOfFinanceFieldLabels[field] ? `${meansOfFinanceFieldLabels[field]}: ${error}` : error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">Interest Rate (%)</label>
               <input
@@ -1304,6 +1474,7 @@ const FRTermLoanWithStockForm = ({
                 onChange={(e) => handleFieldChange('Indirect Expenses Increment', 'i56', e.target.value)}
               />
             </div>
+          </div>
           </div>
         );
 
@@ -1666,13 +1837,13 @@ const FRTermLoanWithStockForm = ({
         </div>
 
         <div className="mb-4 flex justify-center">
-          {/* <button
+          <button
             className="px-4 py-2 border-2 border-gray-800 text-gray-800 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-300 text-xs font-medium"
             onClick={fillTestData}
             type="button"
           >
             Fill Test Data
-          </button> */}
+          </button>
         </div>
 
         <div className="mb-6">
@@ -1769,7 +1940,7 @@ const FRTermLoanWithStockForm = ({
               type="button"
               className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-300 font-medium text-sm flex items-center gap-1"
               onClick={handleNext}
-              disabled={!canProceed}
+              disabled={sections[currentStep].key !== 'general' && sections[currentStep].key !== 'term' && !canProceed}
             >
               Next
               <ChevronRightIcon className="w-4 h-4" />

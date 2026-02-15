@@ -270,7 +270,6 @@ const FRCC5Form = ({
         'branch_name': 'Corporate Branch',
         'i6': 'Commercial Hub, Metro City - 600001',
         'i7': 'Trading sector',
-        'i7': 'Trading sector',
         'i8': 'Trading in Consumer Goods'
       },
       'Means of Finance': {
@@ -579,7 +578,6 @@ const FRCC5Form = ({
 
       const payload = {
         formData: {
-          excelData,
           excelData,
           formData,
           bank_name: formData['General Information']['bank_name'],

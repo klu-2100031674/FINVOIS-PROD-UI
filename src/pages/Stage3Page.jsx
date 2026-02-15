@@ -9,10 +9,12 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchReportById, uploadReportJson, selectCurrentReport } from '../store/slices/reportSlice';
 import { Button, Loading } from '../components/common';
 import toast from 'react-hot-toast';
+import { useAuth } from '../hooks';
 
 const Stage3Page = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const luckysheetRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -149,7 +151,13 @@ const Stage3Page = () => {
   };
 
   const handleGoBack = () => {
-    navigate('/reports');
+    if (user?.role === 'admin' || user?.role === 'super_admin') {
+      navigate('/admin/reports');
+    } else if (user?.role === 'agent') {
+      navigate('/agent/reports');
+    } else {
+      navigate('/reports');
+    }
   };
 
   return (

@@ -68,6 +68,7 @@ const GeneratePage = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSectionSelector, setShowSectionSelector] = useState(false);
   const [tempFormData, setTempFormData] = useState(null);
+  const [tempSubmittedData, setTempSubmittedData] = useState(null);
   const hasMounted = useRef(false);
 
   // Initialize tempFormData from Redux if it exists on mount
@@ -166,8 +167,15 @@ const GeneratePage = () => {
   const handleFormSubmit = (formData) => {
     // Stage 1: Capture Excel Form Data
     console.log('📝 [GeneratePage] Stage 1 Form Submit, saving to Redux:', formData);
-    setTempFormData(formData);
-    dispatch(setFormData(formData)); // Save to Redux immediately
+    const hasRawFormData = reduxFormData && Object.keys(reduxFormData).length > 0;
+    const rawFormData = hasRawFormData ? reduxFormData : formData;
+
+    // Keep raw form values for "Back to Form" and section prefill
+    setTempFormData(rawFormData);
+    dispatch(setFormData(rawFormData));
+
+    // Keep submitted/transformed payload for backend generation
+    setTempSubmittedData(formData);
 
     if (NON_AI_TEMPLATES.includes(templateId)) {
       // Non-AI templates (CC4, CC5, CC6): skip section selector, directly generate Excel
@@ -192,8 +200,9 @@ const GeneratePage = () => {
     // Merge original form data with selected sections and prompts data
     // sectionData contains { selected_sections, prompts_data }
     const { related_documents, ...sectionDataWithoutDocs } = sectionData || {};
+    const baseSubmissionData = tempSubmittedData || tempFormData || {};
     const finalFormData = {
-      ...tempFormData,
+      ...baseSubmissionData,
       ...sectionDataWithoutDocs
     };
 
@@ -229,7 +238,9 @@ const GeneratePage = () => {
   };
 
   const handleMyReports = () => {
-    if (user?.role === 'agent') {
+    if (user?.role === 'admin' || user?.role === 'super_admin') {
+      navigate('/admin/reports');
+    } else if (user?.role === 'agent') {
       navigate('/agent/reports');
     } else {
       navigate('/reports');

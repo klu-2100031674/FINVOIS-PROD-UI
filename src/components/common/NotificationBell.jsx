@@ -6,10 +6,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Check, Trash2, X, CheckCircle, XCircle, AlertCircle, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks';
 import api from '../../api/apiClient';
 
 const NotificationBell = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -76,7 +78,13 @@ const NotificationBell = () => {
     
     // Navigate based on notification type
     if (notification.data?.report_id) {
-      navigate('/reports');
+      if (user?.role === 'admin' || user?.role === 'super_admin') {
+        navigate('/admin/reports');
+      } else if (user?.role === 'agent') {
+        navigate('/agent/reports');
+      } else {
+        navigate('/reports');
+      }
     } else if (notification.data?.withdrawal_id) {
       navigate('/profile'); // or wallet page
     }

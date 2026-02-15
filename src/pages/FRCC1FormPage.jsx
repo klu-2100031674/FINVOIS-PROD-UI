@@ -72,7 +72,13 @@ const FRCC1FormPage = () => {
   };
 
   const handleMyReports = () => {
-    navigate('/reports');
+    if (user?.role === 'admin' || user?.role === 'super_admin') {
+      navigate('/admin/reports');
+    } else if (user?.role === 'agent') {
+      navigate('/agent/reports');
+    } else {
+      navigate('/reports');
+    }
   };
 
   const handleLogout = () => {

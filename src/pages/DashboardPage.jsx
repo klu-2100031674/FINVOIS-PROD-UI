@@ -102,7 +102,7 @@ const DashboardPage = () => {
             {/* User Info and Actions */}
             <div className="flex items-center space-x-4">
               <Link
-                to="/reports"
+                to={user?.role === 'admin' || user?.role === 'super_admin' ? '/admin/reports' : user?.role === 'agent' ? '/agent/reports' : '/reports'}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200"
               >
                 <FileStack className="w-4 h-4 mr-2" />

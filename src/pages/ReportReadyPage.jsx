@@ -4,11 +4,25 @@ import { motion } from 'framer-motion';
 import { Button } from '../components/common';
 import { Download, CheckCircle, ArrowRight, Home, FileCheck, Mail, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { useAuth } from '../hooks';
 
 const ReportReadyPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { report_id } = location.state || {};
+
+  const getDashboardRoute = () => {
+    if (user?.role === 'admin' || user?.role === 'super_admin') return '/admin/generate';
+    if (user?.role === 'agent') return '/agent/dashboard';
+    return '/dashboard';
+  };
+
+  const getReportsRoute = () => {
+    if (user?.role === 'admin' || user?.role === 'super_admin') return '/admin/reports';
+    if (user?.role === 'agent') return '/agent/reports';
+    return '/reports';
+  };
 
   useEffect(() => {
     // Trigger confetti on mount
@@ -42,7 +56,7 @@ const ReportReadyPage = () => {
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2 font-manrope">Access Denied</h2>
           <p className="text-gray-600 mb-6 font-inter text-sm">No active report session found. Please try generating a new report.</p>
-          <Button onClick={() => navigate('/dashboard')} className="w-full justify-center bg-gray-900 hover:bg-gray-800 text-white">
+          <Button onClick={() => navigate(getDashboardRoute())} className="w-full justify-center bg-gray-900 hover:bg-gray-800 text-white">
             Go to Dashboard
           </Button>
         </div>
@@ -83,14 +97,14 @@ const ReportReadyPage = () => {
 
             <div className="flex flex-col gap-3 mt-auto">
               <Button
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate(getDashboardRoute())}
                 className="px-8 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-bold shadow-lg shadow-gray-200 active:scale-95 transition-all w-full justify-center"
               >
                 Go to Dashboard
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
               <button
-                onClick={() => navigate('/reports')}
+                onClick={() => navigate(getReportsRoute())}
                 className="px-8 py-3 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl font-bold transition-all w-full flex items-center justify-center gap-2"
               >
                 View All Reports

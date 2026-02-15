@@ -336,6 +336,8 @@ const FRTermLoanCCForm = ({
 
   // Error states for validation
   const [assetValidationErrors, setAssetValidationErrors] = useState({});
+  const [generalInfoErrors, setGeneralInfoErrors] = useState({});
+  const [meansOfFinanceErrors, setMeansOfFinanceErrors] = useState({});
 
   const [assetItems, setAssetItems] = useState(() => {
     if (initialData && initialData['Fixed Assets Schedule']) {
@@ -491,13 +493,29 @@ const FRTermLoanCCForm = ({
   }, [liveTenure]);
 
   const handleInputChange = (section, field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
-        [field]: value
+    setFormData(prev => {
+      const updatedData = {
+        ...prev,
+        [section]: {
+          ...prev[section],
+          [field]: value
+        }
+      };
+
+      if (Object.keys(generalInfoErrors).length > 0 && section === 'General Information') {
+        setGeneralInfoErrors(validateGeneralInformation(updatedData['General Information'] || {}));
       }
-    }));
+
+      if (Object.keys(meansOfFinanceErrors).length > 0 && section === 'Means of Finance details') {
+        setMeansOfFinanceErrors(validateMeansOfFinance(updatedData));
+      }
+
+      if (onFormDataChange) {
+        onFormDataChange(updatedData);
+      }
+
+      return updatedData;
+    });
 
     // Update liveTenure when tenure field (i47) changes
     if (section === 'Means of Finance details' && field === 'i47') {
@@ -513,9 +531,6 @@ const FRTermLoanCCForm = ({
       setLiveTenure(parsedTenure);
     }
 
-    if (onFormDataChange) {
-      onFormDataChange({ ...formData, [section]: { ...formData[section], [field]: value } });
-    }
   };
 
   // Get total cost for an asset category
@@ -859,36 +874,45 @@ const FRTermLoanCCForm = ({
     onSubmit(payload);
   };
 
-  const renderInput = (section, field, label, type = 'text', options = null, suffix = null) => (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">{label}</label>
-      {options ? (
-        <select
-          value={formData[section]?.[field] || ''}
-          onChange={(e) => handleInputChange(section, field, e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded-md"
-        >
-          <option value="">Select {label}</option>
-          {options.map(opt => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
-      ) : (
-        <div className="relative">
-          <input
-            type={type}
+  const renderInput = (section, field, label, type = 'text', options = null, suffix = null) => {
+    const fieldError = section === 'General Information'
+      ? generalInfoErrors[field]
+      : section === 'Means of Finance details'
+        ? meansOfFinanceErrors[field]
+        : null;
+
+    return (
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-700">{label}</label>
+        {options ? (
+          <select
             value={formData[section]?.[field] || ''}
             onChange={(e) => handleInputChange(section, field, e.target.value)}
-            onWheel={(e) => e.target.type === 'number' && e.target.blur()}
-            className={`w-full p-2 border border-gray-300 rounded-md ${suffix ? 'pr-8' : ''}`}
-          />
-          {suffix && (
-            <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">{suffix}</span>
-          )}
-        </div>
-      )}
-    </div>
-  );
+            className={`w-full p-2 border rounded-md ${fieldError ? 'border-red-500' : 'border-gray-300'}`}
+          >
+            <option value="">Select {label}</option>
+            {options.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        ) : (
+          <div className="relative">
+            <input
+              type={type}
+              value={formData[section]?.[field] || ''}
+              onChange={(e) => handleInputChange(section, field, e.target.value)}
+              onWheel={(e) => e.target.type === 'number' && e.target.blur()}
+              className={`w-full p-2 border rounded-md ${fieldError ? 'border-red-500' : 'border-gray-300'} ${suffix ? 'pr-8' : ''}`}
+            />
+            {suffix && (
+              <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">{suffix}</span>
+            )}
+          </div>
+        )}
+        {fieldError && <p className="text-xs text-red-600">{fieldError}</p>}
+      </div>
+    );
+  };
 
   const renderIndirectExpenseInput = (item) => (
     <div key={item.d} className="grid grid-cols-12 gap-4 mb-2 items-center">
@@ -920,13 +944,174 @@ const FRTermLoanCCForm = ({
 
   // Define required fields for each section
   const requiredFields = {
-    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i19', 'i20', 'i21', 'i22'],
+    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i19', 'i20', 'i21', 'i22', 'bank_name', 'branch_name', 'i12', 'i13'],
     'Expected Employment Generation': ['i24', 'i25', 'i26'],
     'Means of Finance details': ['h45', 'i46', 'i47', 'i48', 'i49', 'h52', 'h53', 'i58', 'i59', 'i60', 'i63'],
     'Indirect Expenses Increment': ['h71', 'h72', 'h73', 'h74', 'h75'],
     'Cost of Project details': ['i40'],
     'Schedule for Assets': [], // Add required fields if any
     'Schedule for Indirect Expenses': [] // Add required fields if any
+  };
+
+  const validateGeneralInformation = useCallback((generalInfo = {}) => {
+    const errors = {};
+
+    const requiredWithLabels = {
+      i7: 'Status of Concern is required',
+      i8: 'Name is required',
+      i9: 'Mobile Number is required',
+      bank_name: 'Bank Name / Department Name is required',
+      branch_name: 'Branch Name is required',
+      i12: 'Age is required',
+      i13: 'Gender is required',
+      i14: 'Sector is required',
+      i15: 'Nature of Business is required',
+      i16: 'Address of office/Factory is required',
+      i19: 'Education Qualification is required',
+      i20: 'Project covered under scheme is required',
+      i21: 'Caste is required',
+      i22: 'Unit location is required'
+    };
+
+    Object.entries(requiredWithLabels).forEach(([field, message]) => {
+      const value = generalInfo[field];
+      if (value === undefined || value === null || String(value).trim() === '') {
+        errors[field] = message;
+      }
+    });
+
+    const name = String(generalInfo.i8 || '').trim();
+    if (name && name.length < 2) {
+      errors.i8 = 'Name must be at least 2 characters';
+    }
+
+    const mobile = String(generalInfo.i9 || '').trim();
+    if (mobile && !/^\d{10}$/.test(mobile)) {
+      errors.i9 = 'Mobile Number must be exactly 10 digits';
+    }
+
+    const ageValue = generalInfo.i12;
+    const age = Number(ageValue);
+    if (String(ageValue || '').trim() !== '' && (!Number.isFinite(age) || age < 18 || age > 100)) {
+      errors.i12 = 'Age must be between 18 and 100';
+    }
+
+    const aadhar = String(generalInfo.i10 || '').trim();
+    if (aadhar && !/^\d{12}$/.test(aadhar)) {
+      errors.i10 = 'Aadhar Number must be 12 digits';
+    }
+
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+    const proprietorPan = String(generalInfo.i11 || '').trim().toUpperCase();
+    if (proprietorPan && !panRegex.test(proprietorPan)) {
+      errors.i11 = 'PAN format is invalid';
+    }
+
+    const firmPan = String(generalInfo.i18 || '').trim().toUpperCase();
+    if (firmPan && !panRegex.test(firmPan)) {
+      errors.i18 = 'PAN of firm/company format is invalid';
+    }
+
+    return errors;
+  }, []);
+
+  const validateMeansOfFinance = useCallback((allData = formData) => {
+    const errors = {};
+    const term = allData['Means of Finance details'] || {};
+
+    const requiredWithLabels = {
+      h45: 'Term Loan Rate of Interest is required',
+      i46: 'Installment period is required',
+      i47: 'Term Loan Tenure is required',
+      i48: 'Repayment type is required',
+      i49: 'Moratorium period is required',
+      h52: 'Working capital loan interest rate is required',
+      h53: 'Processing fees rate is required',
+      i58: 'Loan Financial Year is required',
+      i59: 'Loan Start Month is required',
+      i60: 'First Sale Bill Month is required',
+      i63: 'Average DSCR Ratio is required'
+    };
+
+    Object.entries(requiredWithLabels).forEach(([field, message]) => {
+      const value = term[field];
+      if (value === undefined || value === null || String(value).trim() === '') {
+        errors[field] = message;
+      }
+    });
+
+    const termLoanRoi = Number(term.h45);
+    if (String(term.h45 || '').trim() !== '' && (!Number.isFinite(termLoanRoi) || termLoanRoi <= 0 || termLoanRoi > 100)) {
+      errors.h45 = 'Term Loan Rate of Interest must be greater than 0 and up to 100';
+    }
+
+    const wcRoi = Number(term.h52);
+    if (String(term.h52 || '').trim() !== '' && (!Number.isFinite(wcRoi) || wcRoi <= 0 || wcRoi > 100)) {
+      errors.h52 = 'Working capital Loan Rate of Interest must be greater than 0 and up to 100';
+    }
+
+    const tenure = Number(term.i47);
+    if (String(term.i47 || '').trim() !== '' && (!Number.isFinite(tenure) || tenure <= 0 || tenure > 30)) {
+      errors.i47 = 'Term Loan Tenure must be between 1 and 30 years';
+    }
+
+    const moratorium = Number(term.i49);
+    if (String(term.i49 || '').trim() !== '' && (!Number.isFinite(moratorium) || moratorium < 0)) {
+      errors.i49 = 'Moratorium period must be 0 or more';
+    }
+    if (Number.isFinite(tenure) && tenure > 0 && Number.isFinite(moratorium) && moratorium > tenure * 12) {
+      errors.i49 = 'Moratorium period cannot exceed total tenure in months';
+    }
+
+    const processingFee = Number(term.h53);
+    if (String(term.h53 || '').trim() !== '' && (!Number.isFinite(processingFee) || processingFee < 0 || processingFee > 100)) {
+      errors.h53 = 'Processing fees rate must be between 0 and 100';
+    }
+
+    if (term.i59 && term.i60 && String(term.i60) < String(term.i59)) {
+      errors.i60 = 'First Sale Bill Month cannot be earlier than Loan Start Month';
+    }
+
+    const dscr = Number(term.i63);
+    if (String(term.i63 || '').trim() !== '' && (!Number.isFinite(dscr) || dscr < 1.75 || dscr > 5)) {
+      errors.i63 = 'Average DSCR Ratio must be between 1.75 and 5';
+    }
+
+    return errors;
+  }, [formData]);
+
+  const generalInfoFieldLabels = {
+    i7: 'Status of Concern',
+    i8: 'Name',
+    i9: 'Mobile Number',
+    i10: 'Aadhar number',
+    i11: 'PAN',
+    bank_name: 'Bank Name / Department Name',
+    branch_name: 'Branch Name',
+    i12: 'Age',
+    i13: 'Gender',
+    i14: 'Sector',
+    i15: 'Nature of Business',
+    i16: 'Address of office/Factory',
+    i18: 'PAN of firm/Company',
+    i19: 'Education Qualification',
+    i20: 'Project covered under which Scheme',
+    i21: 'Caste',
+    i22: 'Unit location'
+  };
+
+  const meansOfFinanceFieldLabels = {
+    h45: 'Term Loan Rate of Interest',
+    i46: 'Installment period',
+    i47: 'Term Loan Tenure (Years)',
+    i48: 'Fixed EMI / Fixed Principal',
+    i49: 'Moratorium period',
+    h52: 'Working capital Loan Rate of Interest',
+    h53: 'Processing fees rate',
+    i58: 'Loan Financial Year',
+    i59: 'Loan Start Month',
+    i60: 'First Sale Bill Month',
+    i63: 'Average DSCR Ratio Required'
   };
 
   // Check if user can proceed to next step
@@ -942,14 +1127,20 @@ const FRTermLoanCCForm = ({
       'indirect': 'Indirect Expenses Increment',
       'cost': 'Cost of Project details',
       'assets': 'Schedule for Assets',
-      'cost': 'Cost of Project details',
-      'assets': 'Schedule for Assets',
       'expenses': 'Schedule for Indirect Expenses',
       'prepared_by': 'Prepared By'
     };
 
     const dataKey = sectionDataKeys[sectionKey];
     const required = requiredFields[dataKey] || [];
+
+    if (sectionKey === 'general') {
+      return Object.keys(validateGeneralInformation(formData['General Information'] || {})).length === 0;
+    }
+
+    if (sectionKey === 'term') {
+      return Object.keys(validateMeansOfFinance(formData)).length === 0;
+    }
 
     // Special validation for Schedule for Assets
     if (sectionKey === 'assets') {
@@ -971,16 +1162,6 @@ const FRTermLoanCCForm = ({
       return true;
     }
 
-    if (sectionKey === 'expenses') {
-      // Validate Increment percentages
-      const increments = ['h71', 'h72', 'h73', 'h74', 'h75'];
-      const incrementsValid = increments.every(key => {
-        const val = formData['Indirect Expenses Increment']?.[key];
-        return val !== undefined && val !== '' && val !== null;
-      });
-      return incrementsValid;
-    }
-
     if (required.length === 0) return true; // No required fields for this section
 
     const sectionData = formData[dataKey] || {};
@@ -988,9 +1169,23 @@ const FRTermLoanCCForm = ({
       const value = sectionData[fieldId];
       return value !== undefined && value !== null && value !== '';
     });
-  }, [formData, currentStep, sections, visitedAssetCategories, categoriesWithItems, loanPercentages]);
+  }, [formData, currentStep, sections, visitedAssetCategories, categoriesWithItems, loanPercentages, validateGeneralInformation, validateMeansOfFinance]);
 
   const handleNext = () => {
+    const currentSection = sections[currentStep];
+
+    if (currentSection.key === 'general') {
+      const errors = validateGeneralInformation(formData['General Information'] || {});
+      setGeneralInfoErrors(errors);
+      if (Object.keys(errors).length > 0) return;
+    }
+
+    if (currentSection.key === 'term') {
+      const errors = validateMeansOfFinance(formData);
+      setMeansOfFinanceErrors(errors);
+      if (Object.keys(errors).length > 0) return;
+    }
+
     if (canProceed && currentStep < sections.length - 1) {
       setCurrentStep(prev => prev + 1);
     }
@@ -1124,25 +1319,37 @@ const FRTermLoanCCForm = ({
     switch (sections[currentStep].key) {
       case 'general':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {renderInput('General Information', 'i7', 'Status of Concern', 'text', ['Sole Proprietorship', 'Partnership Firm', 'Private limited Company', 'LLP', 'Society', 'Trust', 'Federation'])}
-            {renderInput('General Information', 'i8', 'Name of Proprietor/ partner/Director/Member/trustee')}
-            {renderInput('General Information', 'i9', 'Mobile Number')}
-            {renderInput('General Information', 'i10', 'Aadhar number (Optional)')}
-            {renderInput('General Information', 'bank_name', 'Bank Name / Department Name')}
-            {renderInput('General Information', 'branch_name', 'Branch Name')}
-            {renderInput('General Information', 'i11', 'PAN (Optional)')}
-            {renderInput('General Information', 'i12', 'Age')}
-            {renderInput('General Information', 'i13', 'Gender', 'text', ['Male', 'Female', 'Others'])}
-            {renderInput('General Information', 'i14', 'Sector', 'text', ['Manufacturing sector', 'Service Sector (With stock)', 'Trading sector'])}
-            {renderInput('General Information', 'i15', 'Nature of Business')}
-            {renderInput('General Information', 'i16', 'Address of office/Factory')}
-            {renderInput('General Information', 'i17', 'Name of firm/Company (Optional)')}
-            {renderInput('General Information', 'i18', 'PAN of firm/Company (Optional)')}
-            {renderInput('General Information', 'i19', 'Education Qualification', 'text', ['Below 8th', 'Above 8th', 'SSC 10th', 'intermediate +2', 'Graduate', 'Post Graduate'])}
-            {renderInput('General Information', 'i20', 'Project covered under which Scheme', 'text', ['AP IDP 4.0', 'Industrial park Land Allotment', 'PMEGP', 'Mudra', 'PMFME', 'PMMSY', 'Startup India', 'Other MSME', 'NLM scheme'])}
-            {renderInput('General Information', 'i21', 'Caste', 'text', ['OC', 'SC', 'ST', 'BC', 'Minority'])}
-            {renderInput('General Information', 'i22', 'Unit location', 'text', ['Rural(Panchayat)', 'Urban(Other than Panchayat)'])}
+          <div className="space-y-4">
+            {Object.keys(generalInfoErrors).length > 0 && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm font-semibold text-red-700 mb-1">Please fix the following errors:</p>
+                <ul className="list-disc list-inside text-xs text-red-700 space-y-0.5">
+                  {Object.entries(generalInfoErrors).map(([field, error]) => (
+                    <li key={field}>{generalInfoFieldLabels[field] ? `${generalInfoFieldLabels[field]}: ${error}` : error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {renderInput('General Information', 'i7', 'Status of Concern', 'text', ['Sole Proprietorship', 'Partnership Firm', 'Private limited Company', 'LLP', 'Society', 'Trust', 'Federation'])}
+              {renderInput('General Information', 'i8', 'Name of Proprietor/ partner/Director/Member/trustee')}
+              {renderInput('General Information', 'i9', 'Mobile Number')}
+              {renderInput('General Information', 'i10', 'Aadhar number (Optional)')}
+              {renderInput('General Information', 'bank_name', 'Bank Name / Department Name')}
+              {renderInput('General Information', 'branch_name', 'Branch Name')}
+              {renderInput('General Information', 'i11', 'PAN (Optional)')}
+              {renderInput('General Information', 'i12', 'Age')}
+              {renderInput('General Information', 'i13', 'Gender', 'text', ['Male', 'Female', 'Others'])}
+              {renderInput('General Information', 'i14', 'Sector', 'text', ['Manufacturing sector', 'Service Sector (With stock)', 'Trading sector'])}
+              {renderInput('General Information', 'i15', 'Nature of Business')}
+              {renderInput('General Information', 'i16', 'Address of office/Factory')}
+              {renderInput('General Information', 'i17', 'Name of firm/Company (Optional)')}
+              {renderInput('General Information', 'i18', 'PAN of firm/Company (Optional)')}
+              {renderInput('General Information', 'i19', 'Education Qualification', 'text', ['Below 8th', 'Above 8th', 'SSC 10th', 'intermediate +2', 'Graduate', 'Post Graduate'])}
+              {renderInput('General Information', 'i20', 'Project covered under which Scheme', 'text', ['AP IDP 4.0', 'Industrial park Land Allotment', 'PMEGP', 'Mudra', 'PMFME', 'PMMSY', 'Startup India', 'Other MSME', 'NLM scheme'])}
+              {renderInput('General Information', 'i21', 'Caste', 'text', ['OC', 'SC', 'ST', 'BC', 'Minority'])}
+              {renderInput('General Information', 'i22', 'Unit location', 'text', ['Rural(Panchayat)', 'Urban(Other than Panchayat)'])}
+            </div>
           </div>
         );
 
@@ -1169,23 +1376,35 @@ const FRTermLoanCCForm = ({
 
       case 'term':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {renderInput('Means of Finance details', 'h45', 'Term Loan Rate of Interest', 'number')}
-            {renderInput('Means of Finance details', 'i46', 'Installment period', 'text', ['Monthly', 'Quarterly', 'Half yearly'])}
-            {renderInput('Means of Finance details', 'i47', 'Term Loan Tenure (Years)', 'number')}
-            {renderInput('Means of Finance details', 'i48', 'Fixed EMI or Fixed Principal Amount over Loan Term period', 'text', ['Fixed EMI', 'Fixed Principal'])}
-            {renderInput('Means of Finance details', 'i49', 'Moratorium period (months)', 'number')}
-            {/* {renderInput('Means of Finance details', 'h50', 'Margin money for Working capital requirement', 'number')} */}
-            {renderInput('Means of Finance details', 'h52', 'Working capital Loan Rate of Interest', 'number')}
-            {renderInput('Means of Finance details', 'h53', 'Processing fees rate', 'number')}
+          <div className="space-y-4">
+            {Object.keys(meansOfFinanceErrors).length > 0 && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm font-semibold text-red-700 mb-1">Please fix the following errors:</p>
+                <ul className="list-disc list-inside text-xs text-red-700 space-y-0.5">
+                  {Object.entries(meansOfFinanceErrors).map(([field, error]) => (
+                    <li key={field}>{meansOfFinanceFieldLabels[field] ? `${meansOfFinanceFieldLabels[field]}: ${error}` : error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {renderInput('Means of Finance details', 'h45', 'Term Loan Rate of Interest', 'number')}
+              {renderInput('Means of Finance details', 'i46', 'Installment period', 'text', ['Monthly', 'Quarterly', 'Half yearly'])}
+              {renderInput('Means of Finance details', 'i47', 'Term Loan Tenure (Years)', 'number')}
+              {renderInput('Means of Finance details', 'i48', 'Fixed EMI or Fixed Principal Amount over Loan Term period', 'text', ['Fixed EMI', 'Fixed Principal'])}
+              {renderInput('Means of Finance details', 'i49', 'Moratorium period (months)', 'number')}
+              {/* {renderInput('Means of Finance details', 'h50', 'Margin money for Working capital requirement', 'number')} */}
+              {renderInput('Means of Finance details', 'h52', 'Working capital Loan Rate of Interest', 'number')}
+              {renderInput('Means of Finance details', 'h53', 'Processing fees rate', 'number')}
 
-            <div className="col-span-2 border-t pt-4 mt-4">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Schedule Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {renderInput('Means of Finance details', 'i58', 'Loan Financial Year', 'text', generateFinancialYearOptions())}
-                {renderInput('Means of Finance details', 'i59', 'Loan Start Month (Month immediately after Santion Month)', 'month')}
-                {renderInput('Means of Finance details', 'i60', 'First Sale Bill Month', 'month')}
-                {renderInput('Means of Finance details', 'i63', 'Average DSCR Ratio Required', 'number')}
+              <div className="col-span-2 border-t pt-4 mt-4">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Schedule Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {renderInput('Means of Finance details', 'i58', 'Loan Financial Year', 'text', generateFinancialYearOptions())}
+                  {renderInput('Means of Finance details', 'i59', 'Loan Start Month (Month immediately after Santion Month)', 'month')}
+                  {renderInput('Means of Finance details', 'i60', 'First Sale Bill Month', 'month')}
+                  {renderInput('Means of Finance details', 'i63', 'Average DSCR Ratio Required', 'number')}
+                </div>
               </div>
             </div>
           </div>
@@ -1702,7 +1921,7 @@ const FRTermLoanCCForm = ({
               type="button"
               className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-300 font-medium text-sm flex items-center gap-1"
               onClick={handleNext}
-              disabled={!canProceed}
+              disabled={sections[currentStep].key !== 'general' && sections[currentStep].key !== 'term' && !canProceed}
             >
               Next
               <ChevronRightIcon className="w-4 h-4" />

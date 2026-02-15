@@ -60,8 +60,6 @@ const FRCC6Form = ({
       'Vehicles': { items: [], total: 0 },
       'Live stock': { items: [], total: 0 },
       'Other Assets': { items: [], total: 0 },
-      'Live stock': { items: [], total: 0 },
-      'Other Assets': { items: [], total: 0 }
     },
     'Prepared By': initialData['Prepared By'] || {}
   });
@@ -83,8 +81,6 @@ const FRCC6Form = ({
         title,
         ...fixedAssetsMapping[title]
       })),
-      title,
-      ...fixedAssetsMapping[title]
 
     },
     { key: 'prepared_by', title: 'Prepared By', icon: BuildingOfficeIcon }
@@ -296,7 +292,6 @@ const FRCC6Form = ({
 
       const payload = {
         formData: {
-          excelData,
           excelData,
           formData,
           bank_name: formData['General Information']['bank_name'],
@@ -512,7 +507,6 @@ const FRCC6Form = ({
       { id: 'branch_name', label: 'Branch Name', type: 'text', required: true },
       { id: 'i6', label: 'Firm address', type: 'textarea', required: true },
       { id: 'i7', label: 'Sector', type: 'select', options: ['Manufacturing sector', 'Service sector (with stock)', 'Trading sector'], required: true },
-      { id: 'i8', label: 'Nature of Business', type: 'text', required: true },
       { id: 'i8', label: 'Nature of Business', type: 'text', required: true }
     ],
     finance: [

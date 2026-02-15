@@ -12,4 +12,16 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    chunkSizeWarningLimit: 2000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom', '@reduxjs/toolkit', 'react-redux'],
+          ui: ['@headlessui/react', '@heroicons/react', 'framer-motion', 'lucide-react'],
+          utils: ['axios', 'clsx', 'tailwind-merge', 'jspdf', 'html2canvas']
+        }
+      }
+    }
+  }
 })

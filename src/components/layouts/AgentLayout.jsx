@@ -42,6 +42,7 @@ const AgentLayout = ({ children, activeTab }) => {
     { name: 'Withdrawals', href: '/agent/withdrawals', icon: BanknotesIcon, tab: 'withdrawals' },
     { name: 'Referral Link', href: '/agent/referral-link', icon: LinkIcon, tab: 'referral-link' },
     { name: 'Profile', href: '/agent/profile', icon: UserCircleIcon, tab: 'profile' },
+    { name: 'Generate Reports', href: '/agent/generate', icon: ChartBarIcon, tab: 'generate' }
   ];
 
   return (
@@ -49,7 +50,7 @@ const AgentLayout = ({ children, activeTab }) => {
       {/* Sidebar */}
       <aside
         className={`${sidebarOpen ? 'w-64' : 'w-16'
-          } bg-white border-r border-gray-200 transition-all duration-300 flex flex-col`}
+          } bg-white border-r border-gray-200 transition-all duration-300 flex flex-col h-screen fixed top-0 left-0`}
       >
         {/* Logo/Header */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
@@ -135,14 +136,6 @@ const AgentLayout = ({ children, activeTab }) => {
 
           <div className="mt-4 space-y-2">
             <button
-              onClick={() => navigate('/agent/generate')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors ${!sidebarOpen && 'justify-center'
-                }`}
-            >
-              <HomeIcon className="w-5 h-5" />
-              {sidebarOpen && <span className="text-sm">Generate Reports</span>}
-            </button>
-            <button
               onClick={handleLogout}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors ${!sidebarOpen && 'justify-center'
                 }`}
@@ -155,9 +148,11 @@ const AgentLayout = ({ children, activeTab }) => {
       </aside >
 
       {/* Main Content */}
-      < main className="flex-1 overflow-y-auto p-4" >
+      <main
+        className={`flex-1 overflow-y-auto p-4 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-16'}`}
+      >
         {children}
-      </main >
+      </main>
     </div >
   );
 };

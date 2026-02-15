@@ -9,10 +9,12 @@ import { useDispatch } from 'react-redux';
 import { uploadReportJson } from '../store/slices/reportSlice';
 import { Button, Loading } from '../components/common';
 import toast from 'react-hot-toast';
+import { useAuth } from '../hooks';
 
 const Stage2Page = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const luckysheetRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,7 +97,13 @@ const Stage2Page = () => {
       ).unwrap();
       
       toast.success('Report finalized successfully!');
-      navigate('/reports');
+      if (user?.role === 'admin' || user?.role === 'super_admin') {
+        navigate('/admin/reports');
+      } else if (user?.role === 'agent') {
+        navigate('/agent/reports');
+      } else {
+        navigate('/reports');
+      }
     } catch (error) {
       console.error('Error finalizing report:', error);
       toast.error('Failed to finalize report');
