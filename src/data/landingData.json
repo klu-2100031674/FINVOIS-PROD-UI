@@ -10,10 +10,7 @@
         "label": "How it works",
         "href": "#how-it-works"
       },
-      {
-        "label": "Pricing",
-        "href": "/pricing"
-      },
+    
       {
         "label": "Schemes",
         "href": "/schemes"
@@ -304,9 +301,9 @@
   "footer": {
     "description": "AI-powered DPR generation for entrepreneurs and startups. Create professional project reports in minutes.",
     "contact": {
-      "email": "support@dprplatform.com",
-      "phone": "+91-9876543210",
-      "address": "Finvois Solutions LLP, Business Hub, 123 Innovation Street, Bangalore, Karnataka 560001, India"
+      "email": "support@finvois.com",
+      "phone": "+91 90142 21011",
+      "address": "Finvois Open Business Solutions LLP, Rata Tata Innvoation Hub Building, Vijayawada, Andhrapradesh"
     },
     "social": [
       "Twitter",
@@ -323,14 +320,6 @@
             "href": "/#features"
           },
           {
-            "label": "Pricing",
-            "href": "/pricing"
-          },
-          {
-            "label": "Templates",
-            "href": "/templates"
-          },
-          {
             "label": "Schemes",
             "href": "/schemes"
           }
@@ -340,20 +329,12 @@
         "title": "Resources",
         "links": [
           {
-            "label": "Documentation",
-            "href": "/documentation"
-          },
-          {
             "label": "Blog",
             "href": "/blog"
           },
           {
             "label": "Help Center",
             "href": "/help-center"
-          },
-          {
-            "label": "API",
-            "href": "/api"
           }
         ]
       },
@@ -363,14 +344,6 @@
           {
             "label": "About",
             "href": "/about"
-          },
-          {
-            "label": "Careers",
-            "href": "/careers"
-          },
-          {
-            "label": "Partners",
-            "href": "/partners"
           },
           {
             "label": "Contact",
@@ -393,6 +366,6 @@
         "href": "/cookies"
       }
     ],
-    "copyright": "© 2025 DPR Platform. All rights reserved. Built by Finvois Solutions Pvt Ltd."
+    "copyright": "© 2025 Finvois. All rights reserved"
   }
 }

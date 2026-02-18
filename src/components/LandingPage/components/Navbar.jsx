@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import finvoisLogo from "../../../assets/finvois.png";
@@ -10,6 +10,7 @@ const Navbar = () => {
     const [scrolled, setScrolled] = useState(false);
     const { navigation } = landingData;
     const navigate = useNavigate();
+    const location = useLocation();
 
     React.useEffect(() => {
         const handleScroll = () => {
@@ -18,6 +19,43 @@ const Navbar = () => {
         window.addEventListener("scroll", handleScroll);
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
+
+    React.useEffect(() => {
+        if (location.pathname === "/" && location.hash) {
+            const sectionId = location.hash;
+            const timer = setTimeout(() => {
+                const sectionElement = document.querySelector(sectionId);
+                if (sectionElement) {
+                    sectionElement.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+            }, 100);
+
+            return () => clearTimeout(timer);
+        }
+    }, [location.pathname, location.hash]);
+
+    const handleNavLinkClick = (href) => {
+        setMobileMenuOpen(false);
+
+        if (href.startsWith("#")) {
+            if (location.pathname !== "/") {
+                navigate(`/${href}`);
+                return;
+            }
+
+            const sectionElement = document.querySelector(href);
+            if (sectionElement) {
+                sectionElement.scrollIntoView({ behavior: "smooth", block: "start" });
+                window.history.replaceState(null, "", href);
+                return;
+            }
+
+            navigate(`/${href}`);
+            return;
+        }
+
+        navigate(href);
+    };
 
     return (
         <motion.nav
@@ -39,13 +77,14 @@ const Navbar = () => {
                 {/* Desktop Nav */}
                 <div className="hidden md:flex items-center gap-8">
                     {navigation.links.map((link, idx) => (
-                        <a
+                        <button
                             key={idx}
-                            href={link.href}
+                            type="button"
+                            onClick={() => handleNavLinkClick(link.href)}
                             className="text-sm font-medium text-gray-600 hover:text-purple-600 transition-colors"
                         >
                             {link.label}
-                        </a>
+                        </button>
                     ))}
                     <div className="flex items-center gap-4 pl-4 border-l border-gray-200">
                         <button
@@ -84,14 +123,14 @@ const Navbar = () => {
                     >
                         <div className="px-6 py-8 space-y-4 flex flex-col">
                             {navigation.links.map((link, idx) => (
-                                <a
+                                <button
                                     key={idx}
-                                    href={link.href}
+                                    type="button"
+                                    onClick={() => handleNavLinkClick(link.href)}
                                     className="text-lg font-medium text-gray-900"
-                                    onClick={() => setMobileMenuOpen(false)}
                                 >
                                     {link.label}
-                                </a>
+                                </button>
                             ))}
                             <hr className="border-gray-100 my-4" />
                             <button

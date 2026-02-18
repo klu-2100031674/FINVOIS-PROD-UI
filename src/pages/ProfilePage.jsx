@@ -213,7 +213,7 @@ const ProfilePage = () => {
                         name="phone"
                         value={formData.phone}
                         onChange={handleInputChange}
-                        placeholder="+91 98765 43210"
+                        placeholder="+91 90142 21011"
                         icon={Phone}
                         type="tel"
                       />

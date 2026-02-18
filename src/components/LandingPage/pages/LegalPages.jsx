@@ -68,7 +68,7 @@ export const PrivacyPolicyPage = () => (
                 <div className="mt-12 pt-8 border-t border-gray-100">
                     <h4 className="font-semibold text-gray-900 mb-2">Have questions?</h4>
                     <p className="text-gray-600">
-                        Contact us at <a href="mailto:privacy@finvois.com" className="text-purple-600 hover:text-purple-700 font-medium">privacy@finvois.com</a>
+                        Contact us at <a href="mailto:support@finvois.com" className="text-purple-600 hover:text-purple-700 font-medium">support@finvois.com</a>
                     </p>
                 </div>
             </div>

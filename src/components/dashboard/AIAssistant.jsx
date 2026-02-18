@@ -112,13 +112,13 @@ const AIAssistant = ({ onSelectTemplate }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SelectionCard
                     icon={CurrencyDollarIcon}
-                    title="Term Loan + CC / Working Capital"
+                    title="Term Loan and CC / Working Capital loan"
                     description="Both long-term and short-term funding"
                     onClick={() => onSelectTemplate('TERM_LOAN_CC')}
                 />
                 <SelectionCard
                     icon={CurrencyDollarIcon}
-                    title="Only Term Loan"
+                    title="Pure term loan"
                     description="Long-term funding for assets"
                     onClick={() => onSelectTemplate('TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK')}
                 />
@@ -156,13 +156,13 @@ const AIAssistant = ({ onSelectTemplate }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SelectionCard
                     icon={CurrencyDollarIcon}
-                    title="Term Loan + CC / Working Capital"
+                    title="Term Loan and CC / Working Capital loan"
                     description="Both long-term and short-term funding"
                     onClick={() => onSelectTemplate('TERM_LOAN_CC')}
                 />
                 <SelectionCard
                     icon={CurrencyDollarIcon}
-                    title="Only Term Loan"
+                    title="Pure term loan"
                     description="Long-term funding for assets"
                     onClick={() => onSelectTemplate('TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK')}
                 />
