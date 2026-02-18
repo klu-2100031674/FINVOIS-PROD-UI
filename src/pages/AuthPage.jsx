@@ -60,7 +60,6 @@ const AuthPage = () => {
    */
   async function startVm() {
     try {
-      // Use the function key from env or placeholder
       const functionKey = import.meta.env.VITE_VM_FUNCTION_KEY || "YOUR_FUNCTION_KEY";
       const res = await fetch(
         `https://vm-start-fn-afg5f0fpgpakcpe6.centralindia-01.azurewebsites.net/api/StartVm?code=${functionKey}`,
@@ -76,6 +75,33 @@ const AuthPage = () => {
     }
   }
 
+  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const ensureVmReady = async () => {
+    const maxRetries = 12;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await startVm();
+        if (response?.status === 'running') {
+          await delay(5000);
+          const reconfirm = await startVm();
+          if (reconfirm?.status === 'running') {
+            return true;
+          }
+          console.warn('VM reconfirmation failed, retrying...');
+          await delay(5000);
+        } else {
+          console.log(`VM still starting (attempt ${attempt + 1}), waiting before retrying`);
+          await delay(10000);
+        }
+      } catch (vmErr) {
+        console.error('VM readiness check failed, retrying...', vmErr);
+        await delay(10000);
+      }
+    }
+    return false;
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     if (isVmLoading || authLoading) return;
@@ -84,29 +110,8 @@ const AuthPage = () => {
       setApiError(null);
       setIsVmLoading(true);
 
-      let isReady = false;
-      let retries = 0;
-      const maxRetries = 10;
-
-      while (!isReady && retries < maxRetries) {
-        try {
-          const vmResponse = await startVm();
-
-          if (vmResponse.status === 'running') {
-            isReady = true;
-          } else {
-            await new Promise(resolve => setTimeout(resolve, 10000));
-            retries++;
-          }
-        } catch (vmErr) {
-          console.error('❌ Connection failed, retrying...', vmErr);
-          await new Promise(resolve => setTimeout(resolve, 10000));
-          retries++;
-        }
-      }
-
-
-      if (!isReady) {
+      const vmReady = await ensureVmReady();
+      if (!vmReady) {
         toast.error('Server is taking too long to start. Please try again in 1 minute.');
         setIsVmLoading(false);
         return;
@@ -160,7 +165,6 @@ const AuthPage = () => {
   const handleRegister = async (e) => {
     e.preventDefault();
 
-    // Clear previous errors
     setRegisterErrors(null);
 
     // Basic client-side validation
@@ -202,6 +206,15 @@ const AuthPage = () => {
     }
 
     try {
+      setIsVmLoading(true);
+      const vmReady = await ensureVmReady();
+      if (!vmReady) {
+        toast.error('Server is taking too long to start. Please try again in 1 minute.');
+        setIsVmLoading(false);
+        return;
+      }
+
+      setIsVmLoading(false);
       await register(registerData);
       toast.success('Registration successful! Please check your email and verify your account before logging in.');
       setActiveTab('login');
