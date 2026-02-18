@@ -22,6 +22,7 @@ import {
   setFormData,
   setRelatedDocuments,
   clearFormData,
+  clearRelatedDocuments,
   selectFormData,
 } from '../store/slices/reportSlice';
 import { Button, Card, Loading } from '../components/common';
@@ -70,6 +71,7 @@ const GeneratePage = () => {
   const [tempFormData, setTempFormData] = useState(null);
   const [tempSubmittedData, setTempSubmittedData] = useState(null);
   const hasMounted = useRef(false);
+  const generationRequestedRef = useRef(false);
 
   // Initialize tempFormData from Redux if it exists on mount
   useEffect(() => {
@@ -95,6 +97,8 @@ const GeneratePage = () => {
     if (!reduxFormData || Object.keys(reduxFormData).length === 0) {
       dispatch(clearFormData());
     }
+    dispatch(clearRelatedDocuments());
+    generationRequestedRef.current = false;
     hasMounted.current = true;
   }, [templateId, dispatch]);
 
@@ -139,7 +143,13 @@ const GeneratePage = () => {
   }, [templateId, template, user, dispatch]);
 
   useEffect(() => {
-    if (generatedExcel && generatedExcel.data && generatedExcel.data.htmlContent && hasMounted.current) {
+    if (
+      generationRequestedRef.current &&
+      generatedExcel &&
+      generatedExcel.data &&
+      generatedExcel.data.htmlContent &&
+      hasMounted.current
+    ) {
       console.log('📢 [GeneratePage.useEffect] generatedExcel updated in Redux');
       console.log('📢 [GeneratePage.useEffect] generatedExcel object:', {
         success: generatedExcel?.success,
@@ -156,6 +166,7 @@ const GeneratePage = () => {
         // Pass admin flag to Stage1 if present
         const adminParam = searchParams.get('admin') === 'true' ? '&admin=true' : '';
         navigate(`/stage1?templateId=${templateId}${adminParam}`);
+        generationRequestedRef.current = false;
         setIsProcessing(false);
       }, 100);
     }
@@ -181,8 +192,10 @@ const GeneratePage = () => {
       // Non-AI templates (CC4, CC5, CC6): skip section selector, directly generate Excel
       console.log('⚡ [GeneratePage] Non-AI template detected, skipping ReportSectionSelector');
       setIsProcessing(true);
+      generationRequestedRef.current = true;
       dispatch(applyFormData({ templateId, formData })).unwrap()
         .catch((error) => {
+          generationRequestedRef.current = false;
           toast.error(error || 'Failed to generate Excel');
           setIsProcessing(false);
         });
@@ -196,6 +209,7 @@ const GeneratePage = () => {
   const handleSectionSelectionSubmit = async (sectionData) => {
     // Stage 2: Combine all data and trigger generation
     setIsProcessing(true);
+    generationRequestedRef.current = true;
 
     // Merge original form data with selected sections and prompts data
     // sectionData contains { selected_sections, prompts_data }
@@ -216,6 +230,7 @@ const GeneratePage = () => {
     try {
       await dispatch(applyFormData({ templateId, formData: finalFormData })).unwrap();
     } catch (error) {
+      generationRequestedRef.current = false;
       toast.error(error || 'Failed to generate Excel');
       setIsProcessing(false);
     }

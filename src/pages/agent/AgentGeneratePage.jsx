@@ -1,10 +1,19 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { AgentLayout } from '../../components/layouts';
 import AIAssistant from '../../components/dashboard/AIAssistant';
+import { clearGeneratedExcel, clearFormData, clearRelatedDocuments } from '../../store/slices/reportSlice';
 
 const AgentGeneratePage = () => {
     const navigate = useNavigate();
+    const dispatch = useDispatch();
+
+    useEffect(() => {
+        dispatch(clearGeneratedExcel());
+        dispatch(clearFormData());
+        dispatch(clearRelatedDocuments());
+    }, [dispatch]);
 
     const handleTemplateSelect = (templateId) => {
         // Navigate to the generic generation page with the selected template
