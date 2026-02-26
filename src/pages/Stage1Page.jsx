@@ -607,12 +607,6 @@ const Stage1Page = () => {
   };
 
   const handleGenerateFullReport = async () => {
-    // Admin mode: skip payment
-    if (isAdminMode) {
-      await generateReport();
-      return;
-    }
-
     const isTermLoan = (templateId || "").toUpperCase().includes("TERM_LOAN");
 
     if (isTermLoan) {
@@ -638,23 +632,42 @@ const Stage1Page = () => {
     setShowPaymentModal(true);
   };
 
+  const uploadRelatedDocumentsForReport = useCallback(async (targetReportId) => {
+    if (!targetReportId || !relatedDocuments || relatedDocuments.length === 0) {
+      return true;
+    }
+
+    const uploadFormData = new FormData();
+    let filesAttached = false;
+
+    relatedDocuments.forEach((doc) => {
+      if (doc?.file) {
+        uploadFormData.append('files', doc.file);
+        uploadFormData.append('titles', doc.title || doc.file.name);
+        filesAttached = true;
+      }
+    });
+
+    if (!filesAttached) {
+      return true;
+    }
+
+    try {
+      await reportAPI.uploadRelatedDocuments(targetReportId, uploadFormData);
+      dispatch(clearRelatedDocuments());
+      return true;
+    } catch (error) {
+      console.error('Error uploading related documents:', error);
+      toast.error('Failed to upload related documents');
+      return false;
+    }
+  }, [relatedDocuments, dispatch]);
+
   const handlePaymentSuccess = async (paymentData) => {
     console.log('✅ Payment successful:', paymentData);
-    if (relatedDocuments && relatedDocuments.length > 0) {
-      try {
-        const uploadFormData = new FormData();
-        relatedDocuments.forEach((doc) => {
-          if (doc.file) {
-            uploadFormData.append('files', doc.file);
-            uploadFormData.append('titles', doc.title || doc.file.name);
-          }
-        });
-
-        await reportAPI.uploadRelatedDocuments(paymentData.report_id, uploadFormData);
-        dispatch(clearRelatedDocuments());
-      } catch (error) {
-        console.error('Error uploading related documents:', error);
-        toast.error('Failed to upload related documents');
+    if (paymentData?.report_id) {
+      const uploadOk = await uploadRelatedDocumentsForReport(paymentData.report_id);
+      if (!uploadOk) {
         return;
       }
     }
@@ -678,6 +691,8 @@ const Stage1Page = () => {
       });
 
       if (result.success) {
+        const generatedReportId = result?.data?.report_id;
+
         toast.success("Report generated successfully!");
 
         // Redirect to report ready page (validation message)
@@ -697,12 +712,15 @@ const Stage1Page = () => {
         if (!isAdminMode) {
           dispatch(deductAICredits());
         }
+
+        return generatedReportId;
       } else {
         throw new Error("Full report generation failed");
       }
     } catch (error) {
       console.error("❌ Error generating full report:", error);
       toast.error(error.message || "Failed to generate full AI report");
+      return null;
     } finally {
       setIsGeneratingFullReport(false);
     }

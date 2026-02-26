@@ -88,7 +88,7 @@ const AdminRoute = ({ children }) => {
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
   }
-  if (user?.role !== 'admin') {
+  if (user?.role !== 'admin' && user?.role !== 'super_admin') {
     return <Navigate to="/dashboard" replace />;
   }
   return children;
@@ -121,7 +121,7 @@ const PublicRoute = ({ children }) => {
   }
 
   // Redirect based on user role
-  if (user?.role === 'admin') {
+  if (user?.role === 'admin' || user?.role === 'super_admin') {
     return <Navigate to="/admin/dashboard" replace />;
   } else if (user?.role === 'agent') {
     return <Navigate to="/agent/dashboard" replace />;
