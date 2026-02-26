@@ -28,6 +28,8 @@ import {
   AdminReportsPage,
   AdminProfilePage,
   AdminGenerateReportPage,
+  AdminFreeCreditsPage,
+  AdminPromotionalEmailsPage,
 } from "./pages/admin";
 import {
   AgentDashboardPage,
@@ -419,6 +421,22 @@ function App() {
           element={
             <AdminRoute>
               <AdminGenerateReportPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/free-credits"
+          element={
+            <AdminRoute>
+              <AdminFreeCreditsPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/promotional-emails"
+          element={
+            <AdminRoute>
+              <AdminPromotionalEmailsPage />
             </AdminRoute>
           }
         />

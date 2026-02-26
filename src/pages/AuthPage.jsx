@@ -83,13 +83,7 @@ const AuthPage = () => {
       try {
         const response = await startVm();
         if (response?.status === 'running') {
-          await delay(5000);
-          const reconfirm = await startVm();
-          if (reconfirm?.status === 'running') {
-            return true;
-          }
-          console.warn('VM reconfirmation failed, retrying...');
-          await delay(5000);
+          return true;
         } else {
           console.log(`VM still starting (attempt ${attempt + 1}), waiting before retrying`);
           await delay(10000);
@@ -423,8 +417,8 @@ const AuthPage = () => {
                       onChange={handleRegisterChange}
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all font-['Inter']"
                     >
-                      <option value="user">User</option>
-                      <option value="agent">Finvois Agent</option>
+                      <option value="user">Finvois user</option>
+                      <option value="agent">Finvois channel partner</option>
                     </select>
                   </div>
                 </div>
@@ -486,10 +480,10 @@ const AuthPage = () => {
 
                 <button
                   type="submit"
-                  disabled={authLoading}
+                  disabled={authLoading || isVmLoading}
                   className="w-full bg-black text-white py-3 rounded-xl font-semibold hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed font-['Manrope']"
                 >
-                  {authLoading ? 'Creating Account...' : 'Create Account'}
+                  {authLoading || isVmLoading ? 'Creating Account...' : 'Create Account'}
                 </button>
               </form>
             )}

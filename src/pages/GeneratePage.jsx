@@ -310,7 +310,7 @@ const GeneratePage = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <Card className="text-center max-w-sm">
             <Loading text="Processing your request..." />
-            <p className="text-gray-600 mt-2 text-sm">Generating Excel report...</p>
+            <p className="text-gray-600 mt-2 text-sm">Generating DPR report...</p>
           </Card>
         </div>
       )}

@@ -227,14 +227,27 @@ export const reportAPI = {
   },
 
   // Create payment order for report (pay-per-report model)
-  createReportPaymentOrder: async (templateId, reportTitle, stageId = null, amount = null, selectedSheets = null, analysisOptions = null) => {
+  createReportPaymentOrder: async (
+    templateId,
+    reportTitle,
+    stageId = null,
+    amount = null,
+    selectedSheets = null,
+    analysisOptions = null,
+    formData = null,
+    bankName = null,
+    branchName = null
+  ) => {
     const response = await apiClient.post('/reports/create-payment-order', {
       template_id: templateId,
       report_title: reportTitle,
       stage_id: stageId,
       amount: amount,
       selected_sheets: selectedSheets,
-      analysis_options: analysisOptions
+      analysis_options: analysisOptions,
+      formData,
+      bank_name: bankName,
+      branch_name: branchName
     });
     return response.data;
   },
@@ -522,6 +535,56 @@ export const schemeEligibilityAPI = {
   },
 };
 
+// ============================================================================
+// System Config APIs (Admin only)
+// ============================================================================
+
+export const systemConfigAPI = {
+  getAll: async () => {
+    const response = await apiClient.get('/system-config');
+    return response.data;
+  },
+  getByKey: async (key) => {
+    const response = await apiClient.get(`/system-config/${key}`);
+    return response.data;
+  },
+  set: async (key, value, description = '') => {
+    const response = await apiClient.put(`/system-config/${key}`, { value, description });
+    return response.data;
+  },
+  setUserFreeReports: async (userId, count) => {
+    const response = await apiClient.patch(`/system-config/users/${userId}/free-reports`, { count });
+    return response.data;
+  },
+};
+
+// ============================================================================
+// Promotional Emails APIs (Admin only)
+// ============================================================================
+
+export const promotionalEmailsAPI = {
+  getAll: async () => {
+    const response = await apiClient.get('/promotional-emails');
+    return response.data;
+  },
+  add: async (data) => {
+    const response = await apiClient.post('/promotional-emails', data);
+    return response.data;
+  },
+  update: async (id, data) => {
+    const response = await apiClient.put(`/promotional-emails/${id}`, data);
+    return response.data;
+  },
+  toggle: async (id) => {
+    const response = await apiClient.patch(`/promotional-emails/${id}/toggle`);
+    return response.data;
+  },
+  remove: async (id) => {
+    const response = await apiClient.delete(`/promotional-emails/${id}`);
+    return response.data;
+  },
+};
+
 export default {
   auth: authAPI,
   wallet: walletAPI,
@@ -534,4 +597,6 @@ export default {
   user: userAPI,
   excelFile: excelFileAPI,
   schemeEligibility: schemeEligibilityAPI,
+  systemConfig: systemConfigAPI,
+  promotionalEmails: promotionalEmailsAPI,
 };

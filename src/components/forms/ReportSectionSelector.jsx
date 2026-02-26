@@ -24,8 +24,34 @@ const SECTION_CONFIG = [
     ]
   },
   {
+    id: "location_overview",
+    title: "2. Overview of the Location",
+    prompt_ref: "location_overview",
+    fields: [
+      { name: "location_name", label: "Location / Area Name", type: "text", placeholder: "e.g. KIADB Industrial Area, Tumkur" },
+      { name: "district", label: "District", type: "text", placeholder: "e.g. Tumkur" },
+      { name: "state", label: "State", type: "text", placeholder: "e.g. Karnataka" },
+      { name: "nearest_city", label: "Nearest City / Town", type: "text", placeholder: "e.g. Bangalore (70 km)" }
+    ]
+  },
+  {
+    id: "access_connectivity",
+    title: "3. Access and Connectivity",
+    prompt_ref: "access_connectivity",
+    fields: [
+      { name: "connectivity_road", label: "Road", type: "checkbox" },
+      { name: "connectivity_road_details", label: "Road Connectivity Details", type: "text", placeholder: "e.g. NH-48, State Highway 9", dependsOn: { field: "connectivity_road", value: true } },
+      { name: "connectivity_rail", label: "Rail", type: "checkbox" },
+      { name: "connectivity_rail_details", label: "Rail Connectivity Details", type: "text", placeholder: "e.g. Nearest railway station, distance", dependsOn: { field: "connectivity_rail", value: true } },
+      { name: "connectivity_air", label: "Air", type: "checkbox" },
+      { name: "connectivity_air_details", label: "Air Connectivity Details", type: "text", placeholder: "e.g. Nearest airport, distance", dependsOn: { field: "connectivity_air", value: true } },
+      { name: "connectivity_sea", label: "Sea", type: "checkbox" },
+      { name: "connectivity_sea_details", label: "Sea / Port Connectivity Details", type: "text", placeholder: "e.g. Nearest port, distance", dependsOn: { field: "connectivity_sea", value: true } }
+    ]
+  },
+  {
     id: "promoter_details",
-    title: "2. Proprietor's Background & Education",
+    title: "4. Proprietor's Background & Education",
     prompt_ref: "promoter_details",
     fields: [
       {
@@ -49,7 +75,7 @@ const SECTION_CONFIG = [
   },
   {
     id: "product_details",
-    title: "3. Details of Product Manufactured / Finished Product",
+    title: "5. Details of Product Manufactured / Finished Product",
     prompt_ref: "product_details",
     fields: [
       { name: "product_category", label: "Product Category", type: "text", placeholder: "e.g., Construction Materials, Textiles, etc." },
@@ -58,7 +84,7 @@ const SECTION_CONFIG = [
   },
   {
     id: "product_characteristics",
-    title: "4. Key Characteristics of Product",
+    title: "6. Key Characteristics of Product",
     prompt_ref: "product_characteristics",
     fields: [
       { name: "industry_type", label: "Industry Type", type: "text", placeholder: "e.g., Manufacturing, Service, etc." }
@@ -66,7 +92,7 @@ const SECTION_CONFIG = [
   },
   {
     id: "manufacturing_capacity",
-    title: "5. Manufacturing Capacity",
+    title: "7. Manufacturing Capacity",
     prompt_ref: "manufacturing_capacity",
     fields: [
       {
@@ -82,47 +108,52 @@ const SECTION_CONFIG = [
   },
   {
     id: "manufacturing_process_flowchart",
-    title: "6. Manufacturing Flowchart",
+    title: "8. Manufacturing Flowchart",
     prompt_ref: "manufacturing_process_flowchart",
+    note: "If you don't know, leave it empty. Our AI will generate it.",
     fields: [
       { name: "processing_steps", label: "Manufacturing Steps", type: "textarea", placeholder: "Briefly describe the process steps..." }
     ]
   },
   {
     id: "swot_analysis",
-    title: "7. SWOT Analysis",
+    title: "9. SWOT Analysis",
     prompt_ref: "swot_analysis",
+    note: "If you don't know, leave it empty. Our AI will generate it.",
     fields: [
       { name: "swot_user_description", label: "SWOT Notes (User Input)", type: "textarea", placeholder: "Describe your SWOT understanding or key points..." }
     ]
   },
   {
     id: "target_market_new",
-    title: "8. Target Market",
+    title: "10. Target Market",
     prompt_ref: "target_market",
+    note: "If you don't know, leave it empty. Our AI will generate it.",
     fields: [
-      { name: "target_market", label: "Target Market", type: "textarea", required: true, placeholder: "Describe target market manually..." }
+      { name: "target_market", label: "Target Market", type: "textarea", placeholder: "Describe target market manually..." }
     ]
   },
   {
     id: "competitor_overview",
-    title: "9. Competitor Overview",
+    title: "11. Competitor Overview",
     prompt_ref: "competitor_overview",
+    note: "If you don't know, leave it empty. Our AI will generate it.",
     fields: [
       { name: "competitor_notes", label: "Business / Competitor Context", type: "textarea", placeholder: "Share your local competitor insights, market positioning, or business context..." }
     ]
   },
   {
     id: "market_trend",
-    title: "10. Market Trend",
+    title: "12. Market Trend",
     prompt_ref: "market_trend",
+    note: "If you don't know, leave it empty. Our AI will generate it.",
     fields: [
       { name: "market_trend_notes", label: "Market Trend Notes", type: "textarea", placeholder: "Describe recent demand trends, growth drivers, or changes in the market..." }
     ]
   },
   {
     id: "statutory_approvals",
-    title: "11. Statutory Approvals",
+    title: "13. Statutory Approvals",
     prompt_ref: "statutory_approvals",
     fields: [
       {
@@ -151,7 +182,7 @@ const SECTION_CONFIG = [
   },
   {
     id: "marketing_techniques",
-    title: "12. Marketing Techniques",
+    title: "14. Marketing Techniques",
     prompt_ref: "marketing_techniques",
     fields: [
       { name: "has_previous_experience", label: "Previous Experience", type: "checkbox" },
@@ -165,15 +196,34 @@ const SECTION_CONFIG = [
   },
   {
     id: "power_requirements",
-    title: "13. Power Requirements",
+    title: "15. Power Requirements",
     prompt_ref: "power_requirements",
     fields: [
       { name: "power_load_required", label: "Power Load (in HP/kW)", type: "text" }
     ]
   },
   {
+    id: "inventory_stock_details",
+    title: "16. INVENTORY / STOCK DETAILS",
+    prompt_ref: "inventory_stock_details",
+    fields: [
+      {
+        name: "inventory_items",
+        label: "Inventory / Stock Details",
+        type: "group_list",
+        subFields: [
+          { name: "type_of_material", label: "Type of Material", type: "text" },
+          { name: "quantity_to_be_manufactured_per_month", label: "Quantity to be manufactured per month", type: "text" },
+          { name: "quantity_to_be_stored_per_month", label: "Quantity to be Stored per month", type: "text" },
+          { name: "no_of_days_stock", label: "No of Days of Stock", type: "text" },
+          { name: "justification", label: "Justification, if any", type: "text" }
+        ]
+      }
+    ]
+  },
+  {
     id: "plant_machinery",
-    title: "14. Plant and Machinery",
+    title: "17. Plant and Machinery",
     prompt_ref: "plant_machinery",
     fields: [
       {
@@ -192,7 +242,7 @@ const SECTION_CONFIG = [
   },
   {
     id: "raw_materials",
-    title: "15. Raw Materials",
+    title: "18. Raw Materials",
     prompt_ref: "raw_materials",
     fields: [
       {
@@ -210,7 +260,7 @@ const SECTION_CONFIG = [
   },
   {
     id: "transportation",
-    title: "16. Transportation",
+    title: "19. Transportation",
     prompt_ref: "transportation",
     fields: [
       { name: "inward_transport", label: "Inward Transportation (Raw Materials)", type: "text" },
@@ -219,7 +269,7 @@ const SECTION_CONFIG = [
   },
   {
     id: "manpower",
-    title: "17. Manpower",
+    title: "20. Manpower",
     prompt_ref: "manpower",
     fields: [
       { name: "direct_staff_count", label: "Direct Manpower (Skilled + Semi + Unskilled)", type: "text", readOnly: true },
@@ -237,7 +287,7 @@ const SECTION_CONFIG = [
   },
   {
     id: "land_requirements",
-    title: "18. Justification of Land Requirements",
+    title: "21. Justification of Land Requirements",
     prompt_ref: "land_requirements",
     fields: [
       {
@@ -253,7 +303,7 @@ const SECTION_CONFIG = [
   },
   {
     id: "implementation_timeline",
-    title: "19. Implementation Timeline",
+    title: "22. Implementation Timeline",
     prompt_ref: "implementation_timeline",
     fields: [
       {
@@ -271,7 +321,7 @@ const SECTION_CONFIG = [
   },
   {
     id: "conclusion",
-    title: "20. Conclusion",
+    title: "23. Conclusion",
     prompt_ref: "conclusion",
     fields: [
       { name: "custom_conclusion", label: "Custom Conclusion (Optional)", type: "textarea" }
@@ -360,6 +410,23 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
               { designation: "Unskilled Workers", count: "8" },
               { designation: "Admin Staff", count: "2" }
             ];
+          } else if (field.name === 'inventory_items') {
+            testData[section.id][field.name] = [
+              {
+                type_of_material: "Raw material",
+                quantity_to_be_manufactured_per_month: "10-15 Tonnes",
+                quantity_to_be_stored_per_month: "12 Tonnes",
+                no_of_days_stock: "30",
+                justification: "To ensure uninterrupted production cycle"
+              },
+              {
+                type_of_material: "Finished product",
+                quantity_to_be_manufactured_per_month: "5-7 Tonnes",
+                quantity_to_be_stored_per_month: "2 Tonnes",
+                no_of_days_stock: "10",
+                justification: "Based on dispatch schedule and local demand"
+              }
+            ];
           } else if (field.type === 'group_list') {
             testData[section.id][field.name] = [
               { [field.subFields[0].name]: "Initial Item", [field.subFields[1].name]: "Initial Value" }
@@ -438,6 +505,62 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
       const stage1 = initialData.prompts_data;
       const getS1 = (section, cell) => stage1[section]?.[cell] || stage1[section]?.[cell.toLowerCase()] || '';
 
+      const formatLakhAsRupees = (value) => {
+        if (value === undefined || value === null || value === '') return '';
+        const cleaned = String(value).replace(/[₹,\s]/g, '').trim();
+        const numeric = Number(cleaned);
+        if (!Number.isFinite(numeric)) return String(value);
+        const rupees = Math.round(numeric * 100000);
+        return `₹ ${rupees.toLocaleString('en-IN')}`;
+      };
+
+      const extractPlantMachineryFromFixedAssets = () => {
+        const fixedAssets = stage1?.['Fixed Assets Schedule'] || stage1?.fixedAssetsSchedule || {};
+        const plantCategory = fixedAssets?.['Plant and Machinery'] || fixedAssets?.plant_and_machinery;
+        if (!plantCategory || typeof plantCategory !== 'object') return [];
+
+        const normalizedItems = [];
+
+        if (Array.isArray(plantCategory?.items)) {
+          plantCategory.items.forEach((item = {}) => {
+            const machineryName = (item.description || item.machinery_name || '').toString().trim();
+            const rawCost = (item.amount ?? item.total_machinery_cost ?? '').toString().trim();
+            const machineryCost = formatLakhAsRupees(rawCost);
+            if (machineryName || machineryCost) {
+              normalizedItems.push({
+                machinery_name: machineryName,
+                machinery_supplier: item.machinery_supplier || '',
+                total_machinery_cost: machineryCost,
+                quotations_taken: item.quotations_taken || '',
+                machinery_origin: item.machinery_origin || ''
+              });
+            }
+          });
+          return normalizedItems;
+        }
+
+        Object.keys(plantCategory)
+          .sort((a, b) => Number(a) - Number(b))
+          .forEach((rowKey) => {
+            const item = plantCategory[rowKey] || {};
+            const machineryName = (item.description || item.machinery_name || '').toString().trim();
+            const rawCost = (item.amount ?? item.total_machinery_cost ?? '').toString().trim();
+            const machineryCost = formatLakhAsRupees(rawCost);
+            const isActive = item?.isActive === undefined || item?.isActive === true;
+            if (isActive && (machineryName || machineryCost)) {
+              normalizedItems.push({
+                machinery_name: machineryName,
+                machinery_supplier: item.machinery_supplier || '',
+                total_machinery_cost: machineryCost,
+                quotations_taken: item.quotations_taken || '',
+                machinery_origin: item.machinery_origin || ''
+              });
+            }
+          });
+
+        return normalizedItems;
+      };
+
       const autoMapped = {};
       const newHiddenFields = {};
 
@@ -503,6 +626,15 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
           }
         } else if (section.id === 'product_characteristics') {
           setMapped('product_characteristics', 'industry_type', getS1('General Information', 'i14'));
+        } else if (section.id === 'plant_machinery') {
+          const hasExistingMachinery = Array.isArray(stage1?.plant_machinery?.machinery_items) && stage1.plant_machinery.machinery_items.length > 0;
+          if (!hasExistingMachinery) {
+            const prefilledMachinery = extractPlantMachineryFromFixedAssets();
+            if (prefilledMachinery.length > 0) {
+              if (!autoMapped[section.id]) autoMapped[section.id] = {};
+              autoMapped[section.id].machinery_items = prefilledMachinery;
+            }
+          }
         } else if (section.id === 'swot_analysis' || section.id === 'competitor_overview' || section.id === 'market_trend') {
           const address = getS1('General Information', 'i16');
           const products = getS1('General Information', 'i15');
@@ -726,6 +858,111 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
 
     if (field.type === 'group_list') {
       const items = currentSectionData[field.name] || [];
+
+      // ── Special renderer for Implementation Timeline milestones ──────────
+      if (sectionId === 'implementation_timeline' && field.name === 'milestones') {
+        const FIXED_DESCRIPTIONS = [
+          "Construction",
+          "Machinery/Equipment Erection",
+          "Machinery/Equipment Trail Run",
+          "Commercial Run start date"
+        ];
+        const isFixedItem = (item) => FIXED_DESCRIPTIONS.includes(item.description);
+
+        const insertMilestone = (beforeIndex) => {
+          const list = [...items];
+          list.splice(beforeIndex, 0, { description: '', start_date: '', end_date: '' });
+          handleFieldChange(sectionId, field.name, list);
+        };
+
+        return (
+          <div key={field.name} className="space-y-3">
+            <label className="block text-sm font-medium text-gray-700">{field.label}</label>
+            <div className="space-y-3">
+              {items.map((item, idx) => {
+                const isFixed = isFixedItem(item);
+                const isCommercialRun = item.description === 'Commercial Run start date';
+                return (
+                  <React.Fragment key={idx}>
+                    {/* "+" insert button before Commercial Run start date (and after any custom items) */}
+                    {isCommercialRun && (
+                      <div className="flex justify-center my-1">
+                        <button
+                          type="button"
+                          onClick={() => insertMilestone(idx)}
+                          className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 font-medium px-4 py-1.5 rounded-full border border-purple-300 hover:bg-purple-50 transition-colors shadow-sm"
+                          title="Add custom stage before Commercial Run"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          Add Stage
+                        </button>
+                      </div>
+                    )}
+                    <div className={`relative p-4 bg-gray-50 border rounded-lg border-purple-200 bg-purple-50/20`}>
+                      <div className={`grid grid-cols-1 gap-4 ${isCommercialRun ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
+                        {/* Description */}
+                        <div className="space-y-1">
+                          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Description</label>
+                          <input
+                            type="text"
+                            placeholder="Stage description"
+                            className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500`}
+                            value={item.description || ''}
+                            onChange={(e) => handleGroupListChange(sectionId, field.name, idx, 'description', e.target.value)}
+                          />
+                        </div>
+                        {/* Start Date */}
+                        <div className="space-y-1">
+                          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
+                            {isCommercialRun ? 'Date' : 'Start Date'}
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="DD/MM/YYYY"
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
+                            value={item.start_date || ''}
+                            onChange={(e) => handleGroupListChange(sectionId, field.name, idx, 'start_date', e.target.value)}
+                          />
+                        </div>
+                        {/* End Date — hidden for Commercial Run */}
+                        {!isCommercialRun && (
+                          <div className="space-y-1">
+                            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">End Date</label>
+                            <input
+                              type="text"
+                              placeholder="DD/MM/YYYY"
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
+                              value={item.end_date || ''}
+                              onChange={(e) => handleGroupListChange(sectionId, field.name, idx, 'end_date', e.target.value)}
+                            />
+                          </div>
+                        )}
+                      </div>
+                      {/* Remove button only for custom (non-fixed) items */}
+                      {!isFixed && (
+                        <button
+                          type="button"
+                          onClick={() => removeGroupItem(sectionId, field.name, idx)}
+                          className="absolute top-4 right-4 text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-full transition-colors"
+                          title="Remove Stage"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        );
+      }
+      // ─────────────────────────────────────────────────────────────────────
+
       return (
         <div key={field.name} className="space-y-3">
           <label className="block text-sm font-medium text-gray-700">{field.label}</label>
@@ -981,6 +1218,12 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
                   {selectedSections[section.id] && section.fields.length > 0 && expandedSection === section.id && (
                     <div className="px-4 pb-4 border-t border-gray-100">
                       <div className="pt-4 space-y-4">
+                        {section.note && (
+                          <div className="flex items-center gap-2 p-3 bg-blue-50 text-blue-700 rounded-md text-sm border border-blue-100">
+                            <InformationCircleIcon className="w-4 h-4" />
+                            <span>{section.note}</span>
+                          </div>
+                        )}
                         {(() => {
                           const renderedFields = section.fields.map(field => renderField(field, section.id)).filter(f => f !== null);
                           return renderedFields.length > 0 ? renderedFields : (

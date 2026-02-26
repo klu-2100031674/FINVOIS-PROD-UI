@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, CreditCard, CheckCircle2, ShieldCheck, AlertCircle } from 'lucide-react';
+import { X, CreditCard, CheckCircle2, ShieldCheck, AlertCircle, Gift } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSelector } from 'react-redux';
 import { reportAPI, pricingAPI } from '../../api/endpoints';
+import apiClient from '../../api/apiClient';
 import toast from 'react-hot-toast';
 
 const PaymentModal = ({
@@ -17,13 +19,50 @@ const PaymentModal = ({
   const [pricing, setPricing] = useState(null);
   const [loadingPricing, setLoadingPricing] = useState(true);
   const [selectedSheets, setSelectedSheets] = useState({});
+  const [freeCreditsCount, setFreeCreditsCount] = useState(0);
+  const [loadingFreeCredits, setLoadingFreeCredits] = useState(false);
   const isBetaMode = import.meta.env.VITE_BETA_MODE === 'true';
+  const savedFormData = useSelector((state) => state.report.formData);
+
+  const extractBankDetails = () => {
+    if (!savedFormData) {
+      return { bankName: null, branchName: null };
+    }
+
+    const additional = savedFormData?.additionalData || savedFormData?.formData?.additionalData;
+    if (additional) {
+      return {
+        bankName: additional.bank_name || null,
+        branchName: additional.branch_name || null
+      };
+    }
+
+    const general = savedFormData?.['General Information'] || savedFormData?.formData?.['General Information'];
+    return {
+      bankName: general?.bank_name || null,
+      branchName: general?.branch_name || null
+    };
+  };
 
   useEffect(() => {
     if (isOpen && templateId) {
       fetchPricing();
+      fetchFreeCredits();
     }
   }, [isOpen, templateId]);
+
+  const fetchFreeCredits = async () => {
+    try {
+      setLoadingFreeCredits(true);
+      const res = await apiClient.get('/users/profile');
+      const count = res.data?.data?.free_reports_count ?? res.data?.free_reports_count ?? 0;
+      setFreeCreditsCount(Number(count));
+    } catch {
+      setFreeCreditsCount(0);
+    } finally {
+      setLoadingFreeCredits(false);
+    }
+  };
 
   const fetchPricing = async () => {
     try {
@@ -117,7 +156,18 @@ const PaymentModal = ({
       }
 
       if (isBetaMode) {
-        const orderResponse = await reportAPI.createReportPaymentOrder(templateId, reportTitle || `Report - ${templateId}`, null, 0, selectedSheetsData, analysisOptions);
+        const { bankName, branchName } = extractBankDetails();
+        const orderResponse = await reportAPI.createReportPaymentOrder(
+          templateId,
+          reportTitle || `Report - ${templateId}`,
+          null,
+          0,
+          selectedSheetsData,
+          analysisOptions,
+          savedFormData,
+          bankName,
+          branchName
+        );
         const { report_id } = orderResponse.data;
         const verifyResponse = await reportAPI.verifyReportPayment(report_id, {});
         onPaymentSuccess({ report_id, amount: 0, simulated: true, isBeta: true, order_id: verifyResponse.data.order_id });
@@ -125,7 +175,18 @@ const PaymentModal = ({
         return;
       }
 
-      const orderResponse = await reportAPI.createReportPaymentOrder(templateId, reportTitle || `Report - ${templateId}`, null, finalAmount, selectedSheetsData, analysisOptions);
+      const { bankName, branchName } = extractBankDetails();
+      const orderResponse = await reportAPI.createReportPaymentOrder(
+        templateId,
+        reportTitle || `Report - ${templateId}`,
+        null,
+        finalAmount,
+        selectedSheetsData,
+        analysisOptions,
+        savedFormData,
+        bankName,
+        branchName
+      );
       const { report_id, amount, currency, razorpay_order_id, razorpay_key_id } = orderResponse.data;
 
       if (!razorpay_key_id || !razorpay_order_id) {
@@ -197,10 +258,10 @@ const PaymentModal = ({
               </button>
 
               <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-purple-100">
-                {isBetaMode ? <CheckCircle2 className="w-8 h-8 text-green-600" /> : <CreditCard className="w-8 h-8 text-purple-600" />}
+                {isBetaMode || freeCreditsCount > 0 ? <CheckCircle2 className="w-8 h-8 text-green-600" /> : <CreditCard className="w-8 h-8 text-purple-600" />}
               </div>
 
-              <h2 className="text-2xl font-bold font-manrope text-gray-900">{isBetaMode ? "Generate Free Report" : "Complete Report Payment"}</h2>
+              <h2 className="text-2xl font-bold font-manrope text-gray-900">{isBetaMode ? "Generate Free Report" : freeCreditsCount > 0 ? "Use Free Report Credit" : "Complete Report Payment"}</h2>
               <p className="text-gray-500 text-sm mt-1">{reportTitle || `Report #${templateId}`}</p>
             </div>
 
@@ -213,6 +274,22 @@ const PaymentModal = ({
                 </div>
               ) : (
                 <div className="space-y-6">
+                  {/* Free Credit Banner */}
+                  {!isBetaMode && freeCreditsCount > 0 && (
+                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex gap-3">
+                      <div className="bg-purple-100 p-2 rounded-full h-fit">
+                        <Gift className="w-5 h-5 text-purple-700" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-purple-900 text-sm">Free Report Available</h4>
+                        <p className="text-sm text-purple-700 mt-1">
+                          You have <strong>{freeCreditsCount}</strong> free report credit{freeCreditsCount !== 1 ? 's' : ''} remaining.
+                          This report will be generated at no cost.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Status Banner */}
                   {isBetaMode ? (
                     <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex gap-3">
@@ -303,17 +380,20 @@ const PaymentModal = ({
               <div className="flex items-center justify-between mb-4">
                 <span className="text-gray-600 font-medium">Total Amount</span>
                 <span className="text-3xl font-bold text-gray-900">
-                  ₹{isBetaMode ? 0 : calculateTotalPrice()}
-                  <span className="text-lg text-gray-400 font-medium">.00</span>
+                  {isBetaMode || freeCreditsCount > 0
+                    ? <span className="text-green-600">FREE</span>
+                    : <>₹{calculateTotalPrice()}<span className="text-lg text-gray-400 font-medium">.00</span></>
+                  }
                 </span>
               </div>
 
               <button
                 onClick={handlePayment}
-                disabled={loading || loadingPricing}
-                className={`w-full py-3.5 rounded-xl font-bold text-lg text-white shadow-lg transition-all transform active:scale-[0.98] ${isBetaMode
-                  ? 'bg-green-600 hover:bg-green-700 shadow-green-200'
-                  : 'bg-gray-900 hover:bg-gray-800 shadow-gray-200'
+                disabled={loading || loadingPricing || loadingFreeCredits}
+                className={`w-full py-3.5 rounded-xl font-bold text-lg text-white shadow-lg transition-all transform active:scale-[0.98] ${
+                  isBetaMode || freeCreditsCount > 0
+                    ? 'bg-green-600 hover:bg-green-700 shadow-green-200'
+                    : 'bg-gray-900 hover:bg-gray-800 shadow-gray-200'
                   } disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
               >
                 {loading ? (
@@ -323,7 +403,7 @@ const PaymentModal = ({
                   </>
                 ) : (
                   <>
-                    {isBetaMode ? "Generate Report Now" : "Proceed to Payment"}
+                    {isBetaMode ? "Generate Report Now" : freeCreditsCount > 0 ? "Use Free Credit & Generate" : "Proceed to Payment"}
                   </>
                 )}
               </button>

@@ -10,7 +10,8 @@ import {
   ChevronRightIcon,
   CheckCircleIcon,
   PlusIcon,
-  TrashIcon
+  TrashIcon,
+  InformationCircleIcon
 } from '@heroicons/react/24/outline';
 
 const generateFinancialYearOptions = () => {
@@ -104,7 +105,8 @@ const FRTermLoanWithStockForm = ({
     'Prepared By': {
       'j136': '',
       'j137': '',
-      'j138': ''
+      'j138': '',
+      'j139': ''
     },
     'Expected Employment Generation': {
       'i24': '', 'j24': '', // Skilled
@@ -388,7 +390,7 @@ const FRTermLoanWithStockForm = ({
   };
 
   const requiredFields = {
-    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i18', 'i20', 'i21', 'i22', 'i23', 'bank_name', 'branch_name', 'i12', 'i13', 'i19'],
+    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i18', 'i20', 'i21', 'i22', 'i23', 'i12', 'i13', 'i19'],
     'Expected Employment Generation': ['i24', 'i25', 'i26'],
     'Term Loan Details': ['h44', 'i45', 'i46', 'i47', 'i48', 'h49', 'i51', 'i52', 'i53'],
     'Indirect Expenses Increment': ['h64', 'h65', 'h66', 'h67', 'h68', 'i56'],
@@ -403,8 +405,6 @@ const FRTermLoanWithStockForm = ({
       i7: 'Status of Concern is required',
       i8: 'Name is required',
       i9: 'Mobile Number is required',
-      bank_name: 'Bank Name / Department Name is required',
-      branch_name: 'Branch Name is required',
       i12: 'Age is required',
       i13: 'Gender is required',
       i14: 'Sector is required',
@@ -585,22 +585,6 @@ const FRTermLoanWithStockForm = ({
 
     // Special validation for Schedule for Assets
     if (sectionKey === 'assets') {
-      const currentSections = getAssetSections(formData['Term Loan Details']?.['i46']);
-      const assetCategories = Object.keys(currentSections);
-
-      // Check if all categories have been visited
-      if (visitedAssetCategories.size < assetCategories.length) {
-        return false;
-      }
-
-      // Check that categories with items have loan percentages
-      for (const categoryName of categoriesWithItems) {
-        const loanPercentage = loanPercentages[categoryName];
-        if (loanPercentage === undefined || loanPercentage === null || loanPercentage === '' || loanPercentage === 0) {
-          return false;
-        }
-      }
-
       return true;
     }
 
@@ -614,12 +598,17 @@ const FRTermLoanWithStockForm = ({
   }, [formData, currentStep, sections, visitedAssetCategories, categoriesWithItems, loanPercentages, validateGeneralInformation, validateMeansOfFinance]);
 
   const handleFieldChange = useCallback((sectionTitle, fieldId, value) => {
+    const normalizedValue =
+      sectionTitle === 'General Information' && (fieldId === 'i11' || fieldId === 'i18')
+        ? String(value || '').toUpperCase()
+        : value;
+
     setFormData(prev => {
       const updatedData = {
         ...prev,
         [sectionTitle]: {
           ...prev[sectionTitle],
-          [fieldId]: value
+          [fieldId]: normalizedValue
         }
       };
 
@@ -860,9 +849,6 @@ const FRTermLoanWithStockForm = ({
         'i10': '123456789012',
         'bank_name': 'HDFC Bank',
         'branch_name': 'Corporate Branch',
-        'j136': 'Partner X',
-        'j137': 'Partner Y',
-        'j138': '9876543210',
         'i11': 'ABCDE1234F',
         'i12': '35',
         'i13': 'Male',
@@ -876,6 +862,12 @@ const FRTermLoanWithStockForm = ({
         'i21': 'PMEGP',
         'i22': 'OC',
         'i23': 'Urban(Other than Panchayat)'
+      },
+      'Prepared By': {
+        'j136': 'Partner X',
+        'j137': 'Partner Y',
+        'j138': 'Prepared by address',
+        'j139': '9876543210'
       },
       'Expected Employment Generation': {
         'i24': '5', 'j24': '100000',
@@ -951,6 +943,46 @@ const FRTermLoanWithStockForm = ({
       const errors = validateMeansOfFinance(formData);
       setMeansOfFinanceErrors(errors);
       if (Object.keys(errors).length > 0) return;
+    }
+
+    if (currentSection.key === 'assets') {
+      const currentSections = getAssetSections(formData['Term Loan Details']?.['i46']);
+      const assetCategories = Object.keys(currentSections);
+
+      const categoriesMissingLoanPercentage = assetCategories.filter((categoryName) => {
+        const categoryItems = getAssetItems(categoryName);
+        const hasAmountEntered = categoryItems.some((item) => {
+          const amount = item?.amount;
+          return amount !== undefined && amount !== null && String(amount).trim() !== '' && Number(amount) > 0;
+        });
+
+        if (!hasAmountEntered) return false;
+
+        const loanPercentage = loanPercentages[categoryName];
+        return loanPercentage === undefined || loanPercentage === null || String(loanPercentage).trim() === '' || Number(loanPercentage) <= 0;
+      });
+
+      if (categoriesMissingLoanPercentage.length > 0) {
+        const categoryErrors = {};
+        categoriesMissingLoanPercentage.forEach((categoryName) => {
+          categoryErrors[categoryName] = 'Please enter Loan Percentage (%) before proceeding.';
+        });
+        setAssetValidationErrors(prev => ({ ...prev, ...categoryErrors }));
+
+        const firstMissingCategory = categoriesMissingLoanPercentage[0];
+        const firstMissingIndex = assetCategories.indexOf(firstMissingCategory);
+        if (firstMissingIndex >= 0) {
+          setActiveAssetTab(firstMissingIndex);
+        }
+
+        alert(`Please enter Loan Percentage (%) for these sub sections: ${categoriesMissingLoanPercentage.join(', ')}`);
+        return;
+      }
+
+      if (visitedAssetCategories.size < assetCategories.length) {
+        const shouldProceed = window.confirm('Are you sure you visited all sections and entered required or desired values?');
+        if (!shouldProceed) return;
+      }
     }
 
     if (canProceed && currentStep < sections.length - 1) {
@@ -1053,14 +1085,50 @@ const FRTermLoanWithStockForm = ({
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Mobile Number (Prepared By)
+            Address (Prepared By)
           </label>
           <input
             type="text"
             value={(formData['Prepared By'] && formData['Prepared By']['j138']) || ''}
             onChange={(e) => handleFieldChange('Prepared By', 'j138', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="Enter address"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            Mobile Number (Prepared By)
+          </label>
+          <input
+            type="text"
+            value={(formData['Prepared By'] && formData['Prepared By']['j139']) || ''}
+            onChange={(e) => handleFieldChange('Prepared By', 'j139', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
             placeholder="Enter mobile number"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            Bank Name / Department Name
+          </label>
+          <input
+            type="text"
+            value={formData['General Information']['bank_name'] || ''}
+            onChange={(e) => handleFieldChange('General Information', 'bank_name', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="Enter bank or department name"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            Branch Name
+          </label>
+          <input
+            type="text"
+            value={formData['General Information']['branch_name'] || ''}
+            onChange={(e) => handleFieldChange('General Information', 'branch_name', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="Enter branch name"
           />
         </div>
       </div>
@@ -1101,7 +1169,7 @@ const FRTermLoanWithStockForm = ({
               </select>
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Name of Proprietor/ partner/Director/Member/trustee</label>
+              <label className="block text-sm font-medium text-gray-700">Name of Proprietor/Managing partner/Managing Director/Member/trustee</label>
               <input
                 type="text"
                 className="w-full p-2 border border-gray-300 rounded-md"
@@ -1127,25 +1195,6 @@ const FRTermLoanWithStockForm = ({
                 onChange={(e) => handleFieldChange('General Information', 'i10', e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Bank Name / Department Name</label>
-              <input
-                type="text"
-                className="w-full p-2 border border-gray-300 rounded-md"
-                value={formData['General Information']['bank_name'] || ''}
-                onChange={(e) => handleFieldChange('General Information', 'bank_name', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Branch Name</label>
-              <input
-                type="text"
-                className="w-full p-2 border border-gray-300 rounded-md"
-                value={formData['General Information']['branch_name'] || ''}
-                onChange={(e) => handleFieldChange('General Information', 'branch_name', e.target.value)}
-              />
-            </div>
-
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">PAN of Proprietor (Optional)</label>
               <input
@@ -1255,9 +1304,10 @@ const FRTermLoanWithStockForm = ({
                 <option value="Industrial park Land Allotment">Industrial park Land Allotment</option>
                 <option value="PMEGP">PMEGP</option>
                 <option value="Mudra">Mudra</option>
-                <option value="Mudra">PMFME</option>
-                <option value="Mudra">PMMSY</option>
-                <option value="Mudra">Startup India</option>
+                <option value="PMFME">PMFME</option>
+                <option value="PMMSY">PMMSY</option>
+                <option value="Startup India">Startup India</option>
+                   <option value="CMEGP">CMEGP</option>
                 <option value="Other MSME">Other MSME</option>
               </select>
             </div>
@@ -1401,7 +1451,17 @@ const FRTermLoanWithStockForm = ({
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Repayment Type</label>
+              <label className="block text-sm font-medium text-gray-700">
+                <span className="inline-flex items-center gap-1">
+                  Repayment Type
+                  <span className="relative group inline-flex items-center">
+                    <InformationCircleIcon className="h-4 w-4 text-gray-500 cursor-help" aria-label="Ask your banker" />
+                    <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-[10px] font-medium text-white group-hover:block">
+                      ask your banker
+                    </span>
+                  </span>
+                </span>
+              </label>
               <select
                 className="w-full p-2 border border-gray-300 rounded-md"
                 value={formData['Term Loan Details']['i47']}
@@ -1413,7 +1473,17 @@ const FRTermLoanWithStockForm = ({
               </select>
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Moratorium Period (Months)</label>
+              <label className="block text-sm font-medium text-gray-700">
+                <span className="inline-flex items-center gap-1">
+                  Moratorium Period (Months)
+                  <span className="relative group inline-flex items-center">
+                    <InformationCircleIcon className="h-4 w-4 text-gray-500 cursor-help" aria-label="only interest amount will be paid, no fixed amount" />
+                    <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-[10px] font-medium text-white group-hover:block">
+                      only interest amount will be paid, no fixed amount
+                    </span>
+                  </span>
+                </span>
+              </label>
               <input
                 type="number" onWheel={(e) => e.target.blur()}
                 className="w-full p-2 border border-gray-300 rounded-md"
@@ -1463,7 +1533,17 @@ const FRTermLoanWithStockForm = ({
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Average DSCR Ratio Required</label>
+              <label className="block text-sm font-medium text-gray-700">
+                <span className="inline-flex items-center gap-1">
+                  Average DSCR Ratio Required
+                  <span className="relative group inline-flex items-center">
+                    <InformationCircleIcon className="h-4 w-4 text-gray-500 cursor-help" aria-label="Ask your banker" />
+                    <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-[10px] font-medium text-white group-hover:block">
+                      ask your banker
+                    </span>
+                  </span>
+                </span>
+              </label>
               <input
                 type="number" onWheel={(e) => e.target.blur()}
                 step="0.01"
@@ -1499,9 +1579,6 @@ const FRTermLoanWithStockForm = ({
               <div className="mt-3 p-3 bg-white rounded-lg border border-blue-200">
                 <p className="text-sm text-blue-700">
                   <strong>Progress:</strong> {visitedAssetCategories.size} of {assetCategories.length} categories visited.
-                  {visitedAssetCategories.size < assetCategories.length && (
-                    <span className="text-red-600 font-medium">Please visit all categories before proceeding.</span>
-                  )}
                 </p>
               </div>
             </div>
@@ -1541,7 +1618,7 @@ const FRTermLoanWithStockForm = ({
 
               <div className="grid grid-cols-12 gap-3 mb-3">
                 <div className="col-span-6 font-semibold text-gray-800 bg-gray-100 p-2 rounded-lg text-xs">
-                  Item Description
+                  Asset name or description
                 </div>
                 <div className="col-span-5 font-semibold text-gray-800 bg-gray-100 p-2 rounded-lg text-xs">
                   Amount (₹ in Lakhs)
@@ -1559,7 +1636,7 @@ const FRTermLoanWithStockForm = ({
                   <div key={item.row} className="grid grid-cols-12 gap-3">
                     <input
                       type="text"
-                      placeholder="Item description"
+                      placeholder="Asset name or description"
                       value={item.description}
                       onChange={(e) => updateAssetItem(item.row, 'd', e.target.value)}
                       className="col-span-6 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
@@ -1772,7 +1849,7 @@ const FRTermLoanWithStockForm = ({
                 <div className="mt-6 pt-4 border-t border-gray-200">
                   <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
                     <label className="block text-sm font-semibold text-indigo-700 mb-1">
-                      {activeCategory} Increment Percentage
+                      {activeCategory} Annual Increment Percentage
                     </label>
                     <div className="relative">
                       <input

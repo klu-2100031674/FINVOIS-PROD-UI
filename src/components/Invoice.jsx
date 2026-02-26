@@ -5,6 +5,19 @@ import React from 'react';
  * Renders a professional invoice layout for PDF generation
  */
 const Invoice = ({ report, payment }) => {
+  const getInvoiceNumber = () => {
+    const baseDate = payment?.paid_at || report?.createdAt || report?.created_at || new Date();
+    const date = new Date(baseDate);
+    const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
+
+    const month = safeDate.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+    const yearTwoDigits = String(safeDate.getFullYear()).slice(-2);
+    const fallbackReportId = report?._id || report?.id;
+    const paymentId = payment?.razorpay_payment_id || payment?.payment_id || fallbackReportId;
+
+    return `INV-FV-${month}-${yearTwoDigits}${paymentId}`;
+  };
+
   // Format date
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -39,8 +52,8 @@ const Invoice = ({ report, payment }) => {
 
       {/* Company Info */}
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Finvois</h2>
-        <p className="text-gray-600 mb-1">Professional Excel Report Generation Services</p>
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">Finvois Open Business Solutions LLC</h2>
+        <p className="text-gray-600 mb-1">Detailed Project Report Generation Services</p>
         <p className="text-gray-600 mb-1">Email: support@finvois.com</p>
         <p className="text-gray-600">Website: www.finvois.com</p>
       </div>
@@ -52,7 +65,9 @@ const Invoice = ({ report, payment }) => {
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-600">Invoice Number:</span>
-              <span className="font-medium">INV-{payment?.razorpay_order_id || 'N/A'}</span>
+              <span className="font-medium text-sm break-words text-right max-w-[260px] leading-tight">
+                {getInvoiceNumber()}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Date:</span>
@@ -94,7 +109,7 @@ const Invoice = ({ report, payment }) => {
           <tbody>
             <tr>
               <td className="border border-gray-300 px-4 py-3">
-                Excel Report Generation Service<br />
+                Detailed Project Report Generation Service<br />
                 <span className="text-sm text-gray-600">Template: {report?.templateId || 'N/A'}</span>
               </td>
               <td className="border border-gray-300 px-4 py-3 text-center">1</td>
@@ -125,16 +140,15 @@ const Invoice = ({ report, payment }) => {
         <div className="bg-gray-50 p-4 rounded-lg">
           <div className="flex items-center justify-between">
             <span className="text-gray-600">Payment Status:</span>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-              payment?.status === 'completed'
-                ? 'bg-green-100 text-green-800'
-                : payment?.status === 'pending'
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${payment?.status === 'completed'
+              ? 'bg-green-100 text-green-800'
+              : payment?.status === 'pending'
                 ? 'bg-yellow-100 text-yellow-800'
                 : 'bg-red-100 text-red-800'
-            }`}>
+              }`}>
               {payment?.status === 'completed' ? 'PAID' :
-               payment?.status === 'pending' ? 'PENDING' :
-               payment?.status?.toUpperCase() || 'UNKNOWN'}
+                payment?.status === 'pending' ? 'PENDING' :
+                  payment?.status?.toUpperCase() || 'UNKNOWN'}
             </span>
           </div>
           {payment?.paid_at && (

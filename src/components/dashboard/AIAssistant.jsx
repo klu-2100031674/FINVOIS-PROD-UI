@@ -73,7 +73,7 @@ const AIAssistant = ({ onSelectTemplate }) => {
                 />
                 <SelectionCard
                     icon={ClipboardDocumentCheckIcon}
-                    title="CMA Data"
+                    title="CMA Data Projections"
                     description="Credit Monitoring Arrangement data for working capital"
                     onClick={() => toast.error("CMA Templates are Coming Soon")}
                     badge="Coming Soon (Select Format)"
@@ -129,7 +129,7 @@ const AIAssistant = ({ onSelectTemplate }) => {
     const renderStockCheck = () => (
         <div className="space-y-4">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-                Does your service business maintain stock or inventory?
+                Does your business maintain stock or inventory?
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SelectionCard

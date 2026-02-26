@@ -25,7 +25,9 @@ import {
   Settings,
   BarChart3,
   Zap,
-  CreditCard
+  CreditCard,
+  Gift,
+  Mail
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -49,6 +51,8 @@ const AdminLayout = ({ children }) => {
     { to: '/admin/templates', icon: FileStack, label: 'Template Config' },
     { to: '/admin/withdrawals', icon: Wallet, label: 'Withdrawals' },
     { to: '/admin/payments', icon: CreditCard, label: 'Transactions' },
+    { to: '/admin/free-credits', icon: Gift, label: 'Free Credits' },
+    { to: '/admin/promotional-emails', icon: Mail, label: 'Promo Emails' },
     { to: '/admin/profile', icon: User, label: 'Profile' },
   ];
 

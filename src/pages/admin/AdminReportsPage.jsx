@@ -603,7 +603,7 @@ const AdminReportsPage = () => {
                     )}
 
                     {/* Report Info */}
-                    <div className={activeTab === 'pending_validation' ? 'col-span-3' : 'col-span-4'}>
+                    <div className={`${activeTab === 'pending_validation' ? 'col-span-3' : 'col-span-4'} min-w-0`}>
                       <h3 className="font-medium text-gray-800 truncate" title={report.title}>{report.title}</h3>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full truncate" title={report.templateId || report.report_type}>
@@ -615,15 +615,11 @@ const AdminReportsPage = () => {
                       </div>
                     </div>
 
-                    {/* User */}
-                    <div className="col-span-2">
+                    <div className="col-span-2 min-w-0">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-sm font-medium">
-                          {report.user_id?.name?.[0]?.toUpperCase() || 'U'}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-800">{report.user_id?.name || 'Unknown'}</p>
-                          <p className="text-xs text-gray-500">{report.user_id?.email}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-800 truncate" title={report.user_id?.name || 'Unknown'}>{report.user_id?.name || 'Unknown'}</p>
+                          <p className="text-xs text-gray-500 truncate" title={report.user_id?.email}>{report.user_id?.email}</p>
                         </div>
                       </div>
                     </div>

@@ -10,7 +10,8 @@ import {
   ChevronRightIcon,
   CheckCircleIcon,
   PlusIcon,
-  TrashIcon
+  TrashIcon,
+  InformationCircleIcon
 } from '@heroicons/react/24/outline';
 
 const generateFinancialYearOptions = () => {
@@ -256,7 +257,7 @@ const FRTermLoanCCForm = ({
       'i14': '', 'i15': '', 'i16': '', 'i17': '', 'i18': '', 'i19': '', 'i20': '',
       'i21': '', 'i22': '', 'i23': ''
     },
-    'Prepared By': { 'j136': '', 'j137': '', 'j138': '' },
+    'Prepared By': { 'j136': '', 'j137': '', 'j138': '', 'j139': '' },
     'Expected Employment Generation': {
       'i24': '', 'j24': '', // Skilled
       'i25': '', 'j25': '', // Semi Skilled
@@ -493,12 +494,17 @@ const FRTermLoanCCForm = ({
   }, [liveTenure]);
 
   const handleInputChange = (section, field, value) => {
+    const normalizedValue =
+      section === 'General Information' && (field === 'i11' || field === 'i18')
+        ? String(value || '').toUpperCase()
+        : value;
+
     setFormData(prev => {
       const updatedData = {
         ...prev,
         [section]: {
           ...prev[section],
-          [field]: value
+          [field]: normalizedValue
         }
       };
 
@@ -519,12 +525,12 @@ const FRTermLoanCCForm = ({
 
     // Update liveTenure when tenure field (i47) changes
     if (section === 'Means of Finance details' && field === 'i47') {
-      const newTenure = value !== '' && value !== null && value !== undefined ? parseInt(value, 10) : null;
+      const newTenure = normalizedValue !== '' && normalizedValue !== null && normalizedValue !== undefined ? parseInt(normalizedValue, 10) : null;
       const parsedTenure = isNaN(newTenure) ? null : newTenure;
       console.log('🔢 Tenure field changed:', {
         section,
         field,
-        rawValue: value,
+        rawValue: normalizedValue,
         parsedTenure,
         currentLiveTenure: liveTenure
       });
@@ -639,7 +645,10 @@ const FRTermLoanCCForm = ({
     const section = CURRENT_ASSET_SECTIONS[category];
     const categoryItems = assetItems[category] || {};
     const maxItems = section.end - section.start + 1;
-    const currentFilled = Object.values(categoryItems).filter(item => item.description || item.amount).length;
+    const currentFilled = Object.values(categoryItems).filter(item => {
+      const hasData = item?.description?.trim() !== '' || (item?.amount !== undefined && item?.amount !== null && String(item.amount).trim() !== '');
+      return item?.isActive || hasData;
+    }).length;
 
     if (currentFilled >= maxItems) {
       alert(`Maximum ${maxItems} items allowed for ${category}`);
@@ -648,12 +657,15 @@ const FRTermLoanCCForm = ({
 
     // Find the first empty row
     for (let row = section.start; row <= section.end; row++) {
-      if (!categoryItems[row] || (!categoryItems[row].description && !categoryItems[row].amount)) {
+      const currentRow = categoryItems[row];
+      const hasData = currentRow?.description?.trim() !== '' || (currentRow?.amount !== undefined && currentRow?.amount !== null && String(currentRow.amount).trim() !== '');
+      const isInactive = !currentRow || currentRow.isActive !== true;
+      if (isInactive && !hasData) {
         setAssetItems(prev => ({
           ...prev,
           [category]: {
             ...prev[category],
-            [row]: { description: '', amount: '' }
+            [row]: { description: '', amount: '', isActive: true }
           }
         }));
         // Track that this category now has items
@@ -669,7 +681,7 @@ const FRTermLoanCCForm = ({
         ...prev,
         [category]: {
           ...prev[category],
-          [row]: { description: '', amount: '' }
+          [row]: { description: '', amount: '', isActive: false }
         }
       };
 
@@ -874,7 +886,7 @@ const FRTermLoanCCForm = ({
     onSubmit(payload);
   };
 
-  const renderInput = (section, field, label, type = 'text', options = null, suffix = null) => {
+  const renderInput = (section, field, label, type = 'text', options = null, suffix = null, infoTooltip = null) => {
     const fieldError = section === 'General Information'
       ? generalInfoErrors[field]
       : section === 'Means of Finance details'
@@ -883,7 +895,19 @@ const FRTermLoanCCForm = ({
 
     return (
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
+        <label className="block text-sm font-medium text-gray-700">
+          <span className="inline-flex items-center gap-1">
+            {label}
+            {infoTooltip && (
+              <span className="relative group inline-flex items-center">
+                <InformationCircleIcon className="h-4 w-4 text-gray-500 cursor-help" aria-label={infoTooltip} />
+                <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-[10px] font-medium text-white group-hover:block">
+                  {infoTooltip}
+                </span>
+              </span>
+            )}
+          </span>
+        </label>
         {options ? (
           <select
             value={formData[section]?.[field] || ''}
@@ -917,7 +941,13 @@ const FRTermLoanCCForm = ({
   const renderIndirectExpenseInput = (item) => (
     <div key={item.d} className="grid grid-cols-12 gap-4 mb-2 items-center">
       <div className="col-span-8">
-        <label className="block text-sm text-gray-700">{item.label}</label>
+        <input
+          type="text"
+          value={formData['Schedule for Indirect Expenses']?.[item.d] || item.label}
+          onChange={(e) => handleIndirectExpenseChange(item.d, e.target.value)}
+          className="w-full p-2 border border-gray-300 rounded-md text-sm"
+          placeholder="Expense name"
+        />
       </div>
       <div className="col-span-4">
         <input
@@ -944,7 +974,7 @@ const FRTermLoanCCForm = ({
 
   // Define required fields for each section
   const requiredFields = {
-    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i19', 'i20', 'i21', 'i22', 'bank_name', 'branch_name', 'i12', 'i13'],
+    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i19', 'i20', 'i21', 'i22', 'i12', 'i13'],
     'Expected Employment Generation': ['i24', 'i25', 'i26'],
     'Means of Finance details': ['h45', 'i46', 'i47', 'i48', 'i49', 'h52', 'h53', 'i58', 'i59', 'i60', 'i63'],
     'Indirect Expenses Increment': ['h71', 'h72', 'h73', 'h74', 'h75'],
@@ -960,8 +990,6 @@ const FRTermLoanCCForm = ({
       i7: 'Status of Concern is required',
       i8: 'Name is required',
       i9: 'Mobile Number is required',
-      bank_name: 'Bank Name / Department Name is required',
-      branch_name: 'Branch Name is required',
       i12: 'Age is required',
       i13: 'Gender is required',
       i14: 'Sector is required',
@@ -1144,21 +1172,6 @@ const FRTermLoanCCForm = ({
 
     // Special validation for Schedule for Assets
     if (sectionKey === 'assets') {
-      const assetCategories = Object.keys(CURRENT_ASSET_SECTIONS);
-
-      // Check if all categories have been visited
-      if (visitedAssetCategories.size < assetCategories.length) {
-        return false;
-      }
-
-      // Check that categories with items have loan percentages set (allow 0%)
-      for (const categoryName of categoriesWithItems) {
-        const loanPercentage = loanPercentages[categoryName];
-        if (loanPercentage === undefined || loanPercentage === null || loanPercentage === '') {
-          return false;
-        }
-      }
-
       return true;
     }
 
@@ -1184,6 +1197,45 @@ const FRTermLoanCCForm = ({
       const errors = validateMeansOfFinance(formData);
       setMeansOfFinanceErrors(errors);
       if (Object.keys(errors).length > 0) return;
+    }
+
+    if (currentSection.key === 'assets') {
+      const assetCategories = Object.keys(CURRENT_ASSET_SECTIONS);
+
+      const categoriesMissingLoanPercentage = assetCategories.filter((categoryName) => {
+        const categoryItems = assetItems[categoryName] || {};
+        const hasAmountEntered = Object.values(categoryItems).some((item) => {
+          const amount = item?.amount;
+          return amount !== undefined && amount !== null && String(amount).trim() !== '' && Number(amount) > 0;
+        });
+
+        if (!hasAmountEntered) return false;
+
+        const loanPercentage = loanPercentages[categoryName];
+        return loanPercentage === undefined || loanPercentage === null || String(loanPercentage).trim() === '' || Number(loanPercentage) <= 0;
+      });
+
+      if (categoriesMissingLoanPercentage.length > 0) {
+        const categoryErrors = {};
+        categoriesMissingLoanPercentage.forEach((categoryName) => {
+          categoryErrors[categoryName] = 'Please enter Loan Percentage (%) before proceeding.';
+        });
+        setAssetValidationErrors(prev => ({ ...prev, ...categoryErrors }));
+
+        const firstMissingCategory = categoriesMissingLoanPercentage[0];
+        const firstMissingIndex = assetCategories.indexOf(firstMissingCategory);
+        if (firstMissingIndex >= 0) {
+          setAssetActiveTab(firstMissingIndex);
+        }
+
+        alert(`Please enter Loan Percentage (%) for these sub sections: ${categoriesMissingLoanPercentage.join(', ')}`);
+        return;
+      }
+
+      if (visitedAssetCategories.size < assetCategories.length) {
+        const shouldProceed = window.confirm('Are you sure you visited all sections and entered required or desired values?');
+        if (!shouldProceed) return;
+      }
     }
 
     if (canProceed && currentStep < sections.length - 1) {
@@ -1247,7 +1299,8 @@ const FRTermLoanCCForm = ({
       'Prepared By': {
         'j136': 'Partner A',
         'j137': 'Partner B',
-        'j138': '9876543211'
+        'j138': 'Prepared by address',
+        'j139': '9876543211'
       }
     };
 
@@ -1332,11 +1385,9 @@ const FRTermLoanCCForm = ({
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {renderInput('General Information', 'i7', 'Status of Concern', 'text', ['Sole Proprietorship', 'Partnership Firm', 'Private limited Company', 'LLP', 'Society', 'Trust', 'Federation'])}
-              {renderInput('General Information', 'i8', 'Name of Proprietor/ partner/Director/Member/trustee')}
+              {renderInput('General Information', 'i8', 'Name of Proprietor/ Managing Partner/Managing Director/Member/trustee')}
               {renderInput('General Information', 'i9', 'Mobile Number')}
               {renderInput('General Information', 'i10', 'Aadhar number (Optional)')}
-              {renderInput('General Information', 'bank_name', 'Bank Name / Department Name')}
-              {renderInput('General Information', 'branch_name', 'Branch Name')}
               {renderInput('General Information', 'i11', 'PAN (Optional)')}
               {renderInput('General Information', 'i12', 'Age')}
               {renderInput('General Information', 'i13', 'Gender', 'text', ['Male', 'Female', 'Others'])}
@@ -1346,7 +1397,7 @@ const FRTermLoanCCForm = ({
               {renderInput('General Information', 'i17', 'Name of firm/Company (Optional)')}
               {renderInput('General Information', 'i18', 'PAN of firm/Company (Optional)')}
               {renderInput('General Information', 'i19', 'Education Qualification', 'text', ['Below 8th', 'Above 8th', 'SSC 10th', 'intermediate +2', 'Graduate', 'Post Graduate'])}
-              {renderInput('General Information', 'i20', 'Project covered under which Scheme', 'text', ['AP IDP 4.0', 'Industrial park Land Allotment', 'PMEGP', 'Mudra', 'PMFME', 'PMMSY', 'Startup India', 'Other MSME', 'NLM scheme'])}
+              {renderInput('General Information', 'i20', 'Project covered under which Scheme', 'text', ['AP IDP 4.0', 'Industrial park Land Allotment', 'PMEGP', 'Mudra', 'PMFME', 'PMMSY', 'Startup India', 'Other MSME', 'NLM scheme','CMEGP'])}
               {renderInput('General Information', 'i21', 'Caste', 'text', ['OC', 'SC', 'ST', 'BC', 'Minority'])}
               {renderInput('General Information', 'i22', 'Unit location', 'text', ['Rural(Panchayat)', 'Urban(Other than Panchayat)'])}
             </div>
@@ -1391,8 +1442,8 @@ const FRTermLoanCCForm = ({
               {renderInput('Means of Finance details', 'h45', 'Term Loan Rate of Interest', 'number')}
               {renderInput('Means of Finance details', 'i46', 'Installment period', 'text', ['Monthly', 'Quarterly', 'Half yearly'])}
               {renderInput('Means of Finance details', 'i47', 'Term Loan Tenure (Years)', 'number')}
-              {renderInput('Means of Finance details', 'i48', 'Fixed EMI or Fixed Principal Amount over Loan Term period', 'text', ['Fixed EMI', 'Fixed Principal'])}
-              {renderInput('Means of Finance details', 'i49', 'Moratorium period (months)', 'number')}
+              {renderInput('Means of Finance details', 'i48', 'Fixed EMI or Fixed Principal Amount over Loan Term period', 'text', ['Fixed EMI', 'Fixed Principal'], null, 'ask your banker')}
+              {renderInput('Means of Finance details', 'i49', 'Moratorium period (months)', 'number', null, null, 'only interest amount will be paid, no fixed amount')}
               {/* {renderInput('Means of Finance details', 'h50', 'Margin money for Working capital requirement', 'number')} */}
               {renderInput('Means of Finance details', 'h52', 'Working capital Loan Rate of Interest', 'number')}
               {renderInput('Means of Finance details', 'h53', 'Processing fees rate', 'number')}
@@ -1403,7 +1454,7 @@ const FRTermLoanCCForm = ({
                   {renderInput('Means of Finance details', 'i58', 'Loan Financial Year', 'text', generateFinancialYearOptions())}
                   {renderInput('Means of Finance details', 'i59', 'Loan Start Month (Month immediately after Santion Month)', 'month')}
                   {renderInput('Means of Finance details', 'i60', 'First Sale Bill Month', 'month')}
-                  {renderInput('Means of Finance details', 'i63', 'Average DSCR Ratio Required', 'number')}
+                  {renderInput('Means of Finance details', 'i63', 'Average DSCR Ratio Required', 'number', null, null, 'ask your banker')}
                 </div>
               </div>
             </div>
@@ -1440,6 +1491,13 @@ const FRTermLoanCCForm = ({
         const assetCategories = Object.keys(CURRENT_ASSET_SECTIONS);
         const activeCategoryName = assetCategories[assetActiveTab] || assetCategories[0];
         const activeItems = assetItems[activeCategoryName] || {};
+        const filledActiveRows = Object.keys(activeItems)
+          .sort((a, b) => a - b)
+          .filter((row) => {
+            const item = activeItems[row];
+            const hasData = item?.description?.trim() !== '' || (item?.amount !== undefined && item?.amount !== null && String(item.amount).trim() !== '');
+            return item?.isActive || hasData;
+          });
         const sectionConfig = CURRENT_ASSET_SECTIONS[activeCategoryName];
         const maxItems = sectionConfig.end - sectionConfig.start + 1;
 
@@ -1456,9 +1514,6 @@ const FRTermLoanCCForm = ({
               <div className="mt-3 p-3 bg-white rounded-lg border border-blue-200">
                 <p className="text-sm text-blue-700">
                   <strong>Progress:</strong> {visitedAssetCategories.size} of {assetCategories.length} categories visited.
-                  {visitedAssetCategories.size < assetCategories.length && (
-                    <span className="text-red-600 font-medium">Please visit all categories before proceeding.</span>
-                  )}
                 </p>
               </div>
             </div>
@@ -1498,7 +1553,7 @@ const FRTermLoanCCForm = ({
 
               <div className="grid grid-cols-12 gap-3 mb-3">
                 <div className="col-span-6 font-semibold text-gray-800 bg-gray-100 p-2 rounded-lg text-xs">
-                  Item Description
+                  Asset
                 </div>
                 <div className="col-span-5 font-semibold text-gray-800 bg-gray-100 p-2 rounded-lg text-xs">
                   Amount (₹ in Lakhs)
@@ -1507,18 +1562,18 @@ const FRTermLoanCCForm = ({
               </div>
 
               <div className="space-y-2 max-h-72 overflow-y-auto custom-scrollbar pr-1">
-                {Object.keys(activeItems).length === 0 && (
+                {filledActiveRows.length === 0 && (
                   <div className="text-center py-4 text-gray-500 text-sm italic">
                     No items available.
                   </div>
                 )}
-                {Object.keys(activeItems).sort((a, b) => a - b).map((row) => {
+                {filledActiveRows.map((row) => {
                   const item = activeItems[row];
                   return (
                     <div key={row} className="grid grid-cols-12 gap-3">
                       <input
                         type="text"
-                        placeholder="Item description"
+                        placeholder="Asset name or description"
                         value={item.description}
                         onChange={(e) => updateAssetItem(activeCategoryName, row, 'description', e.target.value)}
                         className="col-span-6 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
@@ -1547,14 +1602,23 @@ const FRTermLoanCCForm = ({
               <button
                 type="button"
                 onClick={() => addAssetItem(activeCategoryName)}
-                disabled={Object.values(activeItems).filter(item => item.description || item.amount).length >= maxItems}
-                className={`mt-3 px-4 py-2 text-xs rounded-lg font-medium transition-all duration-300 flex items-center gap-1.5 ${Object.values(activeItems).filter(item => item.description || item.amount).length >= maxItems
+                disabled={Object.values(activeItems).filter(item => {
+                  const hasData = item?.description?.trim() !== '' || (item?.amount !== undefined && item?.amount !== null && String(item.amount).trim() !== '');
+                  return item?.isActive || hasData;
+                }).length >= maxItems}
+                className={`mt-3 px-4 py-2 text-xs rounded-lg font-medium transition-all duration-300 flex items-center gap-1.5 ${Object.values(activeItems).filter(item => {
+                  const hasData = item?.description?.trim() !== '' || (item?.amount !== undefined && item?.amount !== null && String(item.amount).trim() !== '');
+                  return item?.isActive || hasData;
+                }).length >= maxItems
                   ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
                   : 'border-2 border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white'
                   }`}
               >
                 <PlusIcon className="w-4 h-4" />
-                Add Item ({Object.values(activeItems).filter(item => item.description || item.amount).length}/{maxItems})
+                Add Item ({Object.values(activeItems).filter(item => {
+                  const hasData = item?.description?.trim() !== '' || (item?.amount !== undefined && item?.amount !== null && String(item.amount).trim() !== '');
+                  return item?.isActive || hasData;
+                }).length}/{maxItems})
               </button>
 
               {/* Loan Requirement Section */}
@@ -1654,14 +1718,50 @@ const FRTermLoanCCForm = ({
               </div>
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-gray-800">
-                  Mobile Number (Prepared By)
+                  Address (Prepared By)
                 </label>
                 <input
                   type="text"
                   value={(formData['Prepared By'] && formData['Prepared By']['j138']) || ''}
                   onChange={(e) => handleInputChange('Prepared By', 'j138', e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+                  placeholder="Enter address"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-gray-800">
+                  Mobile Number (Prepared By)
+                </label>
+                <input
+                  type="text"
+                  value={(formData['Prepared By'] && formData['Prepared By']['j139']) || ''}
+                  onChange={(e) => handleInputChange('Prepared By', 'j139', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
                   placeholder="Enter mobile number"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-gray-800">
+                  Bank Name / Department Name
+                </label>
+                <input
+                  type="text"
+                  value={formData['General Information']?.['bank_name'] || ''}
+                  onChange={(e) => handleInputChange('General Information', 'bank_name', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+                  placeholder="Enter bank or department name"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-gray-800">
+                  Branch Name
+                </label>
+                <input
+                  type="text"
+                  value={formData['General Information']?.['branch_name'] || ''}
+                  onChange={(e) => handleInputChange('General Information', 'branch_name', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+                  placeholder="Enter branch name"
                 />
               </div>
             </div>
@@ -1753,7 +1853,7 @@ const FRTermLoanCCForm = ({
                 <div className="mt-6 pt-4 border-t border-gray-200">
                   <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
                     <label className="block text-sm font-semibold text-indigo-700 mb-1">
-                      {activeExpenseCategory} Increment Percentage
+                      {activeExpenseCategory} Annual Increment Percentage
                     </label>
                     <div className="relative">
                       <input

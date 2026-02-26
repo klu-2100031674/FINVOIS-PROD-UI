@@ -292,6 +292,26 @@ const Stage1Page = () => {
     }
   }, []);
 
+  const applyPendingEditsToPreview = useCallback(
+    (editsMap) => {
+      const iframeNode = iframeRef.current;
+      const iframeDocument =
+        iframeNode?.contentDocument || iframeNode?.contentWindow?.document;
+      if (!iframeDocument) return;
+
+      Object.values(editsMap || {}).forEach((editItem) => {
+        const cellEl = iframeDocument.querySelector(
+          `td[data-cell="${editItem.cell}"]`
+        );
+        if (!cellEl) return;
+        const formatted =
+          formatNumericDisplay(editItem.value) || String(editItem.value ?? "");
+        cellEl.textContent = formatted;
+      });
+    },
+    [formatNumericDisplay]
+  );
+
   useEffect(() => {
     console.log("🚀 [Stage1Page.useEffect] Effect triggered");
     console.log("📋 [Stage1Page.useEffect] reportId:", reportId);
@@ -356,6 +376,18 @@ const Stage1Page = () => {
     pdfFileName,
     reportId,
     templateId,
+  ]);
+
+  useEffect(() => {
+    if (!isEditableTemplate || !isEditMode) return;
+    if (!Object.keys(pendingEdits).length) return;
+    applyPendingEditsToPreview(pendingEdits);
+  }, [
+    applyPendingEditsToPreview,
+    iframeRenderVersion,
+    isEditMode,
+    isEditableTemplate,
+    pendingEdits,
   ]);
 
   const displayPDFFromBase64 = (base64Data, fileName) => {
@@ -462,10 +494,19 @@ const Stage1Page = () => {
       delete next[cellId];
       return next;
     });
+    if (htmlContent) {
+      displayHTMLContent(htmlContent);
+    }
   };
 
   const handleResetPendingEdits = () => {
     setPendingEdits({});
+    setSelectedCell(null);
+    setEditedValue("");
+    selectedCellElementRef.current = null;
+    if (htmlContent) {
+      displayHTMLContent(htmlContent);
+    }
     toast.success("Cleared staged edits");
   };
 
