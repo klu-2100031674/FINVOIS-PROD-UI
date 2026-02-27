@@ -1096,10 +1096,6 @@ const FRTermLoanCCForm = ({
       errors.h53 = 'Processing fees rate must be between 0 and 100';
     }
 
-    if (term.i59 && term.i60 && String(term.i60) < String(term.i59)) {
-      errors.i60 = 'First Sale Bill Month cannot be earlier than Loan Start Month';
-    }
-
     const dscr = Number(term.i63);
     if (String(term.i63 || '').trim() !== '' && (!Number.isFinite(dscr) || dscr < 1.75 || dscr > 5)) {
       errors.i63 = 'Average DSCR Ratio must be between 1.75 and 5';
