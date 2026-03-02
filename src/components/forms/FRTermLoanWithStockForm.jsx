@@ -662,7 +662,8 @@ const FRTermLoanWithStockForm = ({
       // But wait, if the data is empty, how do we know it's "added"?
       // We can check if the key exists in formData? No, we initialized all keys.
       // Let's assume "added" means description or amount is not empty string.
-      if (desc !== '' || amount !== '') {
+      const hasAmount = amount !== '' && amount !== null && amount !== undefined && Number(amount) !== 0;
+      if (desc !== '' || hasAmount) {
         items.push({ row: i, description: desc, amount: amount });
       }
     }
@@ -675,7 +676,7 @@ const FRTermLoanWithStockForm = ({
     for (let i = section.start; i <= section.end; i++) {
       const desc = formData['Schedule for Assets'][`d${i}`];
       const amount = formData['Schedule for Assets'][`e${i}`];
-      if ((desc === '' || desc === undefined) && (amount === '' || amount === undefined || amount === 0)) {
+      if ((desc === '' || desc === undefined) && (amount === '' || amount === undefined || Number(amount) === 0)) {
         emptyRow = i;
         break;
       }
@@ -981,7 +982,8 @@ const FRTermLoanWithStockForm = ({
       }
     }
 
-    if (canProceed && currentStep < sections.length - 1) {
+    const skipCanProceedGate = currentSection.key === 'general' || currentSection.key === 'term';
+    if ((skipCanProceedGate || canProceed) && currentStep < sections.length - 1) {
       setCurrentStep(prev => prev + 1);
     }
   };
@@ -1904,7 +1906,7 @@ const FRTermLoanWithStockForm = ({
       <div className="bg-white rounded-xl shadow-soft p-6 max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-2xl font-bold text-gray-900 mb-2">
-            Term Loan Application Form
+            Term Loan Form
           </h1>
           <p className="text-gray-600 text-sm">Manufacturing & Service Sector (With Stock)</p>
         </div>

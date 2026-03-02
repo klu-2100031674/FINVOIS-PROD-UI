@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSelector } from 'react-redux';
 import { reportAPI, pricingAPI } from '../../api/endpoints';
 import apiClient from '../../api/apiClient';
+import { resolveReportTitle } from '../../utils/reportTitle';
 import toast from 'react-hot-toast';
 
 const PaymentModal = ({
@@ -140,6 +141,11 @@ const PaymentModal = ({
     try {
       setLoading(true);
       const finalAmount = isBetaMode ? 0 : calculateTotalPrice();
+      const resolvedReportTitle = resolveReportTitle({
+        formData: savedFormData,
+        reportTitle,
+        templateId
+      });
 
       // Prepare sheets data (logic preserved from original)
       const selectedSheetsData = [];
@@ -159,7 +165,7 @@ const PaymentModal = ({
         const { bankName, branchName } = extractBankDetails();
         const orderResponse = await reportAPI.createReportPaymentOrder(
           templateId,
-          reportTitle || `Report - ${templateId}`,
+          resolvedReportTitle,
           null,
           0,
           selectedSheetsData,
@@ -178,7 +184,7 @@ const PaymentModal = ({
       const { bankName, branchName } = extractBankDetails();
       const orderResponse = await reportAPI.createReportPaymentOrder(
         templateId,
-        reportTitle || `Report - ${templateId}`,
+        resolvedReportTitle,
         null,
         finalAmount,
         selectedSheetsData,
@@ -200,7 +206,7 @@ const PaymentModal = ({
         amount: amount * 100,
         currency: currency,
         name: 'Finvois Reports',
-        description: reportTitle,
+        description: resolvedReportTitle,
         order_id: razorpay_order_id,
         handler: async function (response) {
           try {
@@ -262,7 +268,7 @@ const PaymentModal = ({
               </div>
 
               <h2 className="text-2xl font-bold font-manrope text-gray-900">{isBetaMode ? "Generate Free Report" : freeCreditsCount > 0 ? "Use Free Report Credit" : "Complete Report Payment"}</h2>
-              <p className="text-gray-500 text-sm mt-1">{reportTitle || `Report #${templateId}`}</p>
+              <p className="text-gray-500 text-sm mt-1">{resolveReportTitle({ formData: savedFormData, reportTitle, templateId })}</p>
             </div>
 
             {/* Content */}

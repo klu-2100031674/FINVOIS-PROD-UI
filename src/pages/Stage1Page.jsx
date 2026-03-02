@@ -12,6 +12,7 @@ import { reportAPI } from "../api/endpoints";
 import { deductAICredits } from "../store/slices/walletSlice";
 import { applyFinalEdits } from "../store/slices/reportSlice";
 import { selectRelatedDocuments, clearRelatedDocuments } from '../store/slices/reportSlice';
+import { resolveReportTitle } from "../utils/reportTitle";
 import toast from "react-hot-toast";
 
 const Stage1Page = () => {
@@ -608,13 +609,17 @@ const Stage1Page = () => {
 
   const handleGenerateFullReport = async () => {
     const isTermLoan = (templateId || "").toUpperCase().includes("TERM_LOAN");
+    const resolvedTitle = resolveReportTitle({
+      formData,
+      reportTitle,
+      templateId
+    });
 
     if (isTermLoan) {
       setShowAnalysisModal(true);
     } else {
       // Show payment modal for regular users
-      const title = `${templateId} Report - ${new Date().toLocaleDateString()}`;
-      setReportTitle(title);
+      setReportTitle(resolvedTitle);
       setShowPaymentModal(true);
     }
   };
@@ -622,9 +627,13 @@ const Stage1Page = () => {
   const handleAnalysisConfirm = (data) => {
     setAnalysisData(data);
     setShowAnalysisModal(false);
-    
-    const title = `${templateId} Report - ${new Date().toLocaleDateString()}`;
-    setReportTitle(title);
+
+    const resolvedTitle = resolveReportTitle({
+      formData,
+      reportTitle,
+      templateId
+    });
+    setReportTitle(resolvedTitle);
     
     // Pass analysis selections to payment modal
     setInitialSheetSelections(data.allSelections || {});

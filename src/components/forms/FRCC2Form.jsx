@@ -852,7 +852,7 @@ const FRCC2Form = ({
       <div className="bg-white rounded-xl shadow-soft p-6 max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-2xl font-bold text-gray-900 mb-2">
-            Format CC2 - Credit Card Application Form
+            Format CC2 - Credit Card Form
           </h1>
           <p className="text-gray-600 text-sm">Complete each section to generate your financial report</p>
         </div>

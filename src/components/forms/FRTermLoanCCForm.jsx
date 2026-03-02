@@ -646,7 +646,12 @@ const FRTermLoanCCForm = ({
     const categoryItems = assetItems[category] || {};
     const maxItems = section.end - section.start + 1;
     const currentFilled = Object.values(categoryItems).filter(item => {
-      const hasData = item?.description?.trim() !== '' || (item?.amount !== undefined && item?.amount !== null && String(item.amount).trim() !== '');
+      const hasData = item?.description?.trim() !== '' || (
+        item?.amount !== undefined &&
+        item?.amount !== null &&
+        String(item.amount).trim() !== '' &&
+        Number(item.amount) !== 0
+      );
       return item?.isActive || hasData;
     }).length;
 
@@ -658,7 +663,12 @@ const FRTermLoanCCForm = ({
     // Find the first empty row
     for (let row = section.start; row <= section.end; row++) {
       const currentRow = categoryItems[row];
-      const hasData = currentRow?.description?.trim() !== '' || (currentRow?.amount !== undefined && currentRow?.amount !== null && String(currentRow.amount).trim() !== '');
+      const hasData = currentRow?.description?.trim() !== '' || (
+        currentRow?.amount !== undefined &&
+        currentRow?.amount !== null &&
+        String(currentRow.amount).trim() !== '' &&
+        Number(currentRow.amount) !== 0
+      );
       const isInactive = !currentRow || currentRow.isActive !== true;
       if (isInactive && !hasData) {
         setAssetItems(prev => ({
@@ -1234,7 +1244,8 @@ const FRTermLoanCCForm = ({
       }
     }
 
-    if (canProceed && currentStep < sections.length - 1) {
+    const skipCanProceedGate = currentSection.key === 'general' || currentSection.key === 'term';
+    if ((skipCanProceedGate || canProceed) && currentStep < sections.length - 1) {
       setCurrentStep(prev => prev + 1);
     }
   };
@@ -1491,7 +1502,12 @@ const FRTermLoanCCForm = ({
           .sort((a, b) => a - b)
           .filter((row) => {
             const item = activeItems[row];
-            const hasData = item?.description?.trim() !== '' || (item?.amount !== undefined && item?.amount !== null && String(item.amount).trim() !== '');
+            const hasData = item?.description?.trim() !== '' || (
+              item?.amount !== undefined &&
+              item?.amount !== null &&
+              String(item.amount).trim() !== '' &&
+              Number(item.amount) !== 0
+            );
             return item?.isActive || hasData;
           });
         const sectionConfig = CURRENT_ASSET_SECTIONS[activeCategoryName];
@@ -1599,11 +1615,21 @@ const FRTermLoanCCForm = ({
                 type="button"
                 onClick={() => addAssetItem(activeCategoryName)}
                 disabled={Object.values(activeItems).filter(item => {
-                  const hasData = item?.description?.trim() !== '' || (item?.amount !== undefined && item?.amount !== null && String(item.amount).trim() !== '');
+                  const hasData = item?.description?.trim() !== '' || (
+                    item?.amount !== undefined &&
+                    item?.amount !== null &&
+                    String(item.amount).trim() !== '' &&
+                    Number(item.amount) !== 0
+                  );
                   return item?.isActive || hasData;
                 }).length >= maxItems}
                 className={`mt-3 px-4 py-2 text-xs rounded-lg font-medium transition-all duration-300 flex items-center gap-1.5 ${Object.values(activeItems).filter(item => {
-                  const hasData = item?.description?.trim() !== '' || (item?.amount !== undefined && item?.amount !== null && String(item.amount).trim() !== '');
+                  const hasData = item?.description?.trim() !== '' || (
+                    item?.amount !== undefined &&
+                    item?.amount !== null &&
+                    String(item.amount).trim() !== '' &&
+                    Number(item.amount) !== 0
+                  );
                   return item?.isActive || hasData;
                 }).length >= maxItems
                   ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
@@ -1612,7 +1638,12 @@ const FRTermLoanCCForm = ({
               >
                 <PlusIcon className="w-4 h-4" />
                 Add Item ({Object.values(activeItems).filter(item => {
-                  const hasData = item?.description?.trim() !== '' || (item?.amount !== undefined && item?.amount !== null && String(item.amount).trim() !== '');
+                  const hasData = item?.description?.trim() !== '' || (
+                    item?.amount !== undefined &&
+                    item?.amount !== null &&
+                    String(item.amount).trim() !== '' &&
+                    Number(item.amount) !== 0
+                  );
                   return item?.isActive || hasData;
                 }).length}/{maxItems})
               </button>
@@ -1910,7 +1941,7 @@ const FRTermLoanCCForm = ({
         <div className="mb-6 flex justify-between items-start">
           <div>
             <h1 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-2xl font-bold text-gray-900 mb-2">
-              Term Loan + CC Loan Application
+              Term Loan + CC Loan
             </h1>
             <p className="text-gray-600 text-sm">Term Loan + CC Loan</p>
           </div>

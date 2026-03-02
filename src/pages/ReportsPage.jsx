@@ -591,7 +591,9 @@ const ReportsPage = () => {
 
                 {/* Reports Grid for this category */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {category.reports.map((report) => (
+                  {category.reports.map((report) => {
+                    const reportDisplayName = report.display_name || report.client_name || report.title || `Report ${report.templateId}`;
+                    return (
                     <div
                       key={report._id}
                       className="group bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-xl hover:shadow-gray-200/50 hover:border-purple-100 transition-all duration-300 flex flex-col"
@@ -603,8 +605,8 @@ const ReportsPage = () => {
                             <FileText className="w-6 h-6 text-purple-600" />
                           </div>
                           <div className="min-w-0">
-                            <h3 className="text-lg font-bold text-gray-900 font-manrope truncate" title={report.title || `Report ${report.templateId}`}>
-                              {report.title || `Report ${report.templateId}`}
+                            <h3 className="text-lg font-bold text-gray-900 font-manrope truncate" title={reportDisplayName}>
+                              {reportDisplayName}
                             </h3>
                             <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
                               <span>{formatDate(report.createdAt)}</span>
@@ -621,8 +623,8 @@ const ReportsPage = () => {
                       {/* Content Grid */}
                       <div className="grid grid-cols-2 gap-x-4 gap-y-6 mb-8">
                         <div>
-                          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">Template</span>
-                          <span className="font-semibold text-gray-900 text-sm truncate block" title={report.templateId}>{report.templateId}</span>
+                          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">Applicant Name</span>
+                          <span className="font-semibold text-gray-900 text-sm truncate block" title={reportDisplayName}>{reportDisplayName}</span>
                         </div>
                         <div>
                           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">Type</span>
@@ -673,7 +675,7 @@ const ReportsPage = () => {
                         )}
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
             ))}

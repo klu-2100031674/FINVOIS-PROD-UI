@@ -188,6 +188,8 @@ const SECTION_CONFIG = [
       { name: "has_previous_experience", label: "Previous Experience", type: "checkbox" },
       { name: "experience_details", label: "Experience Details", type: "textarea", dependsOn: { field: "has_previous_experience", value: true } },
       { name: "has_purchase_orders", label: "Have Purchase orders ", type: "checkbox" },
+      { name: "purchase_order_government", label: "Government Purchase Orders", type: "checkbox", dependsOn: { field: "has_purchase_orders", value: true } },
+      { name: "purchase_order_private", label: "Private Purchase Orders", type: "checkbox", dependsOn: { field: "has_purchase_orders", value: true } },
       { name: "po_details", label: "PO Details", type: "textarea", dependsOn: { field: "has_purchase_orders", value: true } },
       { name: "has_marketing_team", label: "Will market the products through Marketing team", type: "checkbox" },
       { name: "has_other_methods", label: "Other Methods", type: "checkbox" },
@@ -212,9 +214,8 @@ const SECTION_CONFIG = [
         label: "Inventory / Stock Details",
         type: "group_list",
         subFields: [
-          { name: "type_of_material", label: "Type of Material", type: "text" },
-          { name: "quantity_to_be_manufactured_per_month", label: "Quantity to be manufactured per month", type: "text" },
-          { name: "quantity_to_be_stored_per_month", label: "Quantity to be Stored per month", type: "text" },
+          { name: "type_of_material", label: "Raw Material / Finished Product", type: "text" },
+          { name: "quantity_to_be_stored_per_month", label: "Quantity to be Stored", type: "text" },
           { name: "no_of_days_stock", label: "No of Days of Stock", type: "text" },
           { name: "justification", label: "Justification, if any", type: "text" }
         ]
@@ -414,14 +415,12 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
             testData[section.id][field.name] = [
               {
                 type_of_material: "Raw material",
-                quantity_to_be_manufactured_per_month: "10-15 Tonnes",
                 quantity_to_be_stored_per_month: "12 Tonnes",
                 no_of_days_stock: "30",
                 justification: "To ensure uninterrupted production cycle"
               },
               {
                 type_of_material: "Finished product",
-                quantity_to_be_manufactured_per_month: "5-7 Tonnes",
                 quantity_to_be_stored_per_month: "2 Tonnes",
                 no_of_days_stock: "10",
                 justification: "Based on dispatch schedule and local demand"
@@ -1060,8 +1059,12 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
     }
 
     if (field.type === 'checkbox') {
+      const isChildCheckbox = !!field.dependsOn;
       return (
-        <div key={field.name} className="flex items-center">
+        <div
+          key={field.name}
+          className={`flex items-center ${isChildCheckbox ? 'ml-7 pl-2 border-l border-gray-200' : ''}`}
+        >
           <input
             type="checkbox"
             checked={!!currentSectionData[field.name]}

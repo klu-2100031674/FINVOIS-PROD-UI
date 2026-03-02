@@ -233,6 +233,9 @@ const AgentReportsPage = () => {
             <div className="divide-y divide-gray-200">
               {filteredReports.map((report) => (
                 <div key={report._id} className="p-6 hover:bg-gray-50">
+                  {(() => {
+                    const reportDisplayName = report.display_name || report.client_name || report.title || 'Untitled Report';
+                    return (
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3">
@@ -241,10 +244,10 @@ const AgentReportsPage = () => {
                         </div>
                         <div>
                           <h3 className="text-sm font-medium text-gray-900">
-                            {report.title || 'Untitled Report'}
+                            {reportDisplayName}
                           </h3>
                           <p className="text-sm text-gray-500">
-                            Client: {report.client_name || 'N/A'}
+                            Client: {reportDisplayName}
                           </p>
                           <p className="text-xs text-gray-400">
                             Created: {formatDateTime(report.createdAt)}
@@ -282,6 +285,8 @@ const AgentReportsPage = () => {
                       </div>
                     </div>
                   </div>
+                    );
+                  })()}
                 </div>
               ))}
             </div>

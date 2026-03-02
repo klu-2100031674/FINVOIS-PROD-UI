@@ -333,6 +333,7 @@ const FRTermLoanForm = ({
   // Refs for tracking tenure changes
   const prevTenureRef = useRef(liveTenure);
   const expensesInitializedForGT7Ref = useRef(false);
+  const lastNextDisabledSignatureRef = useRef('');
 
   // Loan percentage state for each asset category (maps to K28-K39)
   const [loanPercentages, setLoanPercentages] = useState(() => {
@@ -365,6 +366,8 @@ const FRTermLoanForm = ({
 
   // Track categories that have items entered
   const [categoriesWithItems, setCategoriesWithItems] = useState(new Set());
+  // Track rows that should stay visible even if user clears text/amount
+  const [assetVisibleRowsByCategory, setAssetVisibleRowsByCategory] = useState({});
 
   // Error states for validation
   const [assetValidationErrors, setAssetValidationErrors] = useState({});
@@ -403,6 +406,30 @@ const FRTermLoanForm = ({
       onFormDataChange(formData);
     }
   }, [formData, onFormDataChange]);
+
+  useEffect(() => {
+    setAssetVisibleRowsByCategory(prev => {
+      const next = { ...prev };
+
+      Object.entries(CURRENT_ASSET_SECTIONS).forEach(([categoryName, section]) => {
+        const rowSet = new Set(next[categoryName] || []);
+
+        for (let i = section.start; i <= section.end; i++) {
+          const desc = formData['Schedule for Assets']?.[`d${i}`] || '';
+          const amount = formData['Schedule for Assets']?.[`e${i}`] || '';
+          const hasAmount = amount !== '' && amount !== null && amount !== undefined && Number(amount) !== 0;
+
+          if (desc !== '' || hasAmount) {
+            rowSet.add(i);
+          }
+        }
+
+        next[categoryName] = Array.from(rowSet).sort((a, b) => a - b);
+      });
+
+      return next;
+    });
+  }, [CURRENT_ASSET_SECTIONS, formData]);
 
   // Reinitialize indirect expenses when tenure changes
   useEffect(() => {
@@ -470,7 +497,7 @@ const FRTermLoanForm = ({
   const requiredFields = {
     'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i19', 'i20', 'i21', 'i22', 'i12', 'i13'],
     'Expected Employment Generation': ['i24', 'i25', 'i26'],
-    'Term Loan Details': ['h44', 'i45', 'i46', 'i47', 'i48', 'h49', 'i51', 'i52', 'i53', 'i56'],
+    'Term Loan Details': ['h44', 'i45', 'i46', 'i47', 'i48', 'h49', 'i51', 'i52', 'i53'],
     'Indirect Expenses Increment': ['h64', 'h65', 'h66', 'h67', 'h68'],
     'Schedule for Assets': [], // Add required fields if any
     'Schedule for Indirect Expenses': [] // Add required fields if any
@@ -506,9 +533,10 @@ const FRTermLoanForm = ({
         const value = formData[dataKey]?.[field];
         return value !== undefined && value !== '' && value !== null;
       });
-      // Validate DSCR from Indirect Expenses Increment
-      const dscr = formData['Indirect Expenses Increment']?.['i56'];
-      const dscrValid = dscr !== undefined && dscr !== '' && dscr !== null;
+
+      // DSCR is captured in "Indirect Expenses Increment" section (i56)
+      const dscrValue = formData['Indirect Expenses Increment']?.['i56'];
+      const dscrValid = dscrValue !== undefined && dscrValue !== '' && dscrValue !== null;
 
       return termValid && dscrValid;
     }
@@ -521,6 +549,66 @@ const FRTermLoanForm = ({
       return value !== undefined && value !== null && value !== '';
     });
   }, [formData, currentStep, sections]);
+
+  useEffect(() => {
+    if (currentStep >= sections.length - 1) {
+      lastNextDisabledSignatureRef.current = '';
+      return;
+    }
+
+    const currentSection = sections[currentStep];
+    const sectionKey = currentSection?.key;
+
+    if (canProceed) {
+      const signature = `${sectionKey}|enabled`;
+      if (lastNextDisabledSignatureRef.current !== signature) {
+        console.log('✅ [FRTermLoanForm] Next button enabled', {
+          step: currentStep,
+          sectionKey,
+          sectionTitle: currentSection?.title
+        });
+        lastNextDisabledSignatureRef.current = signature;
+      }
+      return;
+    }
+
+    const sectionDataKeys = {
+      general: 'General Information',
+      employment: 'Expected Employment Generation',
+      term: 'Term Loan Details',
+      indirect: 'Indirect Expenses Increment',
+      cost: 'Cost of Project',
+      assets: 'Schedule for Assets',
+      expenses: 'Schedule for Indirect Expenses'
+    };
+
+    const dataKey = sectionDataKeys[sectionKey];
+    const sectionData = formData[dataKey] || {};
+    const required = requiredFields[dataKey] || [];
+    const missing = required.filter((field) => {
+      const value = sectionData[field];
+      return value === undefined || value === null || value === '';
+    });
+
+    if (sectionKey === 'term') {
+      const dscrValue = formData['Indirect Expenses Increment']?.['i56'];
+      if (dscrValue === undefined || dscrValue === null || dscrValue === '') {
+        missing.push('Indirect Expenses Increment.i56 (Average DSCR Ratio required)');
+      }
+    }
+
+    const signature = `${sectionKey}|${missing.join(',')}`;
+    if (lastNextDisabledSignatureRef.current !== signature) {
+      console.warn('⛔ [FRTermLoanForm] Next button disabled', {
+        step: currentStep,
+        sectionKey,
+        sectionTitle: currentSection?.title,
+        dataKey,
+        missingFields: missing
+      });
+      lastNextDisabledSignatureRef.current = signature;
+    }
+  }, [canProceed, currentStep, formData, sections]);
 
   const handleFieldChange = useCallback((sectionTitle, fieldId, value) => {
     const normalizedValue =
@@ -679,24 +767,34 @@ const FRTermLoanForm = ({
   const getAssetItems = useCallback((categoryName) => {
     const section = CURRENT_ASSET_SECTIONS[categoryName];
     if (!section) return [];
+    const visibleRows = new Set(assetVisibleRowsByCategory[categoryName] || []);
     const items = [];
     for (let i = section.start; i <= section.end; i++) {
       const desc = formData['Schedule for Assets'][`d${i}`] || '';
       const amount = formData['Schedule for Assets'][`e${i}`] || '';
-      if (desc !== '' || amount !== '') {
+      const hasAmount = amount !== '' && amount !== null && amount !== undefined && Number(amount) !== 0;
+      if (visibleRows.has(i) || desc !== '' || hasAmount) {
         items.push({ row: i, description: desc, amount: amount });
       }
     }
     return items;
-  }, [formData]);
+  }, [formData, CURRENT_ASSET_SECTIONS, assetVisibleRowsByCategory]);
 
   // Add asset item to a category
   const addAssetItem = useCallback((categoryName) => {
     const section = CURRENT_ASSET_SECTIONS[categoryName];
+    const visibleRows = new Set(assetVisibleRowsByCategory[categoryName] || []);
+
     for (let i = section.start; i <= section.end; i++) {
       const desc = formData['Schedule for Assets'][`d${i}`];
       const amount = formData['Schedule for Assets'][`e${i}`];
-      if ((desc === '' || desc === undefined) && (amount === '' || amount === undefined || amount === 0)) {
+      const isEmpty = (desc === '' || desc === undefined) && (amount === '' || amount === undefined || Number(amount) === 0);
+      if (!visibleRows.has(i) && isEmpty) {
+        setAssetVisibleRowsByCategory(prev => ({
+          ...prev,
+          [categoryName]: [...(prev[categoryName] || []), i].sort((a, b) => a - b)
+        }));
+
         setFormData(prev => ({
           ...prev,
           'Schedule for Assets': {
@@ -711,7 +809,7 @@ const FRTermLoanForm = ({
       }
     }
     alert('Maximum items reached for this category.');
-  }, [formData]);
+  }, [formData, CURRENT_ASSET_SECTIONS, assetVisibleRowsByCategory]);
 
   // Update asset item
   const updateAssetItem = useCallback((row, field, value) => {
@@ -722,6 +820,18 @@ const FRTermLoanForm = ({
         categoryName = cat;
         break;
       }
+    }
+
+    if (categoryName) {
+      setAssetVisibleRowsByCategory(prev => {
+        const existing = new Set(prev[categoryName] || []);
+        if (existing.has(row)) return prev;
+        existing.add(row);
+        return {
+          ...prev,
+          [categoryName]: Array.from(existing).sort((a, b) => a - b)
+        };
+      });
     }
 
     setFormData(prev => {
@@ -772,6 +882,13 @@ const FRTermLoanForm = ({
       }
     }
 
+    if (categoryName) {
+      setAssetVisibleRowsByCategory(prev => ({
+        ...prev,
+        [categoryName]: (prev[categoryName] || []).filter((r) => r !== row)
+      }));
+    }
+
     setFormData(prev => {
       const newData = {
         ...prev,
@@ -806,7 +923,7 @@ const FRTermLoanForm = ({
 
       return newData;
     });
-  }, []);
+  }, [CURRENT_ASSET_SECTIONS]);
 
   const fillTestData = useCallback(() => {
     setFormData({
@@ -2006,7 +2123,8 @@ const FRTermLoanForm = ({
       }
     }
 
-    if (canProceed && currentStep < sections.length - 1) {
+    const skipCanProceedGate = currentSection.key === 'general' || currentSection.key === 'term';
+    if ((skipCanProceedGate || canProceed) && currentStep < sections.length - 1) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -2110,7 +2228,7 @@ const FRTermLoanForm = ({
       <div className="bg-white rounded-xl shadow-soft p-6 max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-2xl font-bold text-gray-900 mb-2">
-            Term Loan Application Form
+            Term Loan  Form
           </h1>
           <p className="text-gray-600 text-sm">Service Sector (Without Stock)</p>
         </div>
