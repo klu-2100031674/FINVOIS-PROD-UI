@@ -7,6 +7,60 @@ import apiClient from '../../api/apiClient';
 import { resolveReportTitle } from '../../utils/reportTitle';
 import toast from 'react-hot-toast';
 
+const RAZORPAY_CHECKOUT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
+let razorpayScriptPromise;
+
+const loadRazorpayScript = () => {
+  if (typeof window === 'undefined') {
+    return Promise.resolve(false);
+  }
+
+  if (typeof window.Razorpay === 'function') {
+    return Promise.resolve(true);
+  }
+
+  if (razorpayScriptPromise) {
+    return razorpayScriptPromise;
+  }
+
+  razorpayScriptPromise = new Promise((resolve) => {
+    const existingScript = document.querySelector(`script[src="${RAZORPAY_CHECKOUT_URL}"]`);
+
+    const onLoad = () => {
+      resolve(typeof window.Razorpay === 'function');
+    };
+
+    const onError = () => {
+      resolve(false);
+    };
+
+    if (existingScript) {
+      existingScript.addEventListener('load', onLoad, { once: true });
+      existingScript.addEventListener('error', onError, { once: true });
+
+      setTimeout(() => {
+        resolve(typeof window.Razorpay === 'function');
+      }, 0);
+
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = RAZORPAY_CHECKOUT_URL;
+    script.async = true;
+    script.addEventListener('load', onLoad, { once: true });
+    script.addEventListener('error', onError, { once: true });
+    document.body.appendChild(script);
+  }).then((loaded) => {
+    if (!loaded) {
+      razorpayScriptPromise = undefined;
+    }
+    return loaded;
+  });
+
+  return razorpayScriptPromise;
+};
+
 const PaymentModal = ({
   isOpen,
   onClose,
@@ -49,6 +103,7 @@ const PaymentModal = ({
     if (isOpen && templateId) {
       fetchPricing();
       fetchFreeCredits();
+      loadRazorpayScript();
     }
   }, [isOpen, templateId]);
 
@@ -201,6 +256,13 @@ const PaymentModal = ({
         return;
       }
 
+      const razorpayLoaded = await loadRazorpayScript();
+      if (!razorpayLoaded || typeof window.Razorpay !== 'function') {
+        toast.error('Payment gateway is temporarily unavailable. Please try again.');
+        setLoading(false);
+        return;
+      }
+
       const options = {
         key: razorpay_key_id,
         amount: amount * 100,
@@ -225,7 +287,15 @@ const PaymentModal = ({
         modal: { ondismiss: () => { setLoading(false); toast.error('Payment cancelled'); } }
       };
 
-      const rzp = new window.Razorpay(options);
+      let rzp;
+      try {
+        rzp = new window.Razorpay(options);
+      } catch (constructorError) {
+        console.error('Razorpay init failed:', constructorError);
+        toast.error('Payment gateway initialization failed. Please try again.');
+        setLoading(false);
+        return;
+      }
       rzp.open();
     } catch (error) {
       console.error(error);

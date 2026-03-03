@@ -245,7 +245,14 @@ const BuyCreditsPage = () => {
         },
       };
 
-      const razorpayInstance = new window.Razorpay(options);
+      let razorpayInstance;
+      try {
+        razorpayInstance = new window.Razorpay(options);
+      } catch (constructorError) {
+        console.error('Razorpay init failed:', constructorError);
+        toast.error('Payment gateway initialization failed. Please try again.');
+        return;
+      }
       razorpayInstance.on('payment.failed', function (response) {
         console.error('Payment failed:', response.error);
         toast.error(response.error.description || 'Payment failed');
