@@ -17,6 +17,60 @@ import toast from 'react-hot-toast';
 import { orderAPI, walletAPI } from '../api/endpoints';
 import { useAuth } from '../hooks';
 
+const RAZORPAY_CHECKOUT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
+let razorpayScriptPromise;
+
+const loadRazorpayScript = () => {
+  if (typeof window === 'undefined') {
+    return Promise.resolve(false);
+  }
+
+  if (typeof window.Razorpay === 'function') {
+    return Promise.resolve(true);
+  }
+
+  if (razorpayScriptPromise) {
+    return razorpayScriptPromise;
+  }
+
+  razorpayScriptPromise = new Promise((resolve) => {
+    const existingScript = document.querySelector(`script[src="${RAZORPAY_CHECKOUT_URL}"]`);
+
+    const onLoad = () => {
+      resolve(typeof window.Razorpay === 'function');
+    };
+
+    const onError = () => {
+      resolve(false);
+    };
+
+    if (existingScript) {
+      existingScript.addEventListener('load', onLoad, { once: true });
+      existingScript.addEventListener('error', onError, { once: true });
+
+      setTimeout(() => {
+        resolve(typeof window.Razorpay === 'function');
+      }, 0);
+
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = RAZORPAY_CHECKOUT_URL;
+    script.async = true;
+    script.addEventListener('load', onLoad, { once: true });
+    script.addEventListener('error', onError, { once: true });
+    document.body.appendChild(script);
+  }).then((loaded) => {
+    if (!loaded) {
+      razorpayScriptPromise = undefined;
+    }
+    return loaded;
+  });
+
+  return razorpayScriptPromise;
+};
+
 // Credit packages configuration
 const CREDIT_PACKAGES = [
   {
@@ -92,15 +146,9 @@ const BuyCreditsPage = () => {
     fetchWallet();
   }, []);
 
-  // Load Razorpay script
+  // Preload Razorpay script
   useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    document.body.appendChild(script);
-    return () => {
-      document.body.removeChild(script);
-    };
+    loadRazorpayScript();
   }, []);
 
   const handlePackageSelect = (pkg) => {
@@ -135,6 +183,12 @@ const BuyCreditsPage = () => {
             amount: selectedPackage.price 
           } 
         });
+        return;
+      }
+
+      const razorpayLoaded = await loadRazorpayScript();
+      if (!razorpayLoaded || typeof window.Razorpay !== 'function') {
+        toast.error('Payment gateway is temporarily unavailable. Please try again.');
         return;
       }
 
