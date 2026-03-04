@@ -1356,7 +1356,7 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
                           e.stopPropagation();
                           setExpandedSection(expandedSection === section.id ? null : section.id);
                         }}
-                        className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+                        className="inline-flex items-center justify-center p-1.5 rounded-md bg-gray-8 0 border border-gray-200 text-gray-700 hover:bg-gray-200 hover:text-gray-900 transition-colors"
                       >
                         {expandedSection === section.id ?
                           <ChevronUpIcon className="w-5 h-5" /> :

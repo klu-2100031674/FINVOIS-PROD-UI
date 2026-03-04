@@ -60,7 +60,7 @@ const AuthPage = () => {
    */
   async function startVm() {
     try {
-      const functionKey = import.meta.env.VITE_VM_FUNCTION_KEY || "YOUR_FUNCTION_KEY";
+      const functionKey = import.meta.env.VITE_VM_FUNCTION_KEY ;
       const res = await fetch(
         `https://vm-start-fn-afg5f0fpgpakcpe6.centralindia-01.azurewebsites.net/api/StartVm?code=${functionKey}`,
         { method: "POST" }
@@ -490,7 +490,7 @@ const AuthPage = () => {
           </div>
 
           <p className="text-center text-gray-600 text-sm mt-6 font-['Inter']">
-            © 2024 Finvois. All rights reserved.
+            © 2026 Finvois. All rights reserved.
           </p>
         </div>
       </div>

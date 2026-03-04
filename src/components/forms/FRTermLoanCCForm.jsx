@@ -231,6 +231,21 @@ const INDIRECT_EXPENSES_DATA = INDIRECT_EXPENSES_DATA_DEFAULT;
 
 const DEFAULT_INITIAL_DATA = {};
 
+const EXPENSE_INCREMENT_MAP = {
+  'Administrative & Office Expenses': 'h72',
+  'Employee Related Expenses': 'h71',
+  'Selling and Distribution Expenses': 'h73',
+  'General Overheads': 'h74',
+  'Miscellaneous Expenses': 'h75'
+};
+
+const EXPENSE_INCREMENT_REVERSE_MAP = Object.entries(EXPENSE_INCREMENT_MAP).reduce((acc, [category, key]) => {
+  if (key) {
+    acc[key] = category;
+  }
+  return acc;
+}, {});
+
 const FRTermLoanCCForm = ({
   onSubmit,
   initialData = DEFAULT_INITIAL_DATA,
@@ -308,6 +323,8 @@ const FRTermLoanCCForm = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [assetActiveTab, setAssetActiveTab] = useState(0);
   const [indirectActiveTab, setIndirectActiveTab] = useState(0);
+  const [visitedExpenseCategories, setVisitedExpenseCategories] = useState(new Set([0]));
+  const [expenseValidationErrors, setExpenseValidationErrors] = useState({});
 
   // Loan percentage state for each asset category (maps to K28-K39)
   const [loanPercentages, setLoanPercentages] = useState(() => {
@@ -527,6 +544,23 @@ const FRTermLoanCCForm = ({
 
       return updatedData;
     });
+
+    if (section === 'Indirect Expenses Increment') {
+      const categoryName = EXPENSE_INCREMENT_REVERSE_MAP[field];
+      if (categoryName) {
+        const trimmedValue = String(normalizedValue ?? '').trim();
+        if (trimmedValue !== '') {
+          setExpenseValidationErrors(prev => {
+            if (!prev[categoryName]) {
+              return prev;
+            }
+            const newErrors = { ...prev };
+            delete newErrors[categoryName];
+            return newErrors;
+          });
+        }
+      }
+    }
 
     // Update liveTenure when tenure field (i47) changes
     if (section === 'Means of Finance details' && field === 'i47') {
@@ -1250,6 +1284,70 @@ const FRTermLoanCCForm = ({
       }
     }
 
+    if (currentSection.key === 'expenses') {
+      const expenseCategories = Object.keys(CURRENT_INDIRECT_EXPENSES_DATA);
+      const missingIncrementCategories = [];
+      const newErrors = {};
+
+      expenseCategories.forEach((categoryName) => {
+        const items = CURRENT_INDIRECT_EXPENSES_DATA[categoryName] || [];
+        const hasAmountEntered = items.some(item => {
+          const rawValue = formData['Schedule for Indirect Expenses']?.[item.e];
+          if (rawValue === undefined || rawValue === null) {
+            return false;
+          }
+          const trimmed = String(rawValue).trim();
+          if (trimmed === '') {
+            return false;
+          }
+          const numericValue = parseFloat(trimmed);
+          return !isNaN(numericValue) && numericValue > 0;
+        });
+
+        if (!hasAmountEntered) {
+          return;
+        }
+
+        const incrementKey = EXPENSE_INCREMENT_MAP[categoryName];
+        const incrementValue = incrementKey ? formData['Indirect Expenses Increment']?.[incrementKey] : null;
+        const isIncrementMissing = incrementKey && (incrementValue === undefined || incrementValue === null || String(incrementValue).trim() === '');
+
+        if (isIncrementMissing) {
+          newErrors[categoryName] = 'Please enter Final Increment Percentage (%) for this section.';
+          missingIncrementCategories.push(categoryName);
+        }
+      });
+
+      if (missingIncrementCategories.length > 0) {
+        setExpenseValidationErrors(newErrors);
+        const firstMissingCategory = missingIncrementCategories[0];
+        const firstMissingIndex = expenseCategories.indexOf(firstMissingCategory);
+        if (firstMissingIndex >= 0) {
+          setIndirectActiveTab(firstMissingIndex);
+        }
+        return;
+      }
+
+      const unvisitedCategories = expenseCategories.filter((_, idx) => !visitedExpenseCategories.has(idx));
+      if (unvisitedCategories.length > 0) {
+        const unvisitedErrors = {};
+        unvisitedCategories.forEach((categoryName) => {
+          unvisitedErrors[categoryName] = 'Please visit this section before proceeding.';
+        });
+        setExpenseValidationErrors(unvisitedErrors);
+
+        const unvisitedIndex = expenseCategories.findIndex((_, idx) => !visitedExpenseCategories.has(idx));
+        if (unvisitedIndex !== -1) {
+          setIndirectActiveTab(unvisitedIndex);
+        }
+        return;
+      }
+
+      if (Object.keys(expenseValidationErrors).length > 0) {
+        setExpenseValidationErrors({});
+      }
+    }
+
     const skipCanProceedGate = currentSection.key === 'general' || currentSection.key === 'term';
     if ((skipCanProceedGate || canProceed) && currentStep < sections.length - 1) {
       setCurrentStep(prev => prev + 1);
@@ -1379,6 +1477,20 @@ const FRTermLoanCCForm = ({
 
     // Switch to new tab
     setAssetActiveTab(newTabIndex);
+  };
+
+  const handleExpenseTabChange = (newTabIndex) => {
+    setVisitedExpenseCategories(prev => new Set([...prev, newTabIndex]));
+    setIndirectActiveTab(newTabIndex);
+
+    const categoryName = Object.keys(CURRENT_INDIRECT_EXPENSES_DATA)[newTabIndex];
+    if (categoryName && expenseValidationErrors[categoryName]) {
+      setExpenseValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[categoryName];
+        return newErrors;
+      });
+    }
   };
 
   const renderCurrentStep = () => {
@@ -1805,19 +1917,21 @@ const FRTermLoanCCForm = ({
         const expenseCategories = Object.keys(CURRENT_INDIRECT_EXPENSES_DATA);
         const activeExpenseCategory = expenseCategories[indirectActiveTab] || expenseCategories[0];
         const activeExpenseItems = CURRENT_INDIRECT_EXPENSES_DATA[activeExpenseCategory];
-
-        // Mapping for increment percentage for FRTermLoanCCForm
-        const incrementMap = {
-          'Administrative & Office Expenses': 'h72',
-          'Employee Related Expenses': 'h71',
-          'Selling and Distribution Expenses': 'h73',
-          'General Overheads': 'h74',
-          'Miscellaneous Expenses': 'h75'
-        };
-        const incrementKey = incrementMap[activeExpenseCategory];
+        const incrementKey = EXPENSE_INCREMENT_MAP[activeExpenseCategory];
+        const expenseErrors = Object.entries(expenseValidationErrors);
 
         return (
           <div className="space-y-6">
+            {expenseErrors.length > 0 && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm font-semibold text-red-700 mb-1">Please fix the following before continuing:</p>
+                <ul className="list-disc list-inside text-xs text-red-700 space-y-0.5">
+                  {expenseErrors.map(([category, error]) => (
+                    <li key={category}>{category}: {error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div className="bg-blue-50 p-4 rounded-lg">
               <h3 className="text-lg font-medium text-blue-800 mb-2">Schedule for Indirect Expenses (Per Month)</h3>
               <p className="text-sm text-blue-600">
@@ -1829,7 +1943,7 @@ const FRTermLoanCCForm = ({
               {expenseCategories.map((categoryName, idx) => (
                 <button
                   key={categoryName}
-                  onClick={() => setIndirectActiveTab(idx)}
+                  onClick={() => handleExpenseTabChange(idx)}
                   type="button"
                   className={`px-3 py-1.5 rounded-lg transition-all duration-300 text-xs font-medium ${indirectActiveTab === idx
                     ? 'bg-gray-900 text-white'
@@ -1891,13 +2005,19 @@ const FRTermLoanCCForm = ({
                     <div className="relative">
                       <input
                         type="number" onWheel={(e) => e.target.blur()}
-                        className="w-full px-3 py-2 text-sm border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 ${expenseValidationErrors[activeExpenseCategory]
+                          ? 'border-red-400 focus:ring-red-500'
+                          : 'border-indigo-300 focus:ring-indigo-500'
+                          }`}
                         value={formData['Indirect Expenses Increment'][incrementKey]}
                         onChange={(e) => handleInputChange('Indirect Expenses Increment', incrementKey, e.target.value)}
                         placeholder="Enter %"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-500 font-medium">%</span>
                     </div>
+                    {expenseValidationErrors[activeExpenseCategory] && (
+                      <p className="text-xs text-red-600 mt-1">{expenseValidationErrors[activeExpenseCategory]}</p>
+                    )}
                   </div>
                 </div>
               )}

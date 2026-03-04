@@ -210,6 +210,21 @@ const getIndirectExpensesData = (tenure) => {
   return INDIRECT_EXPENSES_DATA_TENURE_GT7;
 };
 
+const EXPENSE_INCREMENT_MAP = {
+  'Employee Related Expenses': 'h64',
+  'Administrative & Office Expenses': 'h65',
+  'Selling and Distribution Expenses': 'h66',
+  'General Overheads': 'h67',
+  'Miscellaneous Expenses': 'h68'
+};
+
+const EXPENSE_INCREMENT_REVERSE_MAP = Object.entries(EXPENSE_INCREMENT_MAP).reduce((acc, [category, field]) => {
+  if (field) {
+    acc[field] = category;
+  }
+  return acc;
+}, {});
+
 const FRTermLoanForm = ({
   onSubmit,
   initialData = {},
@@ -322,6 +337,8 @@ const FRTermLoanForm = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [activeAssetTab, setActiveAssetTab] = useState(0);
   const [indirectActiveTab, setIndirectActiveTab] = useState(0);
+  const [visitedExpenseCategories, setVisitedExpenseCategories] = useState(new Set([0]));
+  const [expenseValidationErrors, setExpenseValidationErrors] = useState({});
 
   // Initialize tenure from initial data (i46 field in Term Loan Details)
   const initialTenure = initialData?.['Term Loan Details']?.i46 !== undefined
@@ -637,6 +654,21 @@ const FRTermLoanForm = ({
 
       return newData;
     });
+
+    if (sectionTitle === 'Indirect Expenses Increment') {
+      const categoryName = EXPENSE_INCREMENT_REVERSE_MAP[fieldId];
+      if (categoryName) {
+        const trimmed = String(normalizedValue ?? '').trim();
+        if (trimmed !== '') {
+          setExpenseValidationErrors(prev => {
+            if (!prev[categoryName]) return prev;
+            const next = { ...prev };
+            delete next[categoryName];
+            return next;
+          });
+        }
+      }
+    }
 
     // Update liveTenure when tenure field (i46) changes in Term Loan Details
     if (sectionTitle === 'Term Loan Details' && fieldId === 'i46') {
@@ -1648,6 +1680,21 @@ const FRTermLoanForm = ({
     </div>
   );
 
+  const handleExpenseTabChange = (newTabIndex) => {
+    setVisitedExpenseCategories(prev => new Set([...prev, newTabIndex]));
+    setIndirectActiveTab(newTabIndex);
+
+    const expenseCategories = Object.keys(CURRENT_INDIRECT_EXPENSES_DATA);
+    const categoryName = expenseCategories[newTabIndex];
+    if (categoryName && expenseValidationErrors[categoryName]) {
+      setExpenseValidationErrors(prev => {
+        const next = { ...prev };
+        delete next[categoryName];
+        return next;
+      });
+    }
+  };
+
   // Handle asset tab switching with validation
   const handleAssetTabChange = (newTabIndex) => {
     const assetCategories = Object.keys(CURRENT_ASSET_SECTIONS);
@@ -1893,19 +1940,23 @@ const FRTermLoanForm = ({
     const expenseCategories = Object.keys(CURRENT_INDIRECT_EXPENSES_DATA);
     const activeExpenseCategory = expenseCategories[indirectActiveTab] || expenseCategories[0];
     const activeExpenseItems = CURRENT_INDIRECT_EXPENSES_DATA[activeExpenseCategory];
+    const expenseErrors = Object.entries(expenseValidationErrors);
 
     // Mapping for increment percentage
-    const incrementMap = {
-      'Administrative & Office Expenses': 'h65',
-      'Employee Related Expenses': 'h64',
-      'Selling and Distribution Expenses': 'h66',
-      'General Overheads': 'h67',
-      'Miscellaneous Expenses': 'h68'
-    };
-    const incrementKey = incrementMap[activeExpenseCategory];
+    const incrementKey = EXPENSE_INCREMENT_MAP[activeExpenseCategory];
 
     return (
       <div className="space-y-6">
+        {expenseErrors.length > 0 && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm font-semibold text-red-700 mb-1">Please fix the following before continuing:</p>
+            <ul className="list-disc list-inside text-xs text-red-700 space-y-0.5">
+              {expenseErrors.map(([category, error]) => (
+                <li key={category}>{category}: {error}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div className="bg-blue-50 p-4 rounded-lg">
           <h3 className="text-lg font-medium text-blue-800 mb-2">Schedule for Indirect Expenses</h3>
           <p className="text-sm text-blue-600">
@@ -1917,7 +1968,7 @@ const FRTermLoanForm = ({
           {expenseCategories.map((categoryName, idx) => (
             <button
               key={categoryName}
-              onClick={() => setIndirectActiveTab(idx)}
+              onClick={() => handleExpenseTabChange(idx)}
               type="button"
               className={`px-3 py-1.5 rounded-lg transition-all duration-300 text-xs font-medium ${indirectActiveTab === idx
                 ? 'bg-gray-900 text-white'
@@ -1979,12 +2030,18 @@ const FRTermLoanForm = ({
                 <div className="relative">
                   <input
                     type="number" onWheel={(e) => e.target.blur()}
-                    className="w-full px-3 py-2 text-sm border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 ${expenseValidationErrors[activeExpenseCategory]
+                      ? 'border-red-400 focus:ring-red-500'
+                      : 'border-indigo-300 focus:ring-indigo-500'
+                      }`}
                     value={formData['Indirect Expenses Increment'][incrementKey]}
                     onChange={(e) => handleFieldChange('Indirect Expenses Increment', incrementKey, e.target.value)}
                     placeholder="Enter %"
                   />
                 </div>
+                {expenseValidationErrors[activeExpenseCategory] && (
+                  <p className="text-xs text-red-600 mt-1">{expenseValidationErrors[activeExpenseCategory]}</p>
+                )}
               </div>
             </div>
           )}
@@ -2125,6 +2182,68 @@ const FRTermLoanForm = ({
       if (visitedAssetCategories.size < assetCategories.length) {
         const shouldProceed = window.confirm('Are you sure you visited all sections and entered required or desired values?');
         if (!shouldProceed) return;
+      }
+    }
+
+    if (currentSection.key === 'expenses') {
+      const expenseCategories = Object.keys(CURRENT_INDIRECT_EXPENSES_DATA);
+      const newErrors = {};
+      const missingIncrementCategories = [];
+
+      expenseCategories.forEach((categoryName) => {
+        const items = CURRENT_INDIRECT_EXPENSES_DATA[categoryName] || [];
+        const hasAmountEntered = items.some(item => {
+          const rawValue = formData['Schedule for Indirect Expenses']?.[categoryName]?.[item.e];
+          if (rawValue === undefined || rawValue === null) {
+            return false;
+          }
+          const trimmed = String(rawValue).trim();
+          if (trimmed === '') {
+            return false;
+          }
+          const numericValue = parseFloat(trimmed);
+          return !isNaN(numericValue) && numericValue > 0;
+        });
+
+        if (!hasAmountEntered) {
+          return;
+        }
+
+        const incrementKey = EXPENSE_INCREMENT_MAP[categoryName];
+        const incrementValue = incrementKey ? formData['Indirect Expenses Increment']?.[incrementKey] : null;
+        if (incrementKey && (incrementValue === undefined || incrementValue === null || String(incrementValue).trim() === '')) {
+          newErrors[categoryName] = 'Please enter Final Increment Percentage (%) for this section.';
+          missingIncrementCategories.push(categoryName);
+        }
+      });
+
+      if (missingIncrementCategories.length > 0) {
+        setExpenseValidationErrors(newErrors);
+        const focusCategory = missingIncrementCategories[0];
+        const focusIndex = expenseCategories.indexOf(focusCategory);
+        if (focusIndex >= 0) {
+          setIndirectActiveTab(focusIndex);
+        }
+        return;
+      }
+
+      const unvisitedCategories = expenseCategories.filter((_, idx) => !visitedExpenseCategories.has(idx));
+      if (unvisitedCategories.length > 0) {
+        const unvisitedErrors = {};
+        unvisitedCategories.forEach((categoryName) => {
+          unvisitedErrors[categoryName] = 'Please visit this section before proceeding.';
+        });
+        setExpenseValidationErrors(unvisitedErrors);
+
+        const unvisitedIndex = expenseCategories.findIndex((_, idx) => !visitedExpenseCategories.has(idx));
+        if (unvisitedIndex !== -1) {
+          setIndirectActiveTab(unvisitedIndex);
+        }
+        return;
+      }
+
+      if (Object.keys(expenseValidationErrors).length > 0) {
+        setExpenseValidationErrors({});
       }
     }
 
