@@ -257,7 +257,12 @@ const FRTermLoanCCForm = ({
       'i14': '', 'i15': '', 'i16': '', 'i17': '', 'i18': '', 'i19': '', 'i20': '',
       'i21': '', 'i22': '', 'i23': ''
     },
-    'Prepared By': { 'j136': '', 'j137': '', 'j138': '', 'j139': '' },
+    'Prepared By': {
+      'j136': 'PARVEZ AND NARAYANA',
+      'j137': 'Chartered Accountants',
+      'j138': 'Vijayawada',
+      'j139': '9014221011'
+    },
     'Expected Employment Generation': {
       'i24': '', 'j24': '', // Skilled
       'i25': '', 'j25': '', // Semi Skilled
@@ -878,6 +883,7 @@ const FRTermLoanCCForm = ({
     // Combine all data
     const payload = {
       ...updatedFormData,
+      rawFormData: JSON.parse(JSON.stringify(formData)),
       bank_name: formData['General Information']['bank_name'],
       branch_name: formData['General Information']['branch_name'],
       'Fixed Assets Schedule': convertedAssets,
@@ -1304,10 +1310,10 @@ const FRTermLoanCCForm = ({
       },
       'Schedule for Indirect Expenses': testIndirectExpenses,
       'Prepared By': {
-        'j136': 'Partner A',
-        'j137': 'Partner B',
-        'j138': 'Prepared by address',
-        'j139': '9876543211'
+        'j136': 'PARVEZ AND NARAYANA',
+        'j137': 'Chartered Accountants',
+        'j138': 'Vijayawada',
+        'j139': '9014221011'
       }
     };
 

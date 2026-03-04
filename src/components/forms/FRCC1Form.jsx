@@ -199,9 +199,9 @@ const FRCC1Form = ({
       "Other Assets (Including Amortisable Assets)": { items: [], total: 0 }
     },
     "Prepared By": {
-      "j136": "",
-      "j137": "",
-      "j138": ""
+      "j136": "PARVEZ AND NARAYANA",
+      "j137": "Chartered Accountants",
+      "j138": "9014221011"
     }
   });
 
@@ -363,9 +363,9 @@ const FRCC1Form = ({
         "Other Assets (Including Amortisable Assets)": { items: [], total: 0 }
       },
       "Prepared By": {
-        "j136": "Partner X",
-        "j137": "Partner Y",
-        "j138": "9876543210"
+        "j136": "PARVEZ AND NARAYANA",
+        "j137": "Chartered Accountants",
+        "j138": "9014221011"
       }
     });
   }, []);

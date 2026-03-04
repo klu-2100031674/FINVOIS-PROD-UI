@@ -178,22 +178,28 @@ const GeneratePage = () => {
   const handleFormSubmit = (formData) => {
     // Stage 1: Capture Excel Form Data
     console.log('📝 [GeneratePage] Stage 1 Form Submit, saving to Redux:', formData);
-    const hasRawFormData = reduxFormData && Object.keys(reduxFormData).length > 0;
-    const rawFormData = hasRawFormData ? reduxFormData : formData;
+    const { rawFormData: rawFromSubmit, ...submittedFormData } = formData || {};
+    const hasRawFromSubmit = rawFromSubmit && Object.keys(rawFromSubmit).length > 0;
+    const hasReduxRawFormData = reduxFormData && Object.keys(reduxFormData).length > 0;
+    const rawFormData = hasRawFromSubmit
+      ? rawFromSubmit
+      : hasReduxRawFormData
+        ? reduxFormData
+        : submittedFormData;
 
     // Keep raw form values for "Back to Form" and section prefill
     setTempFormData(rawFormData);
     dispatch(setFormData(rawFormData));
 
     // Keep submitted/transformed payload for backend generation
-    setTempSubmittedData(formData);
+    setTempSubmittedData(submittedFormData);
 
     if (NON_AI_TEMPLATES.includes(templateId)) {
       // Non-AI templates (CC4, CC5, CC6): skip section selector, directly generate Excel
       console.log('⚡ [GeneratePage] Non-AI template detected, skipping ReportSectionSelector');
       setIsProcessing(true);
       generationRequestedRef.current = true;
-      dispatch(applyFormData({ templateId, formData })).unwrap()
+      dispatch(applyFormData({ templateId, formData: submittedFormData })).unwrap()
         .catch((error) => {
           generationRequestedRef.current = false;
           toast.error(error || 'Failed to generate Excel');

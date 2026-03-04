@@ -334,6 +334,7 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
   const [selectedSections, setSelectedSections] = useState({});
   const [sectionData, setSectionData] = useState({});
   const [expandedSection, setExpandedSection] = useState(null);
+  const [validationErrors, setValidationErrors] = useState({});
 
   const [relatedDocuments, setRelatedDocuments] = useState([]);
 
@@ -676,6 +677,16 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
   const toggleSection = (id) => {
     const newValue = !selectedSections[id];
     setSelectedSections(prev => ({ ...prev, [id]: newValue }));
+
+    if (!newValue) {
+      setValidationErrors((prev) => {
+        if (!prev[id]) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }
+
     if (newValue) {
       setExpandedSection(id);
     } else if (expandedSection === id) {
@@ -709,6 +720,137 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
 
       return next;
     });
+
+    setValidationErrors((prev) => {
+      if (!prev[sectionId]) return prev;
+      const next = { ...prev };
+      delete next[sectionId];
+      return next;
+    });
+  };
+
+  const isValuePresent = (value) => {
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'string') return value.trim().length > 0;
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === 'object') return Object.values(value).some(isValuePresent);
+    return true;
+  };
+
+  const isFieldVisible = (field, currentSectionData) => {
+    if (!field.dependsOn) return true;
+    return currentSectionData[field.dependsOn.field] === field.dependsOn.value;
+  };
+
+  const getSectionValidationError = (section) => {
+    if (!selectedSections[section.id]) return null;
+
+    const currentSectionData = sectionData[section.id] || {};
+    const visibleFields = section.fields.filter((field) => {
+      if (!isFieldVisible(field, currentSectionData)) return false;
+      if (hiddenFields[section.id]?.includes(field.name)) return false;
+      return true;
+    });
+
+    if (visibleFields.length === 0) return null;
+
+    let hasCheckedCheckbox = false;
+
+    for (const field of visibleFields) {
+      const value = currentSectionData[field.name];
+
+      if (field.required && !isValuePresent(value)) {
+        return `Please fill ${field.label}.`;
+      }
+
+      if (field.type === 'group_list') {
+        const isOptionalManpowerBreakdown = section.id === 'manpower' && field.name === 'manpower_requirements';
+        if (isOptionalManpowerBreakdown) {
+          continue;
+        }
+
+        if (!Array.isArray(value) || value.length === 0) {
+          return `Please add ${field.label}.`;
+        }
+
+        const hasIncompleteItem = value.some((item = {}) => {
+          const subFields = field.subFields || [];
+          return subFields.some((subField) => {
+            if (subField.readOnly) return false;
+            return !isValuePresent(item[subField.name]);
+          });
+        });
+
+        if (hasIncompleteItem) {
+          return `Please complete all fields in ${field.label}.`;
+        }
+
+        continue;
+      }
+
+      if (field.type === 'statutory_list') {
+        const checkedItems = Array.isArray(value)
+          ? value.filter((item) => item?.checked)
+          : [];
+
+        if (checkedItems.length === 0) {
+          return `Please select at least one option in ${field.label}.`;
+        }
+
+        const missingDescription = checkedItems.some((item) => !isValuePresent(item.description));
+        if (missingDescription) {
+          return `Please add details for selected ${field.label}.`;
+        }
+
+        continue;
+      }
+
+      if (field.type === 'checkbox') {
+        if (value === true) {
+          hasCheckedCheckbox = true;
+        }
+        continue;
+      }
+
+      if (!isValuePresent(value)) {
+        return `Please fill ${field.label}.`;
+      }
+    }
+
+    const hasOnlyCheckboxFields = visibleFields.length > 0 && visibleFields.every((field) => field.type === 'checkbox');
+    if (hasOnlyCheckboxFields && !hasCheckedCheckbox) {
+      return 'Please select at least one option in this section.';
+    }
+
+    return null;
+  };
+
+  const validateSelectedSections = () => {
+    const nextErrors = {};
+    let firstInvalidSectionId = null;
+
+    SECTION_CONFIG.forEach((section) => {
+      if (!selectedSections[section.id]) return;
+      const error = getSectionValidationError(section);
+      if (error) {
+        nextErrors[section.id] = error;
+        if (!firstInvalidSectionId) {
+          firstInvalidSectionId = section.id;
+        }
+      }
+    });
+
+    setValidationErrors(nextErrors);
+
+    if (firstInvalidSectionId) {
+      setExpandedSection(firstInvalidSectionId);
+      const sectionEl = document.getElementById(`section-card-${firstInvalidSectionId}`);
+      if (sectionEl) {
+        sectionEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    return Object.keys(nextErrors).length === 0;
   };
 
   const handleGroupListChange = (sectionId, fieldName, index, subField, value) => {
@@ -1124,6 +1266,10 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
 
 
   const handleSubmit = () => {
+    if (!validateSelectedSections()) {
+      return;
+    }
+
     onSubmit({
       selected_sections: selectedSections,
       prompts_data: sectionData,
@@ -1177,7 +1323,10 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
               {SECTION_CONFIG.map(section => (
                 <div
                   key={section.id}
-                  className={`border rounded-lg transition-all ${selectedSections[section.id]
+                  id={`section-card-${section.id}`}
+                  className={`border rounded-lg transition-all ${validationErrors[section.id]
+                    ? 'border-red-300 bg-red-50/20'
+                    : selectedSections[section.id]
                     ? 'border-purple-200 bg-purple-50/30'
                     : 'border-gray-200 bg-white'
                     }`}
@@ -1217,16 +1366,22 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
                     )}
                   </div>
 
+                  {selectedSections[section.id] && validationErrors[section.id] && (
+                    <div className="px-4 pb-3 text-sm text-red-600">
+                      {validationErrors[section.id]}
+                    </div>
+                  )}
+
                   {/* Expandable Fields Section */}
                   {selectedSections[section.id] && section.fields.length > 0 && expandedSection === section.id && (
                     <div className="px-4 pb-4 border-t border-gray-100">
                       <div className="pt-4 space-y-4">
-                        {section.note && (
+                        {/* {section.note && (
                           <div className="flex items-center gap-2 p-3 bg-blue-50 text-blue-700 rounded-md text-sm border border-blue-100">
                             <InformationCircleIcon className="w-4 h-4" />
                             <span>{section.note}</span>
                           </div>
-                        )}
+                        )} */}
                         {(() => {
                           const renderedFields = section.fields.map(field => renderField(field, section.id)).filter(f => f !== null);
                           return renderedFields.length > 0 ? renderedFields : (

@@ -62,7 +62,12 @@ const FRCC4Form = ({
       'Other Assets': { items: [], total: 0 },
       'Other Assets (Including Amortisable Assets)': { items: [], total: 0 }
     },
-    'Prepared By': initialData['Prepared By'] || {}
+    'Prepared By': {
+      j136: 'PARVEZ AND NARAYANA',
+      j137: 'Chartered Accountants',
+      j138: '9014221011',
+      ...(initialData['Prepared By'] || {})
+    }
   });
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -280,9 +285,9 @@ const FRCC4Form = ({
         'Other Assets (Including Amortisable Assets)': { items: [], total: 0 }
       },
       'Prepared By': {
-        'j136': 'Partner A',
-        'j137': 'Partner B',
-        'j138': '9876543210'
+        'j136': 'PARVEZ AND NARAYANA',
+        'j137': 'Chartered Accountants',
+        'j138': '9014221011'
       }
     });
   }, []);

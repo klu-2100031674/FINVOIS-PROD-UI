@@ -61,7 +61,12 @@ const FRCC6Form = ({
       'Live stock': { items: [], total: 0 },
       'Other Assets': { items: [], total: 0 },
     },
-    'Prepared By': initialData['Prepared By'] || {}
+    'Prepared By': {
+      j136: 'PARVEZ AND NARAYANA',
+      j137: 'Chartered Accountants',
+      j138: '9014221011',
+      ...(initialData['Prepared By'] || {})
+    }
   });
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -244,9 +249,9 @@ const FRCC6Form = ({
         'Other Assets': { items: [], total: 0 },
       },
       'Prepared By': {
-        'j136': 'Partner Name 1',
-        'j137': 'Partner Name 2',
-        'j138': '9876543210'
+        'j136': 'PARVEZ AND NARAYANA',
+        'j137': 'Chartered Accountants',
+        'j138': '9014221011'
       }
     });
   }, []);
