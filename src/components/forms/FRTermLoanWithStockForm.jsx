@@ -123,8 +123,6 @@ const FRTermLoanWithStockForm = ({
       'i51': '', // Loan Financial Year
       'i52': '', // Loan Start Month
       'i53': '', // From which month first sale bill
-      'i54': '', // From which month first sale bill
-      'i55': '', // No of months Turnover done in 1st FY
       'i56': ''  // No of months Turnover done in Next FY
     },
     'Indirect Expenses Increment': {
@@ -858,7 +856,7 @@ const FRTermLoanWithStockForm = ({
       ...prev,
       'General Information': {
         'i7': 'Sole Proprietorship',
-        'i8': 'John Doe',
+        'i8': 'Praveen Kumar',
         'i9': '9876543210',
         'i10': '123456789012',
         'bank_name': 'HDFC Bank',
@@ -868,8 +866,8 @@ const FRTermLoanWithStockForm = ({
         'i13': 'Male',
         'i14': 'Manufacturing sector',
         'i15': 'Manufacturing of Goods',
-        'i16': '123 Industrial Area',
-        'i17': 'JD Enterprises',
+        'i16': '17-3-47,thadepalli center, Vijayawada',
+        'i17': 'Praveen Kumar',
         'i18': 'New',
         'i19': 'ABCDE1234F',
         'i20': 'Graduate',
@@ -1291,7 +1289,7 @@ const FRTermLoanWithStockForm = ({
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">PAN of Proprietor (Optional)</label>
+              <label className="block text-sm font-medium text-gray-700">PAN of Proprietor</label>
               <input
                 type="text"
                 className="w-full p-2 border border-gray-300 rounded-md"
@@ -2017,13 +2015,13 @@ const FRTermLoanWithStockForm = ({
         </div>
 
         <div className="mb-4 flex justify-center">
-          {/* <button
+          <button
             className="px-4 py-2 border-2 border-gray-800 text-gray-800 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-300 text-xs font-medium"
             onClick={fillTestData}
             type="button"
           >
             Fill Test Data
-          </button> */}
+          </button>
         </div>
 
         <div className="mb-6">

@@ -1382,10 +1382,10 @@ const FRTermLoanCCForm = ({
 
     const testData = {
       'General Information': {
-        'i7': 'Sole Proprietorship', 'i8': 'John Doe', 'i9': '9876543210', 'i10': '123456789012',
+        'i7': 'Sole Proprietorship', 'i8': 'Pratap', 'i9': '9876543210', 'i10': '123456789012',
         'bank_name': 'ICICI Bank', 'branch_name': 'Industrial Branch',
         'i11': 'ABCDE1234F', 'i12': '35', 'i13': 'Male',
-        'i14': 'Manufacturing sector', 'i15': 'Textile Manufacturing', 'i16': '123 Industrial Area, City', 'i17': 'Doe Textiles', 'i18': 'ABCDE1234F', 'i19': 'Graduate', 'i20': 'PMEGP',
+        'i14': 'Manufacturing sector', 'i15': 'Textile Manufacturing', 'i16': '17-3-47,thadepalli center, Vijayawada', 'i17': 'Pratap', 'i18': 'ABCDE1234F', 'i19': 'Graduate', 'i20': 'PMEGP',
         'i21': 'OC', 'i22': 'Urban(Other than Panchayat)', 'i23': ''
       },
       'Expected Employment Generation': {
@@ -1516,7 +1516,7 @@ const FRTermLoanCCForm = ({
               {renderInput('General Information', 'i11', 'PAN (Optional)')}
               {renderInput('General Information', 'i12', 'Age')}
               {renderInput('General Information', 'i13', 'Gender', 'text', ['Male', 'Female', 'Others'])}
-              {renderInput('General Information', 'i14', 'Sector', 'text', ['Manufacturing sector', 'Service Sector (With stock)', 'Trading sector'])}
+              {renderInput('General Information', 'i14', 'Sector', 'text', ['Manufacturing sector', 'Service Sector (With stock)', 'Trading sector','Service Sector (Without stock)'])}
               {renderInput('General Information', 'i15', 'Nature of Business')}
               {renderInput('General Information', 'i16', 'Address of office/Factory')}
               {renderInput('General Information', 'i17', 'Name of firm/Company (Optional)')}

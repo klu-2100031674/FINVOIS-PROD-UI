@@ -243,7 +243,14 @@ const FRTermLoanForm = ({
       'j138': 'Vijayawada',
       'j139': '9014221011'
     },
-    'Indirect Expenses Increment': {},
+    'Indirect Expenses Increment': {
+      'i56': '',
+      'h64': '',
+      'h65': '',
+      'h66': '',
+      'h67': '',
+      'h68': ''
+    },
     'Cost of Project': {},
     'Schedule for Assets': {},
     'Schedule for Indirect Expenses': {
@@ -966,7 +973,7 @@ const FRTermLoanForm = ({
     setFormData({
       'General Information': {
         'i7': 'Sole Proprietorship',
-        'i8': 'John Doe',
+        'i8': 'PARVEZ ALI NARAYANA',
         'i9': '9876543210',
         'i10': 'ABC123456',
         'bank_name': 'SBI',
@@ -976,8 +983,8 @@ const FRTermLoanForm = ({
         'i13': 'Male',
         'i14': 'Trading sector',
         'i15': 'IT Consulting Services',
-        'i16': '123 Business Street, City - 500001',
-        'i17': 'Tech Solutions Pvt Ltd',
+        'i16': '17-3-47,thadepalli center, Vijayawada',
+        'i17': 'PARVEZ ALI NARAYANA Solutions',
         'i18': 'GHI345678',
         'i19': 'Graduate',
         'i20': 'Other MSME',
@@ -1170,7 +1177,7 @@ const FRTermLoanForm = ({
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            PAN of proprietor / Managing Partner / Managing Director (Optional)
+            PAN of proprietor / Managing Partner / Managing Director
           </label>
           <input
             type="text"
@@ -1219,7 +1226,8 @@ const FRTermLoanForm = ({
             <option value="">Select Sector</option>
             <option value="Manufacturing sector">Manufacturing sector</option>
             <option value="Service Sector (With stock)">Service Sector (With stock)</option>
-            <option value="Service Sector (Without stock)">Trading sector</option>
+            <option value="Service Sector (Without stock)">Service Sector (Without stock)</option>
+            <option value="Trading sector">Trading sector</option>
           </select>
         </div>
         <div className="space-y-1.5">
@@ -1944,6 +1952,7 @@ const FRTermLoanForm = ({
 
     // Mapping for increment percentage
     const incrementKey = EXPENSE_INCREMENT_MAP[activeExpenseCategory];
+    const incrementValue = formData['Indirect Expenses Increment']?.[incrementKey] ?? '';
 
     return (
       <div className="space-y-6">
@@ -2029,12 +2038,13 @@ const FRTermLoanForm = ({
                 </label>
                 <div className="relative">
                   <input
+                    key={incrementKey}
                     type="number" onWheel={(e) => e.target.blur()}
                     className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 ${expenseValidationErrors[activeExpenseCategory]
                       ? 'border-red-400 focus:ring-red-500'
                       : 'border-indigo-300 focus:ring-indigo-500'
                       }`}
-                    value={formData['Indirect Expenses Increment'][incrementKey]}
+                    value={incrementValue}
                     onChange={(e) => handleFieldChange('Indirect Expenses Increment', incrementKey, e.target.value)}
                     placeholder="Enter %"
                   />
@@ -2359,13 +2369,13 @@ const FRTermLoanForm = ({
         </div>
 
         <div className="mb-4 flex justify-center">
-          {/* <button
+          <button
             className="px-4 py-2 border-2 border-gray-800 text-gray-800 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-300 text-xs font-medium"
             onClick={fillTestData}
             type="button"
           >
             Fill Test Data
-          </button> */}
+          </button>
         </div>
 
         <div className="mb-6">

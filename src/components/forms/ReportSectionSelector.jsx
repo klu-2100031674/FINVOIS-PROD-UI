@@ -1306,12 +1306,12 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
                 Select the sections you want to include in the Detailed Project Report and provide necessary details.
               </p>
             </div>
-            {/* <button
+            <button
               onClick={fillTestData}
               className="px-4 py-2 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-md hover:bg-indigo-100 transition-colors text-sm font-medium"
             >
               Fill Test Data
-            </button> */}
+            </button>
           </div>
         </div>
 
