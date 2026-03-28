@@ -75,7 +75,7 @@ const SECTION_CONFIG = [
   },
   {
     id: "product_details",
-    title: "5. Details of Product Manufactured / Finished Product",
+    title: "5. Details of Product Manufactured or Stock / Finished Product",
     prompt_ref: "product_details",
     fields: [
       { name: "product_category", label: "Product Category", type: "text", placeholder: "e.g., Construction Materials, Textiles, etc." },
@@ -206,7 +206,7 @@ const SECTION_CONFIG = [
   },
   {
     id: "inventory_stock_details",
-    title: "16. INVENTORY / STOCK DETAILS",
+    title: "16. Inventory / Stock Details",
     prompt_ref: "inventory_stock_details",
     fields: [
       {
@@ -329,6 +329,16 @@ const SECTION_CONFIG = [
     ]
   }
 ];
+
+// Sections that should be excluded from validation and not block the user
+const SKIP_VALIDATION_SECTIONS = new Set([
+  'manufacturing_process_flowchart', // 8
+  'swot_analysis',                    // 9
+  'target_market_new',                // 10
+  'competitor_overview',              // 11
+  'market_trend',                     // 12
+  'conclusion'                        // 23
+]);
 
 const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
   const [selectedSections, setSelectedSections] = useState({});
@@ -663,6 +673,13 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
             { description: "Machinery/Equipment Trail Run", start_date: "", end_date: "" },
             { description: "Commercial Run start date", start_date: "", end_date: "" }
           ];
+        } else {
+          // Ensure "Commercial Run start date" always has end_date mirrored from start_date
+          next.implementation_timeline.milestones = next.implementation_timeline.milestones.map(m =>
+            m.description === 'Commercial Run start date'
+              ? { ...m, end_date: m.end_date || m.start_date }
+              : m
+          );
         }
 
         Object.keys(autoMapped).forEach(sId => {
@@ -743,6 +760,8 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
   };
 
   const getSectionValidationError = (section) => {
+    // Skip validation entirely for configured sections
+    if (SKIP_VALIDATION_SECTIONS.has(section.id)) return null;
     if (!selectedSections[section.id]) return null;
 
     const currentSectionData = sectionData[section.id] || {};
@@ -830,6 +849,8 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
     let firstInvalidSectionId = null;
 
     SECTION_CONFIG.forEach((section) => {
+      // Do not validate these sections
+      if (SKIP_VALIDATION_SECTIONS.has(section.id)) return;
       if (!selectedSections[section.id]) return;
       const error = getSectionValidationError(section);
       if (error) {
@@ -857,6 +878,11 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
     const list = [...(sectionData[sectionId]?.[fieldName] || [])];
     if (!list[index]) list[index] = {};
     list[index][subField] = value;
+    // "Commercial Run start date" has no end_date UI — mirror start_date so validation passes
+    if (sectionId === 'implementation_timeline' && fieldName === 'milestones' &&
+        list[index].description === 'Commercial Run start date' && subField === 'start_date') {
+      list[index].end_date = value;
+    }
     handleFieldChange(sectionId, fieldName, list);
   };
 

@@ -1510,7 +1510,7 @@ const FRTermLoanCCForm = ({
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {renderInput('General Information', 'i7', 'Status of Concern', 'text', ['Sole Proprietorship', 'Partnership Firm', 'Private limited Company', 'LLP', 'Society', 'Trust', 'Federation'])}
-              {renderInput('General Information', 'i8', 'Name of Proprietor/ Managing Partner/Managing Director/Member/trustee')}
+              {renderInput('General Information', 'i8', 'Name of Authorised Person')}
               {renderInput('General Information', 'i9', 'Mobile Number')}
               {renderInput('General Information', 'i10', 'Aadhar number (Optional)')}
               {renderInput('General Information', 'i11', 'PAN (Optional)')}

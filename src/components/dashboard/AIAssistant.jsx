@@ -18,7 +18,11 @@ const STEPS = {
     LOAN_TYPE_MFG: 2,
     STOCK_CHECK: 3,
     LOAN_TYPE_SERVICE_STOCK: 4,
-    CMA_FORMAT: 5
+    CMA_FORMAT: 5,
+    CMA_Q1: 6,
+    CMA_Q2: 7,
+    CMA_Q3: 8,
+    CMA_COMING_SOON: 9
 };
 
 const AIAssistant = ({ onSelectTemplate }) => {
@@ -75,8 +79,7 @@ const AIAssistant = ({ onSelectTemplate }) => {
                     icon={ClipboardDocumentCheckIcon}
                     title="CMA Data Projections"
                     description="Credit Monitoring Arrangement data for working capital"
-                    onClick={() => toast.error("CMA Templates are Coming Soon")}
-                    badge="Coming Soon (Select Format)"
+                    onClick={() => handleNext(STEPS.CMA_Q1)}
                 />
             </div>
         </div>
@@ -190,6 +193,92 @@ const AIAssistant = ({ onSelectTemplate }) => {
         </div>
     );
 
+    const renderCMAQ1 = () => (
+        <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">
+                Do you have a working capital limit?
+            </h2>
+            <p className="text-gray-500 text-sm text-center mb-6">An existing CC / working capital sanction from a bank</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <SelectionCard
+                    icon={ArchiveBoxIcon}
+                    title="Yes"
+                    description="I already have an existing working capital / CC limit"
+                    onClick={() => handleNext(STEPS.CMA_COMING_SOON)}
+                    badge="Coming Soon"
+                />
+                <SelectionCard
+                    icon={DocumentTextIcon}
+                    title="No"
+                    description="I do not have an existing working capital limit"
+                    onClick={() => handleNext(STEPS.CMA_Q2)}
+                />
+            </div>
+        </div>
+    );
+
+    const renderCMAQ2 = () => (
+        <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">
+                What type of financial statements do you have?
+            </h2>
+            <p className="text-gray-500 text-sm text-center mb-6">Select based on the financials you'll be submitting</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <SelectionCard
+                    icon={DocumentTextIcon}
+                    title="Estimated"
+                    description="Projected / estimated financial data (no prior audited accounts)"
+                    onClick={() => onSelectTemplate('frcc1')}  // Estimated → CC1
+                />
+                <SelectionCard
+                    icon={ClipboardDocumentCheckIcon}
+                    title="Audited"
+                    description="Audited financial statements are available"
+                    onClick={() => handleNext(STEPS.CMA_Q3)}
+                />
+            </div>
+        </div>
+    );
+
+    const renderCMAQ3 = () => (
+        <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">
+                Is this a top-up from an existing limit?
+            </h2>
+            <p className="text-gray-500 text-sm text-center mb-6">Enhancement or renewal of a previously sanctioned credit line</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <SelectionCard
+                    icon={CurrencyDollarIcon}
+                    title="Yes — Top-up"
+                    description="Enhancement or renewal of an existing credit limit"
+                    onClick={() => onSelectTemplate('frcc2')}  // Top-up → CC2
+                />
+                <SelectionCard
+                    icon={DocumentTextIcon}
+                    title="No — Fresh"
+                    description="Fresh credit limit application"
+                    onClick={() => onSelectTemplate('frcc3')}  // Fresh → CC3
+                />
+            </div>
+        </div>
+    );
+
+    const renderCMAComingSoon = () => (
+        <div className="flex flex-col items-center justify-center py-10 space-y-6">
+            <div className="p-5 bg-yellow-100 rounded-full">
+                <ClipboardDocumentCheckIcon className="w-14 h-14 text-yellow-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 text-center">Coming Soon</h2>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-6 max-w-md text-center">
+                <p className="text-yellow-700 font-semibold text-base mb-2">CMA for Existing Working Capital Limit</p>
+                <p className="text-yellow-600 text-sm leading-relaxed">
+                    We are building CMA templates for businesses with an existing working capital / CC limit.
+                    This feature will be available soon. Use the <strong>Back</strong> button to explore other options.
+                </p>
+            </div>
+        </div>
+    );
+
     return (
         <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
             {/* Header */}
@@ -224,6 +313,10 @@ const AIAssistant = ({ onSelectTemplate }) => {
                         {currentStep === STEPS.STOCK_CHECK && renderStockCheck()}
                         {currentStep === STEPS.LOAN_TYPE_SERVICE_STOCK && renderLoanTypeServiceStock()}
                         {currentStep === STEPS.CMA_FORMAT && renderCMAFormat()}
+                        {currentStep === STEPS.CMA_Q1 && renderCMAQ1()}
+                        {currentStep === STEPS.CMA_Q2 && renderCMAQ2()}
+                        {currentStep === STEPS.CMA_Q3 && renderCMAQ3()}
+                        {currentStep === STEPS.CMA_COMING_SOON && renderCMAComingSoon()}
                     </motion.div>
                 </AnimatePresence>
             </div>

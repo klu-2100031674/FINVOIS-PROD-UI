@@ -15,7 +15,8 @@ import {
   Save,
   Mail,
   ShieldCheck,
-  CreditCard
+  CreditCard,
+  Briefcase
 } from 'lucide-react';
 
 const ProfilePage = () => {
@@ -33,7 +34,14 @@ const ProfilePage = () => {
     phone: '',
     address: '',
     profile_logo: '',
-    company_logo: ''
+    company_logo: '',
+    village_city: '',
+    mandal: '',
+    district: '',
+    state: '',
+    designation: '',
+    designation_other: '',
+    organization_name: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('personal');
@@ -55,7 +63,14 @@ const ProfilePage = () => {
         phone: dataSource.phone || '',
         address: dataSource.address || '',
         profile_logo: dataSource.profile_logo || '',
-        company_logo: dataSource.company_logo || ''
+        company_logo: dataSource.company_logo || '',
+        village_city: dataSource.village_city || '',
+        mandal: dataSource.mandal || '',
+        district: dataSource.district || '',
+        state: dataSource.state || '',
+        designation: dataSource.designation || '',
+        designation_other: dataSource.designation_other || '',
+        organization_name: dataSource.organization_name || ''
       });
     }
   }, [user, profile]);
@@ -231,6 +246,83 @@ const ProfilePage = () => {
                           />
                         </div>
                         <p className="text-xs text-gray-400 mt-1">Email address cannot be changed</p>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-sm font-medium text-gray-700">Designation</label>
+                        <div className="relative">
+                          <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+                          <select
+                            name="designation"
+                            value={formData.designation}
+                            onChange={handleInputChange}
+                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white appearance-none"
+                          >
+                            <option value="">Select Designation</option>
+                            <option value="CA">CA (Chartered Accountant)</option>
+                            <option value="Bank Manager">Bank Manager</option>
+                            <option value="Accountant">Accountant</option>
+                            <option value="Industry Officer">Industry Officer</option>
+                            <option value="DSA">DSA (Direct Selling Agent)</option>
+                            <option value="Field Staff">Field Staff</option>
+                            <option value="Others">Others</option>
+                          </select>
+                        </div>
+                        {formData.designation === 'Others' && (
+                          <input
+                            type="text"
+                            name="designation_other"
+                            value={formData.designation_other}
+                            onChange={handleInputChange}
+                            placeholder="Please specify your designation"
+                            className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                          />
+                        )}
+                      </div>
+                      <Input
+                        label="Organization Name"
+                        name="organization_name"
+                        value={formData.organization_name}
+                        onChange={handleInputChange}
+                        placeholder="e.g. Finvois Solutions Pvt Ltd"
+                        icon={Building2}
+                      />
+                    </div>
+
+                    <div className="mt-6">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Location</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Input
+                          label="Village / City"
+                          name="village_city"
+                          value={formData.village_city}
+                          onChange={handleInputChange}
+                          placeholder="Enter village or city"
+                          icon={MapPin}
+                        />
+                        <Input
+                          label="Mandal"
+                          name="mandal"
+                          value={formData.mandal}
+                          onChange={handleInputChange}
+                          placeholder="Enter mandal"
+                          icon={MapPin}
+                        />
+                        <Input
+                          label="District"
+                          name="district"
+                          value={formData.district}
+                          onChange={handleInputChange}
+                          placeholder="Enter district"
+                          icon={MapPin}
+                        />
+                        <Input
+                          label="State"
+                          name="state"
+                          value={formData.state}
+                          onChange={handleInputChange}
+                          placeholder="Enter state"
+                          icon={MapPin}
+                        />
                       </div>
                     </div>
                   </div>

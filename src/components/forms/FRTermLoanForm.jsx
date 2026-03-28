@@ -1141,7 +1141,7 @@ const FRTermLoanForm = ({
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Name of Proprietor/ Managing partner/Managing Director/Member/trustee
+            Name of Authorised Person *
           </label>
           <input
             type="text"
@@ -1225,7 +1225,7 @@ const FRTermLoanForm = ({
           >
             <option value="">Select Sector</option>
             <option value="Manufacturing sector">Manufacturing sector</option>
-            <option value="Service Sector (With stock)">Service Sector (With stock)</option>
+            {/* <option value="Service Sector (With stock)">Service Sector (With stock)</option> */}
             <option value="Service Sector (Without stock)">Service Sector (Without stock)</option>
             <option value="Trading sector">Trading sector</option>
           </select>
@@ -1926,17 +1926,29 @@ const FRTermLoanForm = ({
     return (
       <div key={fieldD} className="grid grid-cols-12 gap-3 py-2 border-b border-gray-100 last:border-0">
         <div className="col-span-7 flex items-center">
-          <label className="text-sm text-gray-700">{label}</label>
+          <input
+            type="text"
+            value={formData['Schedule for Indirect Expenses']?.[activeExpenseCategory]?.[fieldD] ?? label}
+            onChange={(e) => handleExpenseChange(activeExpenseCategory, fieldD, e.target.value)}
+            className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-gray-50 hover:bg-white transition-colors"
+            placeholder={label}
+          />
         </div>
         <div className="col-span-5">
           <input
             type="number" onWheel={(e) => e.target.blur()}
             step="0.01"
             min="0"
-            value={formData['Schedule for Indirect Expenses']?.[activeExpenseCategory]?.[fieldE] || 0}
+            value={
+              formData['Schedule for Indirect Expenses']?.[activeExpenseCategory]?.[fieldE] === 0 ||
+              formData['Schedule for Indirect Expenses']?.[activeExpenseCategory]?.[fieldE] === undefined ||
+              formData['Schedule for Indirect Expenses']?.[activeExpenseCategory]?.[fieldE] === null
+                ? ''
+                : formData['Schedule for Indirect Expenses']?.[activeExpenseCategory]?.[fieldE]
+            }
             onChange={(e) => handleExpenseChange(activeExpenseCategory, fieldE, e.target.value)}
             className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-            placeholder="0"
+            placeholder="Enter amount (₹)"
           />
         </div>
       </div>

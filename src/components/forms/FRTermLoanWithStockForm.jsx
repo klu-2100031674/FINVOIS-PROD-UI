@@ -1262,7 +1262,7 @@ const FRTermLoanWithStockForm = ({
               </select>
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Name of Proprietor/Managing partner/Managing Director/Member/trustee</label>
+              <label className="block text-sm font-medium text-gray-700">Name of Authorised Person *</label>
               <input
                 type="text"
                 className="w-full p-2 border border-gray-300 rounded-md"
@@ -1924,14 +1924,25 @@ const FRTermLoanWithStockForm = ({
                   return (
                     <div key={key} className="grid grid-cols-12 gap-3 py-2 border-b border-gray-100 last:border-0">
                       <div className="col-span-7 flex items-center">
-                        <label className="text-sm text-gray-700">{label}</label>
+                        <input
+                          type="text"
+                          value={activeExpenses[labelKey] ?? label}
+                          onChange={(e) => handleExpenseChange(activeCategory, labelKey, e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-gray-50 hover:bg-white transition-colors"
+                          placeholder={label}
+                        />
                       </div>
                       <div className="col-span-5">
                         <input
                           type="number" onWheel={(e) => e.target.blur()}
                           className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                          value={value}
+                          value={
+                            value === 0 || value === undefined || value === null
+                              ? ''
+                              : value
+                          }
                           onChange={(e) => handleExpenseChange(activeCategory, key, e.target.value)}
+                          placeholder="Enter amount (₹)"
                         />
                       </div>
                     </div>

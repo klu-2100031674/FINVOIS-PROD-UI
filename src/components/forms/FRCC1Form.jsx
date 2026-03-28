@@ -14,11 +14,13 @@ import {
   ClipboardDocumentCheckIcon
 } from '@heroicons/react/24/outline';
 
-// Generate financial year options
+// Generate financial year options in 2024-25 format, current year to +20 years
 const generateFinancialYearOptions = () => {
   const options = [];
-  for (let start = 2024; start <= 2033; start++) {
-    options.push(`${start} - ${start + 1}`);
+  const currentYear = new Date().getFullYear();
+  for (let start = currentYear; start <= currentYear + 20; start++) {
+    const shortNext = String(start + 1).slice(-2);
+    options.push(`${start}-${shortNext}`);
   }
   return options;
 };
@@ -31,13 +33,12 @@ const sections = [
     icon: DocumentTextIcon,
     fields: [
       { id: 'i4', label: 'Name of Firm', type: 'text', required: true, note: 'Enter your company/firm name' },
-      { id: 'i5', label: 'Status of Concern', type: 'select', options: ['Soleproprietorship', 'Partnership', 'LLP', 'Company'], required: true, note: 'Select the legal status' },
-      { id: 'i6', label: 'Proprietor / MP / MD Name', type: 'text', required: true, note: 'Enter the owner name' },
-      { id: 'bank_name', label: 'Bank Name / Department Name', type: 'text', required: true, note: 'Enter bank or department name' },
-      { id: 'branch_name', label: 'Branch Name', type: 'text', required: true, note: 'Enter branch name' },
+      { id: 'i5', label: 'Status of Concern', type: 'select', options: ['Sole Proprietorship', 'Partnership Firm', 'Private limited Company', 'LLP', 'Society', 'Trust', 'Federation', 'SHG'], required: true, note: 'Select the legal status' },
+      { id: 'i6', label: 'Name of Authorised Person', type: 'text', required: true, note: 'Enter the authorised person name' },
       { id: 'i7', label: 'Firm Address', type: 'textarea', required: true, note: 'Enter complete business address' },
-      { id: 'i8', label: 'Sector', type: 'select', options: ['Manufacturing sector', 'Service sector (with stock)', 'Trading sector'], required: true, note: 'Select your primary business sector' },
-      { id: 'i9', label: 'Nature of Business', type: 'text', required: true, note: 'Describe your business activity' }
+      { id: 'i8', label: 'Contact No. of Authorised Person', type: 'text', required: true, note: 'Enter contact number' },
+      { id: 'i9', label: 'Sector', type: 'select', options: ['Manufacturing sector', 'Service sector (with stock)', 'Trading sector'], required: true, note: 'Select your primary business sector' },
+      { id: 'i10', label: 'Nature of Business', type: 'text', required: true, note: 'Describe your business activity' }
     ]
   },
   {
@@ -45,11 +46,11 @@ const sections = [
     title: 'Means of Finance',
     icon: CurrencyDollarIcon,
     fields: [
-      { id: 'i11', label: 'Do you have working capital limit at present?', type: 'select', options: ['Yes', 'No'], required: true, note: 'Select if you have existing loan' },
-      { id: 'i12', label: 'Working Capital Loan Requirement (₹)', type: 'number', min: 0, required: true, note: 'Enter loan amount in rupees' },
-      { id: 'h13', label: 'Working Capital Loan Interest (Annual %)', type: 'number', min: 0, max: 100, step: 0.01, required: true, note: 'Enter annual interest rate' },
-      { id: 'h14', label: 'Processing Fees (Including GST) %', type: 'number', min: 0, required: true, note: 'Enter processing fee percentage' },
-      { id: 'h15', label: 'Working Capital (% of Turnover)', type: 'number', min: 0, max: 100, step: 0.01, required: true, note: 'Enter working capital percentage' }
+      { id: 'i12', label: 'Do you have working capital limit at present?', type: 'select', options: ['Yes', 'No'], required: true, note: 'Select if you have existing loan' },
+      { id: 'i13', label: 'Working Capital Loan Requirement (₹)', type: 'number', min: 0, required: true, note: 'Enter loan amount in rupees' },
+      { id: 'h14', label: 'Working Capital Loan Interest (Annual %)', type: 'number', min: 0, max: 100, step: 0.01, required: true, note: 'Enter annual interest rate' },
+      { id: 'h15', label: 'Processing Fees (Including GST) %', type: 'number', min: 0, required: true, note: 'Enter processing fee percentage' },
+      { id: 'h16', label: 'Working Capital (% of Turnover)', type: 'number', min: 0, max: 100, step: 0.01, required: true, note: 'Enter working capital % of turnover (15% or more)' }
     ]
   },
   {
@@ -57,39 +58,25 @@ const sections = [
     title: 'Financial Years',
     icon: CalendarIcon,
     fields: [
-      { id: 'i17', label: '1st Financial Year', type: 'select', options: generateFinancialYearOptions(), required: true, note: 'Select first projection year' },
-      { id: 'i18', label: '2nd Financial Year', type: 'select', options: generateFinancialYearOptions(), required: true, note: 'Select second projection year' },
-      { id: 'i19', label: '3rd Financial Year', type: 'select', options: generateFinancialYearOptions(), required: true, note: 'Select third projection year' },
-      { id: 'i20', label: '4th Financial Year', type: 'select', options: generateFinancialYearOptions(), required: true, note: 'Select fourth projection year' },
-      { id: 'i21', label: '5th Financial Year', type: 'select', options: generateFinancialYearOptions(), required: true, note: 'Select fifth projection year' }
+      { id: 'i18', label: '1st Financial Year', type: 'select', options: generateFinancialYearOptions(), required: true, note: 'Select first projection year' },
+      { id: 'i19', label: '2nd Financial Year', type: 'select', options: generateFinancialYearOptions(), required: true, note: 'Select second projection year' },
+      { id: 'i20', label: '3rd Financial Year', type: 'select', options: generateFinancialYearOptions(), required: true, note: 'Select third projection year' },
+      { id: 'i21', label: '4th Financial Year', type: 'select', options: generateFinancialYearOptions(), required: true, note: 'Select fourth projection year' },
+      { id: 'i22', label: '5th Financial Year', type: 'select', options: generateFinancialYearOptions(), required: true, note: 'Select fifth projection year' }
     ]
   },
   {
-    key: 'salaries',
-    title: 'Salaries & Wages',
-    icon: UsersIcon,
-    fields: [
-      { id: 'i23', label: 'Skilled', type: 'number', min: 0, required: true, note: 'Enter total skilled employees' },
-      { id: 'j23', label: 'Skilled Salary per Month (₹)', type: 'number', min: 0, required: true, note: 'Enter salary per skilled employee' },
-      { id: 'i24', label: 'Unskilled', type: 'number', min: 0, required: true, note: 'Enter total unskilled employees' },
-      { id: 'j24', label: 'Unskilled Salary per Month (₹)', type: 'number', min: 0, required: true, note: 'Enter salary per unskilled employee' },
-      { id: 'i25', label: 'Semi Skilled', type: 'number', min: 0, required: true, note: 'Enter total semi-skilled employees' },
-      { id: 'j25', label: 'Semi Skilled Salary per Month (₹)', type: 'number', min: 0, required: true, note: 'Enter salary per semi-skilled employee' }
-    ]
-  },
-  {
-    key: 'assumptions',
-    title: 'Assumptions',
+    key: 'indirect_expenses',
+    title: 'Indirect Expenses',
     icon: ChartBarIcon,
     fields: [
-      { id: 'h28', label: 'Salaries Increment (Annual %)', type: 'number', min: 0, step: 0.1, required: true, note: 'Enter annual increase percentage (e.g., 5 for 5%)' },
-      { id: 'i29', label: 'Rent per Month (₹)', type: 'number', min: 0, required: true, note: 'Enter monthly rent amount' },
-      { id: 'h30', label: 'Rental Increment (Annual %)', type: 'number', min: 0, step: 0.1, required: true, note: 'Enter annual increase percentage (e.g., 5 for 5%)' },
-      { id: 'i31', label: 'Power Charges per Month (₹)', type: 'number', min: 0, required: true, note: 'Enter monthly electricity cost' },
-      { id: 'h32', label: 'Power Charges Increment (Annual %)', type: 'number', min: 0, step: 0.1, required: true, note: 'Enter annual increase percentage (e.g., 5 for 5%)' },
-      { id: 'h33', label: 'Sales Growth (Annual %)', type: 'number', min: 0, step: 0.1, required: true, note: 'Enter annual growth percentage (e.g., 5 for 5%)' },
-      { id: 'i34', label: 'No of Months Interest Paid in First Year', type: 'number', min: 1, max: 12, required: true, note: 'Enter number of months' },
-      { id: 'i35', label: 'No of Months Turnover Done in First Year', type: 'number', min: 1, max: 12, required: true, note: 'Enter operational months' }
+      { id: 'i24', label: 'Rent / Lease per Month (₹)', type: 'number', min: 0, required: true, note: 'Enter monthly rent or lease amount' },
+      { id: 'H25', label: 'Rental Increment (Annual %)', type: 'number', min: 0, step: 0.1, required: true, note: 'Enter annual rental increase percentage' },
+      { id: 'i26', label: 'Power Charges per Month (₹)', type: 'number', min: 0, required: true, note: 'Enter monthly electricity cost' },
+      { id: 'h27', label: 'Power Charges Increment (Annual %)', type: 'number', min: 0, step: 0.1, required: true, note: 'Enter annual power charges increase percentage' },
+      { id: 'h28', label: 'Sales Growth (Annual %)', type: 'number', min: 0, step: 0.1, required: true, note: 'Enter annual sales growth percentage' },
+      { id: 'i29', label: 'No of Months Interest paid in First Financial Year', type: 'number', min: 1, max: 12, required: true, note: 'Enter number of months' },
+      { id: 'i30', label: 'No of Months Turnover done in First Financial Year', type: 'number', min: 1, max: 12, required: true, note: 'Enter operational months' }
     ]
   },
   {
@@ -97,17 +84,17 @@ const sections = [
     title: 'Fixed Assets Schedule',
     icon: BuildingOfficeIcon,
     categories: [
-      { idPrefix: 'R37C2', title: 'Plant and Machinery', itemCount: 10, startIndex: 99, excelField: 'i40' },
-      { idPrefix: 'R56C2', title: 'Service Equipment', itemCount: 10, startIndex: 109, excelField: 'i39' },
-      { idPrefix: 'R42C2', title: 'Shed, construction, civil works', itemCount: 10, startIndex: 119, excelField: 'i43' },
-      { idPrefix: 'R41C2', title: 'Land', itemCount: 3, startIndex: 129, excelField: 'i42' },
-      { idPrefix: 'R43C2', title: 'Electrical Items', itemCount: 9, startIndex: 132, excelField: 'i44' },
-      { idPrefix: 'R44C2', title: 'Electronics Items', itemCount: 10, startIndex: 141, excelField: 'i45' },
-      { idPrefix: 'R37C2', title: 'Furniture and Fittings', itemCount: 10, startIndex: 151, excelField: 'i38' },
-      { idPrefix: 'R45C2', title: 'Vehicles', itemCount: 10, startIndex: 161, excelField: 'i46' },
-      { idPrefix: 'R46C2', title: 'Live stock', itemCount: 9, startIndex: 171, excelField: 'i47' },
-      { idPrefix: 'R47C2', title: 'Other Assets', itemCount: 10, startIndex: 180, excelField: 'i48' },
-      { idPrefix: 'R48C2', title: 'Other Assets (Including Amortisable Assets)', itemCount: 10, startIndex: 190, excelField: 'i49' }
+      { title: 'Plant and Machinery',                          startIndex: 95,  itemCount: 10 },
+      { title: 'Service Equipment',                            startIndex: 105, itemCount: 10 },
+      { title: 'Shed, Construction and Civil works',           startIndex: 115, itemCount: 10 },
+      { title: 'Land',                                         startIndex: 125, itemCount: 3  },
+      { title: 'Electrical and Plumbing Items',                startIndex: 128, itemCount: 9  },
+      { title: 'Electronic Items',                             startIndex: 137, itemCount: 10 },
+      { title: 'Furniture and Fittings',                       startIndex: 147, itemCount: 10 },
+      { title: 'Vehicles',                                     startIndex: 157, itemCount: 10 },
+      { title: 'Live stock',                                   startIndex: 167, itemCount: 9  },
+      { title: 'Other Assets (Including Amortisable Assets)',  startIndex: 176, itemCount: 10 },
+      { title: 'Other Assets (Nil Depreciation)',              startIndex: 186, itemCount: 10 }
     ]
   },
   {
@@ -115,26 +102,29 @@ const sections = [
     title: 'Prepared By',
     icon: UsersIcon,
     fields: [
-      { id: 'j136', label: 'Partner Name 1 (Prepared By)', type: 'text', required: true, note: 'Enter partner name 1' },
-      { id: 'j137', label: 'Partner Name 2 (Prepared By)', type: 'text', required: true, note: 'Enter partner name 2' },
-      { id: 'j138', label: 'Mobile Number (Prepared By)', type: 'text', required: true, note: 'Enter mobile number' }
+      { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text', required: true, note: 'Enter bank or department name' },
+      { id: 'branch_name', label: 'Branch Name',                 type: 'text', required: true, note: 'Enter branch name' },
+      { id: 'j94', label: 'Name 1',    type: 'text', required: true, note: 'Enter name 1' },
+      { id: 'j95', label: 'Name 2',    type: 'text', required: true, note: 'Enter name 2' },
+      { id: 'j96', label: 'Address',   type: 'text', required: true, note: 'Enter address' },
+      { id: 'j97', label: 'Contact',   type: 'text', required: true, note: 'Enter contact number' }
     ]
   }
 ];
 
 // Fixed Assets mapping configuration
 const fixedAssetsMapping = {
-  "Plant and Machinery": { headerRow: 99, dataStartRow: 99, maxItems: 10 },
-  "Service Equipment": { headerRow: 109, dataStartRow: 109, maxItems: 10 },
-  "Shed, construction, civil works": { headerRow: 119, dataStartRow: 119, maxItems: 10 },
-  "Land": { headerRow: 129, dataStartRow: 129, maxItems: 3 },
-  "Electrical Items": { headerRow: 132, dataStartRow: 132, maxItems: 9 },
-  "Electronics Items": { headerRow: 141, dataStartRow: 141, maxItems: 10 },
-  "Furniture and Fittings": { headerRow: 151, dataStartRow: 151, maxItems: 10 },
-  "Vehicles": { headerRow: 161, dataStartRow: 161, maxItems: 10 },
-  "Live stock": { headerRow: 171, dataStartRow: 171, maxItems: 9 },
-  "Other Assets": { headerRow: 180, dataStartRow: 180, maxItems: 10 },
-  "Other Assets (Including Amortisable Assets)": { headerRow: 190, dataStartRow: 190, maxItems: 10 }
+  "Plant and Machinery":                         { dataStartRow: 95,  maxItems: 10 },
+  "Service Equipment":                           { dataStartRow: 105, maxItems: 10 },
+  "Shed, Construction and Civil works":          { dataStartRow: 115, maxItems: 10 },
+  "Land":                                        { dataStartRow: 125, maxItems: 3  },
+  "Electrical and Plumbing Items":               { dataStartRow: 128, maxItems: 9  },
+  "Electronic Items":                            { dataStartRow: 137, maxItems: 10 },
+  "Furniture and Fittings":                      { dataStartRow: 147, maxItems: 10 },
+  "Vehicles":                                    { dataStartRow: 157, maxItems: 10 },
+  "Live stock":                                  { dataStartRow: 167, maxItems: 9  },
+  "Other Assets (Including Amortisable Assets)": { dataStartRow: 176, maxItems: 10 },
+  "Other Assets (Nil Depreciation)":             { dataStartRow: 186, maxItems: 10 }
 };
 
 const FRCC1Form = ({
@@ -149,64 +139,42 @@ const FRCC1Form = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState(initialData || {
     "General Information": {
-      "i4": "",
-      "i5": "",
-      "i6": "",
-      "bank_name": "",
-      "branch_name": "",
-      "i7": "",
-      "i8": "",
-      "i9": ""
+      "i4": "", "i5": "", "i6": "", "i7": "", "i8": "", "i9": "", "i10": ""
     },
     "Means of Finance": {
-      "i11": "",
-      "i12": "",
-      "h13": "",
-      "h14": "",
-      "h15": ""
+      "i12": "", "i13": "", "h14": "", "h15": "", "h16": ""
     },
     "Financial Years": {
-      "i17": "",
-      "i18": "",
-      "i19": "",
-      "i20": "",
-      "i21": ""
+      "i18": "", "i19": "", "i20": "", "i21": "", "i22": ""
     },
-    "Salaries & Wages": {
-      'i23': '', 'j23': '', 'i24': '', 'j24': '', 'i25': '', 'j25': ''
-    },
-    "Assumptions": {
-      "h28": "",
-      "i29": "",
-      "h30": "",
-      "i31": "",
-      "h32": "",
-      "h33": "",
-      "i34": "",
-      "i35": ""
+    "Indirect Expenses": {
+      "i24": "", "H25": "", "i26": "", "h27": "", "h28": "", "i29": "", "i30": ""
     },
     "Fixed Assets Schedule": {
-      "Plant and Machinery": { items: [], total: 0 },
-      "Service Equipment": { items: [], total: 0 },
-      "Shed, construction, civil works": { items: [], total: 0 },
-      "Land": { items: [], total: 0 },
-      "Electrical Items": { items: [], total: 0 },
-      "Electronics Items": { items: [], total: 0 },
-      "Furniture and Fittings": { items: [], total: 0 },
-      "Vehicles": { items: [], total: 0 },
-      "Live stock": { items: [], total: 0 },
-      "Other Assets": { items: [], total: 0 },
-      "Other Assets (Including Amortisable Assets)": { items: [], total: 0 }
+      "Plant and Machinery":                         { items: [], total: 0 },
+      "Service Equipment":                           { items: [], total: 0 },
+      "Shed, Construction and Civil works":          { items: [], total: 0 },
+      "Land":                                        { items: [], total: 0 },
+      "Electrical and Plumbing Items":               { items: [], total: 0 },
+      "Electronic Items":                            { items: [], total: 0 },
+      "Furniture and Fittings":                      { items: [], total: 0 },
+      "Vehicles":                                    { items: [], total: 0 },
+      "Live stock":                                  { items: [], total: 0 },
+      "Other Assets (Including Amortisable Assets)": { items: [], total: 0 },
+      "Other Assets (Nil Depreciation)":             { items: [], total: 0 }
     },
     "Prepared By": {
-      "j136": "PARVEZ AND NARAYANA",
-      "j137": "Chartered Accountants",
-      "j138": "9014221011"
+      "bank_name": "", "branch_name": "",
+      "j94": "PARVEZ AND NARAYANA",
+      "j95": "Chartered Accountants",
+      "j96": "",
+      "j97": "9014221011"
     }
   });
 
   const [finalJson, setFinalJson] = useState(null);
   const [showResult, setShowResult] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   // Initialize form with initialData if provided
   useEffect(() => {
@@ -216,65 +184,44 @@ const FRCC1Form = ({
         "General Information": initialData["General Information"] || {},
         "Means of Finance": initialData["Means of Finance"] || {},
         "Financial Years": initialData["Financial Years"] || {},
-        "Salaries & Wages": initialData["Salaries & Wages"] || {
-          'i23': '', 'j23': '', 'i24': '', 'j24': '', 'i25': '', 'j25': ''
-        },
-        "Assumptions": initialData["Assumptions"] || {},
-        "Financial Assumptions": initialData["Financial Assumptions"] || {
-          'R38C2': 8, 'R39C2': 10, 'R40C2': 12, 'R41C2': 14, 'R42C2': 16,
-          'R43C2': 28, 'R44C2': 30, 'R45C2': 32, 'R46C2': 34, 'R47C2': 36,
-          'R48C2': 15, 'R49C2': 18, 'R50C2': 20, 'R51C2': 22, 'R52C2': 25
-        },
-        "General Items": initialData["General Items"] || {
-          'R55C2': 12, 'R56C2': 1.08, 'R57C2': 8, 'R58C2': 1.5, 'R59C2': 1.12,
-          'R60C2': 60, 'R61C2': 2, 'R62C2': 10, 'R63C2': 5, 'R64C2': 85,
-          'R65C2': 1.5, 'R66C2': 1.08
+        "Indirect Expenses": initialData["Indirect Expenses"] || {
+          "i24": "", "H25": "", "i26": "", "h27": "", "h28": "", "i29": "", "i30": ""
         },
         "Fixed Assets Schedule": initialData["Fixed Assets Schedule"] || {
-          "Plant and Machinery": { items: [], total: 0 },
-          "Service Equipment": { items: [], total: 0 },
-          "Shed, construction, civil works": { items: [], total: 0 },
-          "Land": { items: [], total: 0 },
-          "Electrical Items": { items: [], total: 0 },
-          "Electronics Items": { items: [], total: 0 },
-          "Furniture and Fittings": { items: [], total: 0 },
-          "Vehicles": { items: [], total: 0 },
-          "Live stock": { items: [], total: 0 },
-          "Other Assets": { items: [], total: 0 },
-          "Other Assets (Including Amortisable Assets)": { items: [], total: 0 }
+          "Plant and Machinery":                         { items: [], total: 0 },
+          "Service Equipment":                           { items: [], total: 0 },
+          "Shed, Construction and Civil works":          { items: [], total: 0 },
+          "Land":                                        { items: [], total: 0 },
+          "Electrical and Plumbing Items":               { items: [], total: 0 },
+          "Electronic Items":                            { items: [], total: 0 },
+          "Furniture and Fittings":                      { items: [], total: 0 },
+          "Vehicles":                                    { items: [], total: 0 },
+          "Live stock":                                  { items: [], total: 0 },
+          "Other Assets (Including Amortisable Assets)": { items: [], total: 0 },
+          "Other Assets (Nil Depreciation)":             { items: [], total: 0 }
         },
+        "Prepared By": initialData["Prepared By"] || {},
         ...initialData
       }));
     }
   }, [initialData, isEditMode]);
-
-  // Calculate total salaries
-  const calculateSalaryTotal = useCallback((data) => {
-    const skilled = (data['R21C2_W'] || 0) * (data['R21C2_S'] || 0);
-    const semiSkilled = (data['R23C2_W'] || 0) * (data['R23C2_S'] || 0);
-    const unskilled = (data['R22C2_W'] || 0) * (data['R22C2_S'] || 0);
-    return skilled + semiSkilled + unskilled;
-  }, []);
 
   // Validate current section
   const validateCurrentSection = useCallback(() => {
     const currentSection = sections[currentStep];
 
     if (currentSection.key === 'fixed') {
-      // Fixed assets section is optional, always allow to proceed
       return true;
     }
 
     const sectionData = formData[currentSection.title];
 
-    // Check all required fields
     for (const field of currentSection.fields) {
       if (field.required) {
         const value = sectionData[field.id];
         if (value === '' || value === null || value === undefined) {
           return false;
         }
-        // For number fields, check if value is 0 or empty
         if (field.type === 'number' && (value === 0 || value === '')) {
           return false;
         }
@@ -284,64 +231,108 @@ const FRCC1Form = ({
     return true;
   }, [currentStep, formData]);
 
+  const validateAllSections = useCallback(() => {
+    const errors = {};
+    sections.forEach(section => {
+      if (section.key === 'fixed') return;
+      const sectionData = formData[section.title] || {};
+      (section.fields || []).forEach(field => {
+        if (!field.required) return;
+        const value = sectionData[field.id];
+        const key = `${section.title}.${field.id}`;
+        if (value === '' || value === null || value === undefined) {
+          errors[key] = 'This field is required';
+          return;
+        }
+        if (field.id === 'i8' && section.key === 'general') {
+          if (!/^\d{10}$/.test(String(value).trim())) {
+            errors[key] = 'Enter a valid 10-digit contact number';
+          }
+          return;
+        }
+        if (field.id === 'h14') {
+          if (Number(value) <= 0) errors[key] = 'Interest rate must be greater than 0';
+          return;
+        }
+        if (field.id === 'h16') {
+          if (Number(value) < 15) errors[key] = 'Working capital must be 15% or more of turnover';
+          return;
+        }
+        if (field.id === 'i29' || field.id === 'i30') {
+          const months = Number(value);
+          if (months < 1 || months > 12) errors[key] = 'Months must be between 1 and 12';
+        }
+      });
+    });
+    const fy = formData["Financial Years"];
+    const fyKeys = ['i18', 'i19', 'i20', 'i21', 'i22'];
+    fyKeys.forEach((id, idx) => {
+      if (idx === 0) return;
+      const prevVal = fy[fyKeys[idx - 1]];
+      const currVal = fy[id];
+      if (prevVal && currVal) {
+        const prevYear = parseInt(prevVal.split('-')[0], 10);
+        const currYear = parseInt(currVal.split('-')[0], 10);
+        if (currYear !== prevYear + 1) {
+          errors[`Financial Years.${id}`] = 'Must be consecutive with previous year';
+        }
+      }
+    });
+    return errors;
+  }, [formData]);
+
   // Update field value
   const updateField = useCallback((sectionTitle, fieldId, value) => {
-    setFormData(prev => {
-      const newData = {
-        ...prev,
-        [sectionTitle]: {
-          ...prev[sectionTitle],
-          [fieldId]: value
-        }
-      };
-
-      if (sectionTitle === "Salaries & Wages") {
-        newData["Salaries & Wages"]['R25C2'] = calculateSalaryTotal(newData["Salaries & Wages"]);
+    setFormData(prev => ({
+      ...prev,
+      [sectionTitle]: {
+        ...prev[sectionTitle],
+        [fieldId]: value
       }
-
-      return newData;
+    }));
+    setFieldErrors(prev => {
+      const key = `${sectionTitle}.${fieldId}`;
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
     });
-  }, [calculateSalaryTotal]);
+  }, []);
 
   // Fill test data function
   const fillTestData = useCallback(() => {
     setFormData({
       "General Information": {
         "i4": "MEDICAID LABS LLP",
-        "i5": "Soleproprietorship",
+        "i5": "LLP",
         "i6": "N Apuroop",
-        "bank_name": "SBI",
-        "branch_name": "Main Branch",
-        "i7": "Autonagar,Vijayawada,Andhrapradesh",
-        "i8": "Trading sector",
-        "i9": "Trading in Pharmaceutical products"
+        "i7": "Autonagar, Vijayawada, Andhra Pradesh",
+        "i8": "9876543210",
+        "i9": "Trading sector",
+        "i10": "Trading in Pharmaceutical products"
       },
       "Means of Finance": {
-        "i11": "No",
-        "i12": 10000000,
-        "h13": 12,
-        "h14": 2,
-        "h15": 20
+        "i12": "No",
+        "i13": 10000000,
+        "h14": 12,
+        "h15": 2,
+        "h16": 20
       },
       "Financial Years": {
-        "i17": "2024 - 2025",
-        "i18": "2025 - 2026",
-        "i19": "2026 - 2027",
-        "i20": "2027 - 2028",
-        "i21": "2028 - 2029"
+        "i18": "2025-26",
+        "i19": "2026-27",
+        "i20": "2027-28",
+        "i21": "2028-29",
+        "i22": "2029-30"
       },
-      "Salaries & Wages": {
-        'i23': 20, 'j23': 15000, 'i24': 20, 'j24': 8000, 'i25': 20, 'j25': 10000
-      },
-      "Assumptions": {
+      "Indirect Expenses": {
+        "i24": 10000,
+        "H25": 5,
+        "i26": 7500,
+        "h27": 5,
         "h28": 5,
-        "i29": 10000,
-        "h30": 5,
-        "i31": 7500,
-        "h32": 5,
-        "h33": 5,
-        "i34": 7,
-        "i35": 7
+        "i29": 7,
+        "i30": 7
       },
       "Fixed Assets Schedule": {
         "Plant and Machinery": {
@@ -351,21 +342,24 @@ const FRCC1Form = ({
           ],
           total: 620000
         },
-        "Service Equipment": { items: [], total: 0 },
-        "Shed, construction, civil works": { items: [], total: 0 },
-        "Land": { items: [], total: 0 },
-        "Electrical Items": { items: [], total: 0 },
-        "Electronics Items": { items: [], total: 0 },
-        "Furniture and Fittings": { items: [], total: 0 },
-        "Vehicles": { items: [], total: 0 },
-        "Live stock": { items: [], total: 0 },
-        "Other Assets": { items: [], total: 0 },
-        "Other Assets (Including Amortisable Assets)": { items: [], total: 0 }
+        "Service Equipment":                           { items: [], total: 0 },
+        "Shed, Construction and Civil works":          { items: [], total: 0 },
+        "Land":                                        { items: [], total: 0 },
+        "Electrical and Plumbing Items":               { items: [], total: 0 },
+        "Electronic Items":                            { items: [], total: 0 },
+        "Furniture and Fittings":                      { items: [], total: 0 },
+        "Vehicles":                                    { items: [], total: 0 },
+        "Live stock":                                  { items: [], total: 0 },
+        "Other Assets (Including Amortisable Assets)": { items: [], total: 0 },
+        "Other Assets (Nil Depreciation)":             { items: [], total: 0 }
       },
       "Prepared By": {
-        "j136": "PARVEZ AND NARAYANA",
-        "j137": "Chartered Accountants",
-        "j138": "9014221011"
+        "bank_name": "SBI",
+        "branch_name": "Main Branch",
+        "j94": "PARVEZ AND NARAYANA",
+        "j95": "Chartered Accountants",
+        "j96": "Hyderabad, Telangana",
+        "j97": "9014221011"
       }
     });
   }, []);
@@ -385,22 +379,17 @@ const FRCC1Form = ({
 
       const item = newData["Fixed Assets Schedule"][categoryTitle].items[itemIndex];
       item[field] = value;
-      item.descriptionField = `d${startIndex + itemIndex}`;
-      item.amountField = `e${startIndex + itemIndex}`;
+      item.descriptionField = `D${startIndex + itemIndex}`;
+      item.amountField = `E${startIndex + itemIndex}`;
 
-      newData[`d${startIndex + itemIndex}`] = item.description || '';
-      newData[`e${startIndex + itemIndex}`] = item.amount || 0;
+      newData[`D${startIndex + itemIndex}`] = item.description || '';
+      newData[`E${startIndex + itemIndex}`] = item.amount || 0;
 
       let categoryTotal = 0;
-      newData["Fixed Assets Schedule"][categoryTitle].items.forEach(item => {
-        categoryTotal += item.amount || 0;
+      newData["Fixed Assets Schedule"][categoryTitle].items.forEach(i => {
+        categoryTotal += i.amount || 0;
       });
       newData["Fixed Assets Schedule"][categoryTitle].total = categoryTotal;
-
-      const category = sections.find(s => s.key === 'fixed')?.categories.find(c => c.title === categoryTitle);
-      if (category) {
-        newData[category.excelField] = categoryTotal;
-      }
 
       return newData;
     });
@@ -410,19 +399,14 @@ const FRCC1Form = ({
   const deleteFixedAsset = useCallback((categoryTitle, itemIndex) => {
     setFormData(prev => {
       const newData = { ...prev };
-      if (newData["Fixed Assets Schedule"][categoryTitle] && newData["Fixed Assets Schedule"][categoryTitle].items) {
+      if (newData["Fixed Assets Schedule"][categoryTitle]?.items) {
         newData["Fixed Assets Schedule"][categoryTitle].items.splice(itemIndex, 1);
 
         let categoryTotal = 0;
-        newData["Fixed Assets Schedule"][categoryTitle].items.forEach(item => {
-          categoryTotal += item.amount || 0;
+        newData["Fixed Assets Schedule"][categoryTitle].items.forEach(i => {
+          categoryTotal += i.amount || 0;
         });
         newData["Fixed Assets Schedule"][categoryTitle].total = categoryTotal;
-
-        const category = sections.find(s => s.key === 'fixed')?.categories.find(c => c.title === categoryTitle);
-        if (category) {
-          newData[category.excelField] = categoryTotal;
-        }
       }
       return newData;
     });
@@ -430,57 +414,59 @@ const FRCC1Form = ({
 
   // Convert form data to Excel cell format
   const convertToExcelData = useCallback(() => {
+    const gi = formData["General Information"];
+    const mf = formData["Means of Finance"];
+    const fy = formData["Financial Years"];
+    const ie = formData["Indirect Expenses"];
+    const pb = formData["Prepared By"];
+
     const excelData = {
-      i4: { label: "Name of Firm", value: formData["General Information"]["i4"] || "MEDICAID LABS LLP" },
-      i5: { label: "Status of Concern", value: formData["General Information"]["i5"] || "Soleproprietorship" },
-      i6: { label: "Proprietor / MP / MD Name", value: formData["General Information"]["i6"] || "N Apuroop" },
-      i7: { label: "Firm address", value: formData["General Information"]["i7"] || "Autonagar,Vijayawada,Andhrapradesh" },
-      i8: { label: "Sector", value: formData["General Information"]["i8"] || "Trading Sector" },
-      i9: { label: "Nature of Business", value: formData["General Information"]["i9"] || "Trading in Pharmaceutical products" },
+      i4:  { label: "Name of Firm",                        value: gi["i4"]  || "" },
+      i5:  { label: "Status of Concern",                   value: gi["i5"]  || "" },
+      i6:  { label: "Name of Authorised Person",            value: gi["i6"]  || "" },
+      i7:  { label: "Firm Address",                         value: gi["i7"]  || "" },
+      i8:  { label: "Contact No. of Authorised Person",     value: gi["i8"]  || "" },
+      i9:  { label: "Sector",                               value: gi["i9"]  || "" },
+      i10: { label: "Nature of Business",                   value: gi["i10"] || "" },
 
-      i11: { label: "Do you have working capital limit at present ?", value: formData["Means of Finance"]["i11"] || "No" },
-      i12: { label: "Working capital Loan requirement", value: formData["Means of Finance"]["i12"] || 10000000 },
-      h13: { label: "Working capital loan interest", value: formData["Means of Finance"]["h13"] || 12 },
-      h14: { label: "Processing Fees (Including GST) %", value: formData["Means of Finance"]["h14"] || 0 },
-      h15: { label: "Working capital (% of Turnover)", value: formData["Means of Finance"]["h15"] || 20 },
+      i12:  { label: "Do you have working capital limit at present?", value: mf["i12"]  || "" },
+      i13:  { label: "Working Capital Loan Requirement",              value: mf["i13"]  || 0  },
+      h14:  { label: "Working Capital Loan Interest",                 value: mf["h14"]  || 0  },
+      h15:  { label: "Processing Fees (Including GST) %",             value: mf["h15"]  || 0  },
+      h16: { label: "Working Capital (% of Turnover)",               value: mf["h16"] || 0  },
 
-      i17: { label: "1st Financial year", value: formData["Financial Years"]["i17"] || "2024 - 2025" },
-      i18: { label: "2nd financial year", value: formData["Financial Years"]["i18"] || "2025 - 2026" },
-      i19: { label: "3rd financial year", value: formData["Financial Years"]["i19"] || "2026 - 2027" },
-      i20: { label: "4th financial year", value: formData["Financial Years"]["i20"] || "2027 - 2028" },
-      i21: { label: "5th financial year", value: formData["Financial Years"]["i21"] || "2028 - 2029" },
+      i18: { label: "1st Financial Year", value: fy["i18"] || "" },
+      i19: { label: "2nd Financial Year", value: fy["i19"] || "" },
+      i20: { label: "3rd Financial Year", value: fy["i20"] || "" },
+      i21: { label: "4th Financial Year", value: fy["i21"] || "" },
+      i22: { label: "5th Financial Year", value: fy["i22"] || "" },
 
-      i23: { label: "Skilled", value: formData["Salaries & Wages"]["i23"] || 20 },
-      j23: { label: "Skilled Salary per Month", value: formData["Salaries & Wages"]["j23"] || 15000 },
-      i24: { label: "Unskilled", value: formData["Salaries & Wages"]["i24"] || 20 },
-      j24: { label: "Unskilled Salary per Month", value: formData["Salaries & Wages"]["j24"] || 8000 },
-      i25: { label: "Semi Skilled", value: formData["Salaries & Wages"]["i25"] || 20 },
-      j25: { label: "Semi Skilled Salary per Month", value: formData["Salaries & Wages"]["j25"] || 10000 },
+      i24: { label: "Rent / Lease per Month",                           value: ie["i24"] || 0 },
+      H25: { label: "Rental Increment (Annual %)",                      value: ie["H25"] || 0 },
+      i26: { label: "Power Charges per Month",                          value: ie["i26"] || 0 },
+      h27: { label: "Power Charges Increment (Annual %)",               value: ie["h27"] || 0 },
+      h28: { label: "Sales Growth (Annual %)",                          value: ie["h28"] || 0 },
+      i29: { label: "Months Interest paid in First Financial Year",     value: ie["i29"] || 0 },
+      i30: { label: "Months Turnover done in First Financial Year",     value: ie["i30"] || 0 },
 
-      h28: { label: "Salaries Increment", value: formData["Assumptions"]["h28"] || 5 },
-      i29: { label: "Rent per month", value: formData["Assumptions"]["i29"] || 10000 },
-      h30: { label: "Rental increment", value: formData["Assumptions"]["h30"] || 5 },
-      i31: { label: "Power charges per month", value: formData["Assumptions"]["i31"] || 7500 },
-      h32: { label: "Power charges increament(previous year)", value: formData["Assumptions"]["h32"] || 5 },
-      h33: { label: "Sales growth(of previous year)", value: formData["Assumptions"]["h33"] || 5 },
-      i34: { label: "No of Months Interest will be paid in first year", value: formData["Assumptions"]["i34"] || 7 },
-      i35: { label: "No of Months Turnover will be done in first year", value: formData["Assumptions"]["i35"] || 7 },
-
-      j136: { label: "Partner Name 1 (Prepared By)", value: formData["Prepared By"]?.["j136"] || "" },
-      j137: { label: "Partner Name 2 (Prepared By)", value: formData["Prepared By"]?.["j137"] || "" },
-      j138: { label: "Mobile Number (Prepared By)", value: formData["Prepared By"]?.["j138"] || "" }
+      bank_name:   { label: "Bank Name / Department Name", value: pb["bank_name"]   || "" },
+      branch_name: { label: "Branch Name",                 value: pb["branch_name"] || "" },
+      j94: { label: "Name 1",   value: pb["j94"] || "" },
+      j95: { label: "Name 2",   value: pb["j95"] || "" },
+      j96: { label: "Address",  value: pb["j96"] || "" },
+      j97: { label: "Contact",  value: pb["j97"] || "" }
     };
 
     Object.keys(fixedAssetsMapping).forEach(categoryTitle => {
       const mapping = fixedAssetsMapping[categoryTitle];
       const categoryData = formData["Fixed Assets Schedule"][categoryTitle];
 
-      if (categoryData && categoryData.items) {
+      if (categoryData?.items) {
         categoryData.items.forEach((item, index) => {
           if (index < mapping.maxItems) {
             const row = mapping.dataStartRow + index;
-            excelData[`d${row}`] = { label: `${categoryTitle} - Item ${index + 1} Description`, value: item.description || '' };
-            excelData[`e${row}`] = { label: `${categoryTitle} - Item ${index + 1} Amount`, value: item.amount || 0 };
+            excelData[`D${row}`] = { label: `${categoryTitle} - Item ${index + 1} Description`, value: item.description || '' };
+            excelData[`E${row}`] = { label: `${categoryTitle} - Item ${index + 1} Amount`,      value: item.amount      || 0 };
           }
         });
       }
@@ -491,6 +477,16 @@ const FRCC1Form = ({
 
   // Handle form submission
   const handleSubmit = useCallback(() => {
+    const errors = validateAllSections();
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      const firstKey = Object.keys(errors)[0];
+      const errTitle = firstKey.split('.').slice(0, -1).join('.');
+      const idx = sections.findIndex(s => s.title === errTitle);
+      if (idx !== -1) setCurrentStep(idx);
+      return;
+    }
+    setFieldErrors({});
     const excelData = convertToExcelData();
 
     const submissionData = {
@@ -499,8 +495,8 @@ const FRCC1Form = ({
         additionalData: {
           formType: 'FRCC1 Complete Financial Form',
           timestamp: new Date().toISOString(),
-          bank_name: formData["General Information"]["bank_name"],
-          branch_name: formData["General Information"]["branch_name"],
+          bank_name: formData["Prepared By"]["bank_name"],
+          branch_name: formData["Prepared By"]["branch_name"],
           "Fixed Assets Schedule": formData["Fixed Assets Schedule"]
         }
       }
@@ -517,7 +513,7 @@ const FRCC1Form = ({
       setFinalJson(submissionData);
       setShowResult(true);
     }
-  }, [formData, convertToExcelData, onSubmit, onFormDataChange]);
+  }, [formData, validateAllSections, convertToExcelData, onSubmit, onFormDataChange]);
 
   // Copy JSON to clipboard
   const copyToClipboard = useCallback(() => {
@@ -718,6 +714,7 @@ const FRCC1Form = ({
                 section={currentSection}
                 data={formData[currentSection.title]}
                 onUpdate={updateField}
+                fieldErrors={fieldErrors}
               />
             )}
           </div>
@@ -778,56 +775,61 @@ const FRCC1Form = ({
 };
 
 // Regular fields section component
-const RegularFieldsSection = ({ section, data = {}, onUpdate }) => {
+const RegularFieldsSection = ({ section, data = {}, onUpdate, fieldErrors = {} }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {section.fields.map(field => (
-        <div key={field.id} className="space-y-1.5">
-          <label style={{ fontFamily: 'Manrope, sans-serif' }} className="block text-xs font-semibold text-gray-800">
-            {field.label} {field.required && <span className="text-red-500">*</span>}
-          </label>
-          {field.type === 'select' ? (
-            <select
-              value={data[field.id] || ''}
-              onChange={(e) => onUpdate(section.title, field.id, e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-            >
-              <option value="">Select...</option>
-              {field.options.map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </select>
-          ) : field.type === 'textarea' ? (
-            <textarea
-              value={data[field.id] || ''}
-              onChange={(e) => onUpdate(section.title, field.id, e.target.value)}
-              placeholder={field.label}
-              rows={2}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white resize-none"
-            />
-          ) : field.type === 'computed' ? (
-            <div className="px-3 py-2 bg-gray-100 rounded-lg border border-gray-300 text-gray-800 font-semibold text-sm">
-              ₹{data[field.id]?.toLocaleString('en-IN') || 0}
-            </div>
-          ) : (
-            <input
-              type={field.type}
-              value={data[field.id] || ''}
-              onChange={(e) => onUpdate(section.title, field.id, field.type === 'number' ? Number(e.target.value) || 0 : e.target.value)}
-              placeholder={field.label}
-              min={field.min}
-              max={field.max}
-              step={field.step}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-            />
-          )}
-          {field.note && (
-            <p className="text-xs text-gray-500 mt-1">
-              {field.note}
-            </p>
-          )}
-        </div>
-      ))}
+      {section.fields.map(field => {
+        const err = fieldErrors[`${section.title}.${field.id}`];
+        return (
+          <div key={field.id} className="space-y-1.5">
+            <label style={{ fontFamily: 'Manrope, sans-serif' }} className="block text-xs font-semibold text-gray-800">
+              {field.label} {field.required && <span className="text-red-500">*</span>}
+            </label>
+            {field.type === 'select' ? (
+              <select
+                value={data[field.id] || ''}
+                onChange={(e) => onUpdate(section.title, field.id, e.target.value)}
+                className={`w-full px-3 py-2 text-sm border ${err ? 'border-red-400' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
+              >
+                <option value="">Select...</option>
+                {field.options.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            ) : field.type === 'textarea' ? (
+              <textarea
+                value={data[field.id] || ''}
+                onChange={(e) => onUpdate(section.title, field.id, e.target.value)}
+                placeholder={field.label}
+                rows={2}
+                className={`w-full px-3 py-2 text-sm border ${err ? 'border-red-400' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white resize-none`}
+              />
+            ) : field.type === 'computed' ? (
+              <div className="px-3 py-2 bg-gray-100 rounded-lg border border-gray-300 text-gray-800 font-semibold text-sm">
+                ₹{data[field.id]?.toLocaleString('en-IN') || 0}
+              </div>
+            ) : (
+              <input
+                type={field.type}
+                value={data[field.id] || ''}
+                onChange={(e) => onUpdate(section.title, field.id, field.type === 'number' ? Number(e.target.value) || 0 : e.target.value)}
+                placeholder={field.label}
+                min={field.min}
+                max={field.max}
+                step={field.step}
+                className={`w-full px-3 py-2 text-sm border ${err ? 'border-red-400' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
+              />
+            )}
+            {err ? (
+              <p className="text-xs text-red-500 mt-1">{err}</p>
+            ) : field.note && (
+              <p className="text-xs text-gray-500 mt-1">
+                {field.note}
+              </p>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -836,32 +838,16 @@ const RegularFieldsSection = ({ section, data = {}, onUpdate }) => {
 const FixedAssetsSection = ({ categories, data = {}, onUpdate, onDelete }) => {
   const [activeTab, setActiveTab] = useState(0);
 
-  const maxItems = {
-    'Plant and Machinery': 10,
-    'Service Equipment': 10,
-    'Shed, construction, civil works': 10,
-    'Land': 3,
-    'Electrical Items': 9,
-    'Electronics Items': 10,
-    'Furniture and Fittings': 10,
-    'Vehicles': 10,
-    'Live stock': 9,
-    'Other Assets': 10,
-    'Other Assets (Including Amortisable Assets)': 10
-  };
-
   const currentCategory = categories[activeTab];
   const categoryData = data[currentCategory.title] || { items: [], total: 0 };
+  const maxAllowed = currentCategory.itemCount;
 
   const addItem = () => {
     const currentItems = categoryData.items?.length || 0;
-    const maxAllowed = maxItems[currentCategory.title] || Infinity;
-
     if (currentItems >= maxAllowed) {
       alert(`Maximum ${maxAllowed} items allowed for ${currentCategory.title}`);
       return;
     }
-
     onUpdate(currentCategory.title, currentItems, 'description', '', currentCategory.startIndex);
     onUpdate(currentCategory.title, currentItems, 'amount', 0, currentCategory.startIndex);
   };
@@ -943,14 +929,14 @@ const FixedAssetsSection = ({ categories, data = {}, onUpdate, onDelete }) => {
         <button
           type="button"
           onClick={addItem}
-          className={`mt-3 px-4 py-2 text-xs rounded-lg font-medium transition-all duration-300 flex items-center gap-1.5 ${(categoryData.items?.length || 0) >= (maxItems[currentCategory.title] || Infinity)
+          className={`mt-3 px-4 py-2 text-xs rounded-lg font-medium transition-all duration-300 flex items-center gap-1.5 ${(categoryData.items?.length || 0) >= maxAllowed
             ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
             : 'border-2 border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white'
             }`}
-          disabled={(categoryData.items?.length || 0) >= (maxItems[currentCategory.title] || Infinity)}
+          disabled={(categoryData.items?.length || 0) >= maxAllowed}
         >
           <PlusIcon className="w-4 h-4" />
-          Add Item ({categoryData.items?.length || 0}/{maxItems[currentCategory.title] || '∞'})
+          Add Item ({categoryData.items?.length || 0}/{maxAllowed})
         </button>
       </div>
     </div>

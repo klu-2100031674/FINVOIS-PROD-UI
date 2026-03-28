@@ -9,34 +9,82 @@ import {
   ChevronRightIcon,
   CheckCircleIcon,
   PlusIcon,
-  TrashIcon
+  TrashIcon,
+  UsersIcon
 } from '@heroicons/react/24/outline';
 
-// Generate financial year options
+// Generate financial year options in 2024-25 format, current year to +20 years
 const generateFinancialYearOptions = () => {
   const options = [];
-  for (let start = 2024; start <= 2033; start++) {
-    options.push(`${start}-${(start + 1).toString().slice(-2)}`);
+  const currentYear = new Date().getFullYear();
+  for (let start = currentYear; start <= currentYear + 20; start++) {
+    options.push(`${start}-${String(start + 1).slice(-2)}`);
   }
-
   return options;
 };
 
-// Form configuration for CC2
+// Audited fields config
+const AUDITED_FIELDS = [
+  { id: 'i23', label: 'Turnover (₹)',                                      type: 'number', min: 0, required: true },
+  { id: 'i24', label: 'Opening Stock (₹)',                                  type: 'number', min: 0, required: true },
+  { id: 'i25', label: 'Direct Material & Expenses (₹)',                     type: 'number', min: 0, required: true },
+  { id: 'i26', label: 'Closing Stock (₹)',                                  type: 'number', min: 0, required: true },
+  { id: 'i27', label: 'Non Operating Income (₹)',                           type: 'number', min: 0, required: true },
+  { id: 'i28', label: 'Depreciation (₹)',                                   type: 'number', min: 0, required: true },
+  { id: 'i29', label: 'Electricity (₹)',                                    type: 'number', min: 0, required: true },
+  { id: 'i30', label: 'Rent (₹)',                                           type: 'number', min: 0, required: true },
+  { id: 'i31', label: 'Salaries & Wages (₹)',                               type: 'number', min: 0, required: true },
+  { id: 'i32', label: 'Interest on Other Loans (₹)',                        type: 'number', min: 0, required: true },
+  { id: 'i33', label: 'Net Profit Before Tax (₹)',                          type: 'number', min: 0, required: true },
+  { id: 'i35', label: 'Net Capital (Opening + Profit - Drawings) (₹)',      type: 'number', min: 0, required: true },
+  { id: 'i36', label: 'Term Loans (Secured + Unsecured Total) (₹)',         type: 'number', min: 0, required: true },
+  { id: 'i37', label: 'Current Liabilities (₹)',                            type: 'number', min: 0, required: true },
+  { id: 'i38', label: 'Net Total Fixed Assets (₹)',                         type: 'number', min: 0, required: true },
+  { id: 'i41', label: 'Investments (₹)',                                    type: 'number', min: 0, required: true },
+  { id: 'i42', label: 'Debtors (₹)',                                        type: 'number', min: 0, required: true },
+  { id: 'i43', label: 'Cash and Cash Equivalents (₹)',                      type: 'number', min: 0, required: true },
+  { id: 'i44', label: 'Other Current Assets (₹)',                           type: 'number', min: 0, required: true },
+];
+
+// Provisional fields config
+// k18-display: shows months from Financial Years — display-only, not sent to backend
+// i48 (Opening Stock): auto-filled from audited i26 — display-only, not sent to backend
+const PROVISIONAL_FIELDS = [
+  { id: 'months_display', label: 'No of Months Completed in This Financial Year', type: 'months-display', note: 'Auto-filled from Financial Years' },
+  { id: 'i47', label: 'Turnover (₹)',                                       type: 'number', min: 0, required: true },
+  { id: 'i48', label: 'Opening Stock (₹)',                                  type: 'autofill', sourceId: 'i26', note: 'Auto-filled from Audited Closing Stock' },
+  { id: 'i49', label: 'Direct Material & Expenses (₹)',                     type: 'number', min: 0, required: true },
+  { id: 'i50', label: 'Closing Stock (₹)',                                  type: 'number', min: 0, required: true },
+  { id: 'i51', label: 'Non Operating Income (₹)',                           type: 'number', min: 0, required: true },
+  { id: 'i52', label: 'Depreciation (₹)',                                   type: 'number', min: 0, required: true },
+  { id: 'i53', label: 'Electricity (₹)',                                    type: 'number', min: 0, required: true },
+  { id: 'i54', label: 'Rent (₹)',                                           type: 'number', min: 0, required: true },
+  { id: 'i55', label: 'Salaries & Wages (₹)',                               type: 'number', min: 0, required: true },
+  { id: 'i56', label: 'Interest on Other Loans (Secured & Unsecured) (₹)', type: 'number', min: 0, required: true },
+  { id: 'i57', label: 'Net Profit Before Tax (₹)',                          type: 'number', min: 0, required: true },
+  { id: 'i59', label: 'Net Capital (Opening + Profit - Drawings) (₹)',      type: 'number', min: 0, required: true },
+  { id: 'i60', label: 'Term Loans (Secured + Unsecured Total) (₹)',         type: 'number', min: 0, required: true },
+  { id: 'i61', label: 'Current Liabilities (₹)',                            type: 'number', min: 0, required: true },
+  { id: 'i65', label: 'Investments (₹)',                                    type: 'number', min: 0, required: true },
+  { id: 'i66', label: 'Debtors (₹)',                                        type: 'number', min: 0, required: true },
+  { id: 'i67', label: 'Cash and Cash Equivalents (₹)',                      type: 'number', min: 0, required: true },
+  { id: 'i68', label: 'Other Current Assets (₹)',                           type: 'number', min: 0, required: true },
+];
+
+// Form sections
 const sections = [
   {
     key: 'general',
     title: 'General Information',
     icon: DocumentTextIcon,
     fields: [
-      { id: 'i3', label: 'Name of Firm', type: 'text', required: true, note: 'Enter your company/firm name' },
-      { id: 'i4', label: 'Status of Concern', type: 'select', options: ['Soleproprietorship', 'Partnership', 'LLP', 'Company'], required: true, note: 'Select business structure' },
-      { id: 'i5', label: 'Proprietor / MP / MD Name', type: 'text', required: true, note: 'Enter the name of the owner/managing partner/managing director' },
-      { id: 'bank_name', label: 'Bank Name / Department Name', type: 'text', required: true, note: 'Enter bank or department name' },
-      { id: 'branch_name', label: 'Branch Name', type: 'text', required: true, note: 'Enter branch name' },
-      { id: 'i6', label: 'Firm Address', type: 'textarea', required: true, note: 'Enter complete business address' },
-      { id: 'i7', label: 'Sector', type: 'select', options: ['Manufacturing sector', 'Service sector (with stock)', 'Trading sector'], required: true, note: 'Select your primary business sector' },
-      { id: 'i8', label: 'Nature of Business', type: 'text', required: true, note: 'Describe your business activity' }
+      { id: 'i3', label: 'Name of Firm',                      type: 'text',     required: true, note: 'Enter your company/firm name' },
+      { id: 'i4', label: 'Status of Concern',                 type: 'select',   options: ['Sole Proprietorship', 'Partnership Firm', 'Private limited Company', 'LLP', 'Society', 'Trust', 'Federation', 'SHG'], required: true, note: 'Select business structure' },
+      { id: 'i5', label: 'Name of Authorised Person',         type: 'text',     required: true, note: 'Enter the authorised person name' },
+      { id: 'i6', label: 'Firm Address',                      type: 'textarea', required: true, note: 'Enter complete business address' },
+      { id: 'i7', label: 'Contact No. of Authorised Person',  type: 'text',     required: true, note: 'Enter contact number' },
+      { id: 'i8', label: 'Sector',                            type: 'select',   options: ['Manufacturing sector', 'Service sector (with stock)', 'Trading sector'], required: true, note: 'Select your primary business sector' },
+      { id: 'i9', label: 'Nature of Business',                type: 'text',     required: true, note: 'Describe your business activity' },
     ]
   },
   {
@@ -44,11 +92,11 @@ const sections = [
     title: 'Means of Finance',
     icon: CurrencyDollarIcon,
     fields: [
-      { id: 'i10', label: 'Do you have working capital limit at present?', type: 'select', options: ['Yes', 'No'], required: true, note: 'Select if you currently have an existing working capital loan' },
-      { id: 'i11', label: 'Working Capital Loan Requirement (₹)', type: 'number', min: 0, required: true, note: 'Enter loan amount in rupees (e.g., 10000000 for ₹1 crore)' },
-      { id: 'h12', label: 'Working Capital Loan Interest (Annual %)', type: 'number', min: 0, max: 100, step: 0.01, required: true, note: 'Enter annual interest rate as percentage (e.g., 12 for 12% per annum)' },
-      { id: 'h13', label: 'Processing Fees (% of Loan Amount)', type: 'number', min: 0, max: 100, step: 0.01, required: true, note: 'Enter processing fee as % (e.g., 1 for 1%)' },
-      { id: 'h14', label: 'Working Capital (% of Turnover)', type: 'number', min: 15, max: 100, step: 0.01, required: true, note: 'Enter working capital as percentage of turnover (minimum 15%)' }
+      { id: 'i11',  label: 'Do you have working capital limit at present?', type: 'select', options: ['Yes', 'No'], required: true },
+      { id: 'i12',  label: 'Working Capital Loan Requirement (₹)',          type: 'number', min: 0, required: true },
+      { id: 'h13',  label: 'Working Capital Loan Interest (Annual %)',      type: 'number', min: 0, max: 100, step: 0.01, required: true },
+      { id: 'h14',  label: 'Processing Fees (Including GST) %',             type: 'number', min: 0, required: true },
+      { id: 'h15',  label: 'Working Capital (% of Turnover)',               type: 'number', min: 0, step: 0.01, required: true, note: '15% or more' },
     ]
   },
   {
@@ -56,100 +104,63 @@ const sections = [
     title: 'Financial Years',
     icon: CalendarIcon,
     fields: [
-      { id: 'i16', label: '1st Financial Year (Audited)', type: 'select', options: generateFinancialYearOptions(), required: true, note: 'Select audited financial year' },
-      { id: 'i17', label: '2nd Financial Year (Provisional)', type: 'select', options: generateFinancialYearOptions(), required: true, note: 'Partial year possible (e.g., Apr to Sept 2025-26)' },
-      { id: 'i18', label: '3rd Financial Year (Estimated)', type: 'select', options: generateFinancialYearOptions(), required: true, note: 'Select estimated year' },
-      { id: 'i19', label: '4th Financial Year (Projected)', type: 'select', options: generateFinancialYearOptions(), required: true, note: 'Select projected year' },
-      { id: 'i20', label: '5th Financial Year (Projected)', type: 'select', options: generateFinancialYearOptions(), required: true, note: 'Select projected year' }
+      { id: 'i17', label: '1st Financial Year (Audited)',      type: 'select', options: generateFinancialYearOptions(), required: true },
+      { id: 'i18', label: '2nd Financial Year (Provisional)',  type: 'select', options: generateFinancialYearOptions(), required: true },
+      { id: 'k18', label: 'Months Completed in Provisional Year', type: 'number', min: 1, max: 12, required: true, note: 'How many months of the provisional year are complete?' },
     ]
   },
   {
     key: 'financial-statements',
     title: 'Financial Statements',
     icon: ChartBarIcon,
-    fields: [
-      { id: 'i45', label: 'No of Months Completed in Provisional Year', type: 'number', min: 1, max: 12, required: true, note: 'Number of months completed (e.g., 6 for Apr to Sept)' }
-    ],
-    audited: {
-      title: 'Audited Financial Statements',
-      subtitle: 'Based on 1st Financial Year (Audited)',
-      fields: [
-        { id: 'i22', label: 'Turnover (₹)', type: 'number', min: 0, required: true, note: 'Annual turnover from audited statements' },
-        { id: 'i23', label: 'Opening Stock (₹)', type: 'number', min: 0, required: true, note: 'Stock at beginning of year' },
-        { id: 'i24', label: 'Direct Material & Expenses (₹)', type: 'number', min: 0, required: true, note: 'Cost of materials and direct expenses' },
-        { id: 'i25', label: 'Closing Stock (₹)', type: 'number', min: 0, required: true, note: 'Stock at end of year' },
-        { id: 'i26', label: 'Non Operating Income (₹)', type: 'number', min: 0, required: true, note: 'Other income (interest, rent received, etc.)' },
-        { id: 'i27', label: 'Depreciation (₹)', type: 'number', min: 0, required: true, note: 'Depreciation expense for the year' },
-        { id: 'i28', label: 'Electricity (₹)', type: 'number', min: 0, required: true, note: 'Power and electricity charges' },
-        { id: 'i29', label: 'Rent (₹)', type: 'number', min: 0, required: true, note: 'Annual rent paid' },
-        { id: 'i30', label: 'Salaries & Wages (₹)', type: 'number', min: 0, required: true, note: 'Total employee salaries and wages' },
-        { id: 'i31', label: 'Interest on Other Loans (₹)', type: 'number', min: 0, required: true, note: 'Interest on term loans and other borrowings' },
-        { id: 'i32', label: 'Net Profit Before Tax (₹)', type: 'number', min: 0, required: true, note: 'Profit before tax as per audited statements' },
-        { id: 'i34', label: 'Net Capital (Opening + Profit - Drawings) (₹)', type: 'number', min: 0, required: true, note: 'Net capital at year end' },
-        { id: 'i35', label: 'Term Loans (Secured + Unsecured Total) (₹)', type: 'number', min: 0, required: true, note: 'Total outstanding term loans' },
-        { id: 'i36', label: 'Current Liabilities (₹)', type: 'number', min: 0, required: true, note: 'Total current liabilities' },
-        { id: 'i37', label: 'Net Total Fixed Assets (₹)', type: 'computed', note: 'Auto-generated from Fixed Assets Schedule' },
-        { id: 'i40', label: 'Investments (₹)', type: 'number', min: 0, required: true, note: 'Investments held' },
-        { id: 'i41', label: 'Debtors (₹)', type: 'number', min: 0, required: true, note: 'Accounts receivable' },
-        { id: 'i42', label: 'Cash and Cash Equivalents (₹)', type: 'number', min: 0, required: true, note: 'Cash, bank balances' },
-        { id: 'i43', label: 'Other Current Assets (₹)', type: 'number', min: 0, required: true, note: 'Other current assets if any' }
-      ]
-    },
-    provisional: {
-      title: 'Provisional Financial Statements',
-      subtitle: 'Based on 2nd Financial Year (Provisional)',
-      fields: [
-        { id: 'i46', label: 'Turnover (₹)', type: 'number', min: 0, required: true, note: 'Turnover for provisional period' },
-        { id: 'i47', label: 'Opening Stock (₹)', type: 'number', min: 0, required: true, note: 'Stock at beginning of provisional year' },
-        { id: 'i48', label: 'Direct Material & Expenses (₹)', type: 'number', min: 0, required: true, note: 'Cost of materials and direct expenses' },
-        { id: 'i49', label: 'Closing Stock (₹)', type: 'number', min: 0, required: true, note: 'Stock at end of provisional period' },
-        { id: 'i50', label: 'Non Operating Income (₹)', type: 'number', min: 0, required: true, note: 'Other income for provisional period' },
-        { id: 'i51', label: 'Depreciation (₹)', type: 'number', min: 0, required: true, note: 'Depreciation for provisional period' },
-        { id: 'i52', label: 'Electricity (₹)', type: 'number', min: 0, required: true, note: 'Electricity charges for provisional period' },
-        { id: 'i53', label: 'Rent (₹)', type: 'number', min: 0, required: true, note: 'Rent paid for provisional period' },
-        { id: 'i54', label: 'Salaries & Wages (₹)', type: 'number', min: 0, required: true, note: 'Salaries for provisional period' },
-        { id: 'i55', label: 'Interest on Other Loans (₹)', type: 'number', min: 0, required: true, note: 'Interest paid on term loans' },
-        { id: 'i56', label: 'Net Profit Before Tax (₹)', type: 'number', min: 0, required: true, note: 'Profit before tax for provisional period' },
-        { id: 'i58', label: 'Net Capital (Opening + Profit - Drawings) (₹)', type: 'number', min: 0, required: true, note: 'Net capital at provisional period end' },
-        { id: 'i59', label: 'Term Loans (Secured + Unsecured Total) (₹)', type: 'number', min: 0, required: true, note: 'Outstanding term loans' },
-        { id: 'i60', label: 'Current Liabilities (₹)', type: 'number', min: 0, required: true, note: 'Current liabilities at provisional period end' },
-        { id: 'i63', label: 'Net Fixed Assets (₹)', type: 'computed', note: 'Auto-calculated (Gross - Depreciation)' },
-        { id: 'i64', label: 'Investments (₹)', type: 'number', min: 0, required: true, note: 'Investments held' },
-        { id: 'i65', label: 'Debtors (₹)', type: 'number', min: 0, required: true, note: 'Accounts receivable' },
-        { id: 'i66', label: 'Cash and Cash Equivalents (₹)', type: 'number', min: 0, required: true, note: 'Cash and bank balances' },
-        { id: 'i67', label: 'Other Current Assets (₹)', type: 'number', min: 0, required: true, note: 'Other current assets if any' }
-      ]
-    }
   },
   {
     key: 'fixed',
-    title: 'Fixed Assets Schedule (as on 31.03.2025)',
+    title: 'Fixed Assets Schedule',
     icon: BuildingOfficeIcon,
     categories: [
-      { idPrefix: 'R121C2', title: 'Plant and Machinery', itemCount: 10, startIndex: 121 },
-      { idPrefix: 'R131C2', title: 'Service Equipment', itemCount: 10, startIndex: 131 },
-      { idPrefix: 'R141C2', title: 'Shed and Civil Works', itemCount: 10, startIndex: 141 },
-      { idPrefix: 'R151C2', title: 'Land', itemCount: 3, startIndex: 151 },
-      { idPrefix: 'R154C2', title: 'Electrical Items', itemCount: 9, startIndex: 154 },
-      { idPrefix: 'R164C2', title: 'Electronic Items', itemCount: 10, startIndex: 164 },
-      { idPrefix: 'R173C2', title: 'Furniture and Fittings', itemCount: 10, startIndex: 173 },
-      { idPrefix: 'R183C2', title: 'Vehicles', itemCount: 10, startIndex: 183 },
-      { idPrefix: 'R193C2', title: 'Live Stock', itemCount: 9, startIndex: 193 },
-      { idPrefix: 'R202C2', title: 'Other Assets', itemCount: 10, startIndex: 202 },
-      { idPrefix: 'R212C2', title: 'Other Assets (Including Amortisable Assets)', itemCount: 10, startIndex: 212 }
+      { title: 'Plant and Machinery',                          startIndex: 122, itemCount: 10 },
+      { title: 'Service Equipment',                            startIndex: 132, itemCount: 10 },
+      { title: 'Shed Construction and Civil works',            startIndex: 142, itemCount: 10 },
+      { title: 'Land',                                         startIndex: 152, itemCount: 3  },
+      { title: 'Electrical and Plumbing Items',                startIndex: 155, itemCount: 9  },
+      { title: 'Electronic items',                             startIndex: 164, itemCount: 10 },
+      { title: 'Furniture and Fittings',                       startIndex: 174, itemCount: 10 },
+      { title: 'Vehicles',                                     startIndex: 184, itemCount: 10 },
+      { title: 'Live stock',                                   startIndex: 194, itemCount: 9  },
+      { title: 'Other Assets (Including Amortisable Assets)',  startIndex: 203, itemCount: 10 },
+      { title: 'Other Assets (Nil Depreciation)',              startIndex: 213, itemCount: 10 },
     ]
   },
   {
     key: 'prepared_by',
     title: 'Prepared By',
-    icon: BuildingOfficeIcon,
+    icon: UsersIcon,
     fields: [
-      { id: 'j136', label: 'Partner Name 1 (Prepared By)', type: 'text', required: true, note: 'Enter partner name 1' },
-      { id: 'j137', label: 'Partner Name 2 (Prepared By)', type: 'text', required: true, note: 'Enter partner name 2' },
-      { id: 'j138', label: 'Mobile Number (Prepared By)', type: 'text', required: true, note: 'Enter mobile number' }
+      { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text', required: true },
+      { id: 'branch_name', label: 'Branch Name',                 type: 'text', required: true },
+      { id: 'j123', label: 'Name 1',    type: 'text', required: true },
+      { id: 'j124', label: 'Name 2',    type: 'text', required: true },
+      { id: 'j125', label: 'Address',   type: 'text', required: true },
+      { id: 'j126', label: 'Contact',   type: 'text', required: true },
     ]
   }
 ];
+
+// Fixed assets row mapping
+const fixedAssetsMapping = {
+  "Plant and Machinery":                         { dataStartRow: 122, maxItems: 10 },
+  "Service Equipment":                           { dataStartRow: 132, maxItems: 10 },
+  "Shed Construction and Civil works":           { dataStartRow: 142, maxItems: 10 },
+  "Land":                                        { dataStartRow: 152, maxItems: 3  },
+  "Electrical and Plumbing Items":               { dataStartRow: 155, maxItems: 9  },
+  "Electronic items":                            { dataStartRow: 164, maxItems: 10 },
+  "Furniture and Fittings":                      { dataStartRow: 174, maxItems: 10 },
+  "Vehicles":                                    { dataStartRow: 184, maxItems: 10 },
+  "Live stock":                                  { dataStartRow: 194, maxItems: 9  },
+  "Other Assets (Including Amortisable Assets)": { dataStartRow: 203, maxItems: 10 },
+  "Other Assets (Nil Depreciation)":             { dataStartRow: 213, maxItems: 10 },
+};
 
 const FRCC2Form = ({
   onSubmit,
@@ -163,99 +174,55 @@ const FRCC2Form = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState(initialData || {
     "General Information": {
-      "i3": "",
-      "i4": "",
-      "i5": "",
-      "i6": "",
-      "bank_name": "",
-      "branch_name": "",
-      "i7": "",
-      "i8": ""
+      "i3": "", "i4": "", "i5": "", "i6": "", "i7": "", "i8": "", "i9": ""
     },
     "Means of Finance": {
-      "i10": "",
-      "i11": "",
-      "h12": "",
-      "h13": "",
-      "h14": ""
+      "i11": "", "i12": "", "h13": "", "h14": "", "h15": ""
     },
     "Financial Years": {
-      "i16": "",
-      "i17": "",
-      "i18": "",
-      "i19": "",
-      "i20": ""
+      "i17": "", "i18": "", "k18": ""
     },
     "Audited Financial Statements": {
-      "i22": "",
-      "i23": "",
-      "i24": "",
-      "i25": "",
-      "i26": "",
-      "i27": "",
-      "i28": "",
-      "i29": "",
-      "i30": "",
-      "i31": "",
-      "i32": "",
-      "i34": "",
-      "i35": "",
-      "i36": "",
-      "i37": "",
-      "i40": "",
-      "i41": "",
-      "i42": "",
-      "i43": ""
+      "i23": "", "i24": "", "i25": "", "i26": "", "i27": "", "i28": "",
+      "i29": "", "i30": "", "i31": "", "i32": "", "i33": "",
+      "i35": "", "i36": "", "i37": "", "i38": "",
+      "i41": "", "i42": "", "i43": "", "i44": ""
     },
     "Provisional Financial Statements": {
-      "i45": "",
-      "i46": "",
-      "i47": "",
-      "i48": "",
-      "i49": "",
-      "i50": "",
-      "i51": "",
-      "i52": "",
-      "i53": "",
-      "i54": "",
-      "i55": "",
-      "i56": "",
-      "i58": "",
-      "i59": "",
-      "i60": "",
-      "i63": "",
-      "i64": "",
-      "i65": "",
-      "i66": "",
-      "i67": ""
+      "i47": "", "i49": "", "i50": "", "i51": "", "i52": "",
+      "i53": "", "i54": "", "i55": "", "i56": "", "i57": "",
+      "i59": "", "i60": "", "i61": "",
+      "i65": "", "i66": "", "i67": "", "i68": ""
     },
     "Fixed Assets Schedule": {
-      "Plant and Machinery": { items: [], total: 0 },
-      "Service Equipment": { items: [], total: 0 },
-      "Shed and Civil Works": { items: [], total: 0 },
-      "Land": { items: [], total: 0 },
-      "Electrical Items": { items: [], total: 0 },
-      "Electronic Items": { items: [], total: 0 },
-      "Furniture and Fittings": { items: [], total: 0 },
-      "Vehicles": { items: [], total: 0 },
-      "Live Stock": { items: [], total: 0 },
-      "Other Assets": { items: [], total: 0 },
-      "Other Assets (Including Amortisable Assets)": { items: [], total: 0 }
+      "Plant and Machinery":                         { items: [], total: 0 },
+      "Service Equipment":                           { items: [], total: 0 },
+      "Shed Construction and Civil works":           { items: [], total: 0 },
+      "Land":                                        { items: [], total: 0 },
+      "Electrical and Plumbing Items":               { items: [], total: 0 },
+      "Electronic items":                            { items: [], total: 0 },
+      "Furniture and Fittings":                      { items: [], total: 0 },
+      "Vehicles":                                    { items: [], total: 0 },
+      "Live stock":                                  { items: [], total: 0 },
+      "Other Assets (Including Amortisable Assets)": { items: [], total: 0 },
+      "Other Assets (Nil Depreciation)":             { items: [], total: 0 },
     },
     "Prepared By": {
-      "j136": "PARVEZ AND NARAYANA",
-      "j137": "Chartered Accountants",
-      "j138": "9014221011"
+      "bank_name": "", "branch_name": "",
+      "j123": "PARVEZ AND NARAYANA",
+      "j124": "Chartered Accountants",
+      "j125": "",
+      "j126": "9014221011"
     }
   });
 
   const [showResult, setShowResult] = useState(false);
   const [finalJson, setFinalJson] = useState(null);
   const [activeAssetTab, setActiveAssetTab] = useState(0);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
     if (initialData && isEditMode) {
-      console.log('📝 [FRCC2Form] Loading initial data for edit mode:', initialData);
       setFormData(initialData);
     }
   }, [initialData, isEditMode]);
@@ -274,280 +241,130 @@ const FRCC2Form = ({
         [fieldId]: value
       }
     }));
+    setFieldErrors(prev => {
+      const key = `${sectionTitle}.${fieldId}`;
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   }, []);
 
-  const updateFixedAssetCategory = useCallback((categoryName, items) => {
-    const total = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-    setFormData(prev => ({
-      ...prev,
-      "Fixed Assets Schedule": {
-        ...prev["Fixed Assets Schedule"],
-        [categoryName]: { items, total }
-      }
-    }));
-  }, []);
+  // Derived: audited closing stock auto-fills provisional opening stock
+  const auditedClosingStock = formData["Audited Financial Statements"]["i26"] || 0;
 
   const addFixedAssetItem = useCallback((categoryName) => {
     setFormData(prev => {
       const currentItems = prev["Fixed Assets Schedule"][categoryName]?.items || [];
+      const mapping = fixedAssetsMapping[categoryName];
+      if (currentItems.length >= mapping.maxItems) return prev;
       const newItems = [...currentItems, { description: '', amount: 0 }];
-      const total = newItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-      return {
-        ...prev,
-        "Fixed Assets Schedule": {
-          ...prev["Fixed Assets Schedule"],
-          [categoryName]: { items: newItems, total }
-        }
-      };
+      const total = newItems.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+      return { ...prev, "Fixed Assets Schedule": { ...prev["Fixed Assets Schedule"], [categoryName]: { items: newItems, total } } };
     });
   }, []);
 
   const removeFixedAssetItem = useCallback((categoryName, index) => {
     setFormData(prev => {
-      const currentItems = prev["Fixed Assets Schedule"][categoryName]?.items || [];
-      const newItems = currentItems.filter((_, i) => i !== index);
-      const total = newItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-      return {
-        ...prev,
-        "Fixed Assets Schedule": {
-          ...prev["Fixed Assets Schedule"],
-          [categoryName]: { items: newItems, total }
-        }
-      };
+      const newItems = prev["Fixed Assets Schedule"][categoryName].items.filter((_, i) => i !== index);
+      const total = newItems.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+      return { ...prev, "Fixed Assets Schedule": { ...prev["Fixed Assets Schedule"], [categoryName]: { items: newItems, total } } };
     });
   }, []);
 
   const updateFixedAssetItem = useCallback((categoryName, index, field, value) => {
     setFormData(prev => {
-      const currentItems = [...(prev["Fixed Assets Schedule"][categoryName]?.items || [])];
-      currentItems[index] = { ...currentItems[index], [field]: value };
-      const total = currentItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-      return {
-        ...prev,
-        "Fixed Assets Schedule": {
-          ...prev["Fixed Assets Schedule"],
-          [categoryName]: { items: currentItems, total }
-        }
-      };
+      const items = [...(prev["Fixed Assets Schedule"][categoryName]?.items || [])];
+      items[index] = { ...items[index], [field]: value };
+      const total = items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+      return { ...prev, "Fixed Assets Schedule": { ...prev["Fixed Assets Schedule"], [categoryName]: { items, total } } };
     });
   }, []);
 
   const fillTestData = useCallback(() => {
     setFormData({
       "General Information": {
-        "i3": "MEDICAID LABS LLP",
-        "i4": "LLP",
-        "i5": "N Apuroop",
-        "bank_name": "SBI",
-        "branch_name": "Main Branch",
-        "i6": "Autonagar, Vijayawada, Andhra Pradesh - 520001",
-        "i7": "Trading sector",
-        "i8": "Trading in Pharmaceutical Products"
+        "i3": "MEDICAID LABS LLP", "i4": "LLP", "i5": "N Apuroop",
+        "i6": "Autonagar, Vijayawada, Andhra Pradesh",
+        "i7": "9876543210", "i8": "Trading sector",
+        "i9": "Trading in Pharmaceutical Products"
       },
-      "Means of Finance": {
-        "i10": "No",
-        "i11": 10000000,
-        "h12": 12,
-        "h13": 1,
-        "h14": 15
-      },
-      "Financial Years": {
-        "i16": "2024-25",
-        "i17": "Apr to Sept 2025-26",
-        "i18": "2025-26",
-        "i19": "2026-27",
-        "i20": "2027-28"
-      },
+      "Means of Finance": { "i11": "No", "i12": 10000000, "h13": 12, "h14": 1, "h15": 15 },
+      "Financial Years": { "i17": "2024-25", "i18": "2025-26", "k18": 6 },
       "Audited Financial Statements": {
-        "i22": 67000000,
-        "i23": 12000000,
-        "i24": 43000000,
-        "i25": 13000000,
-        "i26": 50000,
-        "i27": 150000,
-        "i28": 300000,
-        "i29": 600000,
-        "i30": 3000000,
-        "i31": 800000,
-        "i32": 5800000,
-        "i34": 8000000,
-        "i35": 10000000,
-        "i36": 5000000,
-        "i37": 2000000,
-        "i40": 1000000,
-        "i41": 5500000,
-        "i42": 500000,
-        "i43": 2000000
+        "i23": 67000000, "i24": 12000000, "i25": 43000000, "i26": 13000000,
+        "i27": 50000, "i28": 150000, "i29": 300000, "i30": 600000,
+        "i31": 3000000, "i32": 800000, "i33": 5800000,
+        "i35": 8000000, "i36": 10000000, "i37": 5000000, "i38": 2000000,
+        "i41": 1000000, "i42": 5500000, "i43": 500000, "i44": 2000000
       },
       "Provisional Financial Statements": {
-        "i45": 6,
-        "i46": 35000000,
-        "i47": 13000000,
-        "i48": 22000000,
-        "i49": 13500000,
-        "i50": 25000,
-        "i51": 75000,
-        "i52": 150000,
-        "i53": 300000,
-        "i54": 1500000,
-        "i55": 400000,
-        "i56": 3000000,
-        "i58": 10000000,
-        "i59": 9500000,
-        "i60": 5500000,
-        "i63": 2075000,
-        "i64": 1000000,
-        "i65": 2900000,
-        "i66": 1750000,
-        "i67": 2500000
+        "i47": 35000000, "i49": 22000000, "i50": 13500000,
+        "i51": 25000, "i52": 75000, "i53": 150000, "i54": 300000,
+        "i55": 1500000, "i56": 400000, "i57": 3000000,
+        "i59": 10000000, "i60": 9500000, "i61": 5500000,
+        "i65": 1000000, "i66": 2900000, "i67": 1750000, "i68": 2500000
       },
       "Fixed Assets Schedule": {
-        "Plant and Machinery": {
-          items: [
-            { description: "Packaging Machine", amount: 800000 },
-            { description: "Conveyor System", amount: 300000 }
-          ],
-          total: 1100000
-        },
-        "Service Equipment": {
-          items: [{ description: "Air Conditioners", amount: 200000 }],
-          total: 200000
-        },
-        "Shed and Civil Works": {
-          items: [{ description: "Warehouse Building", amount: 500000 }],
-          total: 500000
-        },
-        "Land": { items: [], total: 0 },
-        "Electrical Items": { items: [], total: 0 },
-        "Electronic Items": { items: [], total: 0 },
-        "Furniture and Fittings": {
-          items: [{ description: "Office Furniture", amount: 350000 }],
-          total: 350000
-        },
-        "Vehicles": { items: [], total: 0 },
-        "Live Stock": { items: [], total: 0 },
-        "Other Assets": { items: [], total: 0 },
-        "Other Assets (Including Amortisable Assets)": { items: [], total: 0 }
+        "Plant and Machinery": { items: [{ description: "Packaging Machine", amount: 800000 }, { description: "Conveyor System", amount: 300000 }], total: 1100000 },
+        "Service Equipment":                           { items: [], total: 0 },
+        "Shed Construction and Civil works":           { items: [], total: 0 },
+        "Land":                                        { items: [], total: 0 },
+        "Electrical and Plumbing Items":               { items: [], total: 0 },
+        "Electronic items":                            { items: [], total: 0 },
+        "Furniture and Fittings":                      { items: [{ description: "Office Furniture", amount: 350000 }], total: 350000 },
+        "Vehicles":                                    { items: [], total: 0 },
+        "Live stock":                                  { items: [], total: 0 },
+        "Other Assets (Including Amortisable Assets)": { items: [], total: 0 },
+        "Other Assets (Nil Depreciation)":             { items: [], total: 0 },
       },
       "Prepared By": {
-        "j136": "PARVEZ AND NARAYANA",
-        "j137": "Chartered Accountants",
-        "j138": "9014221011"
+        "bank_name": "SBI", "branch_name": "Main Branch",
+        "j123": "PARVEZ AND NARAYANA", "j124": "Chartered Accountants",
+        "j125": "Hyderabad, Telangana", "j126": "9014221011"
       }
     });
   }, []);
 
-  const handleSubmit = useCallback(() => {
-    if (onSubmit) {
-      const excelData = convertToExcelData(formData);
-      onSubmit({
-        formData: {
-          excelData,
-          formData,
-          bank_name: formData["General Information"]["bank_name"],
-          branch_name: formData["General Information"]["branch_name"]
-        },
-        templateId: templateId || 'frcc2',
-        reportId
-      });
-    }
-  }, [formData, onSubmit, templateId, reportId]);
-
   const convertToExcelData = (data) => {
     const excelData = {};
 
-    excelData['i3'] = data['General Information']['i3'];
-    excelData['i4'] = data['General Information']['i4'];
-    excelData['i5'] = data['General Information']['i5'];
-    excelData['i6'] = data['General Information']['i6'];
-    excelData['i7'] = data['General Information']['i7'];
-    excelData['i8'] = data['General Information']['i8'];
+    // General Information
+    ['i3','i4','i5','i6','i7','i8','i9'].forEach(k => { excelData[k] = data['General Information'][k]; });
 
-    excelData['i10'] = data['Means of Finance']['i10'];
-    excelData['i11'] = data['Means of Finance']['i11'];
-    excelData['h12'] = data['Means of Finance']['h12'];
-    excelData['h13'] = data['Means of Finance']['h13'];
-    excelData['h14'] = data['Means of Finance']['h14'];
+    // Means of Finance
+    ['i11','i12','h13','h14','h15'].forEach(k => { excelData[k] = data['Means of Finance'][k]; });
 
-    excelData['i16'] = data['Financial Years']['i16'];
-    excelData['i17'] = data['Financial Years']['i17'];
-    excelData['i18'] = data['Financial Years']['i18'];
-    excelData['i19'] = data['Financial Years']['i19'];
-    excelData['i20'] = data['Financial Years']['i20'];
+    // Financial Years
+    ['i17','i18','k18'].forEach(k => { excelData[k] = data['Financial Years'][k]; });
 
-    excelData['i22'] = data['Audited Financial Statements']['i22'];
-    excelData['i23'] = data['Audited Financial Statements']['i23'];
-    excelData['i24'] = data['Audited Financial Statements']['i24'];
-    excelData['i25'] = data['Audited Financial Statements']['i25'];
-    excelData['i26'] = data['Audited Financial Statements']['i26'];
-    excelData['i27'] = data['Audited Financial Statements']['i27'];
-    excelData['i28'] = data['Audited Financial Statements']['i28'];
-    excelData['i29'] = data['Audited Financial Statements']['i29'];
-    excelData['i30'] = data['Audited Financial Statements']['i30'];
-    excelData['i31'] = data['Audited Financial Statements']['i31'];
-    excelData['i32'] = data['Audited Financial Statements']['i32'];
-    excelData['i34'] = data['Audited Financial Statements']['i34'];
-    excelData['i35'] = data['Audited Financial Statements']['i35'];
-    excelData['i36'] = data['Audited Financial Statements']['i36'];
-    excelData['i37'] = data['Audited Financial Statements']['i37'];
-    excelData['i40'] = data['Audited Financial Statements']['i40'];
-    excelData['i41'] = data['Audited Financial Statements']['i41'];
-    excelData['i42'] = data['Audited Financial Statements']['i42'];
-    excelData['i43'] = data['Audited Financial Statements']['i43'];
+    // Audited Financial Statements (i38 is computed — still send it)
+    ['i23','i24','i25','i26','i27','i28','i29','i30','i31','i32','i33',
+     'i35','i36','i37','i38','i41','i42','i43','i44'].forEach(k => {
+      excelData[k] = data['Audited Financial Statements'][k];
+    });
 
-    excelData['i45'] = data['Provisional Financial Statements']['i45'];
-    excelData['i46'] = data['Provisional Financial Statements']['i46'];
-    excelData['i47'] = data['Provisional Financial Statements']['i47'];
-    excelData['i48'] = data['Provisional Financial Statements']['i48'];
-    excelData['i49'] = data['Provisional Financial Statements']['i49'];
-    excelData['i50'] = data['Provisional Financial Statements']['i50'];
-    excelData['i51'] = data['Provisional Financial Statements']['i51'];
-    excelData['i52'] = data['Provisional Financial Statements']['i52'];
-    excelData['i53'] = data['Provisional Financial Statements']['i53'];
-    excelData['i54'] = data['Provisional Financial Statements']['i54'];
-    excelData['i55'] = data['Provisional Financial Statements']['i55'];
-    excelData['i56'] = data['Provisional Financial Statements']['i56'];
-    excelData['i58'] = data['Provisional Financial Statements']['i58'];
-    excelData['i59'] = data['Provisional Financial Statements']['i59'];
-    excelData['i60'] = data['Provisional Financial Statements']['i60'];
-    excelData['i63'] = data['Provisional Financial Statements']['i63'];
-    excelData['i64'] = data['Provisional Financial Statements']['i64'];
-    excelData['i65'] = data['Provisional Financial Statements']['i65'];
-    excelData['i66'] = data['Provisional Financial Statements']['i66'];
-    excelData['i67'] = data['Provisional Financial Statements']['i67'];
+    // Provisional Financial Statements (i48 auto-filled from audited i26, months_display not sent)
+    excelData['i48'] = data['Audited Financial Statements']['i26'];
+    ['i47','i49','i50','i51','i52','i53','i54','i55','i56','i57',
+     'i59','i60','i61','i65','i66','i67','i68'].forEach(k => {
+      excelData[k] = data['Provisional Financial Statements'][k];
+    });
 
-    excelData['j136'] = data['Prepared By']?.['j136'];
-    excelData['j137'] = data['Prepared By']?.['j137'];
-    excelData['j138'] = data['Prepared By']?.['j138'];
+    // Prepared By
+    ['bank_name','branch_name','j123','j124','j125','j126'].forEach(k => {
+      excelData[k] = data['Prepared By']?.[k];
+    });
 
-    const fixedAssetsMapping = {
-      "Plant and Machinery": { headerRow: 121, dataStartRow: 121, maxItems: 10 },
-      "Service Equipment": { headerRow: 131, dataStartRow: 131, maxItems: 10 },
-      "Shed and Civil Works": { headerRow: 141, dataStartRow: 141, maxItems: 10 },
-      "Land": { headerRow: 151, dataStartRow: 151, maxItems: 3 },
-      "Electrical Items": { headerRow: 154, dataStartRow: 154, maxItems: 9 },
-      "Electronic Items": { headerRow: 164, dataStartRow: 164, maxItems: 9 },
-      "Furniture and Fittings": { headerRow: 173, dataStartRow: 173, maxItems: 10 },
-      "Vehicles": { headerRow: 183, dataStartRow: 183, maxItems: 10 },
-      "Live Stock": { headerRow: 193, dataStartRow: 193, maxItems: 9 },
-      "Other Assets": { headerRow: 202, dataStartRow: 202, maxItems: 10 },
-      "Other Assets (Including Amortisable Assets)": { headerRow: 212, dataStartRow: 212, maxItems: 10 }
-    };
-
+    // Fixed Assets Schedule
     if (data['Fixed Assets Schedule']) {
       Object.entries(data['Fixed Assets Schedule']).forEach(([categoryName, categoryData]) => {
         const mapping = fixedAssetsMapping[categoryName];
         if (mapping && categoryData.items && Array.isArray(categoryData.items)) {
-          excelData[`b${mapping.headerRow}`] = categoryName;
-
           categoryData.items.slice(0, mapping.maxItems).forEach((item, index) => {
             const row = mapping.dataStartRow + index;
-            if (item.description) {
-              excelData[`d${row}`] = item.description;
-            }
-            if (item.amount !== undefined && item.amount !== null) {
-              excelData[`e${row}`] = parseFloat(item.amount) || 0;
-            }
+            if (item.description) excelData[`D${row}`] = item.description;
+            if (item.amount !== undefined && item.amount !== null) excelData[`E${row}`] = parseFloat(item.amount) || 0;
           });
         }
       });
@@ -559,58 +376,125 @@ const FRCC2Form = ({
   const validateCurrentSection = useCallback(() => {
     const currentSection = sections[currentStep];
 
-    if (currentSection.key === 'fixed') {
-      return true;
-    }
+    if (currentSection.key === 'fixed') return true;
 
     if (currentSection.key === 'financial-statements') {
       const auditedData = formData["Audited Financial Statements"];
       const provisionalData = formData["Provisional Financial Statements"];
-
-      for (const field of currentSection.fields) {
-        const value = provisionalData[field.id];
-        if (field.required && (value === '' || value === null || value === undefined)) {
-          return false;
-        }
+      for (const field of AUDITED_FIELDS) {
+        if (field.type === 'computed') continue;
+        if (field.required && (auditedData[field.id] === '' || auditedData[field.id] === null || auditedData[field.id] === undefined)) return false;
       }
-
-      for (const field of currentSection.audited.fields) {
-        if (field.type !== 'computed') {
-          const value = auditedData[field.id];
-          if (field.required && (value === '' || value === null || value === undefined)) {
-            return false;
-          }
-        }
+      for (const field of PROVISIONAL_FIELDS) {
+        if (field.type === 'computed' || field.type === 'autofill' || field.type === 'months-display') continue;
+        if (field.required && (provisionalData[field.id] === '' || provisionalData[field.id] === null || provisionalData[field.id] === undefined)) return false;
       }
-
-      for (const field of currentSection.provisional.fields) {
-        if (field.type !== 'computed') {
-          const value = provisionalData[field.id];
-          if (field.required && (value === '' || value === null || value === undefined)) {
-            return false;
-          }
-        }
-      }
-
       return true;
     }
 
     const sectionData = formData[currentSection.title];
-
-    for (const field of currentSection.fields) {
+    for (const field of currentSection.fields || []) {
       if (field.required) {
-        const value = sectionData[field.id];
-        if (value === '' || value === null || value === undefined) {
-          return false;
-        }
-        if (field.type === 'number' && (value === 0 || value === '')) {
-          return false;
-        }
+        const value = sectionData?.[field.id];
+        if (value === '' || value === null || value === undefined) return false;
       }
     }
-
     return true;
   }, [currentStep, formData]);
+
+  const validateAllSections = useCallback(() => {
+    const errors = {};
+    sections.forEach(section => {
+      if (section.key === 'fixed') return;
+      if (section.key === 'financial-statements') {
+        const auditedData = formData["Audited Financial Statements"] || {};
+        AUDITED_FIELDS.forEach(field => {
+          if (!field.required || field.type === 'computed' || field.type === 'autofill' || field.type === 'months-display') return;
+          const value = auditedData[field.id];
+          const key = `Audited Financial Statements.${field.id}`;
+          if (value === '' || value === null || value === undefined) {
+            errors[key] = 'This field is required';
+          }
+        });
+        const provisionalData = formData["Provisional Financial Statements"] || {};
+        PROVISIONAL_FIELDS.forEach(field => {
+          if (!field.required || field.type === 'computed' || field.type === 'autofill' || field.type === 'months-display') return;
+          const value = provisionalData[field.id];
+          const key = `Provisional Financial Statements.${field.id}`;
+          if (value === '' || value === null || value === undefined) {
+            errors[key] = 'This field is required';
+          }
+        });
+        return;
+      }
+      const sectionData = formData[section.title] || {};
+      (section.fields || []).forEach(field => {
+        if (!field.required) return;
+        const value = sectionData[field.id];
+        const key = `${section.title}.${field.id}`;
+        if (value === '' || value === null || value === undefined) {
+          errors[key] = 'This field is required';
+          return;
+        }
+        if (field.id === 'i7' && section.key === 'general') {
+          if (!/^\d{10}$/.test(String(value).trim())) {
+            errors[key] = 'Enter a valid 10-digit contact number';
+          }
+          return;
+        }
+        if (field.id === 'h13') {
+          if (Number(value) <= 0) errors[key] = 'Interest rate must be greater than 0';
+          return;
+        }
+        if (field.id === 'h15') {
+          if (Number(value) < 15) errors[key] = 'Working capital must be 15% or more of turnover';
+          return;
+        }
+        if (field.id === 'k18') {
+          const months = Number(value);
+          if (months < 1 || months > 12) errors[key] = 'Months must be between 1 and 12';
+        }
+      });
+    });
+    const fy = formData["Financial Years"];
+    if (fy["i17"] && fy["i18"]) {
+      const yr17 = parseInt(fy["i17"].split('-')[0], 10);
+      const yr18 = parseInt(fy["i18"].split('-')[0], 10);
+      if (yr18 !== yr17 + 1) {
+        errors["Financial Years.i18"] = 'Provisional year must follow audited year';
+      }
+    }
+    return errors;
+  }, [formData]);
+
+  const handleSubmit = useCallback(() => {
+    const errors = validateAllSections();
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      const firstKey = Object.keys(errors)[0];
+      const errTitle = firstKey.split('.').slice(0, -1).join('.');
+      let idx = sections.findIndex(s => s.title === errTitle);
+      if (idx === -1 && (errTitle === 'Audited Financial Statements' || errTitle === 'Provisional Financial Statements')) {
+        idx = sections.findIndex(s => s.key === 'financial-statements');
+      }
+      if (idx !== -1) setCurrentStep(idx);
+      return;
+    }
+    setFieldErrors({});
+    if (onSubmit) {
+      const excelData = convertToExcelData(formData);
+      onSubmit({
+        formData: {
+          excelData,
+          formData,
+          bank_name: formData["Prepared By"]["bank_name"],
+          branch_name: formData["Prepared By"]["branch_name"]
+        },
+        templateId: templateId || 'frcc2',
+        reportId
+      });
+    }
+  }, [formData, validateAllSections, onSubmit, templateId, reportId]);
 
   const goToNextStep = () => {
     if (!validateCurrentSection()) {
@@ -633,7 +517,43 @@ const FRCC2Form = ({
   };
 
   const renderField = (field, sectionTitle) => {
-    const value = formData[sectionTitle]?.[field.id] || '';
+    const value = formData[sectionTitle]?.[field.id] ?? '';
+
+    if (field.type === 'months-display') {
+      return (
+        <div key={field.id} className="space-y-1.5">
+          <label style={{ fontFamily: 'Manrope, sans-serif' }} className="block text-xs font-semibold text-gray-800">
+            {field.label}
+            <span className="ml-1 text-xs font-normal text-purple-600">(auto-filled)</span>
+          </label>
+          <input
+            type="text"
+            value={formData["Financial Years"]["k18"] ? `${formData["Financial Years"]["k18"]} months` : '—'}
+            disabled
+            className="w-full px-3 py-2 text-sm border border-purple-200 rounded-lg bg-purple-50 text-purple-700"
+          />
+          {field.note && <p className="text-xs text-gray-500 mt-1">{field.note}</p>}
+        </div>
+      );
+    }
+
+    if (field.type === 'autofill') {
+      return (
+        <div key={field.id} className="space-y-1.5">
+          <label style={{ fontFamily: 'Manrope, sans-serif' }} className="block text-xs font-semibold text-gray-800">
+            {field.label}
+            <span className="ml-1 text-xs font-normal text-blue-600">(auto-filled)</span>
+          </label>
+          <input
+            type="text"
+            value={auditedClosingStock || 'From Audited Closing Stock'}
+            disabled
+            className="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg bg-blue-50 text-blue-700"
+          />
+          {field.note && <p className="text-xs text-gray-500 mt-1">{field.note}</p>}
+        </div>
+      );
+    }
 
     if (field.type === 'computed') {
       return (
@@ -655,6 +575,7 @@ const FRCC2Form = ({
     }
 
     if (field.type === 'select') {
+      const err = fieldErrors[`${sectionTitle}.${field.id}`];
       return (
         <div key={field.id} className="space-y-1.5">
           <label style={{ fontFamily: 'Manrope, sans-serif' }} className="block text-xs font-semibold text-gray-800">
@@ -664,14 +585,14 @@ const FRCC2Form = ({
             value={value}
             onChange={(e) => updateField(sectionTitle, field.id, e.target.value)}
             required={field.required}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            className={`w-full px-3 py-2 text-sm border ${err ? 'border-red-400' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
           >
             <option value="">Select...</option>
             {field.options.map(option => (
               <option key={option} value={option}>{option}</option>
             ))}
           </select>
-          {field.note && (
+          {err ? <p className="text-xs text-red-500 mt-1">{err}</p> : field.note && (
             <p className="text-xs text-gray-500 mt-1">{field.note}</p>
           )}
         </div>
@@ -679,6 +600,7 @@ const FRCC2Form = ({
     }
 
     if (field.type === 'textarea') {
+      const err = fieldErrors[`${sectionTitle}.${field.id}`];
       return (
         <div key={field.id} className="space-y-1.5">
           <label style={{ fontFamily: 'Manrope, sans-serif' }} className="block text-xs font-semibold text-gray-800">
@@ -689,15 +611,16 @@ const FRCC2Form = ({
             onChange={(e) => updateField(sectionTitle, field.id, e.target.value)}
             required={field.required}
             rows={2}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white resize-none"
+            className={`w-full px-3 py-2 text-sm border ${err ? 'border-red-400' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white resize-none`}
           />
-          {field.note && (
+          {err ? <p className="text-xs text-red-500 mt-1">{err}</p> : field.note && (
             <p className="text-xs text-gray-500 mt-1">{field.note}</p>
           )}
         </div>
       );
     }
 
+    const err = fieldErrors[`${sectionTitle}.${field.id}`];
     return (
       <div key={field.id} className="space-y-1.5">
         <label style={{ fontFamily: 'Manrope, sans-serif' }} className="block text-xs font-semibold text-gray-800">
@@ -711,9 +634,9 @@ const FRCC2Form = ({
           min={field.min}
           max={field.max}
           step={field.step}
-          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+          className={`w-full px-3 py-2 text-sm border ${err ? 'border-red-400' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
         />
-        {field.note && (
+        {err ? <p className="text-xs text-red-500 mt-1">{err}</p> : field.note && (
           <p className="text-xs text-gray-500 mt-1">{field.note}</p>
         )}
       </div>
@@ -858,13 +781,13 @@ const FRCC2Form = ({
         </div>
 
         <div className="mb-4 flex justify-center">
-          {/* <button 
+          <button 
             className="px-4 py-2 border-2 border-gray-800 text-gray-800 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-300 text-xs font-medium" 
             onClick={fillTestData}
             type="button"
           >
             Fill Test Data
-          </button> */}
+          </button>
         </div>
 
         <div className="mb-6">
@@ -920,35 +843,29 @@ const FRCC2Form = ({
 
           <div className="bg-ghostwhite rounded-lg p-4" style={{ backgroundColor: '#F8F8FF' }}>
             {currentSection.key === 'financial-statements' ? (
-              <>
-                <div className="mb-6">
-                  {currentSection.fields.map(field => renderField(field, "Provisional Financial Statements"))}
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div>
-                    <h3 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-base font-bold text-gray-800 mb-3">
-                      {currentSection.audited.title}
-                    </h3>
-                    {currentSection.audited.subtitle && (
-                      <p className="text-xs text-gray-600 mb-4">{currentSection.audited.subtitle}</p>
-                    )}
-                    <div className="space-y-3">
-                      {currentSection.audited.fields.map(field => renderField(field, "Audited Financial Statements"))}
-                    </div>
-                  </div>
-                  <div>
-                    <h3 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-base font-bold text-gray-800 mb-3">
-                      {currentSection.provisional.title}
-                    </h3>
-                    {currentSection.provisional.subtitle && (
-                      <p className="text-xs text-gray-600 mb-4">{currentSection.provisional.subtitle}</p>
-                    )}
-                    <div className="space-y-3">
-                      {currentSection.provisional.fields.map(field => renderField(field, "Provisional Financial Statements"))}
-                    </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <h3 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-base font-bold text-gray-800 mb-1">
+                    Audited Financial Statements
+                  </h3>
+                  <p className="text-xs text-gray-500 mb-4">Year: {formData["Financial Years"]["i17"] || '—'}</p>
+                  <div className="space-y-3">
+                    {AUDITED_FIELDS.map(field => renderField(field, "Audited Financial Statements"))}
                   </div>
                 </div>
-              </>
+                <div>
+                  <h3 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-base font-bold text-gray-800 mb-1">
+                    Provisional Financial Statements
+                  </h3>
+                  <p className="text-xs text-gray-500 mb-4">
+                    Year: {formData["Financial Years"]["i18"] || '—'}
+                    {formData["Financial Years"]["k18"] ? ` · ${formData["Financial Years"]["k18"]} months` : ''}
+                  </p>
+                  <div className="space-y-3">
+                    {PROVISIONAL_FIELDS.map(field => renderField(field, "Provisional Financial Statements"))}
+                  </div>
+                </div>
+              </div>
             ) : currentSection.key === 'fixed' ? (
               renderFixedAssetsSection(currentSection)
             ) : (
