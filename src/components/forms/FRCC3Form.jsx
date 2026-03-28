@@ -363,20 +363,6 @@ const FRCC3Form = ({
         }
       });
     });
-    const fy = formData['Financial Years'];
-    const fyKeys = ['i18', 'i19', 'i20', 'i21'];
-    fyKeys.forEach((id, idx) => {
-      if (idx === 0) return;
-      const prevVal = fy[fyKeys[idx - 1]];
-      const currVal = fy[id];
-      if (prevVal && currVal) {
-        const prevYear = parseInt(prevVal.split('-')[0], 10);
-        const currYear = parseInt(currVal.split('-')[0], 10);
-        if (currYear !== prevYear + 1) {
-          errors[`Financial Years.${id}`] = 'Must be consecutive with previous year';
-        }
-      }
-    });
     return errors;
   }, [formData]);
 
@@ -402,13 +388,30 @@ const FRCC3Form = ({
   }, [formData, validateAllSections, onSubmit, templateId, reportId]);
 
   const goToNextStep = () => {
-    if (!validateCurrentSection()) {
-      alert('Please fill all required fields before proceeding to the next step.');
-      return;
+    const cs = sections[currentStep];
+    if (cs.key !== 'fixed') {
+      const sectionData = formData[cs.title] || {};
+      const sectionErrors = {};
+      (cs.fields || []).forEach(field => {
+        if (!field.required) return;
+        const value = sectionData[field.id];
+        const key = `${cs.title}.${field.id}`;
+        if (value === '' || value === null || value === undefined) {
+          sectionErrors[key] = 'This field is required'; return;
+        }
+        if (field.id === 'i8') {
+          if (!/^\d{10}$/.test(String(value).trim())) sectionErrors[key] = 'Enter a valid 10-digit contact number';
+          return;
+        }
+        if (field.id === 'h14') { if (Number(value) <= 0) sectionErrors[key] = 'Interest rate must be greater than 0'; return; }
+        if (field.id === 'h16') { if (Number(value) < 15) sectionErrors[key] = 'Working capital must be 15% or more of turnover'; return; }
+      });
+      if (Object.keys(sectionErrors).length > 0) {
+        setFieldErrors(prev => ({ ...prev, ...sectionErrors }));
+        return;
+      }
     }
-    if (currentStep < sections.length - 1) {
-      setCurrentStep(currentStep + 1);
-    }
+    if (currentStep < sections.length - 1) setCurrentStep(currentStep + 1);
   };
 
   const renderField = (field, sectionTitle) => {
@@ -718,9 +721,8 @@ const FRCC3Form = ({
           ) : (
             <button
               type="button"
-              className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-300 font-medium text-sm flex items-center gap-1"
+              className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-medium text-sm flex items-center gap-1"
               onClick={goToNextStep}
-              disabled={!canProceed}
             >
               Next
               <ChevronRightIcon className="w-4 h-4" />

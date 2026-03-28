@@ -456,14 +456,6 @@ const FRCC2Form = ({
         }
       });
     });
-    const fy = formData["Financial Years"];
-    if (fy["i17"] && fy["i18"]) {
-      const yr17 = parseInt(fy["i17"].split('-')[0], 10);
-      const yr18 = parseInt(fy["i18"].split('-')[0], 10);
-      if (yr18 !== yr17 + 1) {
-        errors["Financial Years.i18"] = 'Provisional year must follow audited year';
-      }
-    }
     return errors;
   }, [formData]);
 
@@ -497,13 +489,48 @@ const FRCC2Form = ({
   }, [formData, validateAllSections, onSubmit, templateId, reportId]);
 
   const goToNextStep = () => {
-    if (!validateCurrentSection()) {
-      alert('Please fill all required fields before proceeding to the next step.');
-      return;
+    const cs = sections[currentStep];
+    if (cs.key !== 'fixed') {
+      const sectionErrors = {};
+      if (cs.key === 'financial-statements') {
+        const auditedData = formData["Audited Financial Statements"] || {};
+        AUDITED_FIELDS.forEach(field => {
+          if (!field.required || field.type === 'computed' || field.type === 'autofill' || field.type === 'months-display') return;
+          const value = auditedData[field.id];
+          if (value === '' || value === null || value === undefined)
+            sectionErrors[`Audited Financial Statements.${field.id}`] = 'This field is required';
+        });
+        const provisionalData = formData["Provisional Financial Statements"] || {};
+        PROVISIONAL_FIELDS.forEach(field => {
+          if (!field.required || field.type === 'computed' || field.type === 'autofill' || field.type === 'months-display') return;
+          const value = provisionalData[field.id];
+          if (value === '' || value === null || value === undefined)
+            sectionErrors[`Provisional Financial Statements.${field.id}`] = 'This field is required';
+        });
+      } else {
+        const sectionData = formData[cs.title] || {};
+        (cs.fields || []).forEach(field => {
+          if (!field.required) return;
+          const value = sectionData[field.id];
+          const key = `${cs.title}.${field.id}`;
+          if (value === '' || value === null || value === undefined) {
+            sectionErrors[key] = 'This field is required'; return;
+          }
+          if (field.id === 'i7') {
+            if (!/^\d{10}$/.test(String(value).trim())) sectionErrors[key] = 'Enter a valid 10-digit contact number';
+            return;
+          }
+          if (field.id === 'h13') { if (Number(value) <= 0) sectionErrors[key] = 'Interest rate must be greater than 0'; return; }
+          if (field.id === 'h15') { if (Number(value) < 15) sectionErrors[key] = 'Working capital must be 15% or more of turnover'; return; }
+          if (field.id === 'k18') { const m = Number(value); if (m < 1 || m > 12) sectionErrors[key] = 'Months must be between 1 and 12'; }
+        });
+      }
+      if (Object.keys(sectionErrors).length > 0) {
+        setFieldErrors(prev => ({ ...prev, ...sectionErrors }));
+        return;
+      }
     }
-    if (currentStep < sections.length - 1) {
-      setCurrentStep(currentStep + 1);
-    }
+    if (currentStep < sections.length - 1) setCurrentStep(currentStep + 1);
   };
 
   const nextStep = () => {
@@ -912,9 +939,8 @@ const FRCC2Form = ({
           ) : (
             <button
               type="button"
-              className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-300 font-medium text-sm flex items-center gap-1"
+              className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-medium text-sm flex items-center gap-1"
               onClick={nextStep}
-              disabled={!canProceed}
             >
               Next
               <ChevronRightIcon className="w-4 h-4" />
