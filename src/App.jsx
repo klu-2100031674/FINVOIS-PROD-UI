@@ -46,6 +46,7 @@ import FRCC3FormPage from "./pages/FRCC3FormPage";
 import FRCC4FormPage from "./pages/FRCC4FormPage";
 import FRCC5FormPage from "./pages/FRCC5FormPage";
 import FRCC6FormPage from "./pages/FRCC6FormPage";
+import FRCC7FormPage from "./pages/FRCC7FormPage";
 import FRTermLoanFormPage from "./pages/FRTermLoanFormPage";
 import FRTermLoanWithStockFormPage from "./pages/FRTermLoanWithStockFormPage";
 import EmailVerificationPage from "./pages/EmailVerificationPage";
@@ -299,6 +300,14 @@ function App() {
           element={
             <ProtectedRoute>
               <FRCC6FormPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/form/frcc7"
+          element={
+            <ProtectedRoute>
+              <FRCC7FormPage />
             </ProtectedRoute>
           }
         />

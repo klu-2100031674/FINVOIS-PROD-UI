@@ -42,7 +42,7 @@ const sections = [
     title: 'Means of Finance',
     icon: CurrencyDollarIcon,
     fields: [
-      { id: 'i12', label: 'Do you have working capital limit at present?', type: 'select', options: ['Yes', 'No'], required: true },
+      { id: 'i12', label: 'Do you have working capital limit at present?', type: 'select', options: ['Yes', 'No'], required: true, disabled: true },
       { id: 'i13', label: 'Working Capital Loan Requirement (₹)',          type: 'number', min: 0, required: true },
       { id: 'h14', label: 'Working Capital Loan Interest (Annual %)',      type: 'number', min: 0, max: 100, step: 0.01, required: true },
       { id: 'h15', label: 'Processing Fees (Including GST) %',             type: 'number', min: 0, required: true },
@@ -148,7 +148,7 @@ const FRCC3Form = ({
       'i4': '', 'i5': '', 'i6': '', 'i7': '', 'i8': '', 'i9': '', 'i10': ''
     },
     'Means of Finance': {
-      'i12': '', 'i13': '', 'h14': '', 'h15': '', 'h16': ''
+      'i12': 'No', 'i13': '', 'h14': '', 'h15': '', 'h16': ''
     },
     'Financial Years': {
       'i18': '', 'i19': '', 'i20': '', 'i21': ''
@@ -426,9 +426,10 @@ const FRCC3Form = ({
           </label>
           <select
             value={value}
-            onChange={(e) => handleFieldChange(sectionTitle, field.id, e.target.value)}
+            onChange={(e) => !field.disabled && handleFieldChange(sectionTitle, field.id, e.target.value)}
+            disabled={!!field.disabled}
             required={field.required}
-            className={`w-full px-3 py-2 text-sm border ${err ? 'border-red-400' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
+            className={`w-full px-3 py-2 text-sm border ${err ? 'border-red-400' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 ${field.disabled ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'bg-white'}`}
           >
             <option value="">Select...</option>
             {field.options.map(option => (

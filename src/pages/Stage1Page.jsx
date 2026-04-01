@@ -53,7 +53,7 @@ const Stage1Page = () => {
     if (/^(FRCC[34]|FORMAT\s*CC[34]|CC[34])$/i.test(templateId || "")) {
       return "Finalworkings";
     }
-    // CC6 and Term Loan templates use "Final workings" (with space)
+    // CC6, CC7, and Term Loan templates use "Final workings" (with space)
     return "Final workings";
   }, [templateId]);
   
@@ -61,12 +61,12 @@ const Stage1Page = () => {
     () => (templateId || "").toUpperCase().includes("TERM_LOAN"),
     [templateId]
   );
-  // Enable final workings editing for CC templates (CC1-CC6) as well as Term Loan templates
+  // Enable final workings editing for CC templates (CC1-CC7) as well as Term Loan templates
   const isEditableTemplate = useMemo(() => {
     const upperTemplateId = (templateId || "").toUpperCase();
     return (
       upperTemplateId.includes("TERM_LOAN") ||
-      /^(FRCC[1-6]|FORMAT\s*CC[1-6]|CC[1-6])$/i.test(templateId || "")
+      /^(FRCC[1-7]|FORMAT\s*CC[1-7]|CC[1-7])$/i.test(templateId || "")
     );
   }, [templateId]);
 
@@ -551,6 +551,37 @@ const Stage1Page = () => {
   const pendingEditsList = Object.values(pendingEdits);
   const pendingCount = pendingEditsList.length;
 
+  // Push a dummy history entry so we can intercept the back button
+  useEffect(() => {
+    if (!htmlContent) return;
+    window.history.pushState({ reportGuard: true }, '');
+    const handlePopState = (e) => {
+      const confirmed = window.confirm(
+        'Are you sure you want to leave? All generated report data will be lost.'
+      );
+      if (confirmed) {
+        // Let the navigation proceed by going back twice (skip our dummy entry)
+        window.history.go(-1);
+      } else {
+        // Re-push the dummy entry to keep the guard active
+        window.history.pushState({ reportGuard: true }, '');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [htmlContent]);
+
+  // Block browser reload / tab close
+  useEffect(() => {
+    if (!htmlContent) return;
+    const handleBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [htmlContent]);
+
   const handleProceed = () => {
     // Navigate to form page for editing
     navigate(`/form/${templateId}?mode=edit&reportId=${reportId}`);
@@ -681,11 +712,16 @@ const Stage1Page = () => {
       }
     }
 
+    // Extract selected sheets returned from PaymentModal
+    const selectedSheetNames = Array.isArray(paymentData?.selected_sheets)
+      ? paymentData.selected_sheets.map(s => s.sheet_name).filter(Boolean)
+      : null;
+
     // Store the paid report_id to link the generation
-    await generateReport(paymentData.report_id, analysisData);
+    await generateReport(paymentData.report_id, analysisData, selectedSheetNames);
   };
 
-  const generateReport = async (paidReportId = null, analysisOptions = null) => {
+  const generateReport = async (paidReportId = null, analysisOptions = null, sheets = null) => {
     try {
       setIsGeneratingFullReport(true);
 
@@ -696,7 +732,8 @@ const Stage1Page = () => {
       const result = await reportAPI.generateFullReport(templateId, formData, {
         isAdmin: isAdminMode,
         paidReportId: paidReportId, // Link to the paid report
-        analysisOptions: analysisOptions // Pass analysis options to backend
+        analysisOptions: analysisOptions, // Pass analysis options to backend
+        sheets: sheets // Explicit sheet filter (CC templates pass this from payment selection)
       });
 
       if (result.success) {

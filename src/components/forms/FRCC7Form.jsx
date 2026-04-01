@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   DocumentTextIcon,
   CurrencyDollarIcon,
@@ -23,35 +23,37 @@ const generateFinancialYearOptions = () => {
   return options;
 };
 
+// CC7 New Asset rows: D158-D167, D168-D177, etc.
 const newAssetMapping = {
-  "Plant and Machinery":                         { dataStartRow: 157, maxItems: 10, loanPct: 'j58' },
-  "Service Equipment":                           { dataStartRow: 167, maxItems: 10, loanPct: 'j59' },
-  "Shed, Construction and Civil Works":          { dataStartRow: 177, maxItems: 10, loanPct: 'j60' },
-  "Land":                                        { dataStartRow: 187, maxItems: 3,  loanPct: 'j61' },
-  "Electrical and Plumbing Items":               { dataStartRow: 190, maxItems: 10, loanPct: 'j62' },
-  "Electronic Items":                            { dataStartRow: 200, maxItems: 10, loanPct: 'j63' },
-  "Furniture and Fittings":                      { dataStartRow: 210, maxItems: 10, loanPct: 'j64' },
-  "Vehicles":                                    { dataStartRow: 220, maxItems: 9,  loanPct: 'j65' },
-  "Live Stock":                                  { dataStartRow: 229, maxItems: 10, loanPct: 'j66' },
-  "Other Assets (Including Amortisable Assets)": { dataStartRow: 239, maxItems: 10, loanPct: 'j67' },
-  "Other Assets (Nil Depreciation)":             { dataStartRow: 249, maxItems: 10, loanPct: 'j68' },
+  "Plant and Machinery":                         { dataStartRow: 158, maxItems: 10, loanPct: 'j59' },
+  "Service Equipment":                           { dataStartRow: 168, maxItems: 10, loanPct: 'j60' },
+  "Shed, Construction and Civil Works":          { dataStartRow: 178, maxItems: 10, loanPct: 'j61' },
+  "Land":                                        { dataStartRow: 188, maxItems: 3,  loanPct: 'j62' },
+  "Electrical and Plumbing Items":               { dataStartRow: 191, maxItems: 10, loanPct: 'j63' },
+  "Electronic Items":                            { dataStartRow: 201, maxItems: 10, loanPct: 'j64' },
+  "Furniture and Fittings":                      { dataStartRow: 211, maxItems: 10, loanPct: 'j65' },
+  "Vehicles":                                    { dataStartRow: 221, maxItems: 9,  loanPct: 'j66' },
+  "Live Stock":                                  { dataStartRow: 230, maxItems: 10, loanPct: 'j67' },
+  "Other Assets (Including Amortisable Assets)": { dataStartRow: 240, maxItems: 10, loanPct: 'j68' },
+  "Other Assets (Nil Depreciation)":             { dataStartRow: 250, maxItems: 10, loanPct: 'j69' },
 };
 
+// CC7 Gross Asset rows: D266-D275, D276-D285, etc.
 const grossAssetMapping = {
-  "Plant and Machinery":                         { dataStartRow: 265, maxItems: 10 },
-  "Service Equipment":                           { dataStartRow: 275, maxItems: 10 },
-  "Shed, Construction and Civil Works":          { dataStartRow: 285, maxItems: 10 },
-  "Land":                                        { dataStartRow: 295, maxItems: 3  },
-  "Electrical and Plumbing Items":               { dataStartRow: 298, maxItems: 10 },
-  "Electronic Items":                            { dataStartRow: 308, maxItems: 10 },
-  "Furniture and Fittings":                      { dataStartRow: 318, maxItems: 10 },
-  "Vehicles":                                    { dataStartRow: 328, maxItems: 9  },
-  "Live Stock":                                  { dataStartRow: 337, maxItems: 10 },
-  "Other Assets (Including Amortisable Assets)": { dataStartRow: 347, maxItems: 10 },
-  "Other Assets (Nil Depreciation)":             { dataStartRow: 357, maxItems: 10 },
+  "Plant and Machinery":                         { dataStartRow: 266, maxItems: 10 },
+  "Service Equipment":                           { dataStartRow: 276, maxItems: 10 },
+  "Shed, Construction and Civil Works":          { dataStartRow: 286, maxItems: 10 },
+  "Land":                                        { dataStartRow: 296, maxItems: 3  },
+  "Electrical and Plumbing Items":               { dataStartRow: 299, maxItems: 10 },
+  "Electronic Items":                            { dataStartRow: 309, maxItems: 10 },
+  "Furniture and Fittings":                      { dataStartRow: 319, maxItems: 10 },
+  "Vehicles":                                    { dataStartRow: 329, maxItems: 9  },
+  "Live Stock":                                  { dataStartRow: 338, maxItems: 10 },
+  "Other Assets (Including Amortisable Assets)": { dataStartRow: 348, maxItems: 10 },
+  "Other Assets (Nil Depreciation)":             { dataStartRow: 358, maxItems: 10 },
 };
 
-const FRCC6Form = ({
+const FRCC7Form = ({
   onSubmit,
   initialData = {},
   isEditMode = false,
@@ -61,7 +63,7 @@ const FRCC6Form = ({
 }) => {
   const buildEmptyState = () => ({
     'General Information': {},
-    'Means of Finance': { i11: 'Yes', i12: 'No', h17: 'Yes' },
+    'Means of Finance': { i11: 'Yes', i12: 'Yes', i18: 'Yes' },
     'Financial Years': {},
     'Financial Statements': {},
     'New Asset Schedule': Object.fromEntries(
@@ -72,10 +74,10 @@ const FRCC6Form = ({
     ),
     'Term Loan Finance Details': {},
     'Prepared By': {
-      i158: 'PARVEZ AND NARAYANA',
-      i159: 'Chartered Accountants',
-      i160: '',
-      i161: '9014221011',
+      i159: 'PARVEZ AND NARAYANA',
+      i160: 'Chartered Accountants',
+      i161: 'vijayawada',
+      i162: '9014221011',
       bank_name: '',
       branch_name: ''
     }
@@ -99,15 +101,15 @@ const FRCC6Form = ({
       title: 'General Information',
       icon: DocumentTextIcon,
       fields: [
-        { id: 'i3',          label: 'Name of Firm',                                         type: 'text',     required: true },
-        { id: 'i4',          label: 'Status of Concern',                                    type: 'select',   options: ['Soleproprietorship', 'Partnership', 'LLP', 'Company'], required: true },
-        { id: 'i5',          label: 'Proprietor / Managing Partner / Managing Director',     type: 'text',     required: true },
-        { id: 'bank_name',   label: 'Bank Name / Department Name',                          type: 'text',     required: true },
-        { id: 'branch_name', label: 'Branch Name',                                          type: 'text',     required: true },
-        { id: 'i6',          label: 'Firm Address',                                         type: 'textarea', required: true },
-        { id: 'i7',          label: 'Sector',                                               type: 'select',   options: ['Manufacturing sector', 'Service sector (with stock)', 'Trading sector'], required: true },
-        { id: 'i8',          label: 'Nature of Business',                                   type: 'text',     required: true },
-        { id: 'i9',          label: 'Contact No. of Authorised Person',                     type: 'text',     required: true },
+        { id: 'i3',          label: 'Name of Firm',                   type: 'text',     required: true },
+        { id: 'i4',          label: 'Status of Concern',              type: 'select',   options: ['Soleproprietorship', 'Partnership', 'LLP', 'Company'], required: true },
+        { id: 'i5',          label: 'Name of Authorised Person',      type: 'text',     required: true },
+        { id: 'i6',          label: 'Firm Address',                   type: 'textarea', required: true },
+        { id: 'i7',          label: 'Contact No. of Authorised Person', type: 'text',   required: true },
+        { id: 'i8',          label: 'Sector',                         type: 'select',   options: ['Manufacturing sector', 'Service sector (with stock)', 'Trading sector'], required: true },
+        { id: 'i9',          label: 'Nature of Business',             type: 'text',     required: true },
+        { id: 'bank_name',   label: 'Bank Name / Department Name',    type: 'text',     required: true },
+        { id: 'branch_name', label: 'Branch Name',                    type: 'text',     required: true },
       ]
     },
     {
@@ -115,27 +117,14 @@ const FRCC6Form = ({
       title: 'Means of Finance',
       icon: CurrencyDollarIcon,
       fields: [
-        { id: 'i11', label: 'Do you have existing working capital limit?',                        type: 'select', options: ['Yes', 'No'],  required: true, disabled: true },
-        { id: 'i12', label: 'Are you going for Working Capital limit Top-up from present limit?', type: 'select', options: ['Yes', 'No'],  required: true, disabled: true },
-        { id: 'i13', label: 'Working Capital Loan Requirement ',                               type: 'number', min: 0,                  required: true },
-        { id: 'h14', label: 'Working Capital Loan Interest (% per annum)',                        type: 'number', min: 0, max: 100, step: 0.01, required: true },
-        { id: 'h15', label: 'Processing Fees (Including GST) (%)',                                type: 'number', min: 0,          step: 0.01, required: true },
-        { id: 'h16', label: 'Working Capital (% on Turnover)',                                    type: 'number', min: 15, max: 100, step: 0.01, required: true },
-        { id: 'h17', label: 'Are you going for Fresh Term Loan in Present Financial Year?',       type: 'select', options: ['Yes', 'No'],  required: true, disabled: true },
-      ]
-    },
-    {
-      key: 'term',
-      title: 'Term Loan Finance Details',
-      icon: CreditCardIcon,
-      fields: [
-        { id: 'h73', label: 'Term Loan Rate of Interest (% per annum)',                         type: 'number', min: 0, step: 0.01, required: true },
-        { id: 'i74', label: 'Term Loan Tenure (Years)',                                         type: 'number', min: 0,             required: true },
-        { id: 'i75', label: 'Repayment Type',                                                   type: 'select', options: ['Fixed EMI', 'Fixed Principal'], required: true },
-        { id: 'i76', label: 'Moratorium Period, if any (Months)',                               type: 'number', min: 0,             required: true },
-        { id: 'h77', label: 'Processing Fees Rate (Including GST) (%)',                         type: 'number', min: 0, step: 0.01, required: true },
-        { id: 'i78', label: 'Interest period',               type: 'select', options: ['Monthly ','Quarterly','Half yearly'], required: true },
-        { id: 'i79', label: 'From Which Month First EMI (New Term Loan) Will Be Paid',         type: 'month',                      required: true, note: 'Select month and year (displays as Apr-27)' },
+        { id: 'i11', label: 'Do you have working capital limit at present?',              type: 'select', options: ['Yes', 'No'],              required: true, disabled: true },
+        { id: 'i12', label: 'Are you going for Working Capital limit Top-up from present limit?', type: 'select', options: ['Yes', 'No'],      required: true, disabled: true },
+        { id: 'i13', label: 'Present Working Capital Loan Limit (Lakhs)',                 type: 'number', min: 0,                              required: true },
+        { id: 'i14', label: 'Working Capital Loan Requirement (Lakhs)',                   type: 'number', min: 0,                              required: true },
+        { id: 'h15', label: 'Working Capital Loan Interest (% per annum)',                type: 'number', min: 0, max: 100, step: 0.01,        required: true },
+        { id: 'h16', label: 'Processing Fees (Including GST) (%)',                        type: 'number', min: 0,          step: 0.01,         required: true },
+        { id: 'h17', label: 'Working Capital (% on Turnover)',                            type: 'number', min: 15, max: 100, step: 0.01,       required: true },
+        { id: 'i18', label: 'Are you going for Fresh Term Loan in the Present Financial Year?', type: 'select', options: ['Yes', 'No'],        required: true, disabled: true },
       ]
     },
     {
@@ -143,18 +132,18 @@ const FRCC6Form = ({
       title: 'Financial Years',
       icon: CalendarIcon,
       fields: [
-        { id: 'i19', label: '1st Financial Year',  type: 'select', options: generateFinancialYearOptions(), required: true },
-        { id: 'i20', label: '2nd Financial Year',  type: 'select', options: generateFinancialYearOptions(), required: true },
-        { id: 'i21', label: '3rd Financial Year',  type: 'select', options: generateFinancialYearOptions(), required: true },
-        { id: 'i22', label: '4th Financial Year',  type: 'select', options: generateFinancialYearOptions(), required: true },
-        { id: 'i23', label: '5th Financial Year',  type: 'select', options: generateFinancialYearOptions(), required: true },
-        { id: 'i24', label: '6th Financial Year',  type: 'select', options: generateFinancialYearOptions(), required: true },
-        { id: 'i25', label: '7th Financial Year',  type: 'select', options: generateFinancialYearOptions(), required: true },
-        { id: 'i26', label: '8th Financial Year',  type: 'select', options: generateFinancialYearOptions(), required: true },
-        { id: 'i27', label: '9th Financial Year',  type: 'select', options: generateFinancialYearOptions(), required: true },
-        { id: 'i28', label: '10th Financial Year', type: 'select', options: generateFinancialYearOptions(), required: true },
-        { id: 'i29', label: '11th Financial Year', type: 'select', options: generateFinancialYearOptions(), required: true },
-        { id: 'i30', label: '12th Financial Year', type: 'select', options: generateFinancialYearOptions(), required: true },
+        { id: 'i20', label: '1st Financial Year',  type: 'select', options: generateFinancialYearOptions(), required: true },
+        { id: 'i21', label: '2nd Financial Year',  type: 'select', options: generateFinancialYearOptions(), required: true },
+        { id: 'i22', label: '3rd Financial Year',  type: 'select', options: generateFinancialYearOptions(), required: true },
+        { id: 'i23', label: '4th Financial Year',  type: 'select', options: generateFinancialYearOptions(), required: true },
+        { id: 'i24', label: '5th Financial Year',  type: 'select', options: generateFinancialYearOptions(), required: true },
+        { id: 'i25', label: '6th Financial Year',  type: 'select', options: generateFinancialYearOptions(), required: true },
+        { id: 'i26', label: '7th Financial Year',  type: 'select', options: generateFinancialYearOptions(), required: true },
+        { id: 'i27', label: '8th Financial Year',  type: 'select', options: generateFinancialYearOptions(), required: true },
+        { id: 'i28', label: '9th Financial Year',  type: 'select', options: generateFinancialYearOptions(), required: true },
+        { id: 'i29', label: '10th Financial Year', type: 'select', options: generateFinancialYearOptions(), required: true },
+        { id: 'i30', label: '11th Financial Year', type: 'select', options: generateFinancialYearOptions(), required: true },
+        { id: 'i31', label: '12th Financial Year', type: 'select', options: generateFinancialYearOptions(), required: true },
       ]
     },
     {
@@ -162,28 +151,27 @@ const FRCC6Form = ({
       title: 'Financial Statements',
       icon: ChartBarIcon,
       fields: [
-        { id: 'i32', label: 'Turnover ',                                                           type: 'number', min: 0, required: true },
-        { id: 'i33', label: 'Opening Stock ',                                                      type: 'number', min: 0, required: true },
-        { id: 'i34', label: 'Direct Material & Expenses ',                                         type: 'number', min: 0, required: true },
-        { id: 'i35', label: 'Closing Stock ',                                                      type: 'number', min: 0, required: true },
-        { id: 'i36', label: 'Non Operating Income ',                                               type: 'number', min: 0, required: true },
-        { id: 'i37', label: 'Electricity ',                                                        type: 'number', min: 0, required: true },
-        { id: 'i38', label: 'Depreciation ',                                                       type: 'number', min: 0, required: true },
-        { id: 'i39', label: 'Rent ',                                                               type: 'number', min: 0, required: true },
-        { id: 'i40', label: 'Salaries & Wages ',                                                   type: 'number', min: 0, required: true },
-        { id: 'i41', label: 'Processing Fees (Including GST) ',                                    type: 'number', min: 0, required: true },
-        { id: 'i42', label: 'Interest on CC / OD Loan ',                                           type: 'number', min: 0, required: true },
-        { id: 'i43', label: 'Interest on Other Loans ',                                            type: 'number', min: 0, required: true },
-        { id: 'i44', label: 'Net Profit Before Tax ',                                              type: 'number',         required: true },
-        { id: 'i46', label: 'Net Capital (Opening Capital + Net Profit - Drawings) ',              type: 'number', min: 0, required: true },
-        { id: 'i47', label: 'Term Loans (Secured and Unsecured Loans Total) ',                     type: 'number', min: 0, required: true },
-        { id: 'i48', label: 'CC Loan Outstanding ',                                                type: 'number', min: 0, required: true },
-        { id: 'i49', label: 'Other Current Liabilities ',                                          type: 'number', min: 0, required: true },
-        { id: 'i50', label: 'Net Total Fixed Assets ',                                             type: 'number', min: 0, required: true },
-        { id: 'i53', label: 'Investments ',                                                        type: 'number', min: 0, required: true },
-        { id: 'i54', label: 'Debtors ',                                                            type: 'number', min: 0, required: true },
-        { id: 'i55', label: 'Cash and Cash Equivalents ',                                          type: 'number', min: 0, required: true },
-        { id: 'i56', label: 'Other Current Assets if any ',                                        type: 'number', min: 0, required: true },
+        { id: 'i33', label: 'Gross Turnover',                                              type: 'number', min: 0,  required: true },
+        { id: 'i34', label: 'Opening Stock',                                               type: 'number', min: 0,  required: true },
+        { id: 'i35', label: 'Direct Material & Expenses',                                  type: 'number', min: 0,  required: true },
+        { id: 'i36', label: 'Closing Stock',                                               type: 'number', min: 0,  required: true },
+        { id: 'i37', label: 'Non Operating Income',                                        type: 'number', min: 0,  required: true },
+        { id: 'i38', label: 'Electricity',                                                 type: 'number', min: 0,  required: true },
+        { id: 'i39', label: 'Depreciation',                                                type: 'number', min: 0,  required: true },
+        { id: 'i40', label: 'Rent',                                                        type: 'number', min: 0,  required: true },
+        { id: 'i41', label: 'Salaries & Wages',                                            type: 'number', min: 0,  required: true },
+        { id: 'i42', label: 'Processing Fees (Including GST)',                             type: 'number', min: 0,  required: true },
+        { id: 'i43', label: 'Interest on CC / OD Loan',                                   type: 'number', min: 0,  required: true },
+        { id: 'i44', label: 'Interest on Other Loans',                                    type: 'number', min: 0,  required: true },
+        { id: 'i45', label: 'Net Profit Before Tax',                                      type: 'number',          required: true },
+        { id: 'i47', label: 'Net Capital (Opening Capital + Net Profit - Drawings / Remuneration)', type: 'number', min: 0, required: true },
+        { id: 'i48', label: 'Term Loans (Secured and Unsecured Loans)',                   type: 'number', min: 0,  required: true },
+        { id: 'i49', label: 'Working Capital Loan Outstanding',                           type: 'number', min: 0,  required: true },
+        { id: 'i50', label: 'Other Current Liabilities',                                  type: 'number', min: 0,  required: true },
+        { id: 'i54', label: 'Non Current Assets',                                         type: 'number', min: 0,  required: true },
+        { id: 'i55', label: 'Debtors / Receivables',                                      type: 'number', min: 0,  required: true },
+        { id: 'i56', label: 'Cash and Cash Equivalents',                                  type: 'number', min: 0,  required: true },
+        { id: 'i57', label: 'Other Current Assets if any',                                type: 'number', min: 0,  required: true },
       ]
     },
     {
@@ -199,14 +187,28 @@ const FRCC6Form = ({
       categories: Object.keys(grossAssetMapping).map(title => ({ title, ...grossAssetMapping[title] }))
     },
     {
+      key: 'term',
+      title: 'Term Loan Finance Details',
+      icon: CreditCardIcon,
+      fields: [
+        { id: 'h74', label: 'Term Loan Rate of Interest (% per annum)',          type: 'number', min: 0, step: 0.01, required: true },
+        { id: 'i75', label: 'Term Loan Tenure (Years)',                           type: 'number', min: 0,             required: true },
+        { id: 'i76', label: 'Repayment Type',                                    type: 'select', options: ['Fixed EMI', 'Fixed Principal'], required: true },
+        { id: 'i77', label: 'Moratorium Period, if any (Months)',                type: 'number', min: 0,             required: true },
+        { id: 'h78', label: 'Processing Fees Rate (Including GST) (%)',          type: 'number', min: 0, step: 0.01, required: true },
+        { id: 'i79', label: 'Interest Period',                                   type: 'select', options: ['Monthly ', 'Quarterly', 'Half yearly'], required: true },
+        { id: 'i80', label: 'Loan Start Month (Month immediately after sanction)', type: 'month',                   required: true, note: 'Select month and year (displays as Apr-27)' },
+      ]
+    },
+    {
       key: 'prepared_by',
       title: 'Prepared By',
       icon: UserIcon,
       fields: [
-        { id: 'i158',        label: 'Name 1 (Prepared By)',        type: 'text', required: true  },
-        { id: 'i159',        label: 'Name 2 (Prepared By)',        type: 'text', required: false },
-        { id: 'i160',        label: 'Address (Prepared By)',       type: 'text', required: true  },
-        { id: 'i161',        label: 'Mobile Number (Prepared By)', type: 'text', required: true  },
+        { id: 'i159',        label: 'Name 1 (Prepared By)',        type: 'text', required: true  },
+        { id: 'i160',        label: 'Name 2 (Prepared By)',        type: 'text', required: false },
+        { id: 'i161',        label: 'Address (Prepared By)',       type: 'text', required: true  },
+        { id: 'i162',        label: 'Mobile Number (Prepared By)', type: 'text', required: true  },
         { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text', required: true  },
         { id: 'branch_name', label: 'Branch Name',                 type: 'text', required: true  },
       ]
@@ -333,26 +335,25 @@ const FRCC6Form = ({
     setFormData({
       'General Information': {
         i3: 'Elite Manufacturing Corp', i4: 'Company', i5: 'Robert Wilson',
-        bank_name: 'ICICI Bank', branch_name: 'Industrial Branch',
-        i6: 'Tech Park, Hyderabad - 500001', i7: 'Manufacturing sector',
-        i8: 'Manufacturing of Electronics', i9: '9876543210'
+        i6: 'Tech Park, Hyderabad - 500001', i7: '9876543210',
+        i8: 'Manufacturing sector', i9: 'Manufacturing of Electronics',
+        bank_name: 'ICICI Bank', branch_name: 'Industrial Branch'
       },
       'Means of Finance': {
-        i11: 'Yes', i12: 'No', i13: 25000000,
-        h14: 9.5, h15: 0.3, h16: 22, h17: 'Yes'
+        i11: 'Yes', i12: 'No', i13: 10000000, i14: 25000000,
+        h15: 9.5, h16: 0.3, h17: 22, i18: 'Yes'
       },
       'Financial Years': {
-        i19: '2024-25', i20: '2025-26', i21: '2026-27', i22: '2027-28',
-        i23: '2028-29', i24: '2029-30', i25: '2030-31', i26: '2031-32',
-        i27: '2032-33', i28: '2033-34', i29: '2034-35', i30: '2035-36'
+        i20: '2024-25', i21: '2025-26', i22: '2026-27', i23: '2027-28',
+        i24: '2028-29', i25: '2029-30', i26: '2030-31', i27: '2031-32',
+        i28: '2032-33', i29: '2033-34', i30: '2034-35', i31: '2035-36'
       },
       'Financial Statements': {
-        i32: 50000000, i33: 2500000, i34: 35000000, i35: 1200000,
-        i36: 1500000, i37: 800000, i38: 1200000, i39: 600000,
-        i40: 4000000, i41: 150000, i42: 2250000, i43: 1500000,
-        i44: 9500000, i46: 22000000, i47: 38000000, i48: 6000000,
-        i49: 8000000, i50: 20000000, i53: 1500000, i54: 5000000,
-        i55: 2000000, i56: 500000
+        i33: 50000000, i34: 2500000, i35: 35000000, i36: 1200000,
+        i37: 1500000, i38: 800000, i39: 1200000, i40: 600000,
+        i41: 4000000, i42: 150000, i43: 2250000, i44: 1500000,
+        i45: 9500000, i47: 22000000, i48: 38000000, i49: 6000000,
+        i50: 8000000, i54: 20000000, i55: 5000000, i56: 2000000, i57: 500000
       },
       'New Asset Schedule': Object.fromEntries(
         Object.keys(newAssetMapping).map(k => [k, { items: [], total: 0, loanPct: 0 }])
@@ -361,12 +362,12 @@ const FRCC6Form = ({
         Object.keys(grossAssetMapping).map(k => [k, { items: [], total: 0 }])
       ),
       'Term Loan Finance Details': {
-        h73: 9.5, i74: 5, i75: 'Fixed Principal',
-        i76: 3, h77: 1.0, i78: 'Monthly', i79: '2027-04'
+        h74: 9.5, i75: 5, i76: 'Fixed Principal',
+        i77: 3, h78: 1.0, i79: 'Monthly ', i80: '2027-04'
       },
       'Prepared By': {
-        i158: 'PARVEZ AND NARAYANA', i159: 'Chartered Accountants',
-        i160: 'Hyderabad', i161: '9014221011',
+        i159: 'PARVEZ AND NARAYANA', i160: 'Chartered Accountants',
+        i161: 'Hyderabad', i162: '9014221011',
         bank_name: 'ICICI Bank', branch_name: 'Industrial Branch'
       }
     });
@@ -375,9 +376,8 @@ const FRCC6Form = ({
   const convertToExcelData = (data) => {
     const excelData = {};
     const skipKeys = new Set(['bank_name', 'branch_name']);
-    const assetSections = new Set(['New Asset Schedule', 'Gross Assets Opening Balance']);
 
-    // Flat sections â€” copy all cell-ref keys, skip meta keys
+    // Flat sections — copy all cell-ref keys, skip meta keys
     ['General Information', 'Means of Finance', 'Financial Years',
      'Financial Statements', 'Term Loan Finance Details'].forEach(sectionTitle => {
       const section = data[sectionTitle] || {};
@@ -386,17 +386,17 @@ const FRCC6Form = ({
       });
     });
 
-    // i79: convert YYYY-MM â†’ 01-MM-YYYY so Excel interprets as a date
-    if (excelData['i79'] && /^\d{4}-\d{2}$/.test(String(excelData['i79']))) {
-      const [year, month] = String(excelData['i79']).split('-');
-      excelData['i79'] = `01-${month}-${year}`;
+    // i80: convert YYYY-MM → 01-MM-YYYY so Excel interprets as a date
+    if (excelData['i80'] && /^\d{4}-\d{2}$/.test(String(excelData['i80']))) {
+      const [year, month] = String(excelData['i80']).split('-');
+      excelData['i80'] = `01-${month}-${year}`;
     }
 
-    // Prepared By cell refs
+    // Prepared By cell refs (i159-i162)
     const pb = data['Prepared By'] || {};
-    ['i158', 'i159', 'i160', 'i161'].forEach(k => { excelData[k] = pb[k] || ''; });
+    ['i159', 'i160', 'i161', 'i162'].forEach(k => { excelData[k] = pb[k] || ''; });
 
-    // New Asset Schedule: items (D/E cols) + loanPct (j58-j68)
+    // New Asset Schedule: items (D/E cols) + loanPct (j59-j69)
     Object.keys(newAssetMapping).forEach(categoryTitle => {
       const mapping = newAssetMapping[categoryTitle];
       const categoryData = data['New Asset Schedule']?.[categoryTitle];
@@ -454,12 +454,10 @@ const FRCC6Form = ({
     const { key } = section;
     if (key === 'new_assets') {
       const scheduleData = formData['New Asset Schedule'] || {};
-      // If no assets added in any category, allow proceeding freely
       const hasAnyAssets = Object.keys(newAssetMapping).some(
         cat => (scheduleData[cat]?.total || 0) > 0
       );
       if (!hasAnyAssets) return true;
-      // If assets exist, every filled category must have loan % or amount
       for (const categoryName of Object.keys(newAssetMapping)) {
         const cat = scheduleData[categoryName];
         if (cat && cat.total > 0) {
@@ -498,7 +496,7 @@ const FRCC6Form = ({
   };
 
   const renderField = (field, sectionTitle) => {
-    const value = formData[sectionTitle]?.[field.id] || '';
+    const value = formData[sectionTitle]?.[field.id] ?? '';
 
     return (
       <div key={field.id} className="space-y-1.5">
@@ -526,13 +524,6 @@ const FRCC6Form = ({
             rows={2}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white resize-none"
           />
-        ) : field.type === 'computed' ? (
-          <input
-            type="text"
-            value={value || 'Auto-calculated'}
-            disabled
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-          />
         ) : field.type === 'month' ? (
           <input
             type="month"
@@ -544,7 +535,7 @@ const FRCC6Form = ({
         ) : (
           <input
             type={field.type}
-            value={(field.type === 'date' || field.type === 'number') && !value ? '' : value}
+            value={(field.type === 'number') && value === '' ? '' : value}
             onChange={(e) => handleFieldChange(sectionTitle, field.id, field.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value)}
             required={field.required}
             min={field.min}
@@ -605,7 +596,7 @@ const FRCC6Form = ({
               Asset Description
             </div>
             <div style={{ fontFamily: 'Manrope, sans-serif' }} className="col-span-5 font-semibold text-gray-800 bg-gray-100 p-2 rounded-lg text-xs">
-              Amount 
+              Amount (Lakhs)
             </div>
             <div className="col-span-1"></div>
           </div>
@@ -681,7 +672,7 @@ const FRCC6Form = ({
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-purple-700 mb-1">Loan Amount (₹)</label>
+                    <label className="block text-xs font-medium text-purple-700 mb-1">Loan Amount (Lakhs)</label>
                     <div className="relative">
                       <input
                         type="number"
@@ -729,39 +720,18 @@ const FRCC6Form = ({
     <div style={{ fontFamily: 'Inter, sans-serif' }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
-        
-        h1, h2, h3, h4, h5, h6 {
-          font-family: 'Manrope', sans-serif;
-        }
-        
-        body, input, select, textarea, button {
-          font-family: 'Inter', sans-serif;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #f1f1f1;
-          border-radius: 10px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #1f2937;
-          border-radius: 10px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #111827;
-        }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Manrope', sans-serif; }
+        body, input, select, textarea, button { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #111827; }
       `}</style>
 
       <div className="bg-white rounded-xl shadow-soft p-6 max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-2xl font-bold text-gray-900 mb-2">
-            Format CC6 - Credit Assessment Report (Advanced)
+            Format CC7 - Credit Assessment Report
           </h1>
           <p className="text-gray-600 text-sm">Complete each section to generate your financial report</p>
         </div>
@@ -801,12 +771,13 @@ const FRCC6Form = ({
                 <button
                   key={section.key}
                   type="button"
-                  className={`px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 whitespace-nowrap flex items-center gap-1.5 ${index === currentStep
-                    ? 'bg-white-900 text-black border border-gray-900'
-                    : index < currentStep
-                      ? 'bg-gray-100 text-gray-700 border border-gray-300'
-                      : 'bg-white text-gray-500 border border-gray-200 cursor-not-allowed'
-                    }`}
+                  className={`px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 whitespace-nowrap flex items-center gap-1.5 ${
+                    index === currentStep
+                      ? 'bg-white-900 text-black border border-gray-900'
+                      : index < currentStep
+                        ? 'bg-gray-100 text-gray-700 border border-gray-300'
+                        : 'bg-white text-gray-500 border border-gray-200 cursor-not-allowed'
+                  }`}
                   onClick={() => index <= currentStep && setCurrentStep(index)}
                   disabled={index > currentStep}
                 >
@@ -898,4 +869,4 @@ const FRCC6Form = ({
   );
 };
 
-export default FRCC6Form;
+export default FRCC7Form;

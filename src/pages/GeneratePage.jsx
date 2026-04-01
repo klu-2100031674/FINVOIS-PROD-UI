@@ -32,6 +32,7 @@ import FRCC3Form from '../components/forms/FRCC3Form';
 import FRCC4Form from '../components/forms/FRCC4Form';
 import FRCC5Form from '../components/forms/FRCC5Form';
 import FRCC6Form from '../components/forms/FRCC6Form';
+import FRCC7Form from '../components/forms/FRCC7Form';
 import FRTermLoanForm from '../components/forms/FRTermLoanForm';
 import FRTermLoanWithStockForm from '../components/forms/FRTermLoanWithStockForm';
 import FRTermLoanCCForm from '../components/forms/FRTermLoanCCForm';
@@ -50,6 +51,7 @@ const NON_AI_TEMPLATES = [
   'frcc4', 'Format CC4',
   'frcc5', 'Format CC5',
   'frcc6', 'Format CC6',
+  'frcc7', 'Format CC7',
 ];
 
 const GeneratePage = () => {
@@ -503,6 +505,15 @@ const GeneratePage = () => {
                 initialData={tempFormData}
               />
             )}
+            {(templateId === 'frcc7' || templateId === 'Format CC7') && (
+              <FRCC7Form
+                onSubmit={handleFormSubmit}
+                templateId={templateId}
+                onFormDataChange={handleFormDataChange}
+                isProcessing={isProcessing}
+                initialData={tempFormData}
+              />
+            )}
             {(templateId === 'TERM_LOAN_SERVICE_WITHOUT_STOCK') && (
               <FRTermLoanForm
                 onSubmit={handleFormSubmit}
@@ -537,6 +548,7 @@ const GeneratePage = () => {
               templateId !== 'frcc4' && templateId !== 'Format CC4' &&
               templateId !== 'frcc5' && templateId !== 'Format CC5' &&
               templateId !== 'frcc6' && templateId !== 'Format CC6' &&
+              templateId !== 'frcc7' && templateId !== 'Format CC7' &&
               templateId !== 'TERM_LOAN_SERVICE_WITHOUT_STOCK' &&
               templateId !== 'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK' &&
               templateId !== 'TERM_LOAN_CC' && (
@@ -547,7 +559,7 @@ const GeneratePage = () => {
                       Form Under Development
                     </h3>
                     <p className="text-gray-600 mb-1">Form for {templateId} is under development.</p>
-                    <p className="text-sm text-gray-500">Please select Format CC1 through CC6.</p>
+                    <p className="text-sm text-gray-500">Please select Format CC1 through CC7.</p>
                   </div>
                 </Card>
               )}

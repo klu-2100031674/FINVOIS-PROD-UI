@@ -231,7 +231,7 @@ const PaymentModal = ({
         );
         const { report_id } = orderResponse.data;
         const verifyResponse = await reportAPI.verifyReportPayment(report_id, {});
-        onPaymentSuccess({ report_id, amount: 0, simulated: true, isBeta: true, order_id: verifyResponse.data.order_id });
+        onPaymentSuccess({ report_id, amount: 0, simulated: true, isBeta: true, order_id: verifyResponse.data.order_id, selected_sheets: selectedSheetsData });
         onClose();
         return;
       }
@@ -251,7 +251,7 @@ const PaymentModal = ({
       const { report_id, amount, currency, razorpay_order_id, razorpay_key_id } = orderResponse.data;
 
       if (!razorpay_key_id || !razorpay_order_id) {
-        onPaymentSuccess({ report_id, amount, simulated: true });
+        onPaymentSuccess({ report_id, amount, simulated: true, selected_sheets: selectedSheetsData });
         onClose();
         return;
       }
@@ -277,7 +277,7 @@ const PaymentModal = ({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_signature: response.razorpay_signature,
             });
-            onPaymentSuccess({ report_id, amount, payment_id: response.razorpay_payment_id, order_id: verifyResponse.data.order_id });
+            onPaymentSuccess({ report_id, amount, payment_id: response.razorpay_payment_id, order_id: verifyResponse.data.order_id, selected_sheets: selectedSheetsData });
             onClose();
           } catch (error) {
             toast.error('Payment verification failed.');

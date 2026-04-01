@@ -46,7 +46,7 @@ const sections = [
     title: 'Means of Finance',
     icon: CurrencyDollarIcon,
     fields: [
-      { id: 'i12', label: 'Do you have working capital limit at present?', type: 'select', options: ['Yes', 'No'], required: true, note: 'Select if you have existing loan' },
+      { id: 'i12', label: 'Do you have working capital limit at present?', type: 'select', options: ['Yes', 'No'], required: true, note: 'Select if you have existing loan', disabled: true },
       { id: 'i13', label: 'Working Capital Loan Requirement (₹)', type: 'number', min: 0, required: true, note: 'Enter loan amount in rupees' },
       { id: 'h14', label: 'Working Capital Loan Interest (Annual %)', type: 'number', min: 0, max: 100, step: 0.01, required: true, note: 'Enter annual interest rate' },
       { id: 'h15', label: 'Processing Fees (Including GST) %', type: 'number', min: 0, required: true, note: 'Enter processing fee percentage' },
@@ -142,7 +142,7 @@ const FRCC1Form = ({
       "i4": "", "i5": "", "i6": "", "i7": "", "i8": "", "i9": "", "i10": ""
     },
     "Means of Finance": {
-      "i12": "", "i13": "", "h14": "", "h15": "", "h16": ""
+      "i12": "No", "i13": "", "h14": "", "h15": "", "h16": ""
     },
     "Financial Years": {
       "i18": "", "i19": "", "i20": "", "i21": "", "i22": ""
@@ -791,8 +791,9 @@ const RegularFieldsSection = ({ section, data = {}, onUpdate, fieldErrors = {} }
             {field.type === 'select' ? (
               <select
                 value={data[field.id] || ''}
-                onChange={(e) => onUpdate(section.title, field.id, e.target.value)}
-                className={`w-full px-3 py-2 text-sm border ${err ? 'border-red-400' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
+                onChange={(e) => !field.disabled && onUpdate(section.title, field.id, e.target.value)}
+                disabled={!!field.disabled}
+                className={`w-full px-3 py-2 text-sm border ${err ? 'border-red-400' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 ${field.disabled ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'bg-white'}`}
               >
                 <option value="">Select...</option>
                 {field.options.map(opt => (
