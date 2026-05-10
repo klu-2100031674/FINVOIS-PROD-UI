@@ -5,6 +5,7 @@ import { Button } from '../components/common';
 import { Download, CheckCircle, ArrowRight, Home, FileCheck, Mail, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../hooks';
+import { dashboardHomePath, myReportsPathForRole } from '../utils/routePaths';
 
 const ReportReadyPage = () => {
   const location = useLocation();
@@ -12,17 +13,9 @@ const ReportReadyPage = () => {
   const { user } = useAuth();
   const { report_id } = location.state || {};
 
-  const getDashboardRoute = () => {
-    if (user?.role === 'admin' || user?.role === 'super_admin') return '/admin/generate';
-    if (user?.role === 'agent') return '/agent/dashboard';
-    return '/dashboard';
-  };
+  const getDashboardRoute = () => dashboardHomePath(user?.role);
 
-  const getReportsRoute = () => {
-    if (user?.role === 'admin' || user?.role === 'super_admin') return '/admin/reports';
-    if (user?.role === 'agent') return '/agent/reports';
-    return '/reports';
-  };
+  const getReportsRoute = () => myReportsPathForRole(user?.role);
 
   useEffect(() => {
     // Trigger confetti on mount
@@ -92,7 +85,7 @@ const ReportReadyPage = () => {
 
             <h1 className="text-3xl font-bold text-gray-900 mb-3 font-manrope">Report Submitted!</h1>
             <p className="text-gray-500 text-lg mb-8 font-inter">
-              Your report <span className="font-semibold text-gray-900">#{report_id}</span> has been sent for CA validation.
+              Your report for validation has been sent for CA validation.
             </p>
 
             <div className="flex flex-col gap-3 mt-auto">
@@ -151,7 +144,7 @@ const ReportReadyPage = () => {
                 </div>
                 <div>
                   <h4 className="font-bold text-gray-900 text-sm">Email Notification</h4>
-                  <p className="text-xs text-gray-500 mt-1">You receive the final PDF via email within 24 hours.</p>
+                  <p className="text-xs text-gray-500 mt-1">You receive the final PDF via email within 12 hours.</p>
                 </div>
               </motion.div>
 

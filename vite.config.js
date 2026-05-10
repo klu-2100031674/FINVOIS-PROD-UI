@@ -7,8 +7,12 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        // Local backend is running on :5000 (see API startup logs / PORT env)
+        target: 'http://localhost:5000',
         changeOrigin: true,
+        // Excel + PDF + AI can exceed default proxy/socket timeouts
+        timeout: 300000,
+        proxyTimeout: 300000,
       },
     },
   },

@@ -19,7 +19,8 @@ import {
   Bars3Icon,
   XMarkIcon,
   LinkIcon,
-  ClipboardDocumentCheckIcon
+  ClipboardDocumentCheckIcon,
+  ClipboardDocumentListIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -36,6 +37,7 @@ const AgentLayout = ({ children, activeTab }) => {
 
   const navigation = [
     { name: 'Dashboard', href: '/agent/dashboard', icon: HomeIcon, tab: 'dashboard' },
+    { name: 'Drafts', href: '/drafts', icon: ClipboardDocumentListIcon, tab: 'drafts' },
     { name: 'My Reports', href: '/agent/reports', icon: DocumentTextIcon, tab: 'reports' },
     { name: 'Referred Users', href: '/agent/referrals', icon: UsersIcon, tab: 'referrals' },
     { name: 'Commissions', href: '/agent/commissions', icon: CurrencyDollarIcon, tab: 'commissions' },
@@ -99,6 +101,8 @@ const AgentLayout = ({ children, activeTab }) => {
               <li key={item.name}>
                 <NavLink
                   to={item.href}
+                  title={item.name}
+                  aria-label={!sidebarOpen ? item.name : undefined}
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === item.tab || isActive
                       ? 'bg-green-50 text-green-600'
@@ -106,7 +110,7 @@ const AgentLayout = ({ children, activeTab }) => {
                     }`
                   }
                 >
-                  <item.icon className="w-5 h-5 flex-shrink-0" />
+                  <item.icon className="w-5 h-5 flex-shrink-0" aria-hidden />
                   {sidebarOpen && <span className="text-sm font-medium">{item.name}</span>}
                 </NavLink>
               </li>
@@ -123,7 +127,7 @@ const AgentLayout = ({ children, activeTab }) => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
-                <p className="text-xs text-gray-500 truncate">Agent</p>
+                <p className="text-xs text-gray-500 truncate">Channel partner</p>
               </div>
             </div>
           ) : (

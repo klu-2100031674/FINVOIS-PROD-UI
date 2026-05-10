@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   DocumentTextIcon,
-  CurrencyDollarIcon,
+  CurrencyRupeeIcon,
   CalendarIcon,
   ChartBarIcon,
   BuildingOfficeIcon,
@@ -13,6 +13,8 @@ import {
   TrashIcon,
   InformationCircleIcon
 } from '@heroicons/react/24/outline';
+
+import SaveDraftButton from '../common/SaveDraftButton';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -230,6 +232,7 @@ const getIndirectExpensesData = (tenure) => {
 const INDIRECT_EXPENSES_DATA = INDIRECT_EXPENSES_DATA_DEFAULT;
 
 const DEFAULT_INITIAL_DATA = {};
+const LEGACY_SERVICE_WITH_STOCK_LABEL = 'Service Sector (With stock)';
 
 const EXPENSE_INCREMENT_MAP = {
   'Administrative & Office Expenses': 'h72',
@@ -246,13 +249,24 @@ const EXPENSE_INCREMENT_REVERSE_MAP = Object.entries(EXPENSE_INCREMENT_MAP).redu
   return acc;
 }, {});
 
+const normalizeSectorValue = (generalInfo = {}) => {
+  const normalized = { ...generalInfo };
+  if (normalized.i14 === LEGACY_SERVICE_WITH_STOCK_LABEL) {
+    normalized.i14 = 'service sector with stock';
+  }
+  return normalized;
+};
+
 const FRTermLoanCCForm = ({
   onSubmit,
   initialData = DEFAULT_INITIAL_DATA,
   isEditMode = false,
   reportId = null,
   isProcessing = false,
-  onFormDataChange = null
+  onFormDataChange = null,
+  templateId = null,
+  presetSector = null,
+  lockSector = false,
 }) => {
   // Extract initial tenure from initialData if available (for initial render)
   const initialTenure = initialData?.['Means of Finance details']?.i47 !== undefined
@@ -269,7 +283,7 @@ const FRTermLoanCCForm = ({
   const defaultFormData = useMemo(() => ({
     'General Information': {
       'i7': '', 'i8': '', 'i9': '', 'i10': '', 'i11': '', 'i12': '', 'i13': '',
-      'i14': '', 'i15': '', 'i16': '', 'i17': '', 'i18': '', 'i19': '', 'i20': '',
+      'i14': 'service sector without stock', 'i15': '', 'i16': '', 'i17': '', 'i18': '', 'i19': '', 'i20': '',
       'i21': '', 'i22': '', 'i23': ''
     },
     'Prepared By': {
@@ -315,6 +329,13 @@ const FRTermLoanCCForm = ({
       mergedData['Schedule for Indirect Expenses'] = {
         ...initialIndirect,
         ...initialData['Schedule for Indirect Expenses']
+      };
+    }
+    mergedData['General Information'] = normalizeSectorValue(mergedData['General Information']);
+    if (presetSector) {
+      mergedData['General Information'] = {
+        ...(mergedData['General Information'] || {}),
+        i14: presetSector,
       };
     }
     return mergedData;
@@ -429,6 +450,13 @@ const FRTermLoanCCForm = ({
         if (initialData['Schedule for Indirect Expenses']) {
           newData['Schedule for Indirect Expenses'] = initialData['Schedule for Indirect Expenses'];
         }
+        newData['General Information'] = normalizeSectorValue(newData['General Information']);
+        if (presetSector && lockSector) {
+          newData['General Information'] = {
+            ...(newData['General Information'] || {}),
+            i14: presetSector,
+          };
+        }
         return newData;
       });
 
@@ -437,7 +465,7 @@ const FRTermLoanCCForm = ({
         setLoanPercentages(initialData['Asset Loan Percentages']);
       }
     }
-  }, [initialData]);
+  }, [initialData, presetSector, lockSector]);
 
   // Track previous tenure to detect when it crosses the threshold
   const prevTenureRef = useRef(liveTenure);
@@ -516,6 +544,9 @@ const FRTermLoanCCForm = ({
   }, [liveTenure]);
 
   const handleInputChange = (section, field, value) => {
+    if (lockSector && section === 'General Information' && field === 'i14') {
+      return;
+    }
     const normalizedValue =
       section === 'General Information' && (field === 'i11' || field === 'i18')
         ? String(value || '').toUpperCase()
@@ -936,7 +967,7 @@ const FRTermLoanCCForm = ({
     onSubmit(payload);
   };
 
-  const renderInput = (section, field, label, type = 'text', options = null, suffix = null, infoTooltip = null) => {
+  const renderInput = (section, field, label, type = 'text', options = null, suffix = null, infoTooltip = null, includeSelectOption = true, disabled = false) => {
     const fieldError = section === 'General Information'
       ? generalInfoErrors[field]
       : section === 'Means of Finance details'
@@ -962,9 +993,10 @@ const FRTermLoanCCForm = ({
           <select
             value={formData[section]?.[field] || ''}
             onChange={(e) => handleInputChange(section, field, e.target.value)}
-            className={`w-full p-2 border rounded-md ${fieldError ? 'border-red-500' : 'border-gray-300'}`}
+            disabled={disabled}
+            className={`w-full p-2 border rounded-md disabled:bg-gray-100 disabled:text-gray-700 disabled:cursor-not-allowed ${fieldError ? 'border-red-500' : 'border-gray-300'}`}
           >
-            <option value="">Select {label}</option>
+            {includeSelectOption && <option value="">Select {label}</option>}
             {options.map(opt => (
               <option key={opt} value={opt}>{opt}</option>
             ))}
@@ -976,7 +1008,8 @@ const FRTermLoanCCForm = ({
               value={formData[section]?.[field] || ''}
               onChange={(e) => handleInputChange(section, field, e.target.value)}
               onWheel={(e) => e.target.type === 'number' && e.target.blur()}
-              className={`w-full p-2 border rounded-md ${fieldError ? 'border-red-500' : 'border-gray-300'} ${suffix ? 'pr-8' : ''}`}
+              disabled={disabled}
+              className={`w-full p-2 border rounded-md disabled:bg-gray-100 disabled:text-gray-700 disabled:cursor-not-allowed ${fieldError ? 'border-red-500' : 'border-gray-300'} ${suffix ? 'pr-8' : ''}`}
             />
             {suffix && (
               <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">{suffix}</span>
@@ -1014,9 +1047,9 @@ const FRTermLoanCCForm = ({
 
   const sections = [
     { key: 'general', title: 'General Information', icon: BuildingOfficeIcon },
-    { key: 'term', title: 'Means of Finance details', icon: CurrencyDollarIcon },
+    { key: 'term', title: 'Means of Finance details', icon: CurrencyRupeeIcon },
     { key: 'assets', title: 'cost of the project', icon: BuildingOfficeIcon },
-    { key: 'cost', title: 'working capital requirement', icon: CurrencyDollarIcon },
+    { key: 'cost', title: 'working capital requirement', icon: CurrencyRupeeIcon },
     { key: 'employment', title: 'Expected Employment Generation', icon: DocumentTextIcon },
     { key: 'expenses', title: 'Schedule for Indirect Expenses (Per Month)', icon: ChartBarIcon },
     { key: 'prepared_by', title: 'Prepared By', icon: BuildingOfficeIcon }
@@ -1385,7 +1418,7 @@ const FRTermLoanCCForm = ({
         'i7': 'Sole Proprietorship', 'i8': 'Pratap', 'i9': '9876543210', 'i10': '123456789012',
         'bank_name': 'ICICI Bank', 'branch_name': 'Industrial Branch',
         'i11': 'ABCDE1234F', 'i12': '35', 'i13': 'Male',
-        'i14': 'Manufacturing sector', 'i15': 'Textile Manufacturing', 'i16': '17-3-47,thadepalli center, Vijayawada', 'i17': 'Pratap', 'i18': 'ABCDE1234F', 'i19': 'Graduate', 'i20': 'PMEGP',
+        'i14': presetSector && lockSector ? presetSector : 'service sector without stock', 'i15': 'Textile Manufacturing', 'i16': '17-3-47,thadepalli center, Vijayawada', 'i17': 'Pratap', 'i18': 'ABCDE1234F', 'i19': 'Graduate', 'i20': 'PMEGP',
         'i21': 'OC', 'i22': 'Urban(Other than Panchayat)', 'i23': ''
       },
       'Expected Employment Generation': {
@@ -1510,19 +1543,29 @@ const FRTermLoanCCForm = ({
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {renderInput('General Information', 'i7', 'Status of Concern', 'text', ['Sole Proprietorship', 'Partnership Firm', 'Private limited Company', 'LLP', 'Society', 'Trust', 'Federation'])}
-              {renderInput('General Information', 'i8', 'Name of Authorised Person')}
+              {renderInput('General Information', 'i8', 'Name of Authorised person')}
               {renderInput('General Information', 'i9', 'Mobile Number')}
               {renderInput('General Information', 'i10', 'Aadhar number (Optional)')}
               {renderInput('General Information', 'i11', 'PAN (Optional)')}
               {renderInput('General Information', 'i12', 'Age')}
               {renderInput('General Information', 'i13', 'Gender', 'text', ['Male', 'Female', 'Others'])}
-              {renderInput('General Information', 'i14', 'Sector', 'text', ['Manufacturing sector', 'Service Sector (With stock)', 'Trading sector','Service Sector (Without stock)'])}
+              {renderInput(
+                'General Information',
+                'i14',
+                'Sector',
+                'text',
+                ['Manufacturing sector', 'service sector with stock', 'Trading sector', 'service sector without stock'],
+                null,
+                null,
+                false,
+                lockSector
+              )}
               {renderInput('General Information', 'i15', 'Nature of Business')}
               {renderInput('General Information', 'i16', 'Address of office/Factory')}
               {renderInput('General Information', 'i17', 'Name of firm/Company (Optional)')}
               {renderInput('General Information', 'i18', 'PAN of firm/Company (Optional)')}
               {renderInput('General Information', 'i19', 'Education Qualification', 'text', ['Below 8th', 'Above 8th', 'SSC 10th', 'intermediate +2', 'Graduate', 'Post Graduate'])}
-              {renderInput('General Information', 'i20', 'Project covered under which Scheme', 'text', ['AP IDP 4.0', 'Industrial park Land Allotment', 'PMEGP', 'Mudra', 'PMFME', 'PMMSY', 'Startup India', 'Other MSME', 'NLM scheme','CMEGP'])}
+              {renderInput('General Information', 'i20', 'Project covered under which Scheme', 'text', ['AP IDP 4.0', 'Industrial park Land Allotment', 'PMEGP', 'Mudra', 'PMFME', 'PMMSY', 'Startup India', 'Other MSME', 'NLM scheme','CMEGP', 'CMPE'])}
               {renderInput('General Information', 'i21', 'Caste', 'text', ['OC', 'SC', 'ST', 'BC', 'Minority'])}
               {renderInput('General Information', 'i22', 'Unit location', 'text', ['Rural(Panchayat)', 'Urban(Other than Panchayat)'])}
             </div>
@@ -1586,7 +1629,7 @@ const FRTermLoanCCForm = ({
           </div>
         );
 
-      case 'cost':
+      case 'cost': {
         const wcReq = parseFloat(formData['Cost of Project details']?.['i40'] || 0);
         const wcPercent = parseFloat(formData['Cost of Project details']?.['k40'] || 0);
         const wcLoanAmount = wcReq && wcPercent ? ((wcReq * wcPercent) / 100).toFixed(2) : '';
@@ -1594,10 +1637,10 @@ const FRTermLoanCCForm = ({
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {renderInput('Cost of Project details', 'i40', 'Working capital Requirement(Lac)', 'number')}
-            {renderInput('Cost of Project details', 'k40', 'Loan Percentage for Working Capital (%)', 'number')}
+            {renderInput('Cost of Project details', 'k40', 'Loan ContributionPercentage (%)', 'number')}
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Working Capital Loan Amount (Calculated)</label>
+              <label className="block text-sm font-medium text-gray-700">Working Capital Loan Amount (Auto Calculated)</label>
               <div className="relative">
                 <input
                   type="text"
@@ -1611,8 +1654,9 @@ const FRTermLoanCCForm = ({
             </div>
           </div>
         );
+      }
 
-      case 'assets':
+      case 'assets': {
         const assetCategories = Object.keys(CURRENT_ASSET_SECTIONS);
         const activeCategoryName = assetCategories[assetActiveTab] || assetCategories[0];
         const activeItems = assetItems[activeCategoryName] || {};
@@ -1832,6 +1876,7 @@ const FRTermLoanCCForm = ({
             </div>
           </div>
         );
+      }
 
       case 'prepared_by':
         return (
@@ -1913,7 +1958,7 @@ const FRTermLoanCCForm = ({
           </div>
         );
 
-      case 'expenses':
+      case 'expenses': {
         const expenseCategories = Object.keys(CURRENT_INDIRECT_EXPENSES_DATA);
         const activeExpenseCategory = expenseCategories[indirectActiveTab] || expenseCategories[0];
         const activeExpenseItems = CURRENT_INDIRECT_EXPENSES_DATA[activeExpenseCategory];
@@ -2024,6 +2069,7 @@ const FRTermLoanCCForm = ({
             </div>
           </div>
         );
+      }
 
       default:
         return null;
@@ -2065,16 +2111,18 @@ const FRTermLoanCCForm = ({
 
       <div className="bg-white rounded-xl shadow-soft p-6 max-w-7xl mx-auto">
         <div className="mb-6 flex justify-between items-start">
-          <div>
-            <h1 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-2xl font-bold text-gray-900 mb-2">
-              Term Loan + CC Loan
-            </h1>
-            <p className="text-gray-600 text-sm">Term Loan + CC Loan</p>
-          </div>
+          {/* Kept for future reuse on this template page:
+              <div>
+                <h1 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-2xl font-bold text-gray-900 mb-2">
+                  Term Loan + CC Loan
+                </h1>
+                <p className="text-gray-600 text-sm">Term Loan + CC Loan</p>
+              </div>
+          */}
           <button
             type="button"
             onClick={handleFillTestData}
-            className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            className="ml-auto px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
           >
             Fill Test Data
           </button>
@@ -2147,39 +2195,46 @@ const FRTermLoanCCForm = ({
             Previous
           </button>
 
-          {currentStep === sections.length - 1 ? (
-            <button
-              type="button"
-              className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-              onClick={handleSubmit}
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 3 8l3-2.709z"></path>
-                  </svg>
-                  {isEditMode ? 'Updating...' : 'Submitting...'}
-                </>
-              ) : (
-                <>
-                  <CheckCircleIcon className="w-4 h-4" />
-                  {isEditMode ? 'Save & Update' : 'Submit Application'}
-                </>
-              )}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-300 font-medium text-sm flex items-center gap-1"
-              onClick={handleNext}
-              disabled={sections[currentStep].key !== 'general' && sections[currentStep].key !== 'term' && !canProceed}
-            >
-              Next
-              <ChevronRightIcon className="w-4 h-4" />
-            </button>
-          )}
+          <div className="flex gap-3">
+            <SaveDraftButton 
+              templateId={templateId} 
+              currentStep={`/stage1?templateId=${templateId}`} 
+              currentFormData={formData} 
+            />
+            {currentStep === sections.length - 1 ? (
+              <button
+                type="button"
+                className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                onClick={handleSubmit}
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 3 8l3-2.709z"></path>
+                    </svg>
+                    {isEditMode ? 'Updating...' : 'Submitting...'}
+                  </>
+                ) : (
+                  <>
+                    <CheckCircleIcon className="w-4 h-4" />
+                    {isEditMode ? 'Save & Update' : 'Submit Application'}
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-300 font-medium text-sm flex items-center gap-1"
+                onClick={handleNext}
+                disabled={sections[currentStep].key !== 'general' && sections[currentStep].key !== 'term' && !canProceed}
+              >
+                Next
+                <ChevronRightIcon className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {!canProceed && currentStep < sections.length - 1 && (

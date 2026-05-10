@@ -1,7 +1,7 @@
 ﻿import React, { useState, useCallback, useEffect } from 'react';
 import {
   DocumentTextIcon,
-  CurrencyDollarIcon,
+  CurrencyRupeeIcon,
   CalendarIcon,
   ChartBarIcon,
   BuildingOfficeIcon,
@@ -14,6 +14,8 @@ import {
   PlusIcon,
   TrashIcon
 } from '@heroicons/react/24/outline';
+
+import SaveDraftButton from '../common/SaveDraftButton';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -57,7 +59,8 @@ const FRCC6Form = ({
   isEditMode = false,
   reportId = null,
   isProcessing = false,
-  onFormDataChange = null
+  onFormDataChange = null,
+  templateId = null
 }) => {
   const buildEmptyState = () => ({
     'General Information': {},
@@ -113,7 +116,7 @@ const FRCC6Form = ({
     {
       key: 'finance',
       title: 'Means of Finance',
-      icon: CurrencyDollarIcon,
+      icon: CurrencyRupeeIcon,
       fields: [
         { id: 'i11', label: 'Do you have existing working capital limit?',                        type: 'select', options: ['Yes', 'No'],  required: true, disabled: true },
         { id: 'i12', label: 'Are you going for Working Capital limit Top-up from present limit?', type: 'select', options: ['Yes', 'No'],  required: true, disabled: true },
@@ -219,18 +222,36 @@ const FRCC6Form = ({
         const merged = { ...prev };
         for (const sectionKey in initialData) {
           if (!Object.prototype.hasOwnProperty.call(initialData, sectionKey)) continue;
+
           const incoming = initialData[sectionKey];
+          const isPlainObject = incoming && typeof incoming === 'object' && !Array.isArray(incoming);
+
+          // Schedules need a category-level merge so `items` arrays are preserved/cloned.
           if (sectionKey === 'New Asset Schedule' || sectionKey === 'Gross Assets Opening Balance') {
+            const scheduleIncoming = isPlainObject ? incoming : {};
             merged[sectionKey] = { ...(merged[sectionKey] || {}) };
-            for (const cat in incoming) {
-              if (!Object.prototype.hasOwnProperty.call(incoming, cat)) continue;
+
+            for (const cat in scheduleIncoming) {
+              if (!Object.prototype.hasOwnProperty.call(scheduleIncoming, cat)) continue;
               merged[sectionKey][cat] = {
                 ...(merged[sectionKey][cat] || {}),
-                ...incoming[cat],
-                items: Array.isArray(incoming[cat]?.items) ? [...incoming[cat].items] : []
+                ...scheduleIncoming[cat],
+                items: Array.isArray(scheduleIncoming[cat]?.items) ? [...scheduleIncoming[cat].items] : []
               };
             }
-          } else if (typeof incoming === 'object' && incoming !== null && !Array.isArray(incoming)) {
+          } else if (sectionKey === 'Fixed Assets Schedule') {
+            const fixedIncoming = isPlainObject ? incoming : {};
+            merged['Fixed Assets Schedule'] = { ...(merged['Fixed Assets Schedule'] || {}) };
+
+            for (const category in fixedIncoming) {
+              if (!Object.prototype.hasOwnProperty.call(fixedIncoming, category)) continue;
+              merged['Fixed Assets Schedule'][category] = {
+                ...(merged['Fixed Assets Schedule'][category] || {}),
+                ...fixedIncoming[category],
+                items: Array.isArray(fixedIncoming[category]?.items) ? [...fixedIncoming[category].items] : []
+              };
+            }
+          } else if (isPlainObject) {
             merged[sectionKey] = { ...(merged[sectionKey] || {}), ...incoming };
           } else {
             merged[sectionKey] = incoming;
@@ -377,16 +398,15 @@ const FRCC6Form = ({
     const skipKeys = new Set(['bank_name', 'branch_name']);
     const assetSections = new Set(['New Asset Schedule', 'Gross Assets Opening Balance']);
 
-    // Flat sections â€” copy all cell-ref keys, skip meta keys
-    ['General Information', 'Means of Finance', 'Financial Years',
-     'Financial Statements', 'Term Loan Finance Details'].forEach(sectionTitle => {
+    // Flat sections -- copy all cell-ref keys, skip meta keys
+    ['General Information', 'Means of Finance', 'Financial Years', 'Financial Statements', 'Term Loan Finance Details'].forEach(sectionTitle => {
       const section = data[sectionTitle] || {};
       Object.keys(section).forEach(key => {
         if (!skipKeys.has(key)) excelData[key] = section[key];
       });
     });
 
-    // i79: convert YYYY-MM â†’ 01-MM-YYYY so Excel interprets as a date
+    // i79: convert YYYY-MM -> 01-MM-YYYY so Excel interprets as a date
     if (excelData['i79'] && /^\d{4}-\d{2}$/.test(String(excelData['i79']))) {
       const [year, month] = String(excelData['i79']).split('-');
       excelData['i79'] = `01-${month}-${year}`;
@@ -851,39 +871,46 @@ const FRCC6Form = ({
             Previous
           </button>
 
-          {isLastStep ? (
-            <button
-              type="button"
-              className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-              onClick={handleSubmit}
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 8l3-2.709z"></path>
-                  </svg>
-                  {isEditMode ? 'Updating...' : 'Submitting...'}
-                </>
-              ) : (
-                <>
-                  <CheckCircleIcon className="w-4 h-4" />
-                  {isEditMode ? 'Save & Update' : 'Submit Form'}
-                </>
-              )}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-300 font-medium text-sm flex items-center gap-1"
-              onClick={goToNextStep}
-              disabled={!canProceed}
-            >
-              Next
-              <ChevronRightIcon className="w-4 h-4" />
-            </button>
-          )}
+          <div className="flex gap-3">
+            <SaveDraftButton 
+              templateId={templateId} 
+              currentStep={`/stage1?templateId=${templateId}`} 
+              currentFormData={formData} 
+            />
+            {isLastStep ? (
+              <button
+                type="button"
+                className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                onClick={handleSubmit}
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 8l3-2.709z"></path>
+                    </svg>
+                    {isEditMode ? 'Updating...' : 'Submitting...'}
+                  </>
+                ) : (
+                  <>
+                    <CheckCircleIcon className="w-4 h-4" />
+                    {isEditMode ? 'Save & Update' : 'Submit Form'}
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-300 font-medium text-sm flex items-center gap-1"
+                onClick={goToNextStep}
+                disabled={!canProceed}
+              >
+                Next
+                <ChevronRightIcon className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {!canProceed && !isLastStep && (

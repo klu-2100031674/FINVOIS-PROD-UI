@@ -9,7 +9,8 @@ import {
   Eye,
   EyeOff,
   Lock,
-  Shield
+  Shield,
+  Gift
 } from 'lucide-react';
 import { AgentLayout } from '../../components/layouts';
 import useAuth from '../../hooks/useAuth';
@@ -226,6 +227,7 @@ const AgentProfilePage = () => {
     { id: 'payment', label: 'Payment Details', icon: CreditCard },
     { id: 'security', label: 'Security', icon: Shield }
   ];
+  const freeCredits = Number(user?.free_reports_count || 0);
 
   return (
     <AgentLayout>
@@ -233,6 +235,20 @@ const AgentProfilePage = () => {
         <h1 className="text-2xl font-bold text-gray-800">My Profile</h1>
         <p className="text-gray-500 mt-1">Manage your account settings and payment details</p>
       </div>
+
+      {freeCredits > 0 && (
+        <div className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-100 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white rounded-lg border border-purple-100">
+              <Gift className="w-5 h-5 text-purple-700" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Free Credits Available</p>
+              <p className="text-xl font-bold text-purple-800">{freeCredits}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Profile Header */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -245,7 +261,7 @@ const AgentProfilePage = () => {
             <p className="text-gray-500">{user?.email}</p>
             <div className="flex items-center space-x-2 mt-2">
               <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
-                Agent
+                Channel partner
               </span>
               <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
                 {user?.status?.charAt(0).toUpperCase() + user?.status?.slice(1) || 'Active'}

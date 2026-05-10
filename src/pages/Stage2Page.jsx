@@ -10,6 +10,8 @@ import { uploadReportJson } from '../store/slices/reportSlice';
 import { Button, Loading } from '../components/common';
 import toast from 'react-hot-toast';
 import { useAuth } from '../hooks';
+import { myReportsPathForRole } from '../utils/routePaths';
+import { getApiBaseUrl } from '../utils/env';
 
 const Stage2Page = () => {
   const navigate = useNavigate();
@@ -35,9 +37,10 @@ const Stage2Page = () => {
     try {
       setIsLoading(true);
       
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/reports/${reportId}/json-data`
-      );
+      const token = localStorage.getItem(import.meta.env.VITE_TOKEN_STORAGE_KEY || 'ca_auth_token');
+      const response = await fetch(`${getApiBaseUrl()}/reports/${reportId}/json-data`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       
       if (!response.ok) throw new Error('Failed to load Excel data');
       
@@ -97,13 +100,7 @@ const Stage2Page = () => {
       ).unwrap();
       
       toast.success('Report finalized successfully!');
-      if (user?.role === 'admin' || user?.role === 'super_admin') {
-        navigate('/admin/reports');
-      } else if (user?.role === 'agent') {
-        navigate('/agent/reports');
-      } else {
-        navigate('/reports');
-      }
+      navigate(myReportsPathForRole(user?.role));
     } catch (error) {
       console.error('Error finalizing report:', error);
       toast.error('Failed to finalize report');

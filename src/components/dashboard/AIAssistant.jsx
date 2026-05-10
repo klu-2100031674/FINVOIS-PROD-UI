@@ -16,13 +16,16 @@ const STEPS = {
     REPORT_TYPE: 0,
     SECTOR: 1,
     LOAN_TYPE_MFG: 2,
+    LOAN_TYPE_TRADING: 12,
     STOCK_CHECK: 3,
     LOAN_TYPE_SERVICE_STOCK: 4,
-    CMA_LOAN_TYPE: 5,       // Q1: Pure CC Loan vs Existing CC + TL
-    CMA_WC_LIMIT: 6,        // Q2 (Pure CC): Do you have WC limit at present?
-    CMA_FINANCIALS: 7,      // Q3 (Pure CC, No WC): Estimated / Audited Provisional / Audited
-    CMA_PURE_CC_TOPUP: 8,   // Q3 (Pure CC, Yes WC): Top-up? → CC4 / CC5
-    CMA_CC67: 9,            // Q2 (Existing CC+TL): Top-up? → CC6 / CC7
+    CMA_WC_LIMIT: 5,
+    CMA_NEW_TERM_LOAN: 6,
+    CMA_TOPUP_WITH_TERM_LOAN: 7,
+    CMA_TOPUP_WITHOUT_TERM_LOAN: 8,
+    CMA_AUDITED_LAST_YEAR: 9,
+    CMA_PROVISIONAL_AUDITED_YES: 10,
+    CMA_PROVISIONAL_AUDITED_NO: 11,
 };
 
 const AIAssistant = ({ onSelectTemplate }) => {
@@ -66,7 +69,7 @@ const AIAssistant = ({ onSelectTemplate }) => {
     const renderReportType = () => (
         <div className="space-y-4">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-                What type of report would you like to generate?
+                Please select the type of report you would like to have prepared
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SelectionCard
@@ -79,7 +82,7 @@ const AIAssistant = ({ onSelectTemplate }) => {
                     icon={ClipboardDocumentCheckIcon}
                     title="CMA Data Projections"
                     description="Credit Monitoring Arrangement data for working capital"
-                    onClick={() => handleNext(STEPS.CMA_LOAN_TYPE)}
+                    onClick={() => handleNext(STEPS.CMA_WC_LIMIT)}
                 />
             </div>
         </div>
@@ -90,7 +93,7 @@ const AIAssistant = ({ onSelectTemplate }) => {
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
                 Which sector does your business belong to?
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <SelectionCard
                     icon={WrenchScrewdriverIcon}
                     title="Manufacturing Sector"
@@ -103,31 +106,51 @@ const AIAssistant = ({ onSelectTemplate }) => {
                     description="Providing services to customers"
                     onClick={() => handleNext(STEPS.STOCK_CHECK)}
                 />
+                <SelectionCard
+                    icon={BuildingOfficeIcon}
+                    title="Trading Sector"
+                    description="Buying and selling of goods"
+                    onClick={() => handleNext(STEPS.LOAN_TYPE_TRADING)}
+                />
             </div>
         </div>
     );
 
-    const renderLoanTypeMfg = () => (
+    const renderLoanTypeSelection = ({ sectorLabel, selectOptions }) => (
         <div className="space-y-4">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
                 What type of loan are you applying for?
             </h2>
+            <p className="text-gray-500 text-sm text-center mb-6">
+                {sectorLabel} DPR flow
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SelectionCard
                     icon={CurrencyDollarIcon}
                     title="Term Loan and CC / Working Capital loan"
                     description="Both long-term and short-term funding"
-                    onClick={() => onSelectTemplate('TERM_LOAN_CC')}
+                    onClick={() => onSelectTemplate('TERM_LOAN_CC', selectOptions)}
                 />
                 <SelectionCard
                     icon={CurrencyDollarIcon}
                     title="Pure term loan"
                     description="Long-term funding for assets"
-                    onClick={() => onSelectTemplate('TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK')}
+                    onClick={() => onSelectTemplate('TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK', selectOptions)}
                 />
             </div>
         </div>
     );
+
+    const renderLoanTypeMfg = () =>
+        renderLoanTypeSelection({
+            sectorLabel: 'Manufacturing Sector',
+            selectOptions: { presetSector: 'Manufacturing sector', lockSector: true },
+        });
+    const renderLoanTypeTrading = () =>
+        renderLoanTypeSelection({
+            sectorLabel: 'Trading Sector',
+            selectOptions: { presetSector: 'Trading sector', lockSector: true },
+        });
 
     const renderStockCheck = () => (
         <div className="space-y-4">
@@ -145,7 +168,12 @@ const AIAssistant = ({ onSelectTemplate }) => {
                     icon={BuildingOfficeIcon}
                     title="No"
                     description="Pure service based, no significant inventory"
-                    onClick={() => onSelectTemplate('TERM_LOAN_SERVICE_WITHOUT_STOCK')}
+                    onClick={() =>
+                        onSelectTemplate('TERM_LOAN_SERVICE_WITHOUT_STOCK', {
+                            presetSector: 'service sector without stock',
+                            lockSector: true,
+                        })
+                    }
                 />
             </div>
         </div>
@@ -161,159 +189,201 @@ const AIAssistant = ({ onSelectTemplate }) => {
                     icon={CurrencyDollarIcon}
                     title="Term Loan and CC / Working Capital loan"
                     description="Both long-term and short-term funding"
-                    onClick={() => onSelectTemplate('TERM_LOAN_CC')}
+                    onClick={() =>
+                        onSelectTemplate('TERM_LOAN_CC', {
+                            presetSector: 'service sector with stock',
+                            lockSector: true,
+                        })
+                    }
                 />
                 <SelectionCard
                     icon={CurrencyDollarIcon}
                     title="Pure term loan"
                     description="Long-term funding for assets"
-                    onClick={() => onSelectTemplate('TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK')}
+                    onClick={() =>
+                        onSelectTemplate('TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK', {
+                            presetSector: 'service sector with stock',
+                            lockSector: true,
+                        })
+                    }
                 />
             </div>
         </div>
     );
 
-    // ── CMA Decision Tree ────────────────────────────────────────────────────
-    //
-    //  CC proposals
-    // ── CMA Decision Tree ────────────────────────────────────────────
-    //
-    //  Q1: What type of CC proposal?
-    //  ├── Pure CC Loan  (CC1–CC5)
-    //  │   └── Q2: WC limit at present?
-    //  │       ├── No
-    //  │       │   └── Q3: Financial statement type?
-    //  │       │       ├── Estimated                  → CC1
-    //  │       │       ├── Audited (Provisional)      → CC2
-    //  │       │       └── Audited                    → CC3
-    //  │       └── Yes
-    //  │           └── Q3: Working capital top-up?
-    //  │               ├── No                         → CC4
-    //  │               └── Yes                        → CC5
-    //  └── Existing CC Loan + Additional Term Loan  (CC6–CC7)
-    //      └── Q2: Working capital top-up?
-    //          ├── No                                 → CC6
-    //          └── Yes                                → CC7
-
-    const renderCMALoanType = () => (
-        <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">
-                What type of CC proposal is this?
-            </h2>
-            <p className="text-gray-500 text-sm text-center mb-6">Select the nature of your credit application</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <SelectionCard
-                    icon={DocumentTextIcon}
-                    title="Pure CC Loan"
-                    description="Working capital / cash credit loan only — no term loan component"
-                    onClick={() => handleNext(STEPS.CMA_WC_LIMIT)}
-                />
-                <SelectionCard
-                    icon={CurrencyDollarIcon}
-                    title="Existing CC Loan + Additional Term Loan"
-                    description="Already have a CC limit and now applying for a term loan as well"
-                    onClick={() => handleNext(STEPS.CMA_CC67)}
-                />
-            </div>
-        </div>
-    );
+    // CMA decision tree:
+    // Q1: WC limit at present?
+    // ├── Yes -> Q2A: New term loan for asset purchase?
+    // │   ├── Yes -> Q3A: WC top-up?
+    // │   │   ├── Yes -> CC7
+    // │   │   └── No  -> CC6
+    // │   └── No  -> Q3B: WC top-up?
+    // │       ├── Yes -> CC5
+    // │       └── No  -> CC4
+    // └── No  -> Q2B: Audited last FY statements?
+    //     ├── Yes -> Q3C: Provisional current FY statements?
+    //     │   ├── Yes -> CC2
+    //     │   └── No  -> CC3
+    //     └── No  -> Q3D: Provisional current FY statements?
+    //         ├── Yes -> CC3
+    //         └── No  -> CC1
 
     const renderCMAWCLimit = () => (
         <div className="space-y-4">
             <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">
-                Do you have a working capital limit at present?
+                Do you have a Working Capital Limit at present?
             </h2>
-            <p className="text-gray-500 text-sm text-center mb-6">An existing CC / working capital sanction from a bank</p>
+            <p className="text-gray-500 text-sm text-center mb-6">Select based on your current sanctioned working capital/CC limit</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <SelectionCard
-                    icon={DocumentTextIcon}
-                    title="No"
-                    description="No existing working capital / CC limit — applying fresh"
-                    onClick={() => handleNext(STEPS.CMA_FINANCIALS)}
-                />
                 <SelectionCard
                     icon={ArchiveBoxIcon}
                     title="Yes"
-                    description="Already have an existing working capital / CC limit"
-                    onClick={() => handleNext(STEPS.CMA_PURE_CC_TOPUP)}
+                    description="We already have an existing working capital limit"
+                    onClick={() => handleNext(STEPS.CMA_NEW_TERM_LOAN)}
                 />
-            </div>
-        </div>
-    );
-
-    const renderCMAFinancials = () => (
-        <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">
-                What type of financial statements do you have?
-            </h2>
-            <p className="text-gray-500 text-sm text-center mb-6">Select based on the financials you'll be submitting</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <SelectionCard
                     icon={DocumentTextIcon}
-                    title="Estimated"
-                    description="Projected / estimated data only — no prior audited accounts"
-                    onClick={() => onSelectTemplate('frcc1')}
-                    compact
-                />
-                <SelectionCard
-                    icon={ClipboardDocumentCheckIcon}
-                    title="Audited (Provisional)"
-                    description="Provisional audited statements are available"
-                    onClick={() => onSelectTemplate('frcc2')}
-                    compact
-                />
-                <SelectionCard
-                    icon={ClipboardDocumentCheckIcon}
-                    title="Audited"
-                    description="Full audited financial statements are available"
-                    onClick={() => onSelectTemplate('frcc3')}
-                    compact
+                    title="No"
+                    description="No existing working capital limit at present"
+                    onClick={() => handleNext(STEPS.CMA_AUDITED_LAST_YEAR)}
                 />
             </div>
         </div>
     );
 
-    const renderCMAPureCCTopup = () => (
+    const renderCMANewTermLoan = () => (
         <div className="space-y-4">
             <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">
-                Is this a working capital top-up / enhancement?
+                Are you also going for a New Term Loan for purchase of an Asset?
             </h2>
-            <p className="text-gray-500 text-sm text-center mb-6">Are you applying to increase your existing CC limit?</p>
+            <p className="text-gray-500 text-sm text-center mb-6">This is for applicants who already have a working capital limit</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <SelectionCard
-                    icon={DocumentTextIcon}
-                    title="No — Same Limit"
-                    description="Renewing the existing CC limit without enhancement"
-                    onClick={() => onSelectTemplate('frcc4')}
-                />
                 <SelectionCard
                     icon={CurrencyDollarIcon}
-                    title="Yes — Top-up"
-                    description="Applying for an enhancement / increase in the working capital limit"
-                    onClick={() => onSelectTemplate('frcc5')}
+                    title="Yes"
+                    description="Applying for a new term loan along with existing WC setup"
+                    onClick={() => handleNext(STEPS.CMA_TOPUP_WITH_TERM_LOAN)}
+                />
+                <SelectionCard
+                    icon={DocumentTextIcon}
+                    title="No"
+                    description="Not applying for a new term loan"
+                    onClick={() => handleNext(STEPS.CMA_TOPUP_WITHOUT_TERM_LOAN)}
                 />
             </div>
         </div>
     );
 
-    const renderCMACC67 = () => (
+    const renderCMATopupWithTermLoan = () => (
         <div className="space-y-4">
             <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">
-                Is this a working capital top-up as well?
+                Are you going for Working Capital limit Top-up from present limit?
             </h2>
-            <p className="text-gray-500 text-sm text-center mb-6">Alongside the new term loan, are you also increasing your working capital limit?</p>
+            <p className="text-gray-500 text-sm text-center mb-6">WC limit exists + New term loan = CC6/CC7 path</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SelectionCard
+                    icon={CurrencyDollarIcon}
+                    title="Yes"
+                    description="Top-up with new term loan"
+                    onClick={() => onSelectTemplate('frcc7')}
+                />
+                <SelectionCard
                     icon={DocumentTextIcon}
-                    title="No — Term Loan Only"
-                    description="Adding a term loan while keeping the existing CC limit unchanged"
+                    title="No"
+                    description="No top-up, term loan only addition"
                     onClick={() => onSelectTemplate('frcc6')}
                 />
+            </div>
+        </div>
+    );
+
+    const renderCMATopupWithoutTermLoan = () => (
+        <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">
+                Are you going for Working Capital limit Top-up from present limit?
+            </h2>
+            <p className="text-gray-500 text-sm text-center mb-6">WC limit exists + No new term loan = CC4/CC5 path</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SelectionCard
                     icon={CurrencyDollarIcon}
-                    title="Yes — Enhance CC + Term Loan"
-                    description="Increasing the CC limit and also applying for a new term loan"
-                    onClick={() => onSelectTemplate('frcc7')}
+                    title="Yes"
+                    description="Top-up of existing WC limit"
+                    onClick={() => onSelectTemplate('frcc5')}
+                />
+                <SelectionCard
+                    icon={DocumentTextIcon}
+                    title="No"
+                    description="No top-up of existing WC limit"
+                    onClick={() => onSelectTemplate('frcc4')}
+                />
+            </div>
+        </div>
+    );
+
+    const renderCMAAuditedLastYear = () => (
+        <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">
+                Do you have Audited Financial statements for last financial year?
+            </h2>
+            <p className="text-gray-500 text-sm text-center mb-6">WC limit does not exist = audited/provisional check path</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <SelectionCard
+                    icon={ClipboardDocumentCheckIcon}
+                    title="Yes"
+                    description="Audited statements available for last FY"
+                    onClick={() => handleNext(STEPS.CMA_PROVISIONAL_AUDITED_YES)}
+                />
+                <SelectionCard
+                    icon={DocumentTextIcon}
+                    title="No"
+                    description="No audited statements for last FY"
+                    onClick={() => handleNext(STEPS.CMA_PROVISIONAL_AUDITED_NO)}
+                />
+            </div>
+        </div>
+    );
+
+    const renderCMAProvisionalAuditedYes = () => (
+        <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">
+                Do you have Provisional Financial statements for current financial year?
+            </h2>
+            <p className="text-gray-500 text-sm text-center mb-6">Audited = Yes path</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <SelectionCard
+                    icon={ClipboardDocumentCheckIcon}
+                    title="Yes"
+                    description="Provisional statements available"
+                    onClick={() => onSelectTemplate('frcc2')}
+                />
+                <SelectionCard
+                    icon={DocumentTextIcon}
+                    title="No"
+                    description="Provisional statements not available"
+                    onClick={() => onSelectTemplate('frcc3')}
+                />
+            </div>
+        </div>
+    );
+
+    const renderCMAProvisionalAuditedNo = () => (
+        <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">
+                Do you have Provisional Financial statements for current financial year?
+            </h2>
+            <p className="text-gray-500 text-sm text-center mb-6">Audited = No path</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <SelectionCard
+                    icon={ClipboardDocumentCheckIcon}
+                    title="Yes"
+                    description="Provisional statements available"
+                    onClick={() => onSelectTemplate('frcc3')}
+                />
+                <SelectionCard
+                    icon={DocumentTextIcon}
+                    title="No"
+                    description="No provisional statements available"
+                    onClick={() => onSelectTemplate('frcc1')}
                 />
             </div>
         </div>
@@ -350,13 +420,16 @@ const AIAssistant = ({ onSelectTemplate }) => {
                         {currentStep === STEPS.REPORT_TYPE && renderReportType()}
                         {currentStep === STEPS.SECTOR && renderSector()}
                         {currentStep === STEPS.LOAN_TYPE_MFG && renderLoanTypeMfg()}
+                        {currentStep === STEPS.LOAN_TYPE_TRADING && renderLoanTypeTrading()}
                         {currentStep === STEPS.STOCK_CHECK && renderStockCheck()}
                         {currentStep === STEPS.LOAN_TYPE_SERVICE_STOCK && renderLoanTypeServiceStock()}
-                        {currentStep === STEPS.CMA_LOAN_TYPE && renderCMALoanType()}
                         {currentStep === STEPS.CMA_WC_LIMIT && renderCMAWCLimit()}
-                        {currentStep === STEPS.CMA_FINANCIALS && renderCMAFinancials()}
-                        {currentStep === STEPS.CMA_PURE_CC_TOPUP && renderCMAPureCCTopup()}
-                        {currentStep === STEPS.CMA_CC67 && renderCMACC67()}
+                        {currentStep === STEPS.CMA_NEW_TERM_LOAN && renderCMANewTermLoan()}
+                        {currentStep === STEPS.CMA_TOPUP_WITH_TERM_LOAN && renderCMATopupWithTermLoan()}
+                        {currentStep === STEPS.CMA_TOPUP_WITHOUT_TERM_LOAN && renderCMATopupWithoutTermLoan()}
+                        {currentStep === STEPS.CMA_AUDITED_LAST_YEAR && renderCMAAuditedLastYear()}
+                        {currentStep === STEPS.CMA_PROVISIONAL_AUDITED_YES && renderCMAProvisionalAuditedYes()}
+                        {currentStep === STEPS.CMA_PROVISIONAL_AUDITED_NO && renderCMAProvisionalAuditedNo()}
                     </motion.div>
                 </AnimatePresence>
             </div>

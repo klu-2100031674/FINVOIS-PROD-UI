@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import FRCC6Form from '../components/forms/FRCC6Form';
 import { applyFormData, clearGeneratedExcel } from '../store/slices/reportSlice';
+import ClientLayout from '../components/layouts/ClientLayout';
 
 const FRCC6FormPage = () => {
   const dispatch = useDispatch();
@@ -33,9 +34,11 @@ const FRCC6FormPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <FRCC6Form onSubmit={handleFormSubmit} />
-    </div>
+    <ClientLayout>
+      <div className="py-2 sm:py-4">
+        <FRCC6Form onSubmit={handleFormSubmit} />
+      </div>
+    </ClientLayout>
   );
 };
 

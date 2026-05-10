@@ -1,10 +1,10 @@
 /**
  * Admin Layout Component
- * Provides sidebar navigation for admin/super_admin users
+ * Provides sidebar navigation for admin/company_admin users
  * Matching main dashboard UI theme
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { NavLink, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks';
 import NotificationBell from '../common/NotificationBell';
@@ -27,11 +27,15 @@ import {
   Zap,
   CreditCard,
   Gift,
-  Mail
+  Mail,
+  Building2,
+  FolderOpen,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { normalizeUserRole } from '../../utils/normalizeUserRole';
+import { companyAPI } from '../../api/endpoints';
 
-const AdminLayout = ({ children }) => {
+const AdminLayout = ({ children, hideSidebar = false }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -43,18 +47,82 @@ const AdminLayout = ({ children }) => {
     toast.success('Logged out successfully');
   };
 
-  const navItems = [
-    { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Admin Dashboard' },
-    { to: '/admin/generate', icon: Zap, label: 'Generate Reports' },
-    { to: '/admin/users', icon: Users, label: 'User Management' },
-    { to: '/admin/reports', icon: FileText, label: 'Report Validation' },
-    { to: '/admin/templates', icon: FileStack, label: 'Template Config' },
-    { to: '/admin/withdrawals', icon: Wallet, label: 'Withdrawals' },
-    { to: '/admin/payments', icon: CreditCard, label: 'Transactions' },
-    { to: '/admin/free-credits', icon: Gift, label: 'Free Credits' },
-    { to: '/admin/promotional-emails', icon: Mail, label: 'Promo Emails' },
-    { to: '/admin/profile', icon: User, label: 'Profile' },
-  ];
+  const role = normalizeUserRole(user?.role);
+
+  const navItems = useMemo(() => {
+    const companyIdForRoutes = companyAPI.normalizeCompanyId(
+      user?.companyId?._id ||
+        user?.companyId?.id ||
+        user?.companyId?.$oid ||
+        user?.company?._id ||
+        user?.company?.id ||
+        user?.company_id ||
+        (typeof user?.companyId === 'string' || typeof user?.companyId === 'number' ? user.companyId : '')
+    );
+
+    const items = [
+      { to: role === 'company_admin' ? '/company/dashboard' : '/admin/dashboard', icon: LayoutDashboard, label: role === 'company_admin' ? 'Company Dashboard' : 'Admin Dashboard' },
+      { to: role === 'company_admin' ? '/company/generate' : '/admin/generate', icon: Zap, label: 'Generate Reports' },
+      { to: '/drafts', icon: FolderOpen, label: 'Drafts' },
+    ];
+
+    if (role !== 'company_admin') {
+      items.push({ to: '/admin/users', icon: Users, label: 'User Management' });
+    }
+
+    if (role === 'company_admin') {
+      items.push({
+        to: '/company/my-reports',
+        icon: FileStack,
+        label: 'My Reports'
+      });
+    }
+
+    // Company admins: org settings (logos, users) live under /admin/companies/:id — not /company/profile (personal account).
+    if (role === 'company_admin') {
+      items.push({ type: 'section', key: 'company-nav-section', label: 'Your company' });
+      if (companyIdForRoutes) {
+        items.push({
+          to: `/admin/companies/${companyIdForRoutes}`,
+          icon: Building2,
+          label: 'Company Profile',
+          title: 'Company logos, details, and users',
+        });
+      }
+      items.push({
+        to: '/company/credits',
+        icon: Gift,
+        label: 'Manage Credits'
+      });
+    }
+
+    items.push({
+      to: role === 'company_admin' ? '/company/reports' : '/admin/reports',
+      icon: FileText,
+      label: role === 'company_admin' ? 'Company Reports' : 'Report Validation'
+    });
+
+    if (role !== 'company_admin') {
+      items.push(
+        { to: '/admin/templates', icon: FileStack, label: 'Template Config' },
+        { to: '/admin/withdrawals', icon: Wallet, label: 'Withdrawals' },
+        { to: '/admin/payments', icon: CreditCard, label: 'Transactions' },
+        { to: '/admin/free-credits', icon: Gift, label: 'Free Credits' },
+        { to: '/admin/promotional-emails', icon: Mail, label: 'Promo Emails' }
+      );
+    }
+
+    if (role === 'admin') {
+      items.push({ to: '/admin/companies', icon: Building2, label: 'Company Management' });
+    }
+
+    items.push({
+      to: role === 'company_admin' ? '/company/profile' : '/admin/profile',
+      icon: User,
+      label: 'Profile'
+    });
+    return items;
+  }, [role, user]);
 
   return (
     <div className="min-h-screen bg-gray-50 font-['Inter']">
@@ -64,19 +132,23 @@ const AdminLayout = ({ children }) => {
           <div className="flex justify-between items-center h-16">
             {/* Logo and Title */}
             <div className="flex items-center">
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 mr-2"
-              >
-                {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-              </button>
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="hidden lg:flex p-2 rounded-lg text-gray-600 hover:bg-gray-100 mr-2"
-              >
-                {sidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
-              </button>
-              <Link to="/admin/dashboard" className="flex items-center gap-2 text-gray-900">
+              {!hideSidebar && (
+                <button
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  className="lg:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 mr-2"
+                >
+                  {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                </button>
+              )}
+              {!hideSidebar && (
+                <button
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="hidden lg:flex p-2 rounded-lg text-gray-600 hover:bg-gray-100 mr-2"
+                >
+                  {sidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+                </button>
+              )}
+              <Link to={role === 'company_admin' ? '/company/dashboard' : '/admin/dashboard'} className="flex items-center gap-2 text-gray-900">
                 <img
                   src={finvoisLogo}
                   alt="Finvois Logo"
@@ -97,12 +169,13 @@ const AdminLayout = ({ children }) => {
 
       <div className="flex">
         {/* Sidebar - Desktop */}
-        <aside
-          className={`hidden lg:flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ${
-            sidebarOpen ? 'w-64' : 'w-20'
-          }`}
-          style={{ height: 'calc(100vh - 64px)', position: 'sticky', top: '64px' }}
-        >
+        {!hideSidebar && (
+          <aside
+            className={`hidden lg:flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ${
+              sidebarOpen ? 'w-64' : 'w-20'
+            }`}
+            style={{ height: 'calc(100vh - 64px)', position: 'sticky', top: '64px' }}
+          >
           {/* User Profile Section */}
           <div className={`p-4 border-b border-gray-200 ${!sidebarOpen ? 'flex justify-center' : ''}`}>
             <div className={`flex items-center ${!sidebarOpen ? '' : 'gap-3'}`}>
@@ -119,7 +192,7 @@ const AdminLayout = ({ children }) => {
             {sidebarOpen && (
               <div className="flex items-center gap-2 mt-2">
                 <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
-                  {user?.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                  {normalizeUserRole(user?.role) === 'admin' ? 'Super Admin' : 'Company Admin'}
                 </span>
               </div>
             )}
@@ -127,23 +200,34 @@ const AdminLayout = ({ children }) => {
 
           <nav className="flex-1 py-4 overflow-y-auto">
             <ul className="space-y-1 px-3">
-              {navItems.map((item) => (
-                <li key={item.to}>
-                  <NavLink
-                    to={item.to}
-                    className={({ isActive }) =>
-                      `flex items-center px-3 py-2.5 rounded-lg transition-colors ${
-                        isActive
-                          ? 'bg-purple-50 text-purple-700 font-medium'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`
-                    }
-                  >
-                    <item.icon size={20} className="flex-shrink-0" />
-                    {sidebarOpen && <span className="ml-3">{item.label}</span>}
-                  </NavLink>
-                </li>
-              ))}
+              {navItems.map((item) =>
+                item.type === 'section' ? (
+                  !sidebarOpen ? null : (
+                  <li key={item.key} className="pt-3 pb-1">
+                    <span className="px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                      {item.label}
+                    </span>
+                  </li>
+                  )
+                ) : (
+                  <li key={item.to}>
+                    <NavLink
+                      to={item.to}
+                      title={item.title}
+                      className={({ isActive }) =>
+                        `flex items-center px-3 py-2.5 rounded-lg transition-colors ${
+                          isActive
+                            ? 'bg-purple-50 text-purple-700 font-medium'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`
+                      }
+                    >
+                      <item.icon size={20} className="flex-shrink-0" />
+                      {sidebarOpen && <span className="ml-3">{item.label}</span>}
+                    </NavLink>
+                  </li>
+                )
+              )}
             </ul>
           </nav>
 
@@ -159,10 +243,11 @@ const AdminLayout = ({ children }) => {
               {sidebarOpen && <span className="ml-3 font-medium">Logout</span>}
             </button>
           </div>
-        </aside>
+          </aside>
+        )}
 
         {/* Mobile Sidebar Overlay */}
-        {mobileMenuOpen && (
+        {!hideSidebar && mobileMenuOpen && (
           <div className="lg:hidden fixed inset-0 z-40">
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setMobileMenuOpen(false)} />
             <aside className="fixed left-0 top-16 bottom-0 w-64 bg-white border-r border-gray-200 z-50 overflow-y-auto">
@@ -179,31 +264,40 @@ const AdminLayout = ({ children }) => {
                 </div>
                 <div className="flex items-center gap-2 mt-2">
                   <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
-                    {user?.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                    {normalizeUserRole(user?.role) === 'admin' ? 'Super Admin' : 'Company Admin'}
                   </span>
                 </div>
               </div>
 
               <nav className="py-4">
                 <ul className="space-y-1 px-3">
-                  {navItems.map((item) => (
-                    <li key={item.to}>
-                      <NavLink
-                        to={item.to}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className={({ isActive }) =>
-                          `flex items-center px-3 py-2.5 rounded-lg transition-colors ${
-                            isActive
-                              ? 'bg-purple-50 text-purple-700 font-medium'
-                              : 'text-gray-700 hover:bg-gray-100'
-                          }`
-                        }
-                      >
-                        <item.icon size={20} />
-                        <span className="ml-3">{item.label}</span>
-                      </NavLink>
-                    </li>
-                  ))}
+                  {navItems.map((item) =>
+                    item.type === 'section' ? (
+                      <li key={item.key} className="pt-3 pb-1">
+                        <span className="px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                          {item.label}
+                        </span>
+                      </li>
+                    ) : (
+                      <li key={item.to}>
+                        <NavLink
+                          to={item.to}
+                          title={item.title}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={({ isActive }) =>
+                            `flex items-center px-3 py-2.5 rounded-lg transition-colors ${
+                              isActive
+                                ? 'bg-purple-50 text-purple-700 font-medium'
+                                : 'text-gray-700 hover:bg-gray-100'
+                            }`
+                          }
+                        >
+                          <item.icon size={20} />
+                          <span className="ml-3">{item.label}</span>
+                        </NavLink>
+                      </li>
+                    )
+                  )}
                 </ul>
               </nav>
 

@@ -231,8 +231,8 @@ const AgentDashboardPage = () => {
     <AgentLayout>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Agent Dashboard</h1>
-          <p className="text-gray-500 mt-1">Welcome back, {user?.name || 'Agent'}! Here's your overview.</p>
+          <h1 className="text-2xl font-bold text-gray-800">Channel partner dashboard</h1>
+          <p className="text-gray-500 mt-1">Welcome back, {user?.name || 'Channel partner'}! Here's your overview.</p>
         </div>
         <button
           onClick={handleRefresh}

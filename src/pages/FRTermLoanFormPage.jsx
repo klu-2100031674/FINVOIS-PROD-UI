@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import FRTermLoanForm from '../components/forms/FRTermLoanForm';
 import { applyFormData, clearGeneratedExcel } from '../store/slices/reportSlice';
+import ClientLayout from '../components/layouts/ClientLayout';
 
 const FRTermLoanFormPage = () => {
   const dispatch = useDispatch();
@@ -33,9 +34,11 @@ const FRTermLoanFormPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <FRTermLoanForm onSubmit={handleFormSubmit} />
-    </div>
+    <ClientLayout>
+      <div className="py-2 sm:py-4">
+        <FRTermLoanForm onSubmit={handleFormSubmit} />
+      </div>
+    </ClientLayout>
   );
 };
 

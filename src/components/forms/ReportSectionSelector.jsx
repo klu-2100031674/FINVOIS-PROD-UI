@@ -16,7 +16,7 @@ const SECTION_CONFIG = [
       { name: "firm_name", label: "Firm Name", type: "text", required: true },
       { name: "organisation_type", label: "Organization Type", type: "select", options: ["Proprietorship", "Partnership", "Private Limited", "LLP", "Other"] },
       { name: "nature_of_business", label: "Nature of Business", type: "text", placeholder: "Prefilled from previous page" },
-      { name: "proprietor_name", label: "Name of Proprietor/ partner/Director/Member/trustee", type: "text", required: true },
+      { name: "proprietor_name", label: "Name of Authorised person", type: "text", required: true },
       { name: "pan_number", label: "PAN Number", type: "text" },
       { name: "aadhar_number", label: "Aadhar Number", type: "text" },
       { name: "caste", label: "Caste/Category", type: "text" },
@@ -604,11 +604,16 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
               const aadhar = getS1('General Information', 'i10') || stage1.aadharNo || '';
               const address = getS1('General Information', 'i16') || stage1.address || '';
               const edu = getS1('General Information', 'i19') || stage1.education || '';
-              
+              const ageRaw = getS1('General Information', 'i12') ?? stage1.age ?? '';
+              const age =
+                ageRaw !== undefined && ageRaw !== null && String(ageRaw).trim() !== ''
+                  ? String(ageRaw).trim()
+                  : '';
+
               if (!autoMapped[section.id]) autoMapped[section.id] = {};
               autoMapped[section.id]['promoters'] = [{
                  name, caste, pan_number: pan, aadhar_number: aadhar, address, education: edu,
-                 designation: "Proprietor", share_ratio: "100%", age: "", experience: ""
+                 designation: "Proprietor", share_ratio: "100%", age, experience: ""
               }];
               // We do not hide lists usually, but if desired:
               // setMapped(section.id, 'promoters', 'filled'); 

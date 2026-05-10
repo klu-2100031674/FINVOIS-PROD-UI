@@ -1,9 +1,8 @@
 /**
- * Admin Profile Page
- * Simplified admin profile with only features that have backend support
+ * Platform admin profile — admin role only (see App routing).
  */
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   User,
   Mail,
@@ -11,89 +10,28 @@ import {
   Save,
   Loader2,
   CheckCircle,
-  Upload,
-  Image as ImageIcon,
-  Trash2,
-  FileText
 } from 'lucide-react';
 import { AdminLayout } from '../../components/layouts';
-import { useAuth } from '../../hooks';
-import api from '../../api/apiClient';
-import toast from 'react-hot-toast';
+import { useAuth, useAdminTierProfile } from '../../hooks';
 
 const AdminProfilePage = () => {
-  const { user, refreshUser, updateUser } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  
-  // Profile data
-  const [profileData, setProfileData] = useState({
-    name: '',
-    email: '',
-    phone: ''
-  });
-  
-  // Stats from backend
-  const [stats, setStats] = useState({
-    pending: 0,
-    under_review: 0,
-    approved: 0,
-    rejected: 0,
-    total: 0
-  });
-
-  useEffect(() => {
-    if (user) {
-      setProfileData({
-        name: user.name || '',
-        email: user.email || '',
-        phone: user.phone || ''
-      });
-    }
-    fetchStats();
-  }, [user]);
-
-  const fetchStats = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get('/admin-reports/stats');
-      setStats(response.data?.data || {});
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleProfileUpdate = async (e) => {
-    e.preventDefault();
-    
-    try {
-      setSaving(true);
-      await api.put('/users/profile', {
-        name: profileData.name,
-        phone: profileData.phone
-      });
-      
-      toast.success('Profile updated successfully');
-      if (refreshUser) refreshUser();
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to update profile');
-    } finally {
-      setSaving(false);
-    }
-  };
+  const { user, refreshUser } = useAuth();
+  const {
+    saving,
+    profileData,
+    setProfileData,
+    stats,
+    handleProfileUpdate
+  } = useAdminTierProfile(user, refreshUser);
 
   return (
     <AdminLayout>
       <div className="p-6 max-w-4xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-800">Admin Profile</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Admin profile</h1>
           <p className="text-gray-500 mt-1">Manage your account information</p>
         </div>
 
-        {/* Profile Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-6">
           <div className="bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-8">
             <div className="flex items-center gap-4">
@@ -105,7 +43,7 @@ const AdminProfilePage = () => {
                 <p className="text-purple-100">{user?.email}</p>
                 <div className="flex items-center gap-2 mt-2">
                   <span className="px-3 py-1 bg-white/20 backdrop-blur rounded-full text-sm font-medium">
-                    {user?.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                    Super Admin
                   </span>
                   <span className="px-3 py-1 bg-green-400/30 backdrop-blur rounded-full text-sm font-medium flex items-center gap-1">
                     <CheckCircle size={14} />
@@ -116,7 +54,6 @@ const AdminProfilePage = () => {
             </div>
           </div>
 
-          {/* Stats from Backend */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 p-6 bg-gray-50 border-b border-gray-200">
             <div className="text-center">
               <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
@@ -141,7 +78,6 @@ const AdminProfilePage = () => {
           </div>
         </div>
 
-        {/* Personal Information Form */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
@@ -161,7 +97,7 @@ const AdminProfilePage = () => {
                   <input
                     type="text"
                     value={profileData.name}
-                    onChange={(e) => setProfileData(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) => setProfileData((prev) => ({ ...prev, name: e.target.value }))}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     required
                   />
@@ -193,7 +129,7 @@ const AdminProfilePage = () => {
                   <input
                     type="tel"
                     value={profileData.phone}
-                    onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
+                    onChange={(e) => setProfileData((prev) => ({ ...prev, phone: e.target.value }))}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     placeholder="+91 XXXXXXXXXX"
                   />
@@ -207,7 +143,7 @@ const AdminProfilePage = () => {
                 <div className="relative">
                   <input
                     type="text"
-                    value={user?.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                    value="Super Admin"
                     disabled
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-500 capitalize"
                   />
@@ -215,15 +151,14 @@ const AdminProfilePage = () => {
               </div>
             </div>
 
-            {/* Account Info */}
             <div className="border-t border-gray-200 pt-6">
               <h4 className="text-sm font-medium text-gray-700 mb-4">Account Information</h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-gray-500">Account Created</p>
                   <p className="font-medium mt-1">
-                    {user?.createdAt 
-                      ? new Date(user.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' }) 
+                    {user?.createdAt
+                      ? new Date(user.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })
                       : 'N/A'}
                   </p>
                 </div>

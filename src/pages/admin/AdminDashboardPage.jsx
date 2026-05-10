@@ -70,7 +70,7 @@ const PendingWithdrawals = ({ withdrawals = [], onApprove, onReject }) => {
           {withdrawalsList.slice(0, 5).map((withdrawal) => (
           <div key={withdrawal._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
             <div>
-              <p className="text-sm font-medium text-gray-800">{withdrawal.agent_id?.name || 'Agent'}</p>
+              <p className="text-sm font-medium text-gray-800">{withdrawal.agent_id?.name || 'Channel partner'}</p>
               <p className="text-xs text-gray-500">₹{withdrawal.amount}</p>
             </div>
             <div className="flex space-x-2">
@@ -262,7 +262,7 @@ const AdminDashboardPage = () => {
           iconColor="text-blue-600"
         />
         <StatCard
-          title="Total Agents"
+          title="Total channel partners"
           value={stats.totalAgents}
           icon={Users}
           trend="up"
@@ -312,7 +312,7 @@ const AdminDashboardPage = () => {
             <p className="text-2xl font-bold text-purple-800 font-['Manrope']">
               ₹{stats.totalCommissions.toLocaleString()}
             </p>
-            <p className="text-xs text-purple-600 mt-1">Agent earnings</p>
+            <p className="text-xs text-purple-600 mt-1">Channel partner earnings</p>
           </div>
           
           {/* Pending Commissions */}
@@ -379,7 +379,7 @@ const AdminDashboardPage = () => {
           </div>
           <div className="text-center p-4 bg-purple-50 rounded-xl">
             <p className="text-2xl font-bold text-purple-600 font-['Manrope']">{stats.totalAgents}</p>
-            <p className="text-sm text-gray-600">Active Agents</p>
+            <p className="text-sm text-gray-600">Active channel partners</p>
           </div>
           <div className="text-center p-4 bg-yellow-50 rounded-xl">
             <p className="text-2xl font-bold text-yellow-600 font-['Manrope']">{stats.totalUsers}</p>

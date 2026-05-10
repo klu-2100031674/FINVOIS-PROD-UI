@@ -21,15 +21,16 @@ const AdminPaymentsPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const normalizedRole = String(user?.role || '').toLowerCase();
 
-  // Check if user is admin/super_admin
+  // Check if user is admin/company_admin
   useEffect(() => {
-    if (user && !['admin', 'super_admin'].includes(user.role)) {
+    if (user && !['admin', 'company_admin'].includes(normalizedRole)) {
       toast.error('Access denied. Admin privileges required.');
       navigate('/dashboard');
       return;
     }
-  }, [user, navigate]);
+  }, [user, normalizedRole, navigate]);
 
   const fetchPayments = async (period = selectedPeriod, page = currentPage) => {
     try {
@@ -59,10 +60,10 @@ const AdminPaymentsPage = () => {
   };
 
   useEffect(() => {
-    if (user?.role && ['admin', 'super_admin'].includes(user.role)) {
+    if (user?.role && ['admin', 'company_admin'].includes(normalizedRole)) {
       fetchPayments();
     }
-  }, [user]);
+  }, [user, normalizedRole]);
 
   const handlePeriodChange = (period) => {
     setSelectedPeriod(period);

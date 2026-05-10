@@ -28,7 +28,14 @@ export const applyFormData = createAsyncThunk(
       // This preserves the success, message, and data structure
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to apply form data');
+      const thrown = error?.response?.data ?? error;
+      const msg =
+        (typeof thrown === 'object' && thrown !== null && (thrown.message || thrown.error)) ||
+        (typeof thrown === 'string' ? thrown : null) ||
+        (typeof error === 'string' ? error : null) ||
+        error?.message ||
+        'Failed to apply form data';
+      return rejectWithValue(msg);
     }
   }
 );
@@ -102,6 +109,46 @@ export const applyFinalEdits = createAsyncThunk(
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to apply final edits');
+    }
+  }
+);
+
+// ============================================================================
+// Draft Async Thunks
+// ============================================================================
+
+export const saveDraft = createAsyncThunk(
+  'report/saveDraft',
+  async ({ templateId, formData, currentStep }, { rejectWithValue }) => {
+    try {
+      const response = await api.draft.saveDraft(templateId, { form_data: formData, currentStep });
+      return response.draft || response.data?.draft || response.data || response;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to save draft');
+    }
+  }
+);
+
+export const fetchDraft = createAsyncThunk(
+  'report/fetchDraft',
+  async (templateId, { rejectWithValue }) => {
+    try {
+      const response = await api.draft.getDraft(templateId);
+      return response.draft || response.data?.draft || response.data || response;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to fetch draft');
+    }
+  }
+);
+
+export const deleteDraft = createAsyncThunk(
+  'report/deleteDraft',
+  async (templateId, { rejectWithValue }) => {
+    try {
+      const response = await api.draft.clearDraft(templateId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to clear draft');
     }
   }
 );

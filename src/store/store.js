@@ -4,6 +4,7 @@ import walletReducer from './slices/walletSlice';
 import reportReducer from './slices/reportSlice';
 import templateReducer from './slices/templateSlice';
 import userReducer from './slices/userSlice';
+import draftsReducer from './slices/draftSlice';
 
 /**
  * Redux Store Configuration
@@ -17,6 +18,7 @@ const store = configureStore({
     report: reportReducer,
     template: templateReducer,
     user: userReducer,
+    drafts: draftsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

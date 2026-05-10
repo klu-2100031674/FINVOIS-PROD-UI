@@ -15,9 +15,14 @@ const AgentGeneratePage = () => {
         dispatch(clearRelatedDocuments());
     }, [dispatch]);
 
-    const handleTemplateSelect = (templateId) => {
-        // Navigate to the generic generation page with the selected template
-        navigate(`/generate?templateId=${templateId}`);
+    const handleTemplateSelect = (templateId, opts = {}) => {
+        const params = new URLSearchParams({
+            templateId,
+            newDraft: '1',
+        });
+        if (opts.presetSector) params.set('presetSector', opts.presetSector);
+        if (opts.lockSector) params.set('lockSector', '1');
+        navigate(`/generate?${params.toString()}`);
     };
 
     return (

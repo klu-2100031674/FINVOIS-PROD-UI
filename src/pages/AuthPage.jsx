@@ -8,6 +8,8 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks';
 import finvoisLogo from '../assets/finvois.png';
 import toast from 'react-hot-toast';
+import { normalizeRoleFromUser, normalizeUserRole } from '../utils/normalizeUserRole';
+import { getVmStartUrl } from '../utils/env';
 
 const AuthPage = () => {
   const navigate = useNavigate();
@@ -92,50 +94,50 @@ const AuthPage = () => {
   /**
    * Start Azure VM before login
    */
-  async function startVm() {
+async function startVm() {
+  try {
+    const functionKey = import.meta.env.VITE_VM_FUNCTION_KEY;
+    const res = await fetch(
+      `https://vm-start-fn-afg5f0fpgpakcpe6.centralindia-01.azurewebsites.net/api/StartVm?code=${functionKey}`,
+      { method: 'POST' }
+    );
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.message || data?.error || 'StartVm request failed');
+    }
+    console.log('Start VM Response:', data);
+    return data;
+  } catch (err) {
+    console.error('Failed to start VM:', err);
+    throw err;
+  }
+}
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const ensureVmReady = async () => {
+  const maxRetries = 12;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      // Skip calling the Azure Function in development or when explicitly disabled
-      if (import.meta.env.DEV === true || import.meta.env.VITE_SKIP_VM_START === 'true') {
-        console.log('Skipping StartVm call in development or per VITE_SKIP_VM_START');
-        return { status: 'running' };
+      const response = await startVm();
+
+      if (response?.status === 'running') {
+        console.log('VM is running');
+        return true;
+      } else {
+        console.log(`VM still starting (attempt ${attempt + 1})`);
+        await delay(10000);
       }
 
-      const functionKey = import.meta.env.VITE_VM_FUNCTION_KEY;
-      const res = await fetch(
-        `https://vm-start-fn-afg5f0fpgpakcpe6.centralindia-01.azurewebsites.net/api/StartVm?code=${functionKey}`,
-        { method: 'POST' }
-      );
-
-      const data = await res.json();
-      console.log('Start VM Response:', data);
-      return data; // { status: "starting" | "running" }
-    } catch (err) {
-      console.error('Failed to start VM:', err);
-      throw err;
+    } catch (vmErr) {
+      console.error('VM readiness check failed, retrying...', vmErr);
+      await delay(10000);
     }
   }
 
-  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-  const ensureVmReady = async () => {
-    const maxRetries = 12;
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        const response = await startVm();
-        if (response?.status === 'running') {
-          return true;
-        } else {
-          console.log(`VM still starting (attempt ${attempt + 1}), waiting before retrying`);
-          await delay(10000);
-        }
-      } catch (vmErr) {
-        console.error('VM readiness check failed, retrying...', vmErr);
-        await delay(10000);
-      }
-    }
-    return false;
-  };
-
+  return false;
+};
   const handleLogin = async (e) => {
     e.preventDefault();
     if (isVmLoading || authLoading) return;
@@ -147,11 +149,9 @@ const AuthPage = () => {
       const vmReady = await ensureVmReady();
       if (!vmReady) {
         toast.error('Server is taking too long to start. Please try again in 1 minute.');
-        setIsVmLoading(false);
         return;
       }
 
-      setIsVmLoading(false);
       const result = await login(loginData);
 
       if (result && (result.success === false || result.status === 'error')) {
@@ -162,7 +162,10 @@ const AuthPage = () => {
 
       setApiError(null);
 
-      const userRole = result?.data?.user?.role || result?.role;
+      const loggedInUser = result?.data?.user || (result?.role ? { role: result.role } : null);
+      const userRole = loggedInUser
+        ? normalizeRoleFromUser(loggedInUser)
+        : normalizeUserRole(result?.role);
       const emailVerified = result?.data?.user?.email_verified;
       const isActive = result?.data?.user?.is_active;
 
@@ -180,7 +183,11 @@ const AuthPage = () => {
 
       toast.success('Login successful!');
 
-      if (userRole === 'admin') {
+      if (userRole === 'company_user') {
+        navigate('/company/user/dashboard', { replace: true });
+      } else if (userRole === 'company_admin') {
+        navigate('/company/dashboard', { replace: true });
+      } else if (userRole === 'admin') {
         navigate('/admin/dashboard', { replace: true });
       } else if (userRole === 'agent') {
         navigate('/agent/dashboard', { replace: true });
@@ -193,6 +200,8 @@ const AuthPage = () => {
       const errorMessage = typeof err === 'string' ? err : (err?.message || 'Login failed');
       setApiError(errorMessage);
       toast.error(errorMessage);
+    } finally {
+      setIsVmLoading(false);
     }
   };
 

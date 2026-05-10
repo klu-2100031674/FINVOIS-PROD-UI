@@ -5,6 +5,8 @@
 import React, { useEffect, useState } from 'react';
 import { Gift, Search, Save, RefreshCw, User } from 'lucide-react';
 import { AdminLayout } from '../../components/layouts';
+import { formatRoleForDisplay } from '../../utils/roleDisplay';
+import { normalizeUserRole } from '../../utils/normalizeUserRole';
 import api from '../../api/apiClient';
 import toast from 'react-hot-toast';
 
@@ -17,6 +19,8 @@ const AdminFreeCreditsPage = () => {
   const [selectedUserIds, setSelectedUserIds] = useState([]);
   const [bulkCreditsInput, setBulkCreditsInput] = useState('');
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [perUserCreditsInput, setPerUserCreditsInput] = useState({});
+  const [updatingUserId, setUpdatingUserId] = useState(null);
 
   useEffect(() => {
     fetchUsers();
@@ -39,7 +43,11 @@ const AdminFreeCreditsPage = () => {
     try {
       setLoadingUsers(true);
       const res = await api.get('/users');
-      const list = (res.data?.data || []).filter(u => u.role === 'user' || u.role === 'agent');
+      const list = (res.data?.data || []).filter((u) => {
+        const role = normalizeUserRole(u?.role);
+        // Platform admins should not be edited from this screen.
+        return role !== 'admin';
+      });
       setUsers(list);
       setFilteredUsers(list);
     } catch {
@@ -99,6 +107,38 @@ const AdminFreeCreditsPage = () => {
       toast.error('Failed to update selected users');
     } finally {
       setBulkUpdating(false);
+    }
+  };
+
+  const handlePerUserInputChange = (userId, value) => {
+    setPerUserCreditsInput((prev) => ({
+      ...prev,
+      [userId]: value
+    }));
+  };
+
+  const handlePerUserUpdate = async (userId) => {
+    const raw = perUserCreditsInput[userId];
+    const val = Number(raw);
+
+    if (raw === '' || Number.isNaN(val) || val < 0) {
+      toast.error('Enter a valid non-negative number');
+      return;
+    }
+
+    try {
+      setUpdatingUserId(userId);
+      await api.patch(`/system-config/users/${userId}/free-reports`, { count: val });
+
+      setUsers((prev) => prev.map((u) => (
+        u._id === userId ? { ...u, free_reports_count: val } : u
+      )));
+
+      toast.success('User credits updated');
+    } catch {
+      toast.error('Failed to update user credits');
+    } finally {
+      setUpdatingUserId(null);
     }
   };
 
@@ -196,7 +236,9 @@ const AdminFreeCreditsPage = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredUsers.map(u => (
+                    filteredUsers.map((u) => {
+                      const normalizedRole = normalizeUserRole(u.role);
+                      return (
                       <tr key={u._id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                         <td className="py-3 px-5 text-center">
                           <input
@@ -211,20 +253,46 @@ const AdminFreeCreditsPage = () => {
                         <td className="py-3 px-5 text-gray-500 truncate max-w-[200px]" title={u.email}>{u.email}</td>
                         <td className="py-3 px-5">
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                            u.role === 'agent' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                            normalizedRole === 'agent'
+                              ? 'bg-purple-100 text-purple-700'
+                              : normalizedRole === 'company_admin'
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-blue-100 text-blue-700'
                           }`}>
-                            {u.role}
+                            {formatRoleForDisplay(u.role, u)}
                           </span>
                         </td>
                         <td className="py-3 px-5">
-                          <div className="flex justify-center">
-                            <span className="w-20 text-center inline-block py-1.5 text-sm font-bold text-gray-800">
+                          <div className="flex items-center justify-center gap-2">
+                            <span className="w-16 text-center inline-block py-1.5 text-sm font-bold text-gray-800">
                               {u.free_reports_count ?? 0}
                             </span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={perUserCreditsInput[u._id] ?? ''}
+                              onChange={(e) => handlePerUserInputChange(u._id, e.target.value)}
+                              placeholder="Credits"
+                              className="w-24 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handlePerUserUpdate(u._id)}
+                              disabled={updatingUserId === u._id || (perUserCreditsInput[u._id] ?? '') === ''}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors disabled:opacity-50 text-xs font-medium"
+                            >
+                              {updatingUserId === u._id ? (
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Save className="w-3.5 h-3.5" />
+                              )}
+                              Update
+                            </button>
                           </div>
                         </td>
                       </tr>
-                    ))
+                      );
+                    })
                   )}
                 </tbody>
               </table>

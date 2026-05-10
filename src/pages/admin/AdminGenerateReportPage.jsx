@@ -38,9 +38,9 @@ const AdminGenerateReportPage = () => {
   }, [dispatch]);
 
   const handleTemplateSelect = (templateId) => {
-    // Admin generates without payment check - navigate directly to generate page
-    // Add admin flag to indicate no payment needed
-    navigate(`/generate?templateId=${templateId}&admin=true`);
+    navigate(
+      `/generate?templateId=${encodeURIComponent(templateId)}&admin=true&newDraft=1`
+    );
   };
 
   const filteredTemplates = (Array.isArray(templates) ? templates : []).filter((template) => {
@@ -60,7 +60,7 @@ const AdminGenerateReportPage = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <Loading fullScreen text="Loading templates..." />
+        <Loading fullScreen text="Loading..." />
       </AdminLayout>
     );
   }

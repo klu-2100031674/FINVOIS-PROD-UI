@@ -122,7 +122,7 @@ const AnalysisSheetsModal = ({
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-gray-900 font-manrope">
-                    Additional Analysis
+                    Additional Financial Evaluation and Analytical tools
                   </h3>
                   <p className="text-gray-500 text-sm">
                     Customize your report with deeper insights

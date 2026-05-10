@@ -3,11 +3,10 @@
  * Form submission and Excel generation
  */
 
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useEffect, useState, useRef } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useDispatch, useSelector, useStore } from 'react-redux';
 import { useAuth } from '../hooks';
-import finvoisLogo from '../assets/finvois.png';
 import {
   fetchTemplateById,
   selectSelectedTemplate,
@@ -15,9 +14,7 @@ import {
 } from '../store/slices/templateSlice';
 import {
   applyFormData,
-  createReport,
   selectGeneratedExcel,
-  selectReportLoading,
   clearGeneratedExcel,
   setFormData,
   setRelatedDocuments,
@@ -25,6 +22,7 @@ import {
   clearRelatedDocuments,
   selectFormData,
 } from '../store/slices/reportSlice';
+import { fetchDraftByIdV2 } from '../store/slices/draftSlice';
 import { Button, Card, Loading } from '../components/common';
 import FRCC1Form from '../components/forms/FRCC1Form';
 import FRCC2Form from '../components/forms/FRCC2Form';
@@ -37,13 +35,85 @@ import FRTermLoanForm from '../components/forms/FRTermLoanForm';
 import FRTermLoanWithStockForm from '../components/forms/FRTermLoanWithStockForm';
 import FRTermLoanCCForm from '../components/forms/FRTermLoanCCForm';
 import ReportSectionSelector from '../components/forms/ReportSectionSelector';
-import { reportAPI } from '../api/endpoints';
-import { downloadFile } from '../utils';
+import { companyAPI, reportAPI } from '../api/endpoints';
+import { downloadFile, formatApiErrorMessage } from '../utils';
 import toast from 'react-hot-toast';
-import { DocumentTextIcon, ArrowLeftIcon, ChartBarIcon } from '@heroicons/react/24/outline';
-import AIAssistant from '../components/dashboard/AIAssistant';
+import { ArrowLeftIcon, ChartBarIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
+import { ShieldCheck } from 'lucide-react';
+import NotificationBell from '../components/common/NotificationBell';
+import finvoisLogo from '../assets/finvois.png';
+import { normalizeUserRole } from '../utils/normalizeUserRole';
+import { dashboardHomePath, generateHubLandingPath, myReportsPathForRole } from '../utils/routePaths';
 
-// Templates that don't have AI generation — skip report section selection
+/** Full-width shell for /generate — top bar only, no client sidebar */
+function GenerateStandaloneLayout({ children, withFonts = false }) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const normalizedRole = normalizeUserRole(user?.role);
+  const resolvedDashboardPath = dashboardHomePath(user?.role);
+
+  const handleMyReports = () => {
+    navigate(myReportsPathForRole(user?.role));
+  };
+
+  return (
+    <div className="min-h-screen w-full font-['Inter']" style={{ backgroundColor: '#F8F8FF' }}>
+      {withFonts && (
+        <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+        h1, h2, h3, h4, h5, h6 { font-family: 'Manrope', sans-serif; }
+        body, input, select, textarea, button { font-family: 'Inter', sans-serif; }
+      `}</style>
+      )}
+      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center min-w-0 gap-3 sm:gap-4">
+              <Link to={resolvedDashboardPath} className="flex items-center gap-2 text-gray-900 min-w-0">
+                <img src={finvoisLogo} alt="Finvois" className="h-9 w-auto flex-shrink-0" />
+              </Link>
+              <Link
+                to="/drafts"
+                className="hidden sm:inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50"
+              >
+                <ClipboardDocumentListIcon className="w-4 h-4 mr-2" aria-hidden />
+                Drafts
+              </Link>
+              <button
+                type="button"
+                onClick={handleMyReports}
+                className="hidden sm:inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50"
+              >
+                <ChartBarIcon className="w-4 h-4 mr-2" />
+                My Reports
+              </button>
+            </div>
+            <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
+              <NotificationBell />
+              {normalizedRole === 'admin' && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/dashboard')}
+                  className="hidden sm:inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  <ShieldCheck className="w-4 h-4 mr-2" />
+                  Admin
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 overflow-x-hidden min-w-0 p-6">
+        <div className="max-w-7xl mx-auto">{children}</div>
+      </main>
+    </div>
+  );
+}
+
+// Excel-only templates — skip AI section selector; call apply-form directly
 const NON_AI_TEMPLATES = [
   'frcc1', 'Format CC1',
   'frcc2', 'Format CC2',
@@ -58,22 +128,151 @@ const GeneratePage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const dispatch = useDispatch();
-  const { user, logout } = useAuth();
+  const store = useStore();
+  const { user } = useAuth();
   console.log('🎯 GeneratePage - user info:', user);
 
   const templateId = searchParams.get('templateId');
+  const presetSector = searchParams.get('presetSector');
+  const lockSector =
+    searchParams.get('lockSector') === '1' ||
+    String(searchParams.get('lockSector') || '').toLowerCase() === 'true';
+  // Resume-from-draft: Drafts page navigates here with ?draftId=... so we can
+  // hydrate the form from the saved snapshot. When absent we start fresh.
+  const draftId = searchParams.get('draftId');
+  /** From dashboard "start this template" — always INSERT first save, never update an old draft */
+  const forceNewDraft =
+    searchParams.get('newDraft') === '1' || searchParams.get('newDraft') === 'true';
   const template = useSelector(selectSelectedTemplate);
   const generatedExcel = useSelector(selectGeneratedExcel);
   const loading = useSelector(selectTemplateLoading);
-  const reportLoading = useSelector(selectReportLoading);
   const reduxFormData = useSelector(selectFormData);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSectionSelector, setShowSectionSelector] = useState(false);
   const [tempFormData, setTempFormData] = useState(null);
   const [tempSubmittedData, setTempSubmittedData] = useState(null);
+  const [draftCheckComplete, setDraftCheckComplete] = useState(false);
   const hasMounted = useRef(false);
   const generationRequestedRef = useRef(false);
+  const brandingRef = useRef(null); // cache resolved company branding
+
+  const normalizeCompanyId = (companyId) => {
+    if (!companyId) return '';
+    if (typeof companyId === 'string') return companyId;
+    return companyId?._id || companyId?.id || '';
+  };
+
+  const normalizeLogoToggle = (value, fallback = true) => {
+    if (value === undefined || value === null) return fallback;
+    if (value === false || value === 'false' || value === 0 || value === '0') return false;
+    if (value === true || value === 'true' || value === 1 || value === '1') return true;
+    return fallback;
+  };
+
+  const resolveBranding = async () => {
+    // Prefer user object if already hydrated with branding fields
+    const userAp = user?.apLogoDisplayUrl || user?.apLogoUrl || '';
+    const userCompany = user?.companyLogoDisplayUrl || user?.companyLogoUrl || '';
+    const userShowTopLeft = normalizeLogoToggle(user?.showTopLeftLogosInTermLoanCc, true);
+
+    const cached = brandingRef.current;
+    if (cached?.apLogoUrl && cached?.companyLogoUrl) {
+      return cached;
+    }
+
+    // If both logos already exist on the user blob, use them without calling company API.
+    if (userAp && userCompany) {
+      const branding = {
+        apLogoUrl: userAp,
+        companyLogoUrl: userCompany,
+        showTopLeftLogosInTermLoanCc: userShowTopLeft,
+      };
+      brandingRef.current = branding;
+      return branding;
+    }
+
+    // Fallback: fetch company branding by companyId
+    const companyIdValue = normalizeCompanyId(user?.companyId);
+    if (!companyIdValue) {
+      return {
+        apLogoUrl: userAp,
+        companyLogoUrl: userCompany,
+        showTopLeftLogosInTermLoanCc: userShowTopLeft,
+      };
+    }
+    try {
+      const response = await companyAPI.getCompanyById(companyIdValue);
+      const company = response?.data || response || {};
+      const apLogoUrl = company.apLogoDisplayUrl || company.apLogoUrl || userAp || '';
+      const companyLogoUrl = company.companyLogoDisplayUrl || company.companyLogoUrl || userCompany || '';
+      const showTopLeftLogosInTermLoanCc = normalizeLogoToggle(
+        company.showTopLeftLogosInTermLoanCc,
+        userShowTopLeft
+      );
+      const branding = { apLogoUrl, companyLogoUrl, showTopLeftLogosInTermLoanCc };
+      if (apLogoUrl && companyLogoUrl) {
+        brandingRef.current = branding;
+      }
+      return branding;
+    } catch (_) {
+      return {
+        apLogoUrl: userAp,
+        companyLogoUrl: userCompany,
+        showTopLeftLogosInTermLoanCc: userShowTopLeft,
+      };
+    }
+  };
+
+  const withTemplateLogos = async (payload) => {
+    const incoming = payload && typeof payload === 'object' ? payload : {};
+    const incomingShowTopLeft = normalizeLogoToggle(
+      incoming.showTopLeftLogosInTermLoanCc,
+      undefined
+    );
+    const resolvedBranding = await resolveBranding();
+    const shouldShowTopLeft =
+      incomingShowTopLeft === undefined
+        ? normalizeLogoToggle(resolvedBranding.showTopLeftLogosInTermLoanCc, true)
+        : incomingShowTopLeft;
+
+    if (!shouldShowTopLeft) {
+      return {
+        ...incoming,
+        showTopLeftLogosInTermLoanCc: false,
+      };
+    }
+
+    const alreadyHasBoth =
+      (incoming.apLogoUrl || incoming.apLogoDisplayUrl || incoming.logo1) &&
+      (incoming.companyLogoUrl || incoming.companyLogoDisplayUrl || incoming.logo2);
+    if (alreadyHasBoth) {
+      return {
+        ...incoming,
+        showTopLeftLogosInTermLoanCc: true,
+      };
+    }
+
+    const apLogoUrl =
+      incoming.apLogoDisplayUrl || incoming.apLogoUrl || incoming.logo1 || resolvedBranding.apLogoUrl || '';
+    const companyLogoUrl =
+      incoming.companyLogoDisplayUrl ||
+      incoming.companyLogoUrl ||
+      incoming.logo2 ||
+      resolvedBranding.companyLogoUrl ||
+      '';
+    // Provide multiple aliases to match backend template expectations.
+    return {
+      ...incoming,
+      showTopLeftLogosInTermLoanCc: true,
+      apLogoUrl: incoming.apLogoUrl || apLogoUrl,
+      apLogoDisplayUrl: incoming.apLogoDisplayUrl || apLogoUrl,
+      companyLogoUrl: incoming.companyLogoUrl || companyLogoUrl,
+      companyLogoDisplayUrl: incoming.companyLogoDisplayUrl || companyLogoUrl,
+      logo1: incoming.logo1 || apLogoUrl,
+      logo2: incoming.logo2 || companyLogoUrl,
+    };
+  };
 
   // Initialize tempFormData from Redux if it exists on mount
   useEffect(() => {
@@ -81,6 +280,11 @@ const GeneratePage = () => {
       setTempFormData(reduxFormData);
     }
   }, [reduxFormData]);
+
+  // Draft saving is EXPLICIT only (see SaveDraftButton). We intentionally do
+  // NOT auto-save here: the previous debounced auto-save raced with the
+  // "Generate" button and could rewrite the URL mid-pipeline. Explicit saves
+  // never mutate the URL, so the generation flow is unaffected.
 
   useEffect(() => {
     if (templateId) {
@@ -102,91 +306,78 @@ const GeneratePage = () => {
     dispatch(clearRelatedDocuments());
     generationRequestedRef.current = false;
     hasMounted.current = true;
-  }, [templateId, dispatch]);
 
-  const handleExcelGenerated = useCallback(async () => {
-    try {
-      console.log('🎯 [handleExcelGenerated] Starting background report creation process', user);
-
-      if (!user || (!user.id && !user._id)) {
-        console.error('❌ [handleExcelGenerated] User not available for report creation');
-        console.log('🔍 [handleExcelGenerated] User object:', user);
-        return;
-      }
-
-      let bankName, branchName;
-      if (reduxFormData?.formData?.additionalData) {
-        bankName = reduxFormData.formData.additionalData.bank_name;
-        branchName = reduxFormData.formData.additionalData.branch_name;
-      } else if (reduxFormData?.formData?.formData?.["General Information"]) {
-        bankName = reduxFormData.formData.formData["General Information"].bank_name;
-        branchName = reduxFormData.formData.formData["General Information"].branch_name;
-      }
-
-      const reportData = {
-        title: template?.name || 'Generated Report',
-        templateId: templateId,
-        user_id: user.id || user._id,
-        status: 'completed',
-        bank_name: bankName,
-        branch_name: branchName
-      };
-
-      console.log('📝 [handleExcelGenerated] Creating report with data (background):', reportData);
-      const createdReport = await dispatch(createReport(reportData)).unwrap();
-      console.log('✅ [handleExcelGenerated] Report created successfully in background, ID:', createdReport._id);
-
-    } catch (error) {
-      console.error('❌ [handleExcelGenerated] Background report creation error:', error);
-      console.log('❌ [handleExcelGenerated] Error message:', error.message);
-    } finally {
-      setIsProcessing(false);
+    // Resume behavior: only load drafts when user comes from Drafts page with draftId.
+    // Otherwise, always start fresh (no confirm prompt).
+    if (!templateId || !user) {
+      setDraftCheckComplete(true);
+      return;
     }
-  }, [templateId, template, user, dispatch]);
+
+    setDraftCheckComplete(false);
+
+    if (!draftId) {
+      setTempFormData(null);
+      dispatch(clearFormData());
+      setDraftCheckComplete(true);
+      return;
+    }
+
+    dispatch(fetchDraftByIdV2(draftId))
+      .unwrap()
+      .then((draft) => {
+        const data = draft?.formData;
+        if (data && typeof data === 'object') {
+          setTempFormData(data);
+          dispatch(setFormData(data));
+        }
+      })
+      .catch((err) => {
+        console.log('Failed to load draft by id', err);
+        toast.error('Failed to load draft. Please try again.');
+      })
+      .finally(() => setDraftCheckComplete(true));
+  }, [templateId, draftId, dispatch, user]);
 
   useEffect(() => {
-    if (
-      generationRequestedRef.current &&
-      generatedExcel &&
-      generatedExcel.data &&
-      generatedExcel.data.htmlContent &&
-      hasMounted.current
-    ) {
-      console.log('📢 [GeneratePage.useEffect] generatedExcel updated in Redux');
-      console.log('📢 [GeneratePage.useEffect] generatedExcel object:', {
-        success: generatedExcel?.success,
-        message: generatedExcel?.message,
-        hasData: !!generatedExcel?.data,
-        fileName: generatedExcel?.data?.fileName,
-        htmlContentLength: generatedExcel?.data?.htmlContent?.length
-      });
+    if (!generationRequestedRef.current || !hasMounted.current) return;
+    if (!generatedExcel?.success || !generatedExcel?.data) return;
 
-      console.log('🚀 [GeneratePage.useEffect] Scheduling navigation in 100ms to ensure Redux state is stable');
+    const htmlContent = generatedExcel.data.htmlContent;
+    if (htmlContent) {
       setTimeout(() => {
-        console.log('🚀 [GeneratePage.useEffect] Navigating to Stage1 with Excel data');
         toast.success('Excel generated successfully!');
-        // Pass admin flag to Stage1 if present
         const adminParam = searchParams.get('admin') === 'true' ? '&admin=true' : '';
         navigate(`/stage1?templateId=${templateId}${adminParam}`);
         generationRequestedRef.current = false;
         setIsProcessing(false);
       }, 100);
+      return;
     }
-  }, [generatedExcel, handleExcelGenerated, navigate, templateId, searchParams]);
+
+    toast.error(
+      'Report generated but preview is missing. Ensure Excel templates and the Python engine are installed on the server.'
+    );
+    generationRequestedRef.current = false;
+    setIsProcessing(false);
+  }, [generatedExcel, navigate, templateId, searchParams]);
 
   // Check if admin mode (no credits required)
-  const isAdminMode = searchParams.get('admin') === 'true' && (user?.role === 'admin' || user?.role === 'super_admin');
+  const isAdminMode = searchParams.get('admin') === 'true' && normalizeUserRole(user?.role) === 'admin';
 
-  const handleFormSubmit = (formData) => {
+  const handleFormSubmit = async (formData) => {
     // Stage 1: Capture Excel Form Data
     console.log('📝 [GeneratePage] Stage 1 Form Submit, saving to Redux:', formData);
     const { rawFormData: rawFromSubmit, ...submittedFormData } = formData || {};
-    const hasRawFromSubmit = rawFromSubmit && Object.keys(rawFromSubmit).length > 0;
-    const hasReduxRawFormData = reduxFormData && Object.keys(reduxFormData).length > 0;
+    const hasRawFromSubmit =
+      rawFromSubmit && typeof rawFromSubmit === 'object' && Object.keys(rawFromSubmit).length > 0;
+    const latestRedux = store.getState().report.formData;
+    const hasLatestRedux =
+      latestRedux && typeof latestRedux === 'object' && Object.keys(latestRedux).length > 0;
     const rawFormData = hasRawFromSubmit
       ? rawFromSubmit
-      : hasReduxRawFormData
-        ? reduxFormData
+      : hasLatestRedux
+        ? latestRedux
         : submittedFormData;
 
     // Keep raw form values for "Back to Form" and section prefill
@@ -201,12 +392,17 @@ const GeneratePage = () => {
       console.log('⚡ [GeneratePage] Non-AI template detected, skipping ReportSectionSelector');
       setIsProcessing(true);
       generationRequestedRef.current = true;
-      dispatch(applyFormData({ templateId, formData: submittedFormData })).unwrap()
-        .catch((error) => {
-          generationRequestedRef.current = false;
-          toast.error(error || 'Failed to generate Excel');
-          setIsProcessing(false);
-        });
+      // #region agent log
+      fetch('http://127.0.0.1:7384/ingest/fee4a383-4f25-45c3-bb64-8d6d21b935e9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'92ac45'},body:JSON.stringify({sessionId:'92ac45',runId:'pre-fix',hypothesisId:'H1-H2',location:'GeneratePage.jsx:NON_AI_applyFormData',message:'Dispatch applyFormData (non-AI template)',data:{templateId:String(templateId||''),role:String(user?.role||''),hasCompanyId:!!user?.companyId,companyIdType:typeof user?.companyId,hasApLogoUrl:!!(user?.apLogoUrl||user?.apLogoDisplayUrl),hasCompanyLogoUrl:!!(user?.companyLogoUrl||user?.companyLogoDisplayUrl),payloadHasApLogoUrl:!!(submittedFormData?.apLogoUrl||submittedFormData?.apLogoDisplayUrl),payloadHasCompanyLogoUrl:!!(submittedFormData?.companyLogoUrl||submittedFormData?.companyLogoDisplayUrl)},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      try {
+        const finalWithLogos = await withTemplateLogos(submittedFormData);
+        await dispatch(applyFormData({ templateId, formData: finalWithLogos })).unwrap();
+      } catch (error) {
+        generationRequestedRef.current = false;
+        toast.error(formatApiErrorMessage(error, 'Failed to submit data for Excel generation.'));
+        setIsProcessing(false);
+      }
     } else {
       // AI templates: show section selector
       setShowSectionSelector(true);
@@ -236,10 +432,14 @@ const GeneratePage = () => {
     dispatch(setFormData(finalFormData));
 
     try {
-      await dispatch(applyFormData({ templateId, formData: finalFormData })).unwrap();
+      const finalWithLogos = await withTemplateLogos(finalFormData);
+      // #region agent log
+      fetch('http://127.0.0.1:7384/ingest/fee4a383-4f25-45c3-bb64-8d6d21b935e9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'92ac45'},body:JSON.stringify({sessionId:'92ac45',runId:'pre-fix',hypothesisId:'H1-H2',location:'GeneratePage.jsx:AI_applyFormData',message:'Dispatch applyFormData (AI template)',data:{templateId:String(templateId||''),role:String(user?.role||''),hasCompanyId:!!user?.companyId,hasApLogoUrl:!!(user?.apLogoUrl||user?.apLogoDisplayUrl),hasCompanyLogoUrl:!!(user?.companyLogoUrl||user?.companyLogoDisplayUrl),payloadHasApLogoUrl:!!(finalFormData?.apLogoUrl||finalFormData?.apLogoDisplayUrl),payloadHasCompanyLogoUrl:!!(finalFormData?.companyLogoUrl||finalFormData?.companyLogoDisplayUrl)},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      await dispatch(applyFormData({ templateId, formData: finalWithLogos })).unwrap();
     } catch (error) {
       generationRequestedRef.current = false;
-      toast.error(error || 'Failed to generate Excel');
+      toast.error(formatApiErrorMessage(error, 'Failed to submit data for Excel generation.'));
       setIsProcessing(false);
     }
   };
@@ -250,133 +450,67 @@ const GeneratePage = () => {
   };
 
   const handleBackToDashboard = () => {
-    // Navigate back to appropriate dashboard based on user role
     if (isAdminMode) {
       navigate('/admin/generate');
-    } else if (user?.role === 'agent') {
-      navigate('/agent/dashboard');
     } else {
-      navigate('/dashboard');
+      navigate(generateHubLandingPath(user?.role));
     }
-  };
-
-  const handleMyReports = () => {
-    if (user?.role === 'admin' || user?.role === 'super_admin') {
-      navigate('/admin/reports');
-    } else if (user?.role === 'agent') {
-      navigate('/agent/reports');
-    } else {
-      navigate('/reports');
-    }
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/auth');
   };
 
   if (!templateId) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F8F8FF' }}>
-        <Card className="text-center max-w-md">
-          <div className="text-4xl text-red-400 mb-4">⚠️</div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-2">
-            Template Not Found
-          </h3>
-          <p className="text-gray-600 mb-4">
-            Please select a template from the dashboard first.
-          </p>
-          <Button onClick={() => user?.role === 'agent' ? navigate('/agent/dashboard') : navigate('/dashboard')} variant="primary">
-            <ArrowLeftIcon className="w-4 h-4 inline mr-2" />
-            Back to Dashboard
-          </Button>
-        </Card>
-      </div>
+      <GenerateStandaloneLayout>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <Card className="text-center max-w-md">
+            <div className="text-4xl text-red-400 mb-4">⚠️</div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              Template Not Found
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Please select a template from the dashboard first.
+            </p>
+            <Button onClick={() => navigate(generateHubLandingPath(user?.role))} variant="primary">
+              <ArrowLeftIcon className="w-4 h-4 inline mr-2" />
+              Back to Dashboard
+            </Button>
+          </Card>
+        </div>
+      </GenerateStandaloneLayout>
     );
   }
 
   if (loading) {
-    return <Loading fullScreen text="Loading template..." />;
+    return (
+      <GenerateStandaloneLayout>
+        <div className="flex justify-center py-24">
+          <Loading text="Loading template..." />
+        </div>
+      </GenerateStandaloneLayout>
+    );
+  }
+
+  if (!draftCheckComplete) {
+    return (
+      <GenerateStandaloneLayout>
+        <div className="flex justify-center py-24">
+          <Loading text="Checking saved draft..." />
+        </div>
+      </GenerateStandaloneLayout>
+    );
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#F8F8FF' }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
-        
-        h1, h2, h3, h4, h5, h6 {
-          font-family: 'Manrope', sans-serif;
-        }
-        
-        body, input, select, textarea, button {
-          font-family: 'Inter', sans-serif;
-        }
-      `}</style>
-
-      {/* Processing Overlay */}
+    <GenerateStandaloneLayout withFonts>
       {isProcessing && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <Card className="text-center max-w-sm">
             <Loading text="Processing your request..." />
-            <p className="text-gray-600 mt-2 text-sm">Generating DPR report...</p>
+            <p className="text-gray-600 mt-2 text-sm">Generating report...</p>
           </Card>
         </div>
       )}
 
-      {/* Header - Matching Screenshot */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40" style={{ boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
-        <div className="max-w-full px-6">
-          <div className="flex justify-between items-center h-16">
-            {/* Left side - Logo */}
-            <button
-              onClick={handleBackToDashboard}
-              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-            >
-              <img
-                src={finvoisLogo}
-                alt="Finvois Logo"
-                className="h-10 w-auto"
-              />
-
-            </button>
-
-            {/* Right side - Actions */}
-            <div className="flex items-center gap-3">
-              {/* My Reports Button */}
-              <button
-                onClick={handleMyReports}
-                className="flex items-center gap-2 px-5 py-2.5 bg-[#9333EA] text-white rounded-lg transition-all duration-200 text-sm font-medium"
-              >
-                <ChartBarIcon className="w-4 h-4" />
-                <span>My Reports</span>
-              </button>
-
-              {/* User Profile */}
-              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
-                <div className="w-7 h-7 bg-gray-900 rounded-lg flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">
-                    {user?.name?.charAt(0) || 'R'}
-                  </span>
-                </div>
-                <span className="text-sm font-medium text-gray-900">
-                  {user?.name || 'Ramesh'}
-                </span>
-              </div>
-
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1 text-sm font-medium text-red-600 hover:text-red-700 transition-colors px-3"
-              >
-                <span>Logout</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-6">
+      <div className="px-0 sm:px-2 py-4">
         {/* Back Button */}
         <button
           onClick={() => showSectionSelector ? setShowSectionSelector(false) : handleBackToDashboard()}
@@ -401,7 +535,7 @@ const GeneratePage = () => {
                 Generate Report
               </h1>
               <p className="text-gray-600 text-sm">
-                Fill in the form below to generate your professional Excel report
+                Kindly provide the required details below to facilitate Report preparation
               </p>
             </div>
 
@@ -521,6 +655,8 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={tempFormData}
+                presetSector={presetSector}
+                lockSector={lockSector}
               />
             )}
             {(templateId === 'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK') && (
@@ -530,6 +666,8 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={tempFormData}
+                presetSector={presetSector}
+                lockSector={lockSector}
               />
             )}
             {(templateId === 'TERM_LOAN_CC') && (
@@ -539,6 +677,8 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={tempFormData}
+                presetSector={presetSector}
+                lockSector={lockSector}
               />
             )}
             {templateId &&
@@ -573,7 +713,7 @@ const GeneratePage = () => {
                   <p className="text-gray-600 mb-4">
                     Please select a template from the dashboard first.
                   </p>
-                  <Button onClick={() => user?.role === 'agent' ? navigate('/agent/generate') : navigate('/dashboard')} variant="primary">
+                  <Button onClick={() => navigate(generateHubLandingPath(user?.role))} variant="primary">
                     <ArrowLeftIcon className="w-4 h-4 inline mr-2" />
                     Back to Dashboard
                   </Button>
@@ -582,8 +722,8 @@ const GeneratePage = () => {
             )}
           </>
         )}
-      </main>
-    </div>
+      </div>
+    </GenerateStandaloneLayout>
   );
 };
 

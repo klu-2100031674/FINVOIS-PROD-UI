@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   DocumentTextIcon,
-  CurrencyDollarIcon,
+  CurrencyRupeeIcon,
   CalendarIcon,
   ChartBarIcon,
   BuildingOfficeIcon,
@@ -14,6 +14,8 @@ import {
   PlusIcon,
   TrashIcon
 } from '@heroicons/react/24/outline';
+
+import SaveDraftButton from '../common/SaveDraftButton';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -55,6 +57,7 @@ const grossAssetMapping = {
 
 const FRCC7Form = ({
   onSubmit,
+  templateId = 'frcc7',
   initialData = {},
   isEditMode = false,
   reportId = null,
@@ -115,7 +118,7 @@ const FRCC7Form = ({
     {
       key: 'finance',
       title: 'Means of Finance',
-      icon: CurrencyDollarIcon,
+      icon: CurrencyRupeeIcon,
       fields: [
         { id: 'i11', label: 'Do you have working capital limit at present?',              type: 'select', options: ['Yes', 'No'],              required: true, disabled: true },
         { id: 'i12', label: 'Are you going for Working Capital limit Top-up from present limit?', type: 'select', options: ['Yes', 'No'],      required: true, disabled: true },
@@ -811,7 +814,7 @@ const FRCC7Form = ({
           </div>
         </div>
 
-        <div className="flex justify-between items-center gap-4 pt-6 border-t border-gray-200">
+        <div className="flex justify-between items-center gap-3 pt-6 border-t border-gray-200">
           <button
             type="button"
             className="px-5 py-2 border-2 border-gray-800 text-gray-800 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-transparent font-medium text-sm flex items-center gap-1"
@@ -822,39 +825,47 @@ const FRCC7Form = ({
             Previous
           </button>
 
-          {isLastStep ? (
-            <button
-              type="button"
-              className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-              onClick={handleSubmit}
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 8l3-2.709z"></path>
-                  </svg>
-                  {isEditMode ? 'Updating...' : 'Submitting...'}
-                </>
-              ) : (
-                <>
-                  <CheckCircleIcon className="w-4 h-4" />
-                  {isEditMode ? 'Save & Update' : 'Submit Form'}
-                </>
-              )}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-300 font-medium text-sm flex items-center gap-1"
-              onClick={goToNextStep}
-              disabled={!canProceed}
-            >
-              Next
-              <ChevronRightIcon className="w-4 h-4" />
-            </button>
-          )}
+          <div className="flex flex-wrap justify-end gap-3">
+            <SaveDraftButton
+              templateId={templateId}
+              currentStep={`/stage1?templateId=${templateId}`}
+              currentFormData={formData}
+            />
+
+            {isLastStep ? (
+              <button
+                type="button"
+                className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                onClick={handleSubmit}
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 8l3-2.709z"></path>
+                    </svg>
+                    {isEditMode ? 'Updating...' : 'Submitting...'}
+                  </>
+                ) : (
+                  <>
+                    <CheckCircleIcon className="w-4 h-4" />
+                    {isEditMode ? 'Save & Update' : 'Submit Form'}
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-300 font-medium text-sm flex items-center gap-1"
+                onClick={goToNextStep}
+                disabled={!canProceed}
+              >
+                Next
+                <ChevronRightIcon className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {!canProceed && !isLastStep && (

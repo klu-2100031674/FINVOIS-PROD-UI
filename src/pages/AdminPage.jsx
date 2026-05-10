@@ -7,7 +7,7 @@ import {
   updateUserRole,
   updateUserCredits,
   deleteUser,
-  createSuperAdmin,
+  createAdmin,
   selectUsers,
   selectUserPagination,
   selectUserLoading,
@@ -27,6 +27,7 @@ import {
   ChevronRightIcon,
   CurrencyRupeeIcon
 } from '@heroicons/react/24/outline';
+import { normalizeUserRole } from '../utils/normalizeUserRole';
 
 const AdminPage = () => {
   const navigate = useNavigate();
@@ -45,17 +46,17 @@ const AdminPage = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [newCredits, setNewCredits] = useState({ report_credits: 0, enquiry_credits: 0 });
 
-  // Check if user is super admin
+  // Check if user is admin
   useEffect(() => {
-    if (user && user.role !== 'super_admin') {
-      toast.error('Access denied. Super admin privileges required.');
+    if (user && normalizeUserRole(user.role) !== 'admin') {
+      toast.error('Access denied. Admin privileges required.');
       navigate('/dashboard');
       return;
     }
   }, [user, navigate]);
 
   useEffect(() => {
-    if (user?.role === 'super_admin') {
+    if (normalizeUserRole(user?.role) === 'admin') {
       dispatch(fetchAllUsers({ page: 1, limit: 10 }));
     }
   }, [dispatch, user]);
@@ -128,13 +129,13 @@ const AdminPage = () => {
     }
   };
 
-  const handleCreateSuperAdmin = async (adminData) => {
+  const handleCreateAdmin = async (adminData) => {
     try {
-      await dispatch(createSuperAdmin(adminData)).unwrap();
-      toast.success('Super admin created successfully');
+      await dispatch(createAdmin(adminData)).unwrap();
+      toast.success('Admin created successfully');
       setShowCreateAdminModal(false);
     } catch (error) {
-      toast.error(error || 'Failed to create super admin');
+      toast.error(error || 'Failed to create admin');
     }
   };
 
@@ -142,7 +143,7 @@ const AdminPage = () => {
     navigate('/dashboard');
   };
 
-  if (!user || user.role !== 'super_admin') {
+  if (!user || normalizeUserRole(user.role) !== 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Card className="text-center max-w-md">
@@ -190,7 +191,7 @@ const AdminPage = () => {
                 className="flex items-center gap-2"
               >
                 <PlusIcon className="w-4 h-4" />
-                Create Super Admin
+                Create Admin
               </Button>
             </div>
           </div>
@@ -214,9 +215,9 @@ const AdminPage = () => {
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All Roles</option>
-              <option value="super_admin">Super Admin</option>
-              <option value="admin">Admin</option>
-              <option value="agent">Agent</option>
+              <option value="admin">Super Admin</option>
+              <option value="company_admin">Company Admin</option>
+              <option value="agent">Channel partner</option>
               <option value="user">User</option>
             </select>
             <Button onClick={handleSearch} variant="primary">
@@ -260,9 +261,9 @@ const AdminPage = () => {
                             disabled={user._id === user._id} // Can't change own role
                           >
                             <option value="user">User</option>
-                            <option value="agent">Agent</option>
-                            <option value="admin">Admin</option>
-                            <option value="super_admin">Super Admin</option>
+                            <option value="agent">Channel partner</option>
+                            <option value="company_admin">Company Admin</option>
+                            <option value="admin">Super Admin</option>
                           </select>
                         </td>
                         <td className="py-3 px-4 text-sm text-gray-600">
@@ -339,11 +340,11 @@ const AdminPage = () => {
           )}
         </Card>
 
-        {/* Create Super Admin Modal */}
-        <CreateSuperAdminModal
+        {/* Create Admin Modal */}
+        <CreateAdminModal
           isOpen={showCreateAdminModal}
           onClose={() => setShowCreateAdminModal(false)}
-          onSubmit={handleCreateSuperAdmin}
+          onSubmit={handleCreateAdmin}
         />
 
         {/* Edit Credits Modal */}
@@ -360,8 +361,8 @@ const AdminPage = () => {
   );
 };
 
-// Create Super Admin Modal Component
-const CreateSuperAdminModal = ({ isOpen, onClose, onSubmit }) => {
+// Create Admin Modal Component
+const CreateAdminModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -397,7 +398,7 @@ const CreateSuperAdminModal = ({ isOpen, onClose, onSubmit }) => {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create Super Admin">
+    <Modal isOpen={isOpen} onClose={onClose} title="Create Admin">
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
           label="Full Name"
@@ -440,7 +441,7 @@ const CreateSuperAdminModal = ({ isOpen, onClose, onSubmit }) => {
             Cancel
           </Button>
           <Button type="submit" variant="primary" loading={isSubmitting}>
-            Create Super Admin
+            Create Admin
           </Button>
         </div>
       </form>

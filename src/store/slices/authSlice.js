@@ -1,9 +1,18 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api, { getAuthToken, setAuthToken } from '../../api/api';
+import { normalizeRoleFromUser } from '../../utils/normalizeUserRole';
 
 /**
  * Auth Slice - User authentication state management
  */
+
+// The backend has collapsed the legacy `super_admin` role into `admin`.
+// This helper guards against older cached user blobs (e.g. localStorage
+// from before the refactor) still carrying `role: 'super_admin'`.
+const normalizeStoredRole = (user) => {
+  if (!user || typeof user !== 'object') return user;
+  return { ...user, role: normalizeRoleFromUser(user) };
+};
 
 // Load user from localStorage on init
 const loadUserFromStorage = () => {
@@ -12,7 +21,7 @@ const loadUserFromStorage = () => {
     const userKey = import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data';
     const user = localStorage.getItem(userKey);
     if (token && user) {
-      return { token, user: JSON.parse(user) };
+      return { token, user: normalizeStoredRole(JSON.parse(user)) };
     }
   } catch (error) {
     console.error('Error loading user from storage:', error);
@@ -80,6 +89,7 @@ export const login = createAsyncThunk(
       // Store in localStorage (token is already set by the API)
       const userKey = import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data';
       if (response.data && response.data.user) {
+        response.data.user = normalizeStoredRole(response.data.user);
         localStorage.setItem(userKey, JSON.stringify(response.data.user));
       }
 
@@ -163,10 +173,10 @@ const authSlice = createSlice({
         state.loading = false;
         if (action.payload.success && action.payload.data) {
           // Map phone to mobile for consistency
-          const userData = {
+          const userData = normalizeStoredRole({
             ...action.payload.data.user,
             mobile: action.payload.data.user.phone || action.payload.data.user.mobile
-          };
+          });
 
           // Check if email is verified
           if (userData.email_verified === false) {
@@ -216,10 +226,10 @@ const authSlice = createSlice({
         state.loading = false;
         if (action.payload.success && action.payload.data) {
           // Map phone to mobile for consistency
-          const userData = {
+          const userData = normalizeStoredRole({
             ...action.payload.data,
             mobile: action.payload.data.phone || action.payload.data.mobile
-          };
+          });
           state.user = userData;
 
           // Update localStorage to keep it in sync

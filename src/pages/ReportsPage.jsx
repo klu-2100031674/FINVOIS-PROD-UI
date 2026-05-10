@@ -4,11 +4,12 @@
  */
 
 import { useEffect, useState, useMemo } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useAuth } from '../hooks';
 import ReactDOM from 'react-dom/client';
-import finvoisLogo from '../assets/finvois.png';
+import ClientLayout from '../components/layouts/ClientLayout';
+import { AdminLayout } from '../components/layouts';
 import {
   fetchReports,
   selectReports,
@@ -16,7 +17,7 @@ import {
 } from '../store/slices/reportSlice';
 import { Button, Loading } from '../components/common';
 import { reportAPI } from '../api/endpoints';
-import { formatDate, formatDateTime, downloadFile } from '../utils';
+import { formatDate, formatDateTime, downloadUserReportFile } from '../utils';
 import toast from 'react-hot-toast';
 import Invoice from '../components/Invoice';
 
@@ -26,12 +27,9 @@ import html2canvas from 'html2canvas';
 
 // Lucide-react icons for modern UI
 import {
-  FileText, // For logo
-  FileStack, // For reports icon
-  User, // For user avatar
-  LogOut, // For logout
-  Download, // For download button
-  ArrowLeft, // For back button
+  FileText,
+  FileStack,
+  Download,
   FolderOpen, // For empty state
   CheckCircle, // For approved status
   Clock, // For pending status
@@ -46,10 +44,11 @@ import {
 const ReportsPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const reports = useSelector(selectReports);
   const loading = useSelector(selectReportLoading);
-
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState(''); // report_type/templateId
   // Date filter state
   const [dateFilter, setDateFilter] = useState({
     startDate: null,
@@ -58,7 +57,6 @@ const ReportsPage = () => {
   });
   const [showDateFilter, setShowDateFilter] = useState(false);
 
-  // Filter reports based on date filter
   const filteredReports = useMemo(() => {
     if (dateFilter.preset === 'all') return reports;
 
@@ -101,6 +99,33 @@ const ReportsPage = () => {
       return reportDate >= startDate && reportDate <= endDate;
     });
   }, [reports, dateFilter]);
+
+  const reportTypeOptions = useMemo(() => {
+    const set = new Set();
+    (reports || []).forEach((r) => {
+      const t = r?.report_type || r?.templateId;
+      if (t) set.add(String(t));
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [reports]);
+
+  const filteredReportsBySearch = useMemo(() => {
+    const q = String(searchQuery || '').trim().toLowerCase();
+    const type = String(typeFilter || '').trim();
+    return (filteredReports || []).filter((report) => {
+      const reportDisplayName =
+        report.display_name || report.client_name || report.title || `Report ${report.templateId}`;
+      const reportType = report.report_type || report.templateId || '';
+      const matchesType = !type || String(reportType) === type;
+      const matchesQuery =
+        !q ||
+        String(reportDisplayName || '').toLowerCase().includes(q) ||
+        String(report.title || '').toLowerCase().includes(q) ||
+        String(report.client_name || '').toLowerCase().includes(q) ||
+        String(reportType || '').toLowerCase().includes(q);
+      return matchesType && matchesQuery;
+    });
+  }, [filteredReports, searchQuery, typeFilter]);
 
   // Handle date filter changes
   const handleDateFilterChange = (preset) => {
@@ -163,12 +188,6 @@ const ReportsPage = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showDateFilter]);
-
-  const handleLogout = () => {
-    logout();
-    navigate('/auth');
-    toast.success('Logged out successfully');
-  };
 
   const handleDownloadInvoice = async (report) => {
     try {
@@ -236,35 +255,16 @@ const ReportsPage = () => {
 
   const handleDownloadExcel = async (report, type) => {
     try {
-      const isPdf = type === "pdf";
-      const fetchurl = isPdf ? report.pdf_file_url : report.excel_file_url;
-      const response = await fetch(fetchurl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('ca_auth_token')}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to download ${isPdf ? 'PDF' : 'Excel'} file`);
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = isPdf
-        ? `${report.title || 'report'}.pdf`
-        : `${report.title || 'report'}-clean.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      toast.success(`${isPdf ? 'PDF' : 'Excel'} file downloaded successfully`);
+      const kind = type === 'pdf' ? 'pdf' : 'excel';
+      await downloadUserReportFile(report, kind);
+      toast.success(`${kind === 'pdf' ? 'PDF' : 'Excel'} file downloaded successfully`);
     } catch (error) {
       console.error(`Error downloading ${type} file:`, error);
-      toast.error(`Failed to download ${type === 'pdf' ? 'PDF' : 'Excel'} file`);
+      const message =
+        typeof error?.message === 'string' && error.message
+          ? error.message
+          : `Failed to download ${type === 'pdf' ? 'PDF' : 'Excel'} file`;
+      toast.error(message);
     }
   };
 
@@ -272,21 +272,21 @@ const ReportsPage = () => {
     const statusConfig = {
       approved: {
         icon: CheckCircle,
-        text: 'Approved',
+        text: 'Validated by CA',
         bgColor: 'bg-green-100',
         textColor: 'text-green-700',
         iconColor: 'text-green-600'
       },
       pending_validation: {
         icon: Clock,
-        text: 'Under Review',
+        text: 'Under Validation for CA',
         bgColor: 'bg-yellow-100',
         textColor: 'text-yellow-700',
         iconColor: 'text-yellow-600'
       },
       rejected: {
         icon: XCircle,
-        text: 'Rejected',
+        text: 'Queried',
         bgColor: 'bg-red-100',
         textColor: 'text-red-700',
         iconColor: 'text-red-600'
@@ -300,7 +300,7 @@ const ReportsPage = () => {
       },
       under_review: {
         icon: Clock,
-        text: 'Under Review',
+        text: 'Under Validation for CA',
         bgColor: 'bg-blue-100',
         textColor: 'text-blue-700',
         iconColor: 'text-blue-600'
@@ -340,7 +340,7 @@ const ReportsPage = () => {
       older: { label: 'Older', reports: [] }
     };
 
-    filteredReports.forEach(report => {
+    filteredReportsBySearch.forEach(report => {
       const reportDate = new Date(report.createdAt);
       const reportDateOnly = new Date(reportDate.getFullYear(), reportDate.getMonth(), reportDate.getDate());
 
@@ -368,63 +368,23 @@ const ReportsPage = () => {
     return Object.entries(categories)
       .filter(([key, category]) => category.reports.length > 0)
       .map(([key, category]) => ({ key, ...category }));
-  }, [filteredReports]);
+  }, [filteredReportsBySearch]);
 
   if (loading) {
-    return <Loading fullScreen text="Loading reports..." />;
+    if (user?.role === 'agent') {
+      return <Loading fullScreen text="Loading reports..." />;
+    }
+    return (
+      <ClientLayout>
+        <div className="flex justify-center py-24">
+          <Loading text="Loading reports..." />
+        </div>
+      </ClientLayout>
+    );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 font-['Inter']">
-      {user?.role !== 'agent' && (
-        <>
-          {/* Header */}
-          <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between items-center h-16">
-                {/* Logo and Title */}
-                <Link to="/dashboard" className="flex items-center gap-2 text-gray-900">
-                  <img
-                    src={finvoisLogo}
-                    alt="Finvois Logo"
-                    className="h-9 w-auto"
-                  />
-
-                </Link>
-
-                {/* User Info and Actions */}
-                <div className="flex items-center space-x-4">
-                  <Link
-                    to="/dashboard"
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200"
-                  >
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Dashboard
-                  </Link>
-
-                  <div className="flex items-center space-x-2 text-gray-700">
-                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-semibold">
-                      {user?.name?.[0]?.toUpperCase() || <User className="w-4 h-4" />}
-                    </div>
-                    <span className="font-medium hidden sm:block">{user?.name || 'Guest'}</span>
-                  </div>
-
-                  <button
-                    onClick={handleLogout}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-red-600 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Logout
-                  </button>
-                </div>
-              </div>
-            </div>
-          </header>
-        </>
-      )}
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+  const reportsBody = (
+    <main className={user?.role === 'agent' ? 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10' : 'py-2 sm:py-4'}>
         {/* Page Header */}
         <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-xl shadow-sm mb-8">
           <div className="flex items-center justify-between">
@@ -438,7 +398,7 @@ const ReportsPage = () => {
               <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100">
                 <div className="flex items-center space-x-2">
                   <FileStack className="w-5 h-5 text-purple-600" />
-                  <span className="font-semibold text-gray-900">{filteredReports.length}</span>
+                  <span className="font-semibold text-gray-900">{filteredReportsBySearch.length}</span>
                   <span className="text-gray-600 text-sm">Reports</span>
                 </div>
               </div>
@@ -551,6 +511,57 @@ const ReportsPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Search + Type Filter */}
+        {reports.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  Search (Applicant / Title)
+                </label>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by applicant name or report title..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  Type of Report
+                </label>
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                >
+                  <option value="">All types</option>
+                  {reportTypeOptions.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {(searchQuery || typeFilter) && (
+              <div className="mt-3 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setTypeFilter('');
+                  }}
+                  className="text-sm font-semibold text-gray-600 hover:text-gray-900"
+                >
+                  Clear search
+                </button>
+              </div>
+            )}
+          </div>
+        )}
         {/* Reports Grid */}
         {reports.length === 0 ? (
           <div className="bg-white p-16 rounded-xl shadow-md border border-gray-100 text-center">
@@ -559,21 +570,41 @@ const ReportsPage = () => {
             <p className="text-gray-600 mb-6">
               Generate your first report from the dashboard
             </p>
-            <Button onClick={() => user?.role === 'agent' ? navigate('/agent/dashboard') : navigate('/dashboard')} variant="primary">
+            <Button
+              onClick={() =>
+                user?.role === 'agent'
+                  ? navigate('/agent/dashboard')
+                  : user?.role === 'company_admin'
+                  ? navigate('/company/generate')
+                  : navigate('/dashboard')
+              }
+              variant="primary"
+            >
               <FileText className="w-4 h-4 mr-2" />
               Generate Report
             </Button>
           </div>
-        ) : filteredReports.length === 0 ? (
+        ) : filteredReportsBySearch.length === 0 ? (
           <div className="bg-white p-16 rounded-xl shadow-md border border-gray-100 text-center">
             <Filter className="w-16 h-16 mx-auto text-gray-300 mb-6" />
             <h3 className="text-xl font-semibold text-gray-800 mb-2">No Reports Found</h3>
             <p className="text-gray-600 mb-6">
-              No reports match your current date filter. Try adjusting your filter or clear it to see all reports.
+              No reports match your current filters. Try adjusting your filters or clear them to see all reports.
             </p>
-            <Button onClick={clearDateFilter} variant="secondary">
-              Clear Filter
-            </Button>
+            <div className="flex items-center justify-center gap-3">
+              <Button onClick={clearDateFilter} variant="secondary">
+                Clear Date Filter
+              </Button>
+              <Button
+                onClick={() => {
+                  setSearchQuery('');
+                  setTypeFilter('');
+                }}
+                variant="secondary"
+              >
+                Clear Search
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-8">
@@ -682,9 +713,21 @@ const ReportsPage = () => {
           </div>
         )}
       </main>
-
-    </div>
   );
+
+  if (user?.role === 'agent') {
+    return (
+      <div className="min-h-screen bg-gray-50 font-['Inter']">
+        {reportsBody}
+      </div>
+    );
+  }
+
+  if (user?.role === 'company_admin') {
+    return <AdminLayout>{reportsBody}</AdminLayout>;
+  }
+
+  return <ClientLayout>{reportsBody}</ClientLayout>;
 };
 
 export default ReportsPage;

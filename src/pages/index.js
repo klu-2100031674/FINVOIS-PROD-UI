@@ -5,6 +5,7 @@
 
 export { default as AuthPage } from './AuthPage';
 export { default as DashboardPage } from './DashboardPage';
+export { default as DraftsPage } from './DraftsPage';
 export { default as GeneratePage } from './GeneratePage';
 export { default as ReportsPage } from './ReportsPage';
 export { default as Stage1Page } from './Stage1Page';
@@ -29,3 +30,7 @@ export { default as BuyCreditsPage } from './BuyCreditsPage';
 export { default as PaymentSuccessPage } from './PaymentSuccessPage';
 export { default as PaymentFailurePage } from './PaymentFailurePage';
 export { default as OrderHistoryPage } from './OrderHistoryPage';
+
+// PMEGP Pages
+export { default as PmegpGeneratePage } from './PmegpGeneratePage';
+export { default as PmegpSchemeMailPage } from './PmegpSchemeMailPage';

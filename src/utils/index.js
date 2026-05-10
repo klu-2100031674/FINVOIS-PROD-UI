@@ -6,6 +6,7 @@
 export { default as WizardPlugin } from './wizardPlugin';
 export * from './templateMetadata';
 export * from './formDataMapper';
+import { getApiBaseUrl } from './env';
 
 /**
  * Format currency
@@ -70,7 +71,7 @@ export const isValidPhone = (phone) => {
 };
 
 /**
- * Download file from URL
+ * Download file from URL (no auth; only works for public URLs or same-origin)
  */
 export const downloadFile = (url, filename) => {
   const link = document.createElement('a');
@@ -80,6 +81,66 @@ export const downloadFile = (url, filename) => {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+};
+
+const TOKEN_KEY = import.meta.env.VITE_TOKEN_STORAGE_KEY || 'ca_auth_token';
+
+/**
+ * Path for the authenticated user report download API (avoids server-built URLs with a wrong public host).
+ */
+export const getUserReportDownloadPath = (reportId, kind) => {
+  const id = String(reportId || '').trim();
+  if (!id) return null;
+  const base = getApiBaseUrl();
+  return kind === 'pdf'
+    ? `${base}/reports/${id}/download-pdf`
+    : `${base}/reports/${id}/download-excel`;
+};
+
+/**
+ * Download PDF or clean Excel for the current user’s report (Bearer + same-origin or configured API base).
+ */
+export const downloadUserReportFile = async (report, kind) => {
+  const isPdf = kind === 'pdf';
+  const path = getUserReportDownloadPath(report?._id, kind);
+  if (!path) {
+    throw new Error('Report is missing an id for download');
+  }
+  const token = localStorage.getItem(TOKEN_KEY);
+  const response = await fetch(path, {
+    method: 'GET',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: 'include'
+  });
+  if (!response.ok) {
+    let msg = isPdf ? 'Failed to download PDF' : 'Failed to download Excel';
+    const ct = response.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      try {
+        const j = await response.json();
+        if (j.error) msg = j.error;
+        else if (j.message) msg = j.message;
+      } catch (_) {
+        /* ignore */
+      }
+    }
+    throw new Error(msg);
+  }
+  const blob = await response.blob();
+  const outBlob =
+    isPdf && (blob.type === '' || blob.type === 'application/octet-stream')
+      ? new Blob([blob], { type: 'application/pdf' })
+      : blob;
+  const url = window.URL.createObjectURL(outBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = isPdf
+    ? `${report?.title || 'report'}.pdf`
+    : `${report?.title || 'report'}-clean.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
 };
 
 /**
@@ -195,4 +256,23 @@ export const getRelativeTime = (date) => {
   }
 
   return 'just now';
+};
+
+/**
+ * Human-readable message from API/axios/unknown errors (for toasts).
+ */
+export const formatApiErrorMessage = (error, fallback = 'Something went wrong. Please try again.') => {
+  if (error == null) return fallback;
+  if (typeof error === 'string') return error.trim() || fallback;
+  if (typeof error === 'object') {
+    const msg = error.message || error.error || error.detail;
+    if (typeof msg === 'string' && msg.trim()) return msg.trim();
+    try {
+      const s = JSON.stringify(error);
+      if (s && s !== '{}') return s.length > 200 ? `${s.slice(0, 200)}…` : s;
+    } catch {
+      /* ignore */
+    }
+  }
+  return fallback;
 };

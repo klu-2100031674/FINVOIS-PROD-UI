@@ -27,7 +27,7 @@ export const fetchProfile = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.user.getProfile();
-      return response.data;
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || 'Failed to fetch profile');
     }
@@ -42,29 +42,29 @@ export const updateProfile = createAsyncThunk(
       const response = await api.user.updateProfile(profileData);
       
       // If update was successful, also update the auth state to keep it in sync
-      if (response.data && response.data.data) {
+      if (response && response.data) {
         // Use a dynamic import to avoid circular dependency
         const authActions = await import('./authSlice');
         if (authActions && authActions.updateUser) {
-          dispatch(authActions.updateUser(response.data.data));
+          dispatch(authActions.updateUser(response.data));
         }
       }
       
-      return response.data;
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || 'Failed to update profile');
     }
   }
 );
 
-export const createSuperAdmin = createAsyncThunk(
-  'user/createSuperAdmin',
+export const createAdmin = createAsyncThunk(
+  'user/createAdmin',
   async (adminData, { rejectWithValue }) => {
     try {
-      const response = await api.user.createSuperAdmin(adminData);
+      const response = await api.user.createAdmin(adminData);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to create super admin');
+      return rejectWithValue(error.response?.data?.message || 'Failed to create admin');
     }
   }
 );
@@ -166,15 +166,15 @@ const userSlice = createSlice({
       })
 
       // Create Super Admin
-      .addCase(createSuperAdmin.pending, (state) => {
+      .addCase(createAdmin.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(createSuperAdmin.fulfilled, (state, action) => {
+      .addCase(createAdmin.fulfilled, (state, action) => {
         state.loading = false;
         state.users.unshift(action.payload.data);
       })
-      .addCase(createSuperAdmin.rejected, (state, action) => {
+      .addCase(createAdmin.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

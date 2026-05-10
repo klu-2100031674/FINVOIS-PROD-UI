@@ -9,7 +9,10 @@ import { useAuth } from "./hooks";
 import {
   AuthPage,
   DashboardPage,
+  DraftsPage,
   GeneratePage,
+  PmegpGeneratePage,
+  PmegpSchemeMailPage,
   ReportsPage,
   Stage1Page,
   Stage2Page,
@@ -30,6 +33,9 @@ import {
   AdminGenerateReportPage,
   AdminFreeCreditsPage,
   AdminPromotionalEmailsPage,
+  AdminCompaniesPage,
+  AdminCreateCompanyPage,
+  AdminCompanyCreatePage,
 } from "./pages/admin";
 import {
   AgentDashboardPage,
@@ -41,6 +47,17 @@ import {
   AgentGeneratePage,
 } from "./pages/agent";
 import { AgentLayout } from "./components/layouts";
+import CompanyAdminDashboardPage from "./pages/company/CompanyAdminDashboardPage";
+import CompanyManageCreditsPage from "./pages/company/CompanyManageCreditsPage";
+import CompanyAdminProfilePage from "./pages/company/CompanyAdminProfilePage";
+import CompanyAdminReportsPage from "./pages/company/CompanyAdminReportsPage";
+import CompanyAdminGeneratePage from "./pages/company/CompanyAdminGeneratePage";
+import CompanyUsersPage from "./pages/company/CompanyUsersPage";
+import CompanyUserReportsByPersonPage from "./pages/company/CompanyUserReportsByPersonPage";
+import CompanyUserDashboardPage from "./pages/company/user/CompanyUserDashboardPage";
+import CompanyUserProfilePage from "./pages/company/user/CompanyUserProfilePage";
+import CompanyUserGeneratePage from "./pages/company/user/CompanyUserGeneratePage";
+import CompanyUserReportsPage from "./pages/company/user/CompanyUserReportsPage";
 import FRCC2FormPage from "./pages/FRCC2FormPage";
 import FRCC3FormPage from "./pages/FRCC3FormPage";
 import FRCC4FormPage from "./pages/FRCC4FormPage";
@@ -50,6 +67,7 @@ import FRCC7FormPage from "./pages/FRCC7FormPage";
 import FRTermLoanFormPage from "./pages/FRTermLoanFormPage";
 import FRTermLoanWithStockFormPage from "./pages/FRTermLoanWithStockFormPage";
 import EmailVerificationPage from "./pages/EmailVerificationPage";
+import ForceChangePasswordPage from "./pages/ForceChangePasswordPage";
 import FRTermLoanCCFormPage from "./pages/FRTermLoanCCFormPage";
 import APITestPage from "./pages/APITestPage";
 import ReportReadyPage from "./pages/ReportReadyPage";
@@ -70,6 +88,8 @@ import DocumentationPage from "./components/LandingPage/pages/DocumentationPage"
 import BlogPage from "./components/LandingPage/pages/BlogPage";
 import { AboutPage, CareersPage, PartnersPage, ContactPage, HelpCenterPage, APIPage } from "./components/LandingPage/pages/CompanyPages";
 import { PrivacyPolicyPage, TermsOfServicePage, CookiesPage } from "./components/LandingPage/pages/LegalPages";
+import { normalizeUserRole } from "./utils/normalizeUserRole";
+import { dashboardHomePath } from "./utils/routePaths";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -80,17 +100,136 @@ const ProtectedRoute = ({ children }) => {
     "user:",
     user
   );
-  return isAuthenticated ? children : <Navigate to="/auth" replace />;
+  if (!isAuthenticated) return <Navigate to="/auth" replace />;
+  // Force password change before accessing any other page
+  if (user?.must_change_password) return <Navigate to="/change-password" replace />;
+  return children;
 };
 
-// Admin Protected Route Component
+// Platform super-admin routes only
 const AdminRoute = ({ children }) => {
   const { isAuthenticated, user } = useAuth();
+  const normalizedRole = normalizeUserRole(user?.role);
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
   }
-  if (user?.role !== 'admin' && user?.role !== 'super_admin') {
-    return <Navigate to="/dashboard" replace />;
+  if (normalizedRole !== 'admin') {
+    return <Navigate to={dashboardHomePath(user?.role)} replace />;
+  }
+  return children;
+};
+
+const AdminOnlyRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const normalizedRole = normalizeUserRole(user?.role);
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  if (normalizedRole === 'company_admin') {
+    return <Navigate to="/company/dashboard" replace />;
+  }
+  if (normalizedRole !== 'admin') {
+    return <Navigate to={dashboardHomePath(user?.role)} replace />;
+  }
+  return children;
+};
+
+// Admin-only access to report validation (approve/reject/etc.).
+// Company admins don't get this — they are sent to /company/reports instead.
+const SuperAdminRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const normalizedRole = normalizeUserRole(user?.role);
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  if (normalizedRole === 'company_admin') {
+    return <Navigate to="/company/reports" replace />;
+  }
+  if (normalizedRole !== 'admin') {
+    return <Navigate to={dashboardHomePath(user?.role)} replace />;
+  }
+  return children;
+};
+
+// company_admin role only (platform admin redirected to admin dashboard).
+const CompanyAdminRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const normalizedRole = normalizeUserRole(user?.role);
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  if (normalizedRole !== 'company_admin') {
+    if (normalizedRole === 'admin') {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
+    return <Navigate to={dashboardHomePath(user?.role)} replace />;
+  }
+  return children;
+};
+
+// Authenticated Finvois retail user routes only (distinct from company org users).
+const RetailUserRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const r = normalizeUserRole(user?.role);
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  if (r !== 'user') {
+    return <Navigate to={dashboardHomePath(user?.role)} replace />;
+  }
+  return children;
+};
+
+// Shared Excel wizard at `/generate` — used by retail users, company admins (AI → wizard), and org users who land here.
+const GenerateWizardRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const r = normalizeUserRole(user?.role);
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  if (!['user', 'company_user', 'company_admin', 'admin', 'agent'].includes(r)) {
+    return <Navigate to={dashboardHomePath(user?.role)} replace />;
+  }
+  return children;
+};
+
+// company_user role only (distinct from standalone retail users).
+const CompanyUserRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const r = normalizeUserRole(user?.role);
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  if (r !== 'company_user') {
+    return <Navigate to={dashboardHomePath(user?.role)} replace />;
+  }
+  return children;
+};
+
+// Platform admin or company admin (shared org-level routes under /company/…, etc.)
+const AdminOrCompanyAdminRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const normalizedRole = normalizeUserRole(user?.role);
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  if (!['admin', 'company_admin'].includes(normalizedRole)) {
+    return <Navigate to={dashboardHomePath(user?.role)} replace />;
+  }
+  return children;
+};
+
+const AdminGenerateRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const normalizedRole = normalizeUserRole(user?.role);
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  if (normalizedRole === 'company_admin') {
+    return <Navigate to="/company/generate" replace />;
+  }
+  if (normalizedRole !== 'admin') {
+    return <Navigate to={dashboardHomePath(user?.role)} replace />;
   }
   return children;
 };
@@ -101,8 +240,8 @@ const AgentRoute = ({ children }) => {
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
   }
-  if (user?.role !== 'agent') {
-    return <Navigate to="/dashboard" replace />;
+  if (normalizeUserRole(user?.role) !== 'agent') {
+    return <Navigate to={dashboardHomePath(user?.role)} replace />;
   }
   return children;
 };
@@ -122,9 +261,16 @@ const PublicRoute = ({ children }) => {
   }
 
   // Redirect based on user role
-  if (user?.role === 'admin' || user?.role === 'super_admin') {
+  const normalizedRole = normalizeUserRole(user?.role);
+  if (normalizedRole === 'company_user') {
+    return <Navigate to="/company/user/dashboard" replace />;
+  }
+  if (normalizedRole === 'company_admin') {
+    return <Navigate to="/company/generate" replace />;
+  }
+  if (normalizedRole === 'admin') {
     return <Navigate to="/admin/dashboard" replace />;
-  } else if (user?.role === 'agent') {
+  } else if (normalizeUserRole(user?.role) === 'agent') {
     return <Navigate to="/agent/dashboard" replace />;
   }
   return <Navigate to="/dashboard" replace />;
@@ -180,29 +326,88 @@ function App() {
         <Route path="/verify-otp" element={<OTPVerificationPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
+        {/* Force password change on first login — accessible while authenticated */}
+        <Route path="/change-password" element={<ForceChangePasswordPage />} />
+
         {/* Protected Routes */}
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <RetailUserRoute>
               <DashboardPage />
+            </RetailUserRoute>
+          }
+        />
+        <Route
+          path="/company/dashboard"
+          element={
+            <AdminOrCompanyAdminRoute>
+              <CompanyAdminDashboardPage />
+            </AdminOrCompanyAdminRoute>
+          }
+        />
+        <Route
+          path="/company/generate"
+          element={
+            <AdminOrCompanyAdminRoute>
+              <CompanyAdminGeneratePage />
+            </AdminOrCompanyAdminRoute>
+          }
+        />
+        <Route
+          path="/company/user"
+          element={
+            <AdminOrCompanyAdminRoute>
+              <CompanyUsersPage />
+            </AdminOrCompanyAdminRoute>
+          }
+        />
+        <Route
+          path="/company/user/:userId/reports"
+          element={
+            <AdminOrCompanyAdminRoute>
+              <CompanyUserReportsByPersonPage />
+            </AdminOrCompanyAdminRoute>
+          }
+        />
+        <Route
+          path="/drafts"
+          element={
+            <ProtectedRoute>
+              <DraftsPage />
             </ProtectedRoute>
           }
         />
         <Route
           path="/generate"
           element={
-            <ProtectedRoute>
+            <GenerateWizardRoute>
               <GeneratePage />
-            </ProtectedRoute>
+            </GenerateWizardRoute>
+          }
+        />
+        <Route
+          path="/generate/pmegp"
+          element={
+            <GenerateWizardRoute>
+              <PmegpGeneratePage />
+            </GenerateWizardRoute>
+          }
+        />
+        <Route
+          path="/generate/pmegp/scheme-mail"
+          element={
+            <GenerateWizardRoute>
+              <PmegpSchemeMailPage />
+            </GenerateWizardRoute>
           }
         />
         <Route
           path="/reports"
           element={
-            <ProtectedRoute>
+            <RetailUserRoute>
               <ReportsPage />
-            </ProtectedRoute>
+            </RetailUserRoute>
           }
         />
         {/* Buy Credits removed - using pay-per-report model now */}
@@ -234,9 +439,41 @@ function App() {
         <Route
           path="/profile"
           element={
-            <ProtectedRoute>
+            <RetailUserRoute>
               <ProfilePage />
-            </ProtectedRoute>
+            </RetailUserRoute>
+          }
+        />
+        <Route
+          path="/company/user/dashboard"
+          element={
+            <CompanyUserRoute>
+              <CompanyUserDashboardPage />
+            </CompanyUserRoute>
+          }
+        />
+        <Route
+          path="/company/user/profile"
+          element={
+            <CompanyUserRoute>
+              <CompanyUserProfilePage />
+            </CompanyUserRoute>
+          }
+        />
+        <Route
+          path="/company/user/generate"
+          element={
+            <CompanyUserRoute>
+              <CompanyUserGeneratePage />
+            </CompanyUserRoute>
+          }
+        />
+        <Route
+          path="/company/user/reports"
+          element={
+            <CompanyUserRoute>
+              <CompanyUserReportsPage />
+            </CompanyUserRoute>
           }
         />
         <Route
@@ -380,41 +617,73 @@ function App() {
         <Route
           path="/admin/users"
           element={
-            <AdminRoute>
+            <AdminOnlyRoute>
               <AdminUsersPage />
-            </AdminRoute>
+            </AdminOnlyRoute>
           }
         />
         <Route
           path="/admin/pricing"
           element={
-            <AdminRoute>
+            <AdminOnlyRoute>
               <AdminPricingPage />
-            </AdminRoute>
+            </AdminOnlyRoute>
           }
         />
         <Route
           path="/admin/templates"
           element={
-            <AdminRoute>
+            <AdminOnlyRoute>
               <AdminTemplateConfigPage />
-            </AdminRoute>
+            </AdminOnlyRoute>
           }
         />
         <Route
           path="/admin/reports"
           element={
-            <AdminRoute>
+            <SuperAdminRoute>
               <AdminReportsPage />
-            </AdminRoute>
+            </SuperAdminRoute>
+          }
+        />
+        <Route
+          path="/company/reports"
+          element={
+            <AdminOrCompanyAdminRoute>
+              <CompanyAdminReportsPage />
+            </AdminOrCompanyAdminRoute>
+          }
+        />
+        <Route
+          path="/company/my-reports"
+          element={
+            <AdminOrCompanyAdminRoute>
+              <ReportsPage />
+            </AdminOrCompanyAdminRoute>
+          }
+        />
+        <Route
+          path="/company/credits"
+          element={
+            <AdminOrCompanyAdminRoute>
+              <CompanyManageCreditsPage />
+            </AdminOrCompanyAdminRoute>
+          }
+        />
+        <Route
+          path="/company/profile"
+          element={
+            <CompanyAdminRoute>
+              <CompanyAdminProfilePage />
+            </CompanyAdminRoute>
           }
         />
         <Route
           path="/admin/withdrawals"
           element={
-            <AdminRoute>
+            <AdminOnlyRoute>
               <AdminWithdrawalsPage />
-            </AdminRoute>
+            </AdminOnlyRoute>
           }
         />
         <Route
@@ -428,25 +697,66 @@ function App() {
         <Route
           path="/admin/generate"
           element={
-            <AdminRoute>
+            <AdminGenerateRoute>
               <AdminGenerateReportPage />
-            </AdminRoute>
+            </AdminGenerateRoute>
           }
         />
         <Route
           path="/admin/free-credits"
           element={
-            <AdminRoute>
+            <AdminOnlyRoute>
               <AdminFreeCreditsPage />
-            </AdminRoute>
+            </AdminOnlyRoute>
           }
         />
         <Route
           path="/admin/promotional-emails"
           element={
-            <AdminRoute>
+            <AdminOnlyRoute>
               <AdminPromotionalEmailsPage />
-            </AdminRoute>
+            </AdminOnlyRoute>
+          }
+        />
+        <Route
+          path="/admin/company/create"
+          element={
+            <AdminOnlyRoute>
+              <AdminCompanyCreatePage />
+            </AdminOnlyRoute>
+          }
+        />
+        <Route
+          path="/admin/companies"
+          element={
+            <AdminOnlyRoute>
+              <AdminCompaniesPage />
+            </AdminOnlyRoute>
+          }
+        />
+        {/* Static paths must be declared before :companyId or "create"/"new" are captured as ids */}
+        <Route
+          path="/admin/companies/create"
+          element={
+            <AdminOnlyRoute>
+              <AdminCompanyCreatePage />
+            </AdminOnlyRoute>
+          }
+        />
+        <Route
+          path="/admin/companies/new"
+          element={
+            <AdminOnlyRoute>
+              <AdminCompanyCreatePage />
+            </AdminOnlyRoute>
+          }
+        />
+        <Route
+          path="/admin/companies/:companyId"
+          element={
+            <AdminOrCompanyAdminRoute>
+              <AdminCreateCompanyPage />
+            </AdminOrCompanyAdminRoute>
           }
         />
 

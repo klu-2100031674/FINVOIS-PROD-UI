@@ -118,7 +118,8 @@ class WizardPlugin {
     tempBtn.className = 'temp-data-btn';
     tempBtn.style.cssText = `
       background: #6c757d; color: white; border: none; 
-      padding: 8px 16px; border-radius: 4px; margin: 10px;
+      padding: 8px 16px; border-radius: 4px;
+      margin: 10px 10px 10px auto; display: block;
       cursor: pointer; font-size: 12px;
     `;
 

@@ -47,6 +47,10 @@ const VALIDATION_STATUSES = [
 
 const AdminReportsPage = () => {
   const { user } = useAuth();
+  // Company admins are routed to /company/reports via SuperAdminRoute, so this
+  // page is effectively super-admin-only. The legacy `isCompanyAdmin` flag is
+  // kept (defaulting false) to avoid touching a lot of downstream JSX.
+  const isCompanyAdmin = false;
   const [reports, setReports] = useState([]);
   const [stats, setStats] = useState({
     pending: 0,
@@ -62,6 +66,8 @@ const AdminReportsPage = () => {
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
+  const [reportType, setReportType] = useState(''); // backend filter: report_type
+  const [reportTypeOptions, setReportTypeOptions] = useState([]);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [showFilters, setShowFilters] = useState(false);
   
@@ -78,6 +84,7 @@ const AdminReportsPage = () => {
   const [uploadFile, setUploadFile] = useState(null);
   const [revisionNotes, setRevisionNotes] = useState('');
   const [uploadLoading, setUploadLoading] = useState(false);
+  const [isDraggingUpload, setIsDraggingUpload] = useState(false);
   const fileInputRef = useRef(null);
   
   // Form data for modals
@@ -104,11 +111,26 @@ const AdminReportsPage = () => {
     }
   };
 
+  const fetchReportTypes = useCallback(async () => {
+    try {
+      const response = await api.get('/admin-reports/meta/report-types');
+      const types = response.data?.data?.report_types || [];
+      const templateIds = response.data?.data?.template_ids || [];
+      const merged = Array.from(new Set([...(types || []), ...(templateIds || [])].filter(Boolean).map(String))).sort(
+        (a, b) => a.localeCompare(b)
+      );
+      setReportTypeOptions(merged);
+    } catch (error) {
+      console.error('Error fetching report types:', error);
+    }
+  }, []);
+
   const fetchReports = useCallback(async (page = 1) => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
       if (activeTab) params.append('status', activeTab);
+      if (reportType) params.append('report_type', reportType);
       if (searchQuery) params.append('search', searchQuery);
       if (dateRange.start) params.append('start_date', dateRange.start);
       if (dateRange.end) params.append('end_date', dateRange.end);
@@ -125,7 +147,11 @@ const AdminReportsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, searchQuery, dateRange]);
+  }, [activeTab, reportType, searchQuery, dateRange]);
+
+  useEffect(() => {
+    fetchReportTypes();
+  }, [fetchReportTypes]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -276,30 +302,62 @@ const AdminReportsPage = () => {
     setShowUploadModal(true);
   };
 
+  const validateAndSetUploadFile = (file) => {
+    if (!file) return;
+    // Validate file type
+    const validTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel'
+    ];
+    const validExts = ['.xlsx', '.xls'];
+    const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+
+    if (!validTypes.includes(file.type) && !validExts.includes(ext)) {
+      toast.error('Please select a valid Excel file (.xlsx or .xls)');
+      return;
+    }
+
+    // Validate file size (25 MB)
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error('File size must be less than 25 MB');
+      return;
+    }
+
+    setUploadFile(file);
+  };
+
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Validate file type
-      const validTypes = [
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'application/vnd.ms-excel'
-      ];
-      const validExts = ['.xlsx', '.xls'];
-      const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
-      
-      if (!validTypes.includes(file.type) && !validExts.includes(ext)) {
-        toast.error('Please select a valid Excel file (.xlsx or .xls)');
-        return;
-      }
-      
-      // Validate file size (25 MB)
-      if (file.size > 25 * 1024 * 1024) {
-        toast.error('File size must be less than 25 MB');
-        return;
-      }
-      
-      setUploadFile(file);
-    }
+    validateAndSetUploadFile(file);
+  };
+
+  const handleUploadDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Explicitly signal drop is allowed
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+  };
+
+  const handleUploadDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingUpload(true);
+  };
+
+  const handleUploadDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only reset when leaving the dropzone (not entering child elements)
+    if (e.currentTarget && e.relatedTarget && e.currentTarget.contains(e.relatedTarget)) return;
+    setIsDraggingUpload(false);
+  };
+
+  const handleUploadDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingUpload(false);
+    const file = e.dataTransfer?.files?.[0] || null;
+    validateAndSetUploadFile(file);
   };
 
   const handleUploadRevisedExcel = async () => {
@@ -367,8 +425,8 @@ const AdminReportsPage = () => {
   const getStatusBadge = (status) => {
     const statusConfig = {
       pending_validation: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Pending' },
-      under_review: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Under Review' },
-      approved: { bg: 'bg-green-100', text: 'text-green-700', label: 'Approved' },
+      under_review: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Under Validation for CA' },
+      approved: { bg: 'bg-green-100', text: 'text-green-700', label: 'Validated by CA' },
       rejected: { bg: 'bg-red-100', text: 'text-red-700', label: 'Rejected' },
       draft: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Draft' }
     };
@@ -386,8 +444,14 @@ const AdminReportsPage = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Report Validation</h1>
-            <p className="text-gray-500 mt-1">Review and approve submitted reports</p>
+            <h1 className="text-2xl font-bold text-gray-800">
+              {isCompanyAdmin ? 'Company DPRs' : 'Report Validation'}
+            </h1>
+            <p className="text-gray-500 mt-1">
+              {isCompanyAdmin
+                ? 'View, review, and validate Detailed Project Reports generated by users in your company.'
+                : 'Review and approve submitted reports'}
+            </p>
           </div>
           <button
             onClick={() => { fetchReports(); fetchStats(); }}
@@ -469,13 +533,28 @@ const AdminReportsPage = () => {
         {/* Search and Filters */}
         <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
           <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
+            <div className="sm:w-56">
+              <select
+                value={reportType}
+                onChange={(e) => setReportType(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                title="Filter by report type"
+              >
+                <option value="">All Types</option>
+                {reportTypeOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by title, client name, template..."
+                placeholder="Search by applicant name or title..."
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
@@ -519,7 +598,7 @@ const AdminReportsPage = () => {
               <div className="flex items-end">
                 <button
                   type="button"
-                  onClick={() => { setDateRange({ start: '', end: '' }); setSearchQuery(''); }}
+                  onClick={() => { setDateRange({ start: '', end: '' }); setSearchQuery(''); setReportType(''); }}
                   className="px-4 py-2 text-gray-600 hover:text-gray-800"
                 >
                   Clear Filters
@@ -1003,7 +1082,9 @@ const AdminReportsPage = () => {
                       URL.revokeObjectURL(url);
                       toast.success('PDF downloaded successfully');
                     } catch (error) {
-                      toast.error('Failed to download PDF');
+                      toast.error(
+                        typeof error === 'string' ? error : error?.message || 'Failed to download PDF'
+                      );
                     }
                   }}
                   className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
@@ -1089,10 +1170,16 @@ const AdminReportsPage = () => {
                 />
                 <div
                   onClick={() => fileInputRef.current?.click()}
+                  onDragOver={handleUploadDragOver}
+                  onDragEnter={handleUploadDragEnter}
+                  onDragLeave={handleUploadDragLeave}
+                  onDrop={handleUploadDrop}
                   className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
                     uploadFile 
                       ? 'border-green-400 bg-green-50' 
-                      : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'
+                      : isDraggingUpload
+                        ? 'border-purple-500 bg-purple-50'
+                        : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'
                   }`}
                 >
                   {uploadFile ? (

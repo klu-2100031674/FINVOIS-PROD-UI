@@ -10,6 +10,7 @@ import { fetchReportById, uploadReportJson, selectCurrentReport } from '../store
 import { Button, Loading } from '../components/common';
 import toast from 'react-hot-toast';
 import { useAuth } from '../hooks';
+import { myReportsPathForRole } from '../utils/routePaths';
 
 const Stage3Page = () => {
   const navigate = useNavigate();
@@ -151,13 +152,7 @@ const Stage3Page = () => {
   };
 
   const handleGoBack = () => {
-    if (user?.role === 'admin' || user?.role === 'super_admin') {
-      navigate('/admin/reports');
-    } else if (user?.role === 'agent') {
-      navigate('/agent/reports');
-    } else {
-      navigate('/reports');
-    }
+    navigate(myReportsPathForRole(user?.role));
   };
 
   return (

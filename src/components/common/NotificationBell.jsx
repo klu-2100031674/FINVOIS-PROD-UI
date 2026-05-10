@@ -8,6 +8,7 @@ import { Bell, Check, Trash2, X, CheckCircle, XCircle, AlertCircle, Mail } from 
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks';
 import api from '../../api/apiClient';
+import { normalizeUserRole } from '../../utils/normalizeUserRole';
 
 const NotificationBell = () => {
   const navigate = useNavigate();
@@ -78,15 +79,24 @@ const NotificationBell = () => {
     
     // Navigate based on notification type
     if (notification.data?.report_id) {
-      if (user?.role === 'admin' || user?.role === 'super_admin') {
+      if (normalizeUserRole(user?.role) === 'company_admin') {
+        navigate('/company/reports');
+      } else if (normalizeUserRole(user?.role) === 'company_user') {
+        navigate('/company/user/reports');
+      } else if (normalizeUserRole(user?.role) === 'admin') {
         navigate('/admin/reports');
-      } else if (user?.role === 'agent') {
+      } else if (normalizeUserRole(user?.role) === 'agent') {
         navigate('/agent/reports');
       } else {
         navigate('/reports');
       }
     } else if (notification.data?.withdrawal_id) {
-      navigate('/profile'); // or wallet page
+      const r = normalizeUserRole(user?.role);
+      if (r === 'agent') navigate('/agent/profile');
+      else if (r === 'admin') navigate('/admin/profile');
+      else if (r === 'company_admin') navigate('/company/profile');
+      else if (r === 'company_user') navigate('/company/user/profile');
+      else navigate('/profile');
     }
   };
 

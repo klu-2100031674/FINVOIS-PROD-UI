@@ -1,4 +1,4 @@
-import apiClient, { API_BASE_URL } from './apiClient';
+import apiClient, { API_BASE_URL, REPORT_HEAVY_TIMEOUT } from './apiClient';
 
 /**
  * API Service - All backend API calls
@@ -11,7 +11,7 @@ import apiClient, { API_BASE_URL } from './apiClient';
 export const authAPI = {
   // Register new user
   register: async (userData) => {
-    const response = await apiClient.post('/users', userData);
+    const response = await apiClient.post('/users/register', userData);
     return response.data;
   },
 
@@ -41,10 +41,16 @@ export const authAPI = {
 
   // Reset password
   resetPassword: async (resetToken, newPassword) => {
-    const response = await apiClient.post('/users/reset-password', { 
-      resetToken, 
-      newPassword 
+    const response = await apiClient.post('/users/reset-password', {
+      resetToken,
+      newPassword
     });
+    return response.data;
+  },
+
+  // Force change password (first-login flow)
+  changePassword: async (newPassword) => {
+    const response = await apiClient.post('/users/change-password', { newPassword });
     return response.data;
   },
 };
@@ -104,7 +110,8 @@ export const reportAPI = {
   applyFormData: async (templateId, formData) => {
     const response = await apiClient.post(
       `/reports/templates/${templateId}/apply-form`,
-      formData
+      formData,
+      { timeout: REPORT_HEAVY_TIMEOUT }
     );
     return response.data;
   },
@@ -128,7 +135,8 @@ export const reportAPI = {
   applyFinalEdits: async (templateId, updates, recalculate = true) => {
     const response = await apiClient.post(
       `/reports/templates/${templateId}/apply-final`,
-      { updates, recalculate }
+      { updates, recalculate },
+      { timeout: REPORT_HEAVY_TIMEOUT }
     );
     return response.data;
   },
@@ -147,7 +155,9 @@ export const reportAPI = {
 
   // Create report record
   createReport: async (reportData) => {
-    const response = await apiClient.post('/reports', reportData);
+    const response = await apiClient.post('/reports', reportData, {
+      timeout: REPORT_HEAVY_TIMEOUT,
+    });
     return response.data;
   },
 
@@ -217,7 +227,7 @@ export const reportAPI = {
 
     const url = `/reports/templates/${templateId}/download-full-report`;
     console.log('🔗 [endpoints.generateFullReport] constructed URL:', url, 'selectedSheets:', payload.selectedSheets?.length || 0);
-    const response = await apiClient.post(url, payload);
+    const response = await apiClient.post(url, payload, { timeout: REPORT_HEAVY_TIMEOUT });
     return response.data;
   },
 
@@ -347,9 +357,9 @@ export const userAPI = {
     return response.data;
   },
 
-  // Create super admin
-  createSuperAdmin: async (adminData) => {
-    const response = await apiClient.post('/users/create-super-admin', adminData);
+  // Create admin
+  createAdmin: async (adminData) => {
+    const response = await apiClient.post('/users/create-admin', adminData);
     return response.data;
   },
 
@@ -384,9 +394,9 @@ export const userAPI = {
 // ============================================================================
 
 export const adminAPI = {
-  // Create super admin
-  createSuperAdmin: async (adminData) => {
-    const response = await apiClient.post('/users/create-super-admin', adminData);
+  // Create admin
+  createAdmin: async (adminData) => {
+    const response = await apiClient.post('/users/create-admin', adminData);
     return response.data;
   },
 
@@ -499,6 +509,121 @@ export const agentAPI = {
 };
 
 // ============================================================================
+// Company APIs
+// ============================================================================
+
+export const companyAPI = {
+  normalizeCompanyId: (companyId) => String(companyId || '').trim(),
+  createCompany: async (companyData) => {
+    const response = await apiClient.post('/company/create', companyData);
+    return response.data;
+  },
+  getAllCompanies: async () => {
+    const response = await apiClient.get('/company/all');
+    return response.data;
+  },
+  getCompanyById: async (companyId) => {
+    const normalizedCompanyId = companyAPI.normalizeCompanyId(companyId);
+    const response = await apiClient.get(`/company/${normalizedCompanyId}`);
+    return response.data;
+  },
+  toggleCompanyStatus: async (companyId) => {
+    const normalizedCompanyId = companyAPI.normalizeCompanyId(companyId);
+    const response = await apiClient.patch(`/company/${normalizedCompanyId}/status`);
+    return response.data;
+  },
+  updateCompany: async (companyId, companyData) => {
+    const normalizedCompanyId = companyAPI.normalizeCompanyId(companyId);
+    const response = await apiClient.patch(`/company/${normalizedCompanyId}`, companyData);
+    return response.data;
+  },
+  updateCompanyStatus: async (companyId, isActive) => {
+    const normalizedCompanyId = companyAPI.normalizeCompanyId(companyId);
+    const response = await apiClient.patch(`/company/${normalizedCompanyId}/status`, { isActive });
+    return response.data;
+  },
+  getCompanyAdminCandidates: async (companyId) => {
+    const normalizedCompanyId = companyAPI.normalizeCompanyId(companyId);
+    const response = await apiClient.get(`/company/${normalizedCompanyId}/admin-candidates`);
+    return response.data;
+  },
+  getCompanyUserCandidates: async (companyId) => {
+    const normalizedCompanyId = companyAPI.normalizeCompanyId(companyId);
+    const response = await apiClient.get(`/company/${normalizedCompanyId}/user-candidates`);
+    return response.data;
+  },
+  assignCompanyAdmin: async (companyId, companyAdminId) => {
+    const normalizedCompanyId = companyAPI.normalizeCompanyId(companyId);
+    const response = await apiClient.patch(`/company/${normalizedCompanyId}/assign-admin`, { companyAdminId });
+    return response.data;
+  },
+  addCompanyAdmins: async (companyId, userIds) => {
+    const normalizedCompanyId = companyAPI.normalizeCompanyId(companyId);
+    const response = await apiClient.post(`/company/${normalizedCompanyId}/company-admins/add`, { userIds });
+    return response.data;
+  },
+  removeCompanyAdmin: async (companyId, userId) => {
+    const normalizedCompanyId = companyAPI.normalizeCompanyId(companyId);
+    const response = await apiClient.delete(`/company/${normalizedCompanyId}/company-admins/${userId}`);
+    return response.data;
+  },
+  getCompanyAnalytics: async (companyId) => {
+    const normalizedCompanyId = companyAPI.normalizeCompanyId(companyId);
+    const response = await apiClient.get(`/company/${normalizedCompanyId}/analytics`);
+    return response.data;
+  },
+  getCompanyUsers: async (companyId) => {
+    const normalizedCompanyId = companyAPI.normalizeCompanyId(companyId);
+    const response = await apiClient.get('/users', {
+      params: { companyId: normalizedCompanyId }
+    });
+    return response.data;
+  },
+  createCompanyUser: async (companyId, userData) => {
+    const normalizedCompanyId = companyAPI.normalizeCompanyId(companyId);
+    const response = await apiClient.post('/users', {
+      ...userData,
+      companyId: normalizedCompanyId,
+      village_city: 'NIL',
+      mandal: 'NIL',
+      district: 'NIL',
+      state: 'NIL',
+      designation: 'NIL',
+      designation_other: 'NIL',
+      organization_name: 'NIL',
+      address: 'NIL'
+    });
+    return response.data;
+  },
+  updateCompanyUser: async (userId, payload) => {
+    const body = { ...payload };
+    if (Object.prototype.hasOwnProperty.call(body, 'companyId') && body.companyId != null) {
+      body.companyId = companyAPI.normalizeCompanyId(body.companyId);
+    }
+    const response = await apiClient.patch(`/users/${userId}`, body);
+    return response.data;
+  },
+  uploadLogo: async (formData) => {
+    const response = await apiClient.post('/company/upload-logo', formData);
+    return response.data;
+  },
+  clearLogo: async (companyId, body) => {
+    const normalizedCompanyId = companyAPI.normalizeCompanyId(companyId);
+    const response = await apiClient.delete(`/company/${normalizedCompanyId}/logo`, {
+      data: body
+    });
+    return response.data;
+  },
+  transferFreeCredits: async (targetUserId, credits) => {
+    const response = await apiClient.post('/users/company-admin/transfer-free-credits', {
+      targetUserId,
+      credits
+    });
+    return response.data;
+  },
+};
+
+// ============================================================================
 // Excel Files APIs
 // ============================================================================
 
@@ -594,6 +719,7 @@ export default {
   commission: commissionAPI,
   admin: adminAPI,
   agent: agentAPI,
+  company: companyAPI,
   user: userAPI,
   excelFile: excelFileAPI,
   schemeEligibility: schemeEligibilityAPI,

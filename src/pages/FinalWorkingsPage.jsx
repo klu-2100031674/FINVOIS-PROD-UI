@@ -31,7 +31,7 @@ const FinalWorkingsPage = () => {
     // Navigate back to Stage1Page to show the updated results
     console.log('Proceeding with final data:', finalData);
     
-    navigate(`/stage1?reportId=${calculationData?.reportId || 'temp'}&templateId=${templateId}`, {
+    navigate(`/stage1?reportId=${calculationData?.reportId || 'temp'}&templateId=${calculationData?.templateId || 'frcc1'}`, {
       state: { 
         finalData,
         calculationData 

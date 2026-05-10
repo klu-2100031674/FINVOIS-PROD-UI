@@ -5,6 +5,7 @@ import { useAuth } from '../hooks';
 import { selectFormData, setFormData, clearGeneratedExcel } from '../store/slices/reportSlice';
 import FRCC2Form from '../components/forms/FRCC2Form';
 import toast from 'react-hot-toast';
+import ClientLayout from '../components/layouts/ClientLayout';
 
 const FRCC2FormPage = () => {
   const navigate = useNavigate();
@@ -64,17 +65,19 @@ const FRCC2FormPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <FRCC2Form 
-        onSubmit={handleSubmit}
-        templateId={templateId}
-        initialData={isEditMode && storedFormData?.formData ? storedFormData.formData : null}
-        isEditMode={isEditMode}
-        reportId={reportId}
-        isProcessing={isProcessing}
-        onFormDataChange={handleFormDataChange}
-      />
-    </div>
+    <ClientLayout>
+      <div className="py-2 sm:py-4">
+        <FRCC2Form
+          onSubmit={handleSubmit}
+          templateId={templateId}
+          initialData={isEditMode && storedFormData?.formData ? storedFormData.formData : null}
+          isEditMode={isEditMode}
+          reportId={reportId}
+          isProcessing={isProcessing}
+          onFormDataChange={handleFormDataChange}
+        />
+      </div>
+    </ClientLayout>
   );
 };
 

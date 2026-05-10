@@ -112,7 +112,7 @@ const AdminWithdrawalsPage = () => {
     <AdminLayout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Withdrawal Management</h1>
-        <p className="text-gray-500 mt-1">Review and process agent withdrawal requests</p>
+        <p className="text-gray-500 mt-1">Review and process channel partner withdrawal requests</p>
       </div>
 
       {/* Stats Cards */}
@@ -172,7 +172,7 @@ const AdminWithdrawalsPage = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text"
-              placeholder="Search by agent name or email..."
+              placeholder="Search by channel partner name or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -211,7 +211,7 @@ const AdminWithdrawalsPage = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Agent
+                  Channel partner
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Amount
@@ -246,7 +246,7 @@ const AdminWithdrawalsPage = () => {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
-                            {withdrawal.agent_id?.name || 'Agent'}
+                            {withdrawal.agent_id?.name || 'Channel partner'}
                           </div>
                           <div className="text-sm text-gray-500">
                             {withdrawal.agent_id?.email || 'N/A'}
@@ -342,14 +342,14 @@ const AdminWithdrawalsPage = () => {
               </div>
 
               <div className="space-y-4">
-                {/* Agent Info */}
+                {/* Channel partner info */}
                 <div className="flex items-center space-x-4 pb-4 border-b border-gray-200">
                   <div className="h-14 w-14 rounded-full bg-purple-500 flex items-center justify-center text-white text-xl font-medium">
                     {selectedWithdrawal.agent_id?.name?.charAt(0).toUpperCase() || 'A'}
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800">
-                      {selectedWithdrawal.agent_id?.name || 'Agent'}
+                      {selectedWithdrawal.agent_id?.name || 'Channel partner'}
                     </h3>
                     <p className="text-gray-500">{selectedWithdrawal.agent_id?.email}</p>
                   </div>

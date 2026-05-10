@@ -11,13 +11,16 @@ import {
   Phone,
   MapPin,
   Camera,
-  ArrowLeft,
   Save,
   Mail,
   ShieldCheck,
   CreditCard,
-  Briefcase
+  Briefcase,
+  Gift
 } from 'lucide-react';
+import ClientLayout from '../components/layouts/ClientLayout';
+import { formatRoleForDisplay } from '../utils/roleDisplay';
+import { companyAPI } from '../api/endpoints';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -45,6 +48,29 @@ const ProfilePage = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('personal');
+  const [companyBranding, setCompanyBranding] = useState({
+    apLogoUrl: '',
+    companyLogoUrl: ''
+  });
+  const dataSource = profile || user;
+  const companyLogo1 =
+    dataSource?.apLogoDisplayUrl ||
+    dataSource?.apLogoUrl ||
+    companyBranding.apLogoUrl ||
+    '';
+  const companyLogo2 =
+    dataSource?.companyLogoDisplayUrl ||
+    dataSource?.companyLogoUrl ||
+    companyBranding.companyLogoUrl ||
+    formData.company_logo ||
+    '';
+  const companyIdValue =
+    dataSource?.companyId?._id ||
+    dataSource?.companyId?.id ||
+    dataSource?.companyId ||
+    '';
+  const displayRole = formatRoleForDisplay(dataSource?.role || 'user', dataSource);
+  const freeCredits = Number(dataSource?.free_reports_count || 0);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -55,7 +81,6 @@ const ProfilePage = () => {
   }, [dispatch, isAuthenticated, navigate]);
 
   useEffect(() => {
-    const dataSource = profile || user;
     if (dataSource) {
       setFormData({
         name: dataSource.name || '',
@@ -73,7 +98,26 @@ const ProfilePage = () => {
         organization_name: dataSource.organization_name || ''
       });
     }
-  }, [user, profile]);
+  }, [user, profile, dataSource]);
+
+  useEffect(() => {
+    const loadCompanyBranding = async () => {
+      if (!companyIdValue) return;
+      if (companyLogo1 && companyLogo2) return;
+      try {
+        const response = await companyAPI.getCompanyById(companyIdValue);
+        const company = response?.data || {};
+        setCompanyBranding({
+          apLogoUrl: company.apLogoDisplayUrl || company.apLogoUrl || '',
+          companyLogoUrl: company.companyLogoDisplayUrl || company.companyLogoUrl || ''
+        });
+      } catch (err) {
+        // Keep UI graceful; logos can still render from profile fields when available.
+        setCompanyBranding({ apLogoUrl: '', companyLogoUrl: '' });
+      }
+    };
+    loadCompanyBranding();
+  }, [companyIdValue, companyLogo1, companyLogo2]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -108,29 +152,33 @@ const ProfilePage = () => {
     }
   };
 
-  if (loading && !profile) return <Loading fullScreen text="Loading profile..." />;
+  if (loading && !profile) {
+    return (
+      <ClientLayout>
+        <div className="flex justify-center py-24">
+          <Loading text="Loading profile..." />
+        </div>
+      </ClientLayout>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                aria-label="Back to Dashboard"
-              >
-                <ArrowLeft className="w-5 h-5 text-gray-600" />
-              </button>
-              <h1 className="text-xl font-bold text-gray-900 font-manrope">Profile Settings</h1>
+    <ClientLayout>
+      <div className="py-4 sm:py-6">
+        <h1 className="text-xl font-bold text-gray-900 font-manrope mb-6">Profile settings</h1>
+        {freeCredits > 0 && (
+          <div className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-100 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white rounded-lg border border-purple-100">
+                <Gift className="w-5 h-5 text-purple-700" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Free Credits Available</p>
+                <p className="text-xl font-bold text-purple-800">{freeCredits}</p>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        )}
         <div className="flex flex-col lg:flex-row gap-8">
 
           {/* Left Sidebar - Profile Card */}
@@ -155,7 +203,7 @@ const ProfilePage = () => {
 
               <div className="flex justify-center gap-2">
                 <span className="px-3 py-1 bg-purple-50 text-purple-700 text-xs font-semibold rounded-full border border-purple-100">
-                  Free Plan
+                  {displayRole}
                 </span>
                 <span className="px-3 py-1 bg-green-50 text-green-700 text-xs font-semibold rounded-full border border-green-100">
                   Active
@@ -331,38 +379,19 @@ const ProfilePage = () => {
                 {/* Company Info Tab */}
                 {activeTab === 'company' && (
                   <div className="space-y-6 animate-fadeIn">
-                    <div className="flex items-center justify-between mb-6">
+                    <div className="mb-6">
                       <h3 className="text-lg font-bold text-gray-900">Company Information</h3>
-                      <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="hidden md:flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isSubmitting ? <Loading small white /> : <Save className="w-4 h-4" />}
-                        Save Changes
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-6 mb-8 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                      <div className="w-16 h-16 bg-white rounded-lg shadow-sm border border-gray-200 flex items-center justify-center overflow-hidden">
-                        {formData.company_logo ? (
-                          <img src={formData.company_logo} alt="Company" className="w-full h-full object-cover" />
-                        ) : (
-                          <Building2 className="w-8 h-8 text-gray-300" />
-                        )}
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-900 mb-1">Company Logo</h4>
-                        <p className="text-xs text-gray-500 mb-3">Recommended size: 400x400px</p>
-                        <label className="cursor-pointer inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700">
-                          <ArrowLeft className="w-3 h-3 rotate-90" />
-                          Upload New Logo
-                          <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload('company_logo')} />
-                        </label>
-                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-6">
+                      <Input
+                        label="Company ID"
+                        name="company_id"
+                        value={companyIdValue}
+                        placeholder="Not available"
+                        icon={Building2}
+                        disabled
+                      />
                       <Input
                         label="Company Name"
                         name="company_name"
@@ -370,17 +399,29 @@ const ProfilePage = () => {
                         onChange={handleInputChange}
                         placeholder="e.g. Finvois Solutions Pvt Ltd"
                         icon={Building2}
+                        disabled
                       />
-                      <div className="space-y-1">
-                        <label className="block text-sm font-medium text-gray-700">Business Address</label>
-                        <textarea
-                          name="address"
-                          value={formData.address}
-                          onChange={handleInputChange}
-                          rows="3"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                          placeholder="Enter full business address"
-                        />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-1">
+                          <label className="block text-sm font-medium text-gray-700">Logo 1</label>
+                          <div className="h-36 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
+                            {companyLogo1 ? (
+                              <img src={companyLogo1} alt="Logo 1" className="h-full w-full object-contain" />
+                            ) : (
+                              <span className="text-sm text-gray-400">Logo 1 not available</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="block text-sm font-medium text-gray-700">Logo 2</label>
+                          <div className="h-36 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
+                            {companyLogo2 ? (
+                              <img src={companyLogo2} alt="Logo 2" className="h-full w-full object-contain" />
+                            ) : (
+                              <span className="text-sm text-gray-400">Logo 2 not available</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -401,7 +442,7 @@ const ProfilePage = () => {
           </div>
         </div>
       </div>
-    </div>
+    </ClientLayout>
   );
 };
 

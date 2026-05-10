@@ -14,6 +14,8 @@ import { applyFinalEdits } from "../store/slices/reportSlice";
 import { selectRelatedDocuments, clearRelatedDocuments } from '../store/slices/reportSlice';
 import { resolveReportTitle } from "../utils/reportTitle";
 import toast from "react-hot-toast";
+import ClientLayout from "../components/layouts/ClientLayout";
+import AdminLayout from "../components/layouts/AdminLayout";
 
 const Stage1Page = () => {
   const navigate = useNavigate();
@@ -23,8 +25,13 @@ const Stage1Page = () => {
   const [searchParams] = useSearchParams();
   const dispatch = useDispatch();
   const { user } = useAuth();
+  const normalizedRole = String(user?.role || "").toLowerCase();
+  const isCompanyAdmin = normalizedRole === "company_admin";
+  const LayoutComponent = isCompanyAdmin ? AdminLayout : ClientLayout;
+  const layoutProps = isCompanyAdmin ? {} : { wideContent: true };
   const reportId = searchParams.get("reportId");
   const templateId = searchParams.get("templateId");
+  const hideSidebar = true;
   const isAdminMode = searchParams.get("admin") === "true";
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingFullReport, setIsGeneratingFullReport] = useState(false);
@@ -88,7 +95,7 @@ const Stage1Page = () => {
       return Number.isFinite(rawValue) ? rawValue : "";
     }
     if (typeof rawValue === "string") {
-      const sanitized = rawValue.replace(/[^0-9.\-]/g, "");
+      const sanitized = rawValue.replace(/[^0-9.-]/g, "");
       if (!sanitized) {
         return "";
       }
@@ -123,6 +130,9 @@ const Stage1Page = () => {
     if (highlightedCellRef.current) {
       highlightedCellRef.current.style.outline = "";
       highlightedCellRef.current.style.outlineOffset = "";
+      highlightedCellRef.current.style.border = "";
+      highlightedCellRef.current.style.boxSizing = "";
+      highlightedCellRef.current.style.boxShadow = "";
     }
     highlightedCellRef.current = null;
     selectedCellElementRef.current = null;
@@ -150,10 +160,15 @@ const Stage1Page = () => {
       ) {
         highlightedCellRef.current.style.outline = "";
         highlightedCellRef.current.style.outlineOffset = "";
+        highlightedCellRef.current.style.border = "";
+        highlightedCellRef.current.style.boxSizing = "";
+        highlightedCellRef.current.style.boxShadow = "";
       }
       highlightedCellRef.current = cellElement;
-      cellElement.style.outline = "2px solid #10b981";
-      cellElement.style.outlineOffset = "-2px";
+      cellElement.style.boxSizing = "border-box";
+      cellElement.style.outline = "none";
+      cellElement.style.outlineOffset = "0";
+      cellElement.style.border = "2px solid #000000";
 
       selectedCellElementRef.current = cellElement;
       setSelectedCell({
@@ -368,6 +383,20 @@ const Stage1Page = () => {
     console.log("✅ [Stage1Page.useEffect] HTML content available - rendering");
     setFileName(pdfFileName || "FinalWorkings");
     lastRenderedHtmlRef.current = htmlContent;
+    // #region agent log
+    try {
+      const htmlString = String(htmlContent || "");
+      const imgTags = htmlString.match(/<img\b[^>]*>/gi) || [];
+      const srcs = Array.from(htmlString.matchAll(/\bsrc\s*=\s*["']([^"']+)["']/gi))
+        .map((m) => m[1])
+        .filter(Boolean);
+      const hasApLike = srcs.some((s) => /aplogo|ap_logo|logo1|apLogo/i.test(s));
+      const hasCompanyLike = srcs.some((s) => /companylogo|company_logo|logo2|companyLogo/i.test(s));
+      fetch('http://127.0.0.1:7384/ingest/fee4a383-4f25-45c3-bb64-8d6d21b935e9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'92ac45'},body:JSON.stringify({sessionId:'92ac45',runId:'pre-fix',hypothesisId:'H3-H4',location:'Stage1Page.jsx:374',message:'Scanned htmlContent for images/logos',data:{templateId:String(templateId||''),htmlLen:htmlString.length,imgTagCount:imgTags.length,srcCount:srcs.length,hasApLike,hasCompanyLike,sampleSrcs:srcs.slice(0,4).map(s=>String(s).slice(0,120))},timestamp:Date.now()})}).catch(()=>{});
+    } catch (_) {
+      fetch('http://127.0.0.1:7384/ingest/fee4a383-4f25-45c3-bb64-8d6d21b935e9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'92ac45'},body:JSON.stringify({sessionId:'92ac45',runId:'pre-fix',hypothesisId:'H3-H4',location:'Stage1Page.jsx:374',message:'Failed scanning htmlContent',data:{templateId:String(templateId||'')},timestamp:Date.now()})}).catch(()=>{});
+    }
+    // #endregion
     displayHTMLContent(htmlContent);
   }, [
     displayHTMLContent,
@@ -773,9 +802,10 @@ const Stage1Page = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col">
+    <LayoutComponent {...layoutProps} hideSidebar={hideSidebar}>
+      <div className="flex-1 flex flex-col min-h-0">
       {/* Header */}
-      <header className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white">
+      <header className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white flex-shrink-0">
         <Button
           onClick={() => {
             if (isAdminMode) {
@@ -790,7 +820,7 @@ const Stage1Page = () => {
           size="sm"
         >
           <i className="fas fa-arrow-left mr-2"></i>
-          {isAdminMode ? "Back to Templates" : "Back to Dashboard"}
+          {isAdminMode ? "Back" : "Back to Dashboard"}
         </Button>
         {/* <Button onClick={handleProceed} variant="primary" size="md">
           Edit Report
@@ -805,7 +835,7 @@ const Stage1Page = () => {
             variant={isEditMode ? "outline" : "primary"}
             size="md"
           >
-            {isEditMode ? "Exit Edit Mode" : "Edit Final Sheet"}
+            {isEditMode ? "Exit Edit Mode" : "Edit Financial Generated"}
           </Button>
         )}
         <Button
@@ -815,7 +845,7 @@ const Stage1Page = () => {
           loading={isGeneratingFullReport}
         >
           <i className="fas fa-magic mr-2"></i>
-          Generate DPR Report
+          Send report for CA Validation
         </Button>
         {isAdminMode && (
           <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
@@ -827,7 +857,7 @@ const Stage1Page = () => {
       </header>
 
       {/* Content Area - Clean display without PDF indicators */}
-      <div className="flex-1 relative flex">
+      <div className="flex-1 relative flex min-h-0">
         <div className="flex-1 relative">
           {isLoading && (
             <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50">
@@ -1013,7 +1043,8 @@ const Stage1Page = () => {
 
       {/* Report Generation Progress Modal */}
       <ReportGenerationModal isOpen={isGeneratingFullReport} />
-    </div>
+      </div>
+    </LayoutComponent>
   );
 };
 

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   DocumentTextIcon,
-  CurrencyDollarIcon,
+  CurrencyRupeeIcon,
   CalendarIcon,
   ChartBarIcon,
   BuildingOfficeIcon,
@@ -13,6 +13,8 @@ import {
   TrashIcon,
   InformationCircleIcon
 } from '@heroicons/react/24/outline';
+
+import SaveDraftButton from '../common/SaveDraftButton';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -73,6 +75,31 @@ const getAssetSections = (tenure) => {
 
 // Default for initialization
 const ASSET_SECTIONS = ASSET_SECTIONS_DEFAULT;
+const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+const LEGACY_SERVICE_WITH_STOCK_LABEL = 'Service Sector (With stock)';
+
+const normalizeGeneralInformation = (generalInfo = {}) => {
+  const normalized = { ...generalInfo };
+  const firmPan = String(normalized.i18 || '').trim().toUpperCase();
+  const educationOrLegacyPan = String(normalized.i19 || '').trim().toUpperCase();
+
+  // Backward compatibility for previously saved drafts where:
+  // i18 held "Type of Entity" (e.g. "New"), i19 held PAN, i20 held Education.
+  if (firmPan && !PAN_REGEX.test(firmPan) && PAN_REGEX.test(educationOrLegacyPan)) {
+    normalized.i18 = educationOrLegacyPan;
+    if (normalized.i20) {
+      normalized.i19 = normalized.i20;
+    } else {
+      normalized.i19 = '';
+    }
+  }
+
+  if (normalized.i14 === LEGACY_SERVICE_WITH_STOCK_LABEL) {
+    normalized.i14 = 'service sector with stock';
+  }
+
+  return normalized;
+};
 
 const FRTermLoanWithStockForm = ({
   onSubmit,
@@ -80,7 +107,10 @@ const FRTermLoanWithStockForm = ({
   isEditMode = false,
   reportId = null,
   isProcessing = false,
-  onFormDataChange = null
+  onFormDataChange = null,
+  templateId = null,
+  presetSector = null,
+  lockSector = false,
 }) => {
   const defaultFormData = {
     'General Information': {
@@ -217,7 +247,7 @@ const FRTermLoanWithStockForm = ({
     if (initialData && Object.keys(initialData).length > 0) {
       const merged = { ...defaultFormData };
       for (const key in initialData) {
-        if (initialData.hasOwnProperty(key)) {
+        if (Object.hasOwn(initialData, key)) {
           if (typeof initialData[key] === 'object' && initialData[key] !== null && typeof merged[key] === 'object' && merged[key] !== null) {
             merged[key] = { ...merged[key], ...initialData[key] };
           } else {
@@ -225,9 +255,25 @@ const FRTermLoanWithStockForm = ({
           }
         }
       }
+      if (merged['General Information']) {
+        merged['General Information'] = normalizeGeneralInformation(merged['General Information']);
+      }
+      if (presetSector) {
+        merged['General Information'] = {
+          ...(merged['General Information'] || {}),
+          i14: presetSector,
+        };
+      }
       return merged;
     }
-    return defaultFormData;
+    const base = {
+      ...defaultFormData,
+      'General Information': { ...defaultFormData['General Information'] },
+    };
+    if (presetSector) {
+      base['General Information'].i14 = presetSector;
+    }
+    return base;
   });
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -278,7 +324,7 @@ const FRTermLoanWithStockForm = ({
     { key: 'term', title: 'Means of Finance details', icon: CreditCardIcon },
     { key: 'assets', title: 'Schedule for Assets', icon: BuildingOfficeIcon },
     { key: 'employment', title: 'Expected Employment Generation', icon: ChartBarIcon },
-    { key: 'expenses', title: 'Schedule for Indirect Expenses (Per Month)', icon: CurrencyDollarIcon },
+    { key: 'expenses', title: 'Schedule for Indirect Expenses (Per Month)', icon: CurrencyRupeeIcon },
     { key: 'prepared_by', title: 'Prepared By', icon: BuildingOfficeIcon }
   ];
 
@@ -594,6 +640,13 @@ const FRTermLoanWithStockForm = ({
   }, [formData, currentStep, sections, visitedAssetCategories, categoriesWithItems, loanPercentages, validateGeneralInformation, validateMeansOfFinance]);
 
   const handleFieldChange = useCallback((sectionTitle, fieldId, value) => {
+    if (
+      lockSector &&
+      sectionTitle === 'General Information' &&
+      fieldId === 'i14'
+    ) {
+      return;
+    }
     const normalizedValue =
       sectionTitle === 'General Information' && (fieldId === 'i11' || fieldId === 'i18')
         ? String(value || '').toUpperCase()
@@ -636,7 +689,13 @@ const FRTermLoanWithStockForm = ({
         }
       }
     }
-  }, [generalInfoErrors, meansOfFinanceErrors, validateGeneralInformation, validateMeansOfFinance]);
+  }, [
+    generalInfoErrors,
+    meansOfFinanceErrors,
+    validateGeneralInformation,
+    validateMeansOfFinance,
+    lockSector,
+  ]);
 
   const handleAssetChange = useCallback((assetKey, value) => {
     setFormData(prev => ({
@@ -868,11 +927,11 @@ const FRTermLoanWithStockForm = ({
         'i15': 'Manufacturing of Goods',
         'i16': '17-3-47,thadepalli center, Vijayawada',
         'i17': 'Praveen Kumar',
-        'i18': 'New',
-        'i19': 'ABCDE1234F',
-        'i20': 'Graduate',
-        'i21': 'PMEGP',
-        'i22': 'OC',
+        'i18': 'ABCDE1234F',
+        'i19': 'Graduate',
+        'i20': 'PMEGP',
+        'i21': 'OC',
+        'i22': '',
         'i23': 'Urban(Other than Panchayat)'
       },
       'Prepared By': {
@@ -1322,14 +1381,15 @@ const FRTermLoanWithStockForm = ({
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">Sector</label>
               <select
-                className="w-full p-2 border border-gray-300 rounded-md"
+                className={`w-full p-2 border border-gray-300 rounded-md ${lockSector ? 'bg-gray-100 text-gray-700 cursor-not-allowed' : ''}`}
+                disabled={lockSector}
                 value={formData['General Information']['i14']}
                 onChange={(e) => handleFieldChange('General Information', 'i14', e.target.value)}
               >
                 <option value="">Select Sector</option>
                 <option value="Manufacturing sector">Manufacturing sector</option>
-                <option value="Service Sector (With stock)">Service Sector (With stock)</option>
-                <option value="Service sector (Without stock)">Trading sector</option>
+                <option value="service sector with stock">service sector with stock</option>
+                <option value="Trading sector">Trading sector</option>
               </select>
             </div>
             <div className="space-y-2">
@@ -1401,6 +1461,7 @@ const FRTermLoanWithStockForm = ({
                 <option value="PMMSY">PMMSY</option>
                 <option value="Startup India">Startup India</option>
                    <option value="CMEGP">CMEGP</option>
+                   <option value="CMPE">CMPE</option>
                 <option value="Other MSME">Other MSME</option>
               </select>
             </div>
@@ -1617,7 +1678,7 @@ const FRTermLoanWithStockForm = ({
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">First sale bill month</label>
+              <label className="block text-sm font-medium text-gray-700">First Sale Bill Month</label>
               <input
                 type="month"
                 className="w-full p-2 border border-gray-300 rounded-md"
@@ -1651,7 +1712,7 @@ const FRTermLoanWithStockForm = ({
           </div>
         );
 
-      case 'assets':
+      case 'assets': {
         const currentSections = getAssetSections(formData['Term Loan Details']?.['i46']);
         const assetCategories = Object.keys(currentSections);
         const activeCategoryName = assetCategories[activeAssetTab] || assetCategories[0];
@@ -1832,8 +1893,9 @@ const FRTermLoanWithStockForm = ({
             </div>
           </div>
         );
+      }
 
-      case 'expenses':
+      case 'expenses': {
         const expenseCategories = Object.keys(formData['Schedule for Indirect Expenses']);
         const activeCategory = expenseCategories[indirectActiveTab] || expenseCategories[0];
         const activeExpenses = formData['Schedule for Indirect Expenses'][activeCategory];
@@ -1978,6 +2040,7 @@ const FRTermLoanWithStockForm = ({
             </div>
           </div>
         );
+      }
 
       case 'prepared_by': return renderPreparedBy();
       default: return null;
@@ -2025,7 +2088,7 @@ const FRTermLoanWithStockForm = ({
           <p className="text-gray-600 text-sm">Manufacturing & Service Sector (With Stock)</p>
         </div>
 
-        <div className="mb-4 flex justify-center">
+        <div className="mb-4 flex justify-end">
           <button
             className="px-4 py-2 border-2 border-gray-800 text-gray-800 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-300 text-xs font-medium"
             onClick={fillTestData}
@@ -2102,39 +2165,46 @@ const FRTermLoanWithStockForm = ({
             Previous
           </button>
 
-          {currentStep === sections.length - 1 ? (
-            <button
-              type="button"
-              className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-              onClick={handleSubmit}
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 3 8l3-2.709z"></path>
-                  </svg>
-                  {isEditMode ? 'Updating...' : 'Submitting...'}
-                </>
-              ) : (
-                <>
-                  <CheckCircleIcon className="w-4 h-4" />
-                  {isEditMode ? 'Save & Update' : 'Submit Application'}
-                </>
-              )}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-300 font-medium text-sm flex items-center gap-1"
-              onClick={handleNext}
-              disabled={sections[currentStep].key !== 'general' && sections[currentStep].key !== 'term' && !canProceed}
-            >
-              Next
-              <ChevronRightIcon className="w-4 h-4" />
-            </button>
-          )}
+          <div className="flex gap-3">
+            <SaveDraftButton 
+              templateId={templateId} 
+              currentStep={`/stage1?templateId=${templateId}`} 
+              currentFormData={formData} 
+            />
+            {currentStep === sections.length - 1 ? (
+              <button
+                type="button"
+                className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                onClick={handleSubmit}
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 3 8l3-2.709z"></path>
+                    </svg>
+                    {isEditMode ? 'Updating...' : 'Submitting...'}
+                  </>
+                ) : (
+                  <>
+                    <CheckCircleIcon className="w-4 h-4" />
+                    {isEditMode ? 'Save & Update' : 'Submit Application'}
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-300 font-medium text-sm flex items-center gap-1"
+                onClick={handleNext}
+                disabled={sections[currentStep].key !== 'general' && sections[currentStep].key !== 'term' && !canProceed}
+              >
+                Next
+                <ChevronRightIcon className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {!canProceed && currentStep < sections.length - 1 && (

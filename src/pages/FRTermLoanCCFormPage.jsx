@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import FRTermLoanCCForm from '../components/forms/FRTermLoanCCForm';
 import { applyFormData, clearGeneratedExcel } from '../store/slices/reportSlice';
+import ClientLayout from '../components/layouts/ClientLayout';
 
 const FRTermLoanCCFormPage = () => {
   const dispatch = useDispatch();
@@ -33,8 +34,8 @@ const FRTermLoanCCFormPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <ClientLayout>
+      <div className="py-2 sm:py-4">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Term Loan + CC Loan</h1>
           <p className="mt-2 text-sm text-gray-600">
@@ -43,7 +44,7 @@ const FRTermLoanCCFormPage = () => {
         </div>
         <FRTermLoanCCForm onSubmit={handleFormSubmit} />
       </div>
-    </div>
+    </ClientLayout>
   );
 };
 

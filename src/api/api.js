@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { REPORT_HEAVY_TIMEOUT } from './apiClient';
+import { getApiBaseUrl } from '../utils/env';
 
 /**
  * Centralized API Service
@@ -6,14 +8,14 @@ import axios from 'axios';
  */
 
 // Configuration
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, ''); // Remove trailing slash
-const API_TIMEOUT = import.meta.env.VITE_API_TIMEOUT || 30000;
+const API_BASE_URL = getApiBaseUrl();
+const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT || '30000', 10);
 const TOKEN_KEY = import.meta.env.VITE_TOKEN_STORAGE_KEY || 'ca_auth_token';
 
 // Create axios instance
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: parseInt(API_TIMEOUT),
+  timeout: API_TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -93,7 +95,7 @@ export const authAPI = {
   // Register new user
   register: async (userData) => {
     try {
-      const response = await apiClient.post('/users', userData);
+      const response = await apiClient.post('/users/register', userData);
       if (response.data.success && response.data.data.token) {
         setAuthToken(response.data.data.token);
       }
@@ -168,10 +170,10 @@ export const userAPI = {
     }
   },
 
-  // Create super admin
-  createSuperAdmin: async (adminData) => {
+  // Create admin
+  createAdmin: async (adminData) => {
     try {
-      const response = await apiClient.post('/users/create-super-admin', adminData);
+      const response = await apiClient.post('/users/create-admin', adminData);
       return response.data;
     } catch (error) {
       throw error.response?.data || error;
@@ -323,7 +325,9 @@ export const reportAPI = {
   // Create new report
   createReport: async (reportData) => {
     try {
-      const response = await apiClient.post('/reports', reportData);
+      const response = await apiClient.post('/reports', reportData, {
+        timeout: REPORT_HEAVY_TIMEOUT,
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || error;
@@ -333,9 +337,17 @@ export const reportAPI = {
   // Apply form data to template
   applyFormData: async (templateId, formData) => {
     try {
-      const response = await apiClient.post(`/reports/templates/${templateId}/apply-form`, {
-        formData
-      });
+      // #region agent log
+      fetch('http://127.0.0.1:7384/ingest/fee4a383-4f25-45c3-bb64-8d6d21b935e9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'92ac45'},body:JSON.stringify({sessionId:'92ac45',runId:'pre-fix',hypothesisId:'H1-H2',location:'api.js:reportAPI.applyFormData:pre',message:'Calling backend apply-form',data:{templateId:String(templateId||''),formDataKeysCount:formData&&typeof formData==='object'?Object.keys(formData).length:null,hasApLogoUrl:!!(formData?.apLogoUrl||formData?.apLogoDisplayUrl),hasCompanyLogoUrl:!!(formData?.companyLogoUrl||formData?.companyLogoDisplayUrl)},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      const response = await apiClient.post(
+        `/reports/templates/${templateId}/apply-form`,
+        { formData },
+        { timeout: REPORT_HEAVY_TIMEOUT }
+      );
+      // #region agent log
+      fetch('http://127.0.0.1:7384/ingest/fee4a383-4f25-45c3-bb64-8d6d21b935e9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'92ac45'},body:JSON.stringify({sessionId:'92ac45',runId:'pre-fix',hypothesisId:'H3',location:'api.js:reportAPI.applyFormData:post',message:'Backend apply-form returned',data:{templateId:String(templateId||''),success:!!response?.data?.success,hasData:!!response?.data?.data,hasHtmlContent:!!response?.data?.data?.htmlContent,htmlContentLength:response?.data?.data?.htmlContent?response.data.data.htmlContent.length:null},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       return response.data;
     } catch (error) {
       throw error.response?.data || error;
@@ -345,10 +357,11 @@ export const reportAPI = {
   // Apply final edits (sheet updates) and recalculate
   applyFinalEdits: async (templateId, updates, recalculate = true) => {
     try {
-      const response = await apiClient.post(`/reports/templates/${templateId}/apply-final`, {
-        updates,
-        recalculate,
-      });
+      const response = await apiClient.post(
+        `/reports/templates/${templateId}/apply-final`,
+        { updates, recalculate },
+        { timeout: REPORT_HEAVY_TIMEOUT }
+      );
       return response.data;
     } catch (error) {
       throw error.response?.data || error;
@@ -449,11 +462,7 @@ export const templateAPI = {
   // Upload template
   uploadTemplate: async (formData) => {
     try {
-      const response = await apiClient.post('/templates/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await apiClient.post('/templates/upload', formData);
       return response.data;
     } catch (error) {
       throw error.response?.data || error;
@@ -554,6 +563,80 @@ export const commissionAPI = {
 };
 
 // ============================================================================
+// DRAFT APIs
+// ============================================================================
+
+export const draftAPI = {
+  // V2 Drafts module (CRUD by id)
+  listDrafts: async (params = {}) => {
+    try {
+      const response = await apiClient.get('/drafts', { params });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+  createDraft: async (payload) => {
+    try {
+      const response = await apiClient.post('/drafts', payload);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+  updateDraft: async (draftId, payload) => {
+    try {
+      const response = await apiClient.put(`/drafts/by-id/${draftId}`, payload);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+  getDraftById: async (draftId) => {
+    try {
+      const response = await apiClient.get(`/drafts/by-id/${draftId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+  deleteDraftById: async (draftId) => {
+    try {
+      const response = await apiClient.delete(`/drafts/by-id/${draftId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  // Legacy template-based drafts (kept for existing flows)
+  saveDraft: async (templateId, draftData) => {
+    try {
+      const response = await apiClient.put(`/drafts/${templateId}`, draftData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+  getDraft: async (templateId) => {
+    try {
+      const response = await apiClient.get(`/drafts/${templateId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+  clearDraft: async (templateId) => {
+    try {
+      const response = await apiClient.delete(`/drafts/${templateId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  }
+};
+
+// ============================================================================
 // HEALTH CHECK API
 // ============================================================================
 
@@ -581,6 +664,7 @@ const api = {
   template: templateAPI,
   order: orderAPI,
   commission: commissionAPI,
+  draft: draftAPI,
   health: healthAPI,
 };
 

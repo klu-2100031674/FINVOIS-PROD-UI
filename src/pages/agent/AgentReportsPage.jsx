@@ -15,7 +15,7 @@ import {
 } from '../../store/slices/reportSlice';
 import { Button, Loading } from '../../components/common';
 import { reportAPI } from '../../api/endpoints';
-import { formatDate, formatDateTime, downloadFile } from '../../utils';
+import { formatDate, formatDateTime, downloadUserReportFile } from '../../utils';
 import toast from 'react-hot-toast';
 import Invoice from '../../components/Invoice';
 
@@ -53,7 +53,8 @@ const AgentReportsPage = () => {
     status: '',
     dateFrom: '',
     dateTo: '',
-    search: ''
+    search: '',
+    reportType: '' // report_type/templateId
   });
 
   useEffect(() => {
@@ -65,31 +66,61 @@ const AgentReportsPage = () => {
   const filteredReports = useMemo(() => {
     return reports.filter(report => {
       const matchesStatus = !filters.status || report.validation_status === filters.status;
-      const matchesSearch = !filters.search ||
-        report.title?.toLowerCase().includes(filters.search.toLowerCase()) ||
-        report.client_name?.toLowerCase().includes(filters.search.toLowerCase());
+      const reportDisplayName = report.display_name || report.client_name || report.title || '';
+      const reportType = report.report_type || report.templateId || '';
+      const searchLower = String(filters.search || '').toLowerCase();
+      const matchesSearch = !searchLower ||
+        String(reportDisplayName).toLowerCase().includes(searchLower) ||
+        String(report.title || '').toLowerCase().includes(searchLower) ||
+        String(report.client_name || '').toLowerCase().includes(searchLower) ||
+        String(reportType).toLowerCase().includes(searchLower);
+
+      const matchesType = !filters.reportType || String(reportType) === String(filters.reportType);
 
       const reportDate = new Date(report.createdAt);
       const matchesDateFrom = !filters.dateFrom || reportDate >= new Date(filters.dateFrom);
       const matchesDateTo = !filters.dateTo || reportDate <= new Date(filters.dateTo + 'T23:59:59');
 
-      return matchesStatus && matchesSearch && matchesDateFrom && matchesDateTo;
+      return matchesStatus && matchesType && matchesSearch && matchesDateFrom && matchesDateTo;
     });
   }, [reports, filters]);
 
+  const reportTypeOptions = useMemo(() => {
+    const set = new Set();
+    (reports || []).forEach((r) => {
+      const t = r?.report_type || r?.templateId;
+      if (t) set.add(String(t));
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [reports]);
+
   const handleDownload = async (report, type) => {
     try {
-      const url = report[`${type}_file_url`];
-      if (!url) {
-        toast.error(`${type.toUpperCase()} file not available`);
+      if (!report?._id) {
+        toast.error('Report is missing; cannot download');
         return;
       }
-
-      await downloadFile(url, `${report.title}_${type}.pdf`);
-      toast.success(`${type.toUpperCase()} downloaded successfully`);
+      if (type === 'pdf') {
+        if (!report.pdf_file_url) {
+          toast.error('PDF is not available for this report');
+          return;
+        }
+        await downloadUserReportFile(report, 'pdf');
+      } else {
+        if (!report.excel_file_url) {
+          toast.error('Excel is not available for this report');
+          return;
+        }
+        await downloadUserReportFile(report, 'excel');
+      }
+      toast.success(`${type === 'pdf' ? 'PDF' : 'Excel'} downloaded successfully`);
     } catch (error) {
       console.error('Download error:', error);
-      toast.error(`Failed to download ${type.toUpperCase()}`);
+      const message =
+        typeof error?.message === 'string' && error.message
+          ? error.message
+          : `Failed to download ${type === 'pdf' ? 'PDF' : 'Excel'}`;
+      toast.error(message);
     }
   };
 
@@ -103,7 +134,8 @@ const AgentReportsPage = () => {
       status: '',
       dateFrom: '',
       dateTo: '',
-      search: ''
+      search: '',
+      reportType: ''
     });
   };
 
@@ -134,6 +166,22 @@ const AgentReportsPage = () => {
         return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'approved':
+        return 'Validated by CA';
+      case 'pending_validation':
+      case 'under_review':
+        return 'Under Validation for CA';
+      case 'rejected':
+        return 'Rejected';
+      case 'draft':
+        return 'Draft';
+      default:
+        return status?.replace('_', ' ').toUpperCase();
     }
   };
 
@@ -174,7 +222,7 @@ const AgentReportsPage = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All Status</option>
-                <option value="approved">Approved</option>
+                <option value="approved">Validated by CA</option>
                 <option value="pending_validation">Pending</option>
                 <option value="rejected">Rejected</option>
                 <option value="draft">Draft</option>
@@ -198,11 +246,26 @@ const AgentReportsPage = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Type of Report</label>
+              <select
+                value={filters.reportType}
+                onChange={(e) => setFilters(prev => ({ ...prev, reportType: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">All Types</option>
+                {reportTypeOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
               <input
                 type="text"
-                placeholder="Search by title or client..."
+                placeholder="Search by applicant name or report type..."
                 value={filters.search}
                 onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -257,7 +320,7 @@ const AgentReportsPage = () => {
                     </div>
                     <div className="flex items-center space-x-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(report.validation_status)}`}>
-                        {report.validation_status?.replace('_', ' ').toUpperCase()}
+                        {getStatusLabel(report.validation_status)}
                       </span>
                       <div className="flex space-x-2">
                         {report.pdf_file_url && (

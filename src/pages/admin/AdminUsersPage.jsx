@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, MoreVertical, Edit2, Trash2, Eye, UserPlus } from 'lucide-react';
+import { Search, Filter, MoreVertical, Edit2, Eye, UserPlus } from 'lucide-react';
 import { AdminLayout } from '../../components/layouts';
 import api from '../../api/apiClient';
 import toast from 'react-hot-toast';
+import { formatRoleForDisplay } from '../../utils/roleDisplay';
 
 const AdminUsersPage = () => {
   const [users, setUsers] = useState([]);
@@ -28,7 +29,7 @@ const AdminUsersPage = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/users');
+      const response = await api.get('/users?includeInactive=true');
       setUsers(response.data?.data || []);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -57,16 +58,18 @@ const AdminUsersPage = () => {
 
     // Status filter
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(user => user.status === statusFilter);
+      filtered = filtered.filter((user) =>
+        statusFilter === 'active' ? isUserActive(user) : !isUserActive(user)
+      );
     }
 
     setFilteredUsers(filtered);
   };
 
-  const handleStatusChange = async (userId, newStatus) => {
+  const handleStatusChange = async (userId, isActive) => {
     try {
-      await api.patch(`/users/${userId}`, { status: newStatus });
-      toast.success(`User status updated to ${newStatus}`);
+      await api.patch(`/users/${userId}`, { is_active: isActive });
+      toast.success(`User ${isActive ? 'activated' : 'deactivated'} successfully`);
       fetchUsers();
     } catch (error) {
       toast.error('Failed to update user status');
@@ -77,23 +80,10 @@ const AdminUsersPage = () => {
   const handleRoleChange = async (userId, newRole) => {
     try {
       await api.patch(`/users/${userId}`, { role: newRole });
-      toast.success(`User role updated to ${newRole}`);
+      toast.success(`User role updated to ${formatRoleForDisplay(newRole)}`);
       fetchUsers();
     } catch (error) {
       toast.error('Failed to update user role');
-    }
-    setActionMenu(null);
-  };
-
-  const handleDeleteUser = async (userId) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      try {
-        await api.delete(`/users/${userId}`);
-        toast.success('User deleted successfully');
-        fetchUsers();
-      } catch (error) {
-        toast.error('Failed to delete user');
-      }
     }
     setActionMenu(null);
   };
@@ -124,10 +114,17 @@ const AdminUsersPage = () => {
     setActionMenu(null);
   };
 
+  const isUserActive = (user) => {
+    if (typeof user?.is_active === 'boolean') return user.is_active;
+    return String(user?.status || '').toLowerCase() !== 'inactive';
+  };
+
   const getRoleBadgeColor = (role) => {
     switch (role) {
       case 'admin':
         return 'bg-red-100 text-red-800';
+      case 'company_admin':
+        return 'bg-orange-100 text-orange-800';
       case 'agent':
         return 'bg-purple-100 text-purple-800';
       default:
@@ -135,17 +132,8 @@ const AdminUsersPage = () => {
     }
   };
 
-  const getStatusBadgeColor = (status) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-800';
-      case 'inactive':
-        return 'bg-gray-100 text-gray-800';
-      case 'suspended':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  const getStatusBadgeColor = (isActive) => {
+    return isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
   };
 
   if (loading) {
@@ -163,7 +151,7 @@ const AdminUsersPage = () => {
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
-          <p className="text-gray-500 mt-1">Manage all users, agents, and admins</p>
+          <p className="text-gray-500 mt-1">Manage all users, channel partners, and company admins</p>
         </div>
         <button className="mt-4 md:mt-0 flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
           <UserPlus size={18} className="mr-2" />
@@ -195,8 +183,9 @@ const AdminUsersPage = () => {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
             >
               <option value="all">All Roles</option>
-              <option value="admin">Admin</option>
-              <option value="agent">Agent</option>
+              <option value="admin">Super Admin</option>
+              <option value="company_admin">Company Admin</option>
+              <option value="agent">Channel partner</option>
               <option value="user">User</option>
             </select>
           </div>
@@ -212,7 +201,6 @@ const AdminUsersPage = () => {
               <option value="all">All Status</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
-              <option value="suspended">Suspended</option>
             </select>
           </div>
 
@@ -270,12 +258,12 @@ const AdminUsersPage = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleBadgeColor(user.role)}`}>
-                      {user.role?.toUpperCase() || 'USER'}
+                      {formatRoleForDisplay(user.role, user).toUpperCase()}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadgeColor(user.status)}`}>
-                      {user.status?.toUpperCase() || 'ACTIVE'}
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadgeColor(isUserActive(user))}`}>
+                      {isUserActive(user) ? 'ACTIVE' : 'INACTIVE'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -314,21 +302,23 @@ const AdminUsersPage = () => {
                             className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           >
                             <Edit2 size={16} className="mr-2" /> 
-                            {user.role === 'agent' ? 'Demote to User' : 'Promote to Agent'}
+                            {user.role === 'agent' ? 'Demote to User' : 'Promote to channel partner'}
                           </button>
                           <button
-                            onClick={() => handleStatusChange(user._id, user.status === 'active' ? 'suspended' : 'active')}
+                            onClick={() => handleStatusChange(user._id, !isUserActive(user))}
                             className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           >
                             <Edit2 size={16} className="mr-2" /> 
-                            {user.status === 'active' ? 'Suspend User' : 'Activate User'}
+                            {isUserActive(user) ? 'Deactivate User' : 'Activate User'}
                           </button>
+                          {/* Delete action intentionally disabled.
                           <button
                             onClick={() => handleDeleteUser(user._id)}
                             className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                           >
-                            <Trash2 size={16} className="mr-2" /> Delete User
+                            Delete User
                           </button>
+                          */}
                         </div>
                       </div>
                     )}
@@ -375,11 +365,11 @@ const AdminUsersPage = () => {
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
                   <div>
                     <p className="text-sm text-gray-500">Role</p>
-                    <p className="font-medium">{selectedUser.role?.toUpperCase()}</p>
+                    <p className="font-medium">{formatRoleForDisplay(selectedUser.role, selectedUser).toUpperCase()}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Status</p>
-                    <p className="font-medium">{selectedUser.status?.toUpperCase()}</p>
+                    <p className="font-medium">{isUserActive(selectedUser) ? 'ACTIVE' : 'INACTIVE'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Mobile</p>

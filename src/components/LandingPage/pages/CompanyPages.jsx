@@ -22,7 +22,7 @@ export const HelpCenterPage = () => (
 export const APIPage = () => (
     <GenericPage title="API Reference" subtitle="Build powerful integrations with our robust API.">
         <div className="border border-gray-200 rounded-xl bg-gray-50 p-8 font-mono text-sm text-gray-700 overflow-x-auto">
-            <p className="mb-4 text-gray-500">// Example API Request</p>
+            <p className="mb-4 text-gray-500">{'// Example API Request'}</p>
             <div className="text-blue-600">POST <span className="text-gray-900">https://api.finvois.com/v1/generate-report</span></div>
             <div className="mt-4 text-purple-600">
                 Authorization: <span className="text-green-600">Bearer YOUR_API_KEY</span>
