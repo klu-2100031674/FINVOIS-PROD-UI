@@ -39,7 +39,7 @@ const CompanyAdminProfilePage = () => {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-6">
-          <div className="bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-8">
+          <div className="bg-gradient-to-r from-purple-600 to-purple-900 px-6 py-8">
             <div className="flex items-center gap-4">
               <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white text-3xl font-bold border-4 border-white/30">
                 {user?.name?.[0]?.toUpperCase() || 'C'}
@@ -66,7 +66,7 @@ const CompanyAdminProfilePage = () => {
               <p className="text-sm text-gray-500">Pending</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-blue-600">{stats.under_review}</p>
+              <p className="text-2xl font-bold text-[#7e22ce]">{stats.under_review}</p>
               <p className="text-sm text-gray-500">Under Review</p>
             </div>
             <div className="text-center">
@@ -199,7 +199,7 @@ const CompanyAdminProfilePage = () => {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mt-6">
-          <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-blue-50">
+          <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-purple-50">
             <h3 className="text-lg font-semibold text-gray-800">Company admin insights</h3>
             <p className="text-sm text-gray-500 mt-1">Quick view of your credits and key account details</p>
           </div>
@@ -224,13 +224,13 @@ const CompanyAdminProfilePage = () => {
               </p>
             </div>
 
-            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
-              <div className="flex items-center gap-2 text-blue-700">
+            <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
+              <div className="flex items-center gap-2 text-purple-700">
                 <FileText size={18} />
                 <span className="text-sm font-medium">Pending Reports</span>
               </div>
-              <p className="text-2xl font-bold text-blue-800 mt-2">{stats.pending || 0}</p>
-              <p className="text-xs text-blue-700 mt-1">Reports waiting for action</p>
+              <p className="text-2xl font-bold text-purple-800 mt-2">{stats.pending || 0}</p>
+              <p className="text-xs text-purple-700 mt-1">Reports waiting for action</p>
             </div>
           </div>
         </div>

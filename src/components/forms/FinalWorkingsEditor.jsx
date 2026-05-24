@@ -365,7 +365,7 @@ const FinalWorkingsEditor = ({
             <button
               onClick={applyChanges}
               disabled={isLoading}
-              className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-[#7e22ce] text-white rounded hover:bg-[#6b21a8] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Processing...' : 'Apply Changes & Proceed'}
             </button>

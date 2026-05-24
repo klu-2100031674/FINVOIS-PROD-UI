@@ -246,7 +246,8 @@ export const reportAPI = {
     analysisOptions = null,
     formData = null,
     bankName = null,
-    branchName = null
+    branchName = null,
+    assistedOptions = null
   ) => {
     const response = await apiClient.post('/reports/create-payment-order', {
       template_id: templateId,
@@ -257,7 +258,13 @@ export const reportAPI = {
       analysis_options: analysisOptions,
       formData,
       bank_name: bankName,
-      branch_name: branchName
+      branch_name: branchName,
+      ...(assistedOptions?.assistedUserId
+        ? { assisted_user_id: assistedOptions.assistedUserId }
+        : {}),
+      ...(assistedOptions?.reportHelpRequestId
+        ? { report_help_request_id: assistedOptions.reportHelpRequestId }
+        : {}),
     });
     return response.data;
   },
@@ -527,10 +534,8 @@ export const companyAPI = {
     const response = await apiClient.get(`/company/${normalizedCompanyId}`);
     return response.data;
   },
-  toggleCompanyStatus: async (companyId) => {
-    const normalizedCompanyId = companyAPI.normalizeCompanyId(companyId);
-    const response = await apiClient.patch(`/company/${normalizedCompanyId}/status`);
-    return response.data;
+  toggleCompanyStatus: async (companyId, isActive) => {
+    return companyAPI.updateCompanyStatus(companyId, isActive);
   },
   updateCompany: async (companyId, companyData) => {
     const normalizedCompanyId = companyAPI.normalizeCompanyId(companyId);
@@ -539,8 +544,32 @@ export const companyAPI = {
   },
   updateCompanyStatus: async (companyId, isActive) => {
     const normalizedCompanyId = companyAPI.normalizeCompanyId(companyId);
-    const response = await apiClient.patch(`/company/${normalizedCompanyId}/status`, { isActive });
-    return response.data;
+
+    const body = { isActive };
+    const isRouteNotFound = (err) =>
+      typeof err === 'string' && /not found/i.test(err) && err.includes('/company/');
+
+    const attempts = [
+      () => apiClient.post(`/company/${normalizedCompanyId}/status/update`, body),
+      () => apiClient.patch(`/company/${normalizedCompanyId}/status`, body),
+      () => apiClient.put(`/company/${normalizedCompanyId}/status`, body),
+      () => apiClient.post(`/company/${normalizedCompanyId}/status`, body),
+      () => apiClient.patch(`/company/${normalizedCompanyId}`, body),
+    ];
+
+    let lastError;
+    for (const attempt of attempts) {
+      try {
+        const response = await attempt();
+        return response.data;
+      } catch (error) {
+        lastError = error;
+        if (!isRouteNotFound(error)) {
+          throw error;
+        }
+      }
+    }
+    throw lastError || 'Failed to update company status';
   },
   getCompanyAdminCandidates: async (companyId) => {
     const normalizedCompanyId = companyAPI.normalizeCompanyId(companyId);
@@ -649,18 +678,6 @@ export const excelFileAPI = {
 };
 
 // ============================================================================
-// Scheme Eligibility APIs
-// ============================================================================
-
-export const schemeEligibilityAPI = {
-  // Check scheme eligibility
-  checkEligibility: async (formData) => {
-    const response = await apiClient.post('/scheme-eligibility/check-eligibility', formData);
-    return response.data;
-  },
-};
-
-// ============================================================================
 // System Config APIs (Admin only)
 // ============================================================================
 
@@ -710,6 +727,66 @@ export const promotionalEmailsAPI = {
   },
 };
 
+export const schemeEligibilityAPI = {
+  checkEligibility: async (formData) => {
+    const response = await apiClient.post('/scheme-eligibility/check-eligibility', formData);
+    return response.data;
+  },
+};
+
+// ============================================================================
+// Report Help (structured channel partner requests)
+// ============================================================================
+
+export const reportHelpAPI = {
+  getOptions: async () => {
+    const response = await apiClient.get('/report-help/meta/options');
+    return response.data;
+  },
+
+  list: async (params = {}) => {
+    const response = await apiClient.get('/report-help', { params });
+    return response.data;
+  },
+
+  getById: async (id) => {
+    const response = await apiClient.get(`/report-help/${id}`);
+    return response.data;
+  },
+
+  create: async (formData) => {
+    const response = await apiClient.post('/report-help', formData);
+    return response.data;
+  },
+
+  performAction: async (id, payload) => {
+    const response = await apiClient.patch(`/report-help/${id}/action`, payload);
+    return response.data;
+  },
+
+  uploadDocuments: async (id, formData) => {
+    const response = await apiClient.post(`/report-help/${id}/documents`, formData);
+    return response.data;
+  },
+
+  deleteDocument: async (requestId, documentId) => {
+    const response = await apiClient.delete(`/report-help/${requestId}/documents/${documentId}`);
+    return response.data;
+  },
+
+  replaceDocument: async (requestId, documentId, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.put(`/report-help/${requestId}/documents/${documentId}`, formData);
+    return response.data;
+  },
+
+  postUpdate: async (id, message) => {
+    const response = await apiClient.post(`/report-help/${id}/updates`, { message });
+    return response.data;
+  },
+};
+
 export default {
   auth: authAPI,
   wallet: walletAPI,
@@ -722,7 +799,7 @@ export default {
   company: companyAPI,
   user: userAPI,
   excelFile: excelFileAPI,
-  schemeEligibility: schemeEligibilityAPI,
   systemConfig: systemConfigAPI,
   promotionalEmails: promotionalEmailsAPI,
+  reportHelp: reportHelpAPI,
 };

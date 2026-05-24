@@ -3,3 +3,4 @@ export * from './slices/authSlice';
 export * from './slices/walletSlice';
 export * from './slices/reportSlice';
 export * from './slices/templateSlice';
+export * from './slices/adminServiceSlice';

@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PMEGP_SCHEME_MAIL_PATH } from './pmegpSchemeMailConstants';
+import { saveSchemeFormSession } from '../../../utils/schemeFormSession';
 
 const SPECIAL_CATEGORIES = [
   'SC',
@@ -32,11 +34,16 @@ const PREMISES_OPTIONS = [
   'Others',
 ];
 
+const SPECIAL_ZONE_NONE = 'None of the above';
+
 const SPECIAL_ZONE_OPTIONS = [
   'NER / Hill / Border Area',
   'Aspirational District (as notified by NITI Aayog)',
   'Left-Wing Extremism affected district / A&N Islands',
 ];
+
+/** Question 25 — user must pick at least one (including "None of the above"). */
+const SPECIAL_ZONE_SELECTABLE = [...SPECIAL_ZONE_OPTIONS, SPECIAL_ZONE_NONE];
 
 const toNumber0 = (v) => {
   if (v === '' || v === null || v === undefined) return 0;
@@ -135,13 +142,13 @@ const CheckboxPill = ({ id, checked, onChange, label }) => (
       htmlFor={id}
       className="flex items-center gap-2 w-full cursor-pointer select-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 transition
         hover:border-gray-300 hover:bg-gray-50
-        peer-focus-visible:ring-2 peer-focus-visible:ring-gray-900 peer-focus-visible:ring-offset-2
-        peer-checked:border-purple-300 peer-checked:bg-purple-50 peer-checked:text-purple-800"
+        peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-600 peer-focus-visible:ring-offset-2
+        peer-checked:border-emerald-300 peer-checked:bg-emerald-50 peer-checked:text-emerald-900"
     >
       <span
         aria-hidden
         className="inline-flex h-5 w-5 items-center justify-center rounded border border-gray-300 bg-white text-[12px] font-bold text-transparent
-          peer-checked:border-purple-400 peer-checked:bg-purple-600 peer-checked:text-white"
+          peer-checked:border-emerald-500 peer-checked:bg-emerald-600 peer-checked:text-white"
       >
         ✓
       </span>
@@ -156,33 +163,11 @@ const makeDomId = (s) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
 
-const radioToneFromValue = (v) => {
-  const s = String(v || '').toLowerCase();
-  if (s === 'yes') return 'yes';
-  if (s === 'no') return 'no';
-  return 'neutral';
-};
-
 const RadioGroup = ({ name, value, onChange, options }) => (
   <div className="flex flex-wrap gap-2">
     {options.map((opt) => {
       const id = `pmegp-radio-${makeDomId(name)}-${makeDomId(opt.value)}`;
       const checked = value === opt.value;
-      const tone = opt.tone || radioToneFromValue(opt.value);
-
-      const checkedBorder =
-        tone === 'yes'
-          ? 'peer-checked:border-emerald-300 peer-checked:bg-emerald-50 peer-checked:text-emerald-800'
-          : tone === 'no'
-            ? 'peer-checked:border-rose-300 peer-checked:bg-rose-50 peer-checked:text-rose-800'
-            : 'peer-checked:border-purple-300 peer-checked:bg-purple-50 peer-checked:text-purple-800';
-
-      const dotChecked =
-        tone === 'yes'
-          ? 'peer-checked:border-emerald-500 peer-checked:bg-emerald-600'
-          : tone === 'no'
-            ? 'peer-checked:border-rose-500 peer-checked:bg-rose-600'
-            : 'peer-checked:border-purple-500 peer-checked:bg-purple-600';
 
       return (
         <div key={opt.value} className="relative">
@@ -197,14 +182,14 @@ const RadioGroup = ({ name, value, onChange, options }) => (
           />
           <label
             htmlFor={id}
-            className={`inline-flex items-center gap-2 cursor-pointer select-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 transition
+            className="inline-flex items-center gap-2 cursor-pointer select-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 transition
               hover:border-gray-300 hover:bg-gray-50
-              peer-focus-visible:ring-2 peer-focus-visible:ring-gray-900 peer-focus-visible:ring-offset-2
-              ${checkedBorder}`}
+              peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-600 peer-focus-visible:ring-offset-2
+              peer-checked:border-emerald-300 peer-checked:bg-emerald-50 peer-checked:text-emerald-900"
           >
             <span
               aria-hidden
-              className={`inline-flex h-5 w-5 items-center justify-center rounded-full border border-gray-300 bg-white ${dotChecked}`}
+              className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-gray-300 bg-white peer-checked:border-emerald-500 peer-checked:bg-emerald-600"
             >
               <span className="h-2 w-2 rounded-full bg-transparent peer-checked:bg-white" aria-hidden />
             </span>
@@ -254,7 +239,11 @@ const TwoQuestionRow = ({ left, right }) => (
  * - initialData?: partial state
  * - onSubmit?: (data) => void
  */
-const PmegpSectionAForm = ({ initialData = null, onSubmit = null }) => {
+const PmegpSectionAForm = ({
+  initialData = null,
+  onSubmit = null,
+  schemeMailPath = PMEGP_SCHEME_MAIL_PATH,
+}) => {
   const navigate = useNavigate();
   const [data, setData] = useState(() => ({ ...initialState, ...(initialData || {}) }));
 
@@ -267,7 +256,11 @@ const PmegpSectionAForm = ({ initialData = null, onSubmit = null }) => {
 
   const toggleSpecialZone = (zone) => {
     setData((p) => {
-      const next = new Set(p.specialZones || []);
+      if (zone === SPECIAL_ZONE_NONE) {
+        const hasNone = (p.specialZones || []).includes(SPECIAL_ZONE_NONE);
+        return { ...p, specialZones: hasNone ? [] : [SPECIAL_ZONE_NONE] };
+      }
+      const next = new Set((p.specialZones || []).filter((z) => z !== SPECIAL_ZONE_NONE));
       if (next.has(zone)) next.delete(zone);
       else next.add(zone);
       return { ...p, specialZones: Array.from(next) };
@@ -336,10 +329,10 @@ const PmegpSectionAForm = ({ initialData = null, onSubmit = null }) => {
 
       // Section B
       proposedBusinessActivity:
-        'Proposed to start a small trading and distribution unit for FMCG items with last-mile delivery in nearby mandals. Focus on kirana stores and small retailers. Will maintain basic inventory and use digital billing.',
+        'Proposed to start a Paper Manufacturing unit',
       hasRelevantWorkExperience: 'Yes',
-      businessUnitType: 'Trading',
-      projectStage: 'Already started and under upgradation / expansion stage',
+      businessUnitType: 'Manufacturing',
+      projectStage: 'Completely new',
       alreadyStartedAvailedLoan: 'Yes',
       loanAvailedMonth: 'March',
       loanAvailedYear: 2024,
@@ -348,16 +341,16 @@ const PmegpSectionAForm = ({ initialData = null, onSubmit = null }) => {
       leaseAgreementType: 'Registered',
 
       // Costs / Assets
-      assetPlantMachinery: 250000,
-      assetServiceEquipment: 50000,
+      assetPlantMachinery: 5000000,
+      assetServiceEquipment: 0,
       assetShedConstructionCivil: 0,
       assetLandPurchase: 0,
-      assetElectricalPlumbing: 25000,
-      assetElectronicItems: 40000,
-      assetFurnitureFittings: 30000,
-      assetVehicles: 150000,
-      assetOtherAssetsNonDepreciable: 20000,
-      workingCapitalRequirement: 300000,
+      assetElectricalPlumbing: 0,
+      assetElectronicItems: 0,
+      assetFurnitureFittings: 0,
+      assetVehicles: 0,
+      assetOtherAssetsNonDepreciable: 0,
+      workingCapitalRequirement: 3000000,
 
       // Location (Section C)
       proposedUnitFullAddress:
@@ -366,11 +359,11 @@ const PmegpSectionAForm = ({ initialData = null, onSubmit = null }) => {
       unitMandal: 'Vijayawada (Rural)',
       unitVillageOrCity: 'Vijayawada',
       ruralUrbanStatus: 'Urban',
-      specialZones: ['Aspirational District (as notified by NITI Aayog)'],
+      specialZones: [SPECIAL_ZONE_NONE],
 
       // Training (Section D)
-      trainingCompleted: 'Yes',
-      trainingNameAndYear: 'EDP Training (10 days) - 2025',
+      trainingCompleted: 'Not yet',
+      trainingNameAndYear: '',
 
       // Financial Readiness (Section E)
       identifiedBank: 'No',
@@ -380,11 +373,11 @@ const PmegpSectionAForm = ({ initialData = null, onSubmit = null }) => {
       existingBankerBranch: 'Vijayawada Main Branch',
       previousGovtSubsidyLoan: 'No',
       cibilScore: 745,
-      netWorth: 650000,
+      netWorth: 6500000,
       filingIncomeTaxReturns: 'Yes',
 
       // Upgradation (Section F)
-      isUpgradation: 'Yes',
+      isUpgradation: 'No',
       originalUnitSetupYear: 2022,
       originalLoanFullyRepaid: 'No',
       unitProfitAndGoodTurnover: 'Yes',
@@ -394,12 +387,19 @@ const PmegpSectionAForm = ({ initialData = null, onSubmit = null }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!(data.specialZones || []).length) {
+      window.alert(
+        'Please select at least one option for question 25 (special zone), or choose "None of the above".',
+      );
+      return;
+    }
     const payload = {
       ...data,
       ageYears: data.ageYears === '' ? '' : Number(data.ageYears),
     };
     onSubmit?.(payload);
-    navigate('/generate/pmegp/scheme-mail', { state: { pmegpForm: payload } });
+    saveSchemeFormSession('pmegpForm', payload);
+    navigate(schemeMailPath, { state: { pmegpForm: payload } });
   };
 
   return (
@@ -930,12 +930,15 @@ const PmegpSectionAForm = ({ initialData = null, onSubmit = null }) => {
           </div>
 
           <div className="space-y-1.5">
-            <FieldLabel>25. Does the area fall under any special zone?</FieldLabel>
+            <FieldLabel required>25. Does the area fall under any special zone?</FieldLabel>
+            <p className="text-xs text-gray-500">
+              Select all that apply, or choose &quot;None of the above&quot;.
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {SPECIAL_ZONE_OPTIONS.map((z) => (
+              {SPECIAL_ZONE_SELECTABLE.map((z) => (
                 <CheckboxPill
                   key={z}
-                  id={`pmegp-special-zone-${z}`}
+                  id={`pmegp-special-zone-${makeDomId(z)}`}
                   checked={specialZoneSet.has(z)}
                   onChange={() => toggleSpecialZone(z)}
                   label={z}

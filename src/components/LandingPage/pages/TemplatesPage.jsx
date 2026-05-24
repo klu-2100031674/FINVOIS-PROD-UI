@@ -23,7 +23,7 @@ const TemplatesPage = () => {
                 {templates.map((template, idx) => (
                     <div key={idx} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all group cursor-pointer">
                         <div className="h-40 bg-gray-100 rounded-xl mb-6 flex items-center justify-center relative overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-tr from-purple-50 to-blue-50 opacity-50" />
+                            <div className="absolute inset-0 bg-gradient-to-tr from-purple-50 to-purple-50 opacity-50" />
                             <FileText className="w-12 h-12 text-gray-400 group-hover:text-purple-600 transition-colors duration-300" />
                         </div>
                         <div className="flex justify-between items-start mb-2">

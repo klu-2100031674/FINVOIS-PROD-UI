@@ -364,7 +364,7 @@ const AdminTemplateConfigPage = () => {
                     <div>
                       <h3 className="text-lg font-semibold text-gray-800">{template.name}</h3>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                        <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">
                           {template.template_id}
                         </span>
                         <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">
@@ -403,7 +403,7 @@ const AdminTemplateConfigPage = () => {
                     </button>
                     <button
                       onClick={() => handleEdit(template)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      className="p-2 text-[#7e22ce] hover:bg-purple-50 rounded-lg transition-colors"
                       title="Edit Template"
                     >
                       <Edit2 size={18} />

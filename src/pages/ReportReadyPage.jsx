@@ -13,9 +13,9 @@ const ReportReadyPage = () => {
   const { user } = useAuth();
   const { report_id } = location.state || {};
 
-  const getDashboardRoute = () => dashboardHomePath(user?.role);
+  const getDashboardRoute = () => dashboardHomePath(user);
 
-  const getReportsRoute = () => myReportsPathForRole(user?.role);
+  const getReportsRoute = () => myReportsPathForRole(user);
 
   useEffect(() => {
     // Trigger confetti on mount
@@ -62,7 +62,7 @@ const ReportReadyPage = () => {
       {/* Background Decor */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-purple-200/20 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] bg-blue-200/20 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] bg-purple-200/20 rounded-full blur-3xl"></div>
       </div>
 
       <motion.div
@@ -140,7 +140,7 @@ const ReportReadyPage = () => {
                 className="flex gap-4 relative"
               >
                 <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center z-10 shrink-0 border border-gray-100 ring-4 ring-gray-50 shadow-sm">
-                  <Mail className="w-4 h-4 text-blue-600" />
+                  <Mail className="w-4 h-4 text-[#7e22ce]" />
                 </div>
                 <div>
                   <h4 className="font-bold text-gray-900 text-sm">Email Notification</h4>

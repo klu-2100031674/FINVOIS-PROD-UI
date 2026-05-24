@@ -20,6 +20,7 @@ import { reportAPI } from '../api/endpoints';
 import { formatDate, formatDateTime, downloadUserReportFile } from '../utils';
 import toast from 'react-hot-toast';
 import Invoice from '../components/Invoice';
+import { effectiveUserRole } from '../utils/normalizeUserRole';
 
 // PDF generation libraries
 import jsPDF from 'jspdf';
@@ -45,6 +46,7 @@ const ReportsPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useAuth();
+  const navRole = effectiveUserRole(user);
   const reports = useSelector(selectReports);
   const loading = useSelector(selectReportLoading);
   const [searchQuery, setSearchQuery] = useState('');
@@ -301,9 +303,9 @@ const ReportsPage = () => {
       under_review: {
         icon: Clock,
         text: 'Under Validation for CA',
-        bgColor: 'bg-blue-100',
-        textColor: 'text-blue-700',
-        iconColor: 'text-blue-600'
+        bgColor: 'bg-purple-100',
+        textColor: 'text-purple-700',
+        iconColor: 'text-[#7e22ce]'
       }
     };
 
@@ -371,7 +373,7 @@ const ReportsPage = () => {
   }, [filteredReportsBySearch]);
 
   if (loading) {
-    if (user?.role === 'agent') {
+    if (navRole === 'agent') {
       return <Loading fullScreen text="Loading reports..." />;
     }
     return (
@@ -384,9 +386,9 @@ const ReportsPage = () => {
   }
 
   const reportsBody = (
-    <main className={user?.role === 'agent' ? 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10' : 'py-2 sm:py-4'}>
+    <main className={navRole === 'agent' ? 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10' : 'py-2 sm:py-4'}>
         {/* Page Header */}
-        <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-xl shadow-sm mb-8">
+        <div className="bg-gradient-to-r from-purple-50 to-purple-50 p-6 rounded-xl shadow-sm mb-8">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-3xl font-bold text-gray-900 font-['Manrope'] mb-2">
@@ -572,9 +574,9 @@ const ReportsPage = () => {
             </p>
             <Button
               onClick={() =>
-                user?.role === 'agent'
+                navRole === 'agent'
                   ? navigate('/agent/dashboard')
-                  : user?.role === 'company_admin'
+                  : navRole === 'company_admin'
                   ? navigate('/company/generate')
                   : navigate('/dashboard')
               }
@@ -715,7 +717,7 @@ const ReportsPage = () => {
       </main>
   );
 
-  if (user?.role === 'agent') {
+  if (navRole === 'agent') {
     return (
       <div className="min-h-screen bg-gray-50 font-['Inter']">
         {reportsBody}
@@ -723,7 +725,7 @@ const ReportsPage = () => {
     );
   }
 
-  if (user?.role === 'company_admin') {
+  if (navRole === 'company_admin') {
     return <AdminLayout>{reportsBody}</AdminLayout>;
   }
 

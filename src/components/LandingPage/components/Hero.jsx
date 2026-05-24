@@ -14,7 +14,7 @@ const iconMap = {
 const colorMap = {
   purple: { bg: 'bg-purple-100', text: 'text-purple-600', border: 'border-purple-200' },
   green: { bg: 'bg-emerald-100', text: 'text-emerald-600', border: 'border-emerald-200' },
-  blue: { bg: 'bg-blue-100', text: 'text-blue-600', border: 'border-blue-200' }
+  blue: { bg: 'bg-purple-100', text: 'text-[#7e22ce]', border: 'border-purple-200' }
 };
 
 const Hero = () => {
@@ -34,7 +34,7 @@ const Hero = () => {
       {/* Background decoration */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
         <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-purple-200/40 rounded-full blur-3xl mix-blend-multiply filter opacity-70 animate-blob"></div>
-        <div className="absolute top-[-10%] left-[-5%] w-[500px] h-[500px] bg-blue-200/40 rounded-full blur-3xl mix-blend-multiply filter opacity-70 animate-blob animation-delay-2000"></div>
+        <div className="absolute top-[-10%] left-[-5%] w-[500px] h-[500px] bg-purple-200/40 rounded-full blur-3xl mix-blend-multiply filter opacity-70 animate-blob animation-delay-2000"></div>
         <div className="absolute bottom-[-10%] left-[20%] w-[500px] h-[500px] bg-pink-200/40 rounded-full blur-3xl mix-blend-multiply filter opacity-70 animate-blob animation-delay-4000"></div>
       </div>
 

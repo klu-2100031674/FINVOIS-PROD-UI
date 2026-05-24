@@ -237,7 +237,7 @@ const AgentProfilePage = () => {
       </div>
 
       {freeCredits > 0 && (
-        <div className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-100 rounded-xl p-4">
+        <div className="mb-6 bg-gradient-to-r from-purple-50 to-purple-50 border border-purple-100 rounded-xl p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white rounded-lg border border-purple-100">
               <Gift className="w-5 h-5 text-purple-700" />
@@ -267,7 +267,7 @@ const AgentProfilePage = () => {
                 {user?.status?.charAt(0).toUpperCase() + user?.status?.slice(1) || 'Active'}
               </span>
               {user?.referral_code && (
-                <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
                   Code: {user.referral_code}
                 </span>
               )}

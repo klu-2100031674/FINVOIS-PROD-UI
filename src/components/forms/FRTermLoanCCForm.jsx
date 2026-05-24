@@ -701,6 +701,29 @@ const FRTermLoanCCForm = ({
     return (total * percentage) / 100;
   };
 
+  /** Working capital requirement + sum of all category totals (step 3: cost of the project). */
+  const totalProjectCostFormatted = useMemo(() => {
+    const sumCostOfProjectTotals = Object.keys(CURRENT_ASSET_SECTIONS).reduce((sum, categoryName) => {
+      const categoryTotal = Object.values(assetItems[categoryName] || {}).reduce(
+        (acc, item) => acc + (parseFloat(item.amount) || 0),
+        0
+      );
+      return sum + categoryTotal;
+    }, 0);
+
+    const workingCapitalRequirement = parseFloat(formData['Cost of Project details']?.['i40'] || 0) || 0;
+    const total = sumCostOfProjectTotals + workingCapitalRequirement;
+
+    return total.toLocaleString('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }, [
+    CURRENT_ASSET_SECTIONS,
+    assetItems,
+    formData['Cost of Project details']?.i40,
+  ]);
+
   const handleIndirectExpenseChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
@@ -1483,7 +1506,7 @@ const FRTermLoanCCForm = ({
     const currentItems = assetItems[currentCategoryName] || {};
     const hasItems = Object.keys(currentItems).some(row => {
       const item = currentItems[row];
-      return item.description.trim() !== '' || (item.amount && item.amount !== 0);
+      return (item?.description?.trim() !== '') || (item?.amount && item.amount !== 0);
     });
 
     // If current category has items, validate loan percentage
@@ -1565,7 +1588,7 @@ const FRTermLoanCCForm = ({
               {renderInput('General Information', 'i17', 'Name of firm/Company (Optional)')}
               {renderInput('General Information', 'i18', 'PAN of firm/Company (Optional)')}
               {renderInput('General Information', 'i19', 'Education Qualification', 'text', ['Below 8th', 'Above 8th', 'SSC 10th', 'intermediate +2', 'Graduate', 'Post Graduate'])}
-              {renderInput('General Information', 'i20', 'Project covered under which Scheme', 'text', ['AP IDP 4.0', 'Industrial park Land Allotment', 'PMEGP', 'Mudra', 'PMFME', 'PMMSY', 'Startup India', 'Other MSME', 'NLM scheme','CMEGP', 'CMPE'])}
+              {renderInput('General Information', 'i20', 'Project covered under which Scheme', 'text', ['AP IDP 4.0', 'Industrial park Land Allotment', 'PMEGP', 'Mudra', 'PMFME', 'PMMSY', 'Startup India', 'Other MSME', 'NLM scheme', 'CMEGP'])}
               {renderInput('General Information', 'i21', 'Caste', 'text', ['OC', 'SC', 'ST', 'BC', 'Minority'])}
               {renderInput('General Information', 'i22', 'Unit location', 'text', ['Rural(Panchayat)', 'Urban(Other than Panchayat)'])}
             </div>
@@ -1620,9 +1643,9 @@ const FRTermLoanCCForm = ({
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Schedule Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {renderInput('Means of Finance details', 'i58', 'Loan Financial Year', 'text', generateFinancialYearOptions())}
-                  {renderInput('Means of Finance details', 'i59', 'Loan Start Month (Month immediately after Santion Month)', 'month')}
+                  {renderInput('Means of Finance details', 'i59', 'Loan Start Month (Month immediately after Sanction Month)', 'month')}
                   {renderInput('Means of Finance details', 'i60', 'First Sale Bill Month', 'month')}
-                  {renderInput('Means of Finance details', 'i63', 'Average DSCR Ratio Required', 'number', null, null, 'ask your banker')}
+                  {renderInput('Means of Finance details', 'i63', 'Average DSCR Ratio Required', 'number', null, null, 'ask your funding banker')}
                 </div>
               </div>
             </div>
@@ -1635,23 +1658,48 @@ const FRTermLoanCCForm = ({
         const wcLoanAmount = wcReq && wcPercent ? ((wcReq * wcPercent) / 100).toFixed(2) : '';
 
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {renderInput('Cost of Project details', 'i40', 'Working capital Requirement(Lac)', 'number')}
-            {renderInput('Cost of Project details', 'k40', 'Loan ContributionPercentage (%)', 'number')}
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium text-gray-900">Working Capital Requirements</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {renderInput('Cost of Project details', 'i40', 'Working capital Requirement(Lac)', 'number')}
+              {renderInput('Cost of Project details', 'k40', 'Loan ContributionPercentage (%)', 'number')}
+            </div>
 
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">Working Capital Loan Amount (Auto Calculated)</label>
-              <div className="relative">
+              <div className="relative max-w-xl">
                 <input
                   type="text"
                   value={wcLoanAmount}
                   readOnly
+                  tabIndex={-1}
                   className="w-full p-2 border border-gray-300 rounded-md bg-gray-100"
                   placeholder="Automatically calculated"
                 />
                 <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">Lacs</span>
               </div>
             </div>
+
+            <div className="rounded-lg border-2 border-gray-200 bg-white p-4 space-y-2 shadow-sm">
+              <label className="block text-sm font-semibold text-gray-900">Total Project Cost (inlcuding working capital loan)</label>
+              <div className="relative max-w-xl">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+                  ₹
+                </span>
+                <input
+                  type="text"
+                  value={totalProjectCostFormatted}
+                  readOnly
+                  tabIndex={-1}
+                  aria-readonly="true"
+                  className="w-full pl-8 pr-16 p-2.5 border border-gray-300 rounded-md bg-gray-50 text-gray-900 font-medium"
+                />
+                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">Lacs</span>
+              </div>
+              {/* <p className="text-xs text-gray-600 max-w-xl">
+                inlcuding working capital loan
+              </p>*/}
+            </div> 
           </div>
         );
       }
@@ -1680,13 +1728,13 @@ const FRTermLoanCCForm = ({
 
         return (
           <div className="space-y-6">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h3 className="text-lg font-medium text-blue-800 mb-2">Schedule for Assets</h3>
-              <p className="text-sm text-blue-600">
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <h3 className="text-lg font-medium text-purple-800 mb-2">Schedule for Assets</h3>
+              <p className="text-sm text-[#7e22ce]">
                 Please enter the details for each asset category. Select a category tab to view its items.
               </p>
-              <div className="mt-3 p-3 bg-white rounded-lg border border-blue-200">
-                <p className="text-sm text-blue-700">
+              <div className="mt-3 p-3 bg-white rounded-lg border border-purple-200">
+                <p className="text-sm text-purple-700">
                   <strong>Progress:</strong> {visitedAssetCategories.size} of {assetCategories.length} categories visited.
                 </p>
               </div>
@@ -1977,9 +2025,9 @@ const FRTermLoanCCForm = ({
                 </ul>
               </div>
             )}
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h3 className="text-lg font-medium text-blue-800 mb-2">Schedule for Indirect Expenses (Per Month)</h3>
-              <p className="text-sm text-blue-600">
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <h3 className="text-lg font-medium text-purple-800 mb-2">Schedule for Indirect Expenses (Per Month)</h3>
+              <p className="text-sm text-[#7e22ce]">
                 Please enter the details and increment percentage for each expense category.
               </p>
             </div>
@@ -2212,7 +2260,7 @@ const FRTermLoanCCForm = ({
                   <>
                     <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 3 8l3-2.709z"></path>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 12 0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     {isEditMode ? 'Updating...' : 'Submitting...'}
                   </>

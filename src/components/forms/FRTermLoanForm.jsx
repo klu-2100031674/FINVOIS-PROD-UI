@@ -212,6 +212,20 @@ const getIndirectExpensesData = (tenure) => {
   return INDIRECT_EXPENSES_DATA_TENURE_GT7;
 };
 
+/** Nested shape expected by the form: { [category]: { dNNN, eNNN, ... } } */
+const buildNestedIndirectScheduleForTenure = (tenure) => {
+  const newExpensesData = getIndirectExpensesData(tenure);
+  const nested = {};
+  Object.entries(newExpensesData).forEach(([categoryName, rows]) => {
+    nested[categoryName] = {};
+    rows.forEach((item) => {
+      nested[categoryName][item.d] = item.label;
+      nested[categoryName][item.e] = 0;
+    });
+  });
+  return nested;
+};
+
 const EXPENSE_INCREMENT_MAP = {
   'Employee Related Expenses': 'h64',
   'Administrative & Office Expenses': 'h65',
@@ -505,11 +519,11 @@ const FRTermLoanForm = ({
     }
 
     // Reinitialize expenses when:
-    // 1. First time entering any tenure value (prevTenure is null)
+    // 1. First time entering tenure > 7 (default form is already ≤7 layout)
     // 2. Crossing the 7-year threshold (≤7 to >7 or vice versa)
-    // 3. First time entering tenure > 7
+    // 3. First time entering tenure > 7 from a prior GT7 state (ref reset)
     const shouldReinitialize =
-      (prevTenure === null) ||
+      (prevTenure === null && currentIsGT7) ||
       (prevTenure !== null && prevIsGT7 !== currentIsGT7) ||
       (currentIsGT7 && !expensesInitializedForGT7Ref.current);
 
@@ -519,28 +533,19 @@ const FRTermLoanForm = ({
         liveTenure,
         prevIsGT7,
         currentIsGT7,
-        reason: prevTenure === null ? 'first-entry' : prevIsGT7 !== currentIsGT7 ? 'threshold-crossed' : 'first-GT7'
+        reason: prevTenure === null && currentIsGT7 ? 'first-entry-gt7' : prevIsGT7 !== currentIsGT7 ? 'threshold-crossed' : 'first-GT7'
       });
 
-      // Get correct expenses data for current tenure
-      const newExpensesData = getIndirectExpensesData(liveTenure);
-
-      // Build new expense object with correct cell references
-      const newIndirect = {};
-      Object.values(newExpensesData).flat().forEach(item => {
-        newIndirect[item.d] = item.label;
-        newIndirect[item.e] = 0;
-      });
+      const nestedIndirect = buildNestedIndirectScheduleForTenure(liveTenure);
 
       console.log('🔄 [TERM_LOAN] New expenses initialized', {
-        expenseCount: Object.keys(newIndirect).length / 2,
-        sections: Object.keys(newExpensesData),
-        sampleCells: Object.keys(newIndirect).slice(0, 10)
+        expenseCategories: Object.keys(nestedIndirect).length,
+        sampleCategory: Object.keys(nestedIndirect)[0]
       });
 
       setFormData(prev => ({
         ...prev,
-        'Schedule for Indirect Expenses': newIndirect
+        'Schedule for Indirect Expenses': nestedIndirect
       }));
 
       // Mark that expenses have been initialized for GT7 if applicable
@@ -1009,6 +1014,57 @@ const FRTermLoanForm = ({
   }, [CURRENT_ASSET_SECTIONS]);
 
   const fillTestData = useCallback(() => {
+    const testTenure = 5;
+    const assetSections = getAssetSections(testTenure);
+
+    const scheduleForAssets = {
+        'd122': 'Office Server & UPS', 'e122': 1.8,
+        'd123': 'Network Firewall Appliance', 'e123': 0.65,
+        'd124': 'Video Conferencing System', 'e124': 0.45,
+        'd125': 'Projector & AV Equipment', 'e125': 0.35,
+        'd132': 'Field Service Toolkits', 'e132': 0.25,
+        'd133': 'Calibration Instruments', 'e133': 0.4,
+        'd134': 'Portable Diagnostic Kit', 'e134': 0.2,
+        'd142': 'Office Renovation (Civil)', 'e142': 4.2,
+        'd143': 'Client Meeting Room Fit-out', 'e143': 1.5,
+        'd152': 'Leasehold Land Advance', 'e152': 8.0,
+        'd153': 'Site Development', 'e153': 2.5,
+        'd155': 'Electrical Panel & DB', 'e155': 0.9,
+        'd156': 'HVAC Split Units', 'e156': 1.1,
+        'd165': 'Workstations & Laptops', 'e165': 1.2,
+        'd166': 'Network Switches & Wi-Fi', 'e166': 0.35,
+        'd175': 'Modular Workstations', 'e175': 1.0,
+        'd176': 'Ergonomic Chairs', 'e176': 0.45,
+        'd185': 'Service Delivery Van', 'e185': 9.5,
+        'd186': 'Two-wheeler (Field Staff)', 'e186': 0.85,
+        'd195': 'N/A — Not Applicable', 'e195': 0,
+        'd204': 'Intangible — Software License', 'e204': 0.8,
+        'd214': 'Goodwill (Acquisition)', 'e214': 1.5,
+        'd224': 'Security Deposit (Rent)', 'e224': 2.0,
+        'd225': 'Long-term Bank Deposit', 'e225': 1.0
+    };
+
+    const loanPct = {};
+    const loanAmt = {};
+    Object.entries(assetSections).forEach(([category, { start, end }]) => {
+      let total = 0;
+      for (let i = start; i <= end; i++) {
+        total += parseFloat(scheduleForAssets[`e${i}`]) || 0;
+      }
+      if (total > 0) {
+        loanPct[category] = 60;
+        loanAmt[category] = ((total * 60) / 100).toFixed(2);
+      } else {
+        loanPct[category] = 0;
+        loanAmt[category] = '';
+      }
+    });
+
+    setLiveTenure(testTenure);
+    setLoanPercentages(loanPct);
+    setLoanAmounts(loanAmt);
+    setAssetValidationErrors({});
+
     setFormData({
       'General Information': {
         'i7': 'Sole Proprietorship',
@@ -1020,7 +1076,7 @@ const FRTermLoanForm = ({
         'i11': 'DEF789012',
         'i12': 35,
         'i13': 'Male',
-        'i14': presetSector && lockSector ? presetSector : 'Trading sector',
+        'i14': presetSector && lockSector ? presetSector : 'service sector without stock',
         'i15': 'IT Consulting Services',
         'i16': '17-3-47,thadepalli center, Vijayawada',
         'i17': 'PARVEZ ALI NARAYANA Solutions',
@@ -1047,7 +1103,7 @@ const FRTermLoanForm = ({
       'Term Loan Details': {
         'h44': 2.0,
         'i45': 'Monthly',
-        'i46': 5,
+        'i46': testTenure,
         'i47': 'Fixed EMI',
         'i48': 6,
         'h49': 2.0,
@@ -1064,27 +1120,7 @@ const FRTermLoanForm = ({
         'h68': 2.0
       },
       'Cost of Project': {},
-      'Schedule for Assets': {
-        'd122': 'Drilling Machine', 'e122': 1.2,
-        'd123': 'Lathe Machine', 'e123': 0.95,
-        'd124': 'CNC Machine', 'e124': 3.5,
-        'd132': 'Service Pump', 'e132': 0.3,
-        'd133': 'Tool Kit Set', 'e133': 0.15,
-        'd142': 'Office Block', 'e142': 3.5,
-        'd143': 'Warehouse', 'e143': 4.2,
-        'd152': 'Industrial Plot', 'e152': 20.0,
-        'd155': 'Main Transformer', 'e155': 1.2,
-        'd156': 'Wiring and Cabling', 'e156': 0.4,
-        'd165': 'Desktop Computers', 'e165': 0.6,
-        'd166': 'Printer', 'e166': 0.12,
-        'd175': 'Office Desks', 'e175': 0.8,
-        'd176': 'Chairs', 'e176': 0.4,
-        'd185': 'Delivery Van', 'e185': 12.5,
-        'd195': 'Cattle', 'e195': 5.0,
-        'd204': 'Other Asset 1', 'e204': 1.0,
-        'd214': 'Other Asset Nil 1', 'e214': 2.0,
-        'd224': 'Security Deposit', 'e224': 1.5
-      },
+      'Schedule for Assets': scheduleForAssets,
       'Schedule for Indirect Expenses': {
         'Administrative & Office Expenses': {
           'd239': 'Office rent', 'e239': 5000,
@@ -1355,7 +1391,6 @@ const FRTermLoanForm = ({
           <option value="Startup India">Startup India</option>
           <option value="NLM scheme">NLM scheme</option>
            <option value="CMEGP">CMEGP</option>
-           <option value="CMPE">CMPE</option>
           <option value="Other MSME">Other MSME</option>
         </select>
         </div>
@@ -1789,13 +1824,13 @@ const FRTermLoanForm = ({
 
     return (
       <div className="space-y-6">
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <h3 className="text-lg font-medium text-blue-800 mb-2">Schedule for Assets</h3>
-          <p className="text-sm text-blue-600">
+        <div className="bg-purple-50 p-4 rounded-lg">
+          <h3 className="text-lg font-medium text-purple-800 mb-2">Schedule for Assets</h3>
+          <p className="text-sm text-[#7e22ce]">
             Please enter the details for each asset category. Select a category tab to view its items.
           </p>
-          <div className="mt-3 p-3 bg-white rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-700">
+          <div className="mt-3 p-3 bg-white rounded-lg border border-purple-200">
+            <p className="text-sm text-purple-700">
               <strong>Progress:</strong> {visitedAssetCategories.size} of {assetCategories.length} categories visited.
             </p>
           </div>
@@ -2019,9 +2054,9 @@ const FRTermLoanForm = ({
             </ul>
           </div>
         )}
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <h3 className="text-lg font-medium text-blue-800 mb-2">Schedule for Indirect Expenses</h3>
-          <p className="text-sm text-blue-600">
+        <div className="bg-purple-50 p-4 rounded-lg">
+          <h3 className="text-lg font-medium text-purple-800 mb-2">Schedule for Indirect Expenses</h3>
+          <p className="text-sm text-[#7e22ce]">
             Please enter the details and increment percentage for each expense category.
           </p>
         </div>

@@ -201,7 +201,7 @@ const CompanyAdminReportsPage = () => {
   const getStatusBadge = (status) => {
     const statusConfig = {
       pending_validation: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Pending' },
-      under_review: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Under Validation for CA' },
+      under_review: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Under Validation for CA' },
       approved: { bg: 'bg-green-100', text: 'text-green-700', label: 'Validated by CA' },
       rejected: { bg: 'bg-red-100', text: 'text-red-700', label: 'Rejected' },
       draft: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Draft' }
@@ -259,11 +259,11 @@ const CompanyAdminReportsPage = () => {
             type="button"
             onClick={() => setActiveTab('under_review')}
             className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all text-left ${
-              activeTab === 'under_review' ? 'border-blue-500' : 'border-transparent hover:border-blue-200'
+              activeTab === 'under_review' ? 'border-[#7e22ce]' : 'border-transparent hover:border-purple-200'
             }`}
           >
             <div className="flex items-center justify-between">
-              <AlertCircle className="text-blue-500" size={24} />
+              <AlertCircle className="text-purple-500" size={24} />
               <span className="text-2xl font-bold text-gray-800">{stats.under_review || 0}</span>
             </div>
             <p className="text-sm text-gray-600 mt-2">Under Review</p>
@@ -465,7 +465,7 @@ const CompanyAdminReportsPage = () => {
                         <button
                           type="button"
                           onClick={() => handleViewPdf(report)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-2 text-[#7e22ce] hover:bg-purple-50 rounded-lg transition-colors"
                           title="View PDF"
                         >
                           <Eye size={18} />
@@ -568,7 +568,7 @@ const CompanyAdminReportsPage = () => {
                                     {report.requested_sheets.map((sheet, idx) => (
                                       <span
                                         key={`${report._id}-sheet-${idx}`}
-                                        className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded border border-blue-100"
+                                        className="px-2 py-1 bg-purple-50 text-purple-700 text-xs rounded border border-purple-100"
                                       >
                                         {sheet}
                                       </span>

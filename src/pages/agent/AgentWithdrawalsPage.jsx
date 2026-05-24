@@ -155,7 +155,7 @@ const AgentWithdrawalsPage = () => {
       case 'completed':
         return <CheckCircle className="text-green-500" size={20} />;
       case 'approved':
-        return <CheckCircle className="text-blue-500" size={20} />;
+        return <CheckCircle className="text-purple-500" size={20} />;
       case 'rejected':
         return <XCircle className="text-red-500" size={20} />;
       default:
@@ -168,7 +168,7 @@ const AgentWithdrawalsPage = () => {
       case 'completed':
         return 'bg-green-100 text-green-700';
       case 'approved':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-purple-100 text-purple-700';
       case 'rejected':
         return 'bg-red-100 text-red-700';
       default:
@@ -321,7 +321,7 @@ const AgentWithdrawalsPage = () => {
                       <span className="text-xs text-gray-500">Invoice: {withdrawal.invoice_number}</span>
                       <button
                         onClick={() => {/* TODO: Generate PDF on frontend */}}
-                        className="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition-colors"
+                        className="inline-flex items-center px-3 py-1 bg-[#7e22ce] text-white text-xs rounded-lg hover:bg-[#6b21a8] transition-colors"
                       >
                         <FileText size={12} className="mr-1" />
                         Download Invoice

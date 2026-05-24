@@ -11,7 +11,7 @@ const CTA = () => {
   return (
     <section className="py-24 px-6 relative overflow-hidden">
       <div className="absolute inset-0 bg-gray-900 z-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/50 to-blue-900/50"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/50 to-purple-900/50"></div>
         {/* Animated background particles */}
         {[...Array(20)].map((_, i) => (
           <motion.div

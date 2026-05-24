@@ -219,7 +219,7 @@ const AgentReportsPage = () => {
               <select
                 value={filters.status}
                 onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7e22ce]"
               >
                 <option value="">All Status</option>
                 <option value="approved">Validated by CA</option>
@@ -234,7 +234,7 @@ const AgentReportsPage = () => {
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7e22ce]"
               />
             </div>
             <div>
@@ -243,7 +243,7 @@ const AgentReportsPage = () => {
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7e22ce]"
               />
             </div>
             <div>
@@ -251,7 +251,7 @@ const AgentReportsPage = () => {
               <select
                 value={filters.reportType}
                 onChange={(e) => setFilters(prev => ({ ...prev, reportType: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7e22ce] bg-white"
               >
                 <option value="">All Types</option>
                 {reportTypeOptions.map((opt) => (
@@ -268,7 +268,7 @@ const AgentReportsPage = () => {
                 placeholder="Search by applicant name or report type..."
                 value={filters.search}
                 onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7e22ce]"
               />
             </div>
           </div>
@@ -326,7 +326,7 @@ const AgentReportsPage = () => {
                         {report.pdf_file_url && (
                           <button
                             onClick={() => handleDownload(report, 'pdf')}
-                            className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors"
+                            className="px-3 py-1 text-sm text-[#7e22ce] hover:text-purple-800 hover:bg-purple-50 rounded-md transition-colors"
                           >
                             PDF
                           </button>

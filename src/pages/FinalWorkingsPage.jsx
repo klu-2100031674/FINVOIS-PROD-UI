@@ -47,7 +47,7 @@ const FinalWorkingsPage = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#7e22ce] mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading your financial projections...</p>
         </div>
       </div>
@@ -64,7 +64,7 @@ const FinalWorkingsPage = () => {
           </div>
           <button
             onClick={handleBack}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="mt-4 px-4 py-2 bg-[#7e22ce] text-white rounded hover:bg-[#6b21a8]"
           >
             Go Back
           </button>
@@ -105,7 +105,7 @@ const FinalWorkingsPage = () => {
           <ol className="flex items-center space-x-5">
             <li className="flex items-center">
               <div className="flex items-center">
-                <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-blue-600 rounded-full">
+                <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-[#7e22ce] rounded-full">
                   <span className="text-white font-medium text-sm">1</span>
                 </div>
                 <span className="ml-2 text-sm font-medium text-gray-900">Form Data</span>
@@ -114,7 +114,7 @@ const FinalWorkingsPage = () => {
             <div className="flex-shrink-0 w-5 h-px bg-gray-300"></div>
             <li className="flex items-center">
               <div className="flex items-center">
-                <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-blue-600 rounded-full">
+                <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-[#7e22ce] rounded-full">
                   <span className="text-white font-medium text-sm">2</span>
                 </div>
                 <span className="ml-2 text-sm font-medium text-gray-900">Calculations</span>
@@ -123,10 +123,10 @@ const FinalWorkingsPage = () => {
             <div className="flex-shrink-0 w-5 h-px bg-gray-300"></div>
             <li className="flex items-center">
               <div className="flex items-center">
-                <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-blue-600 rounded-full">
+                <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-[#7e22ce] rounded-full">
                   <span className="text-white font-medium text-sm">3</span>
                 </div>
-                <span className="ml-2 text-sm font-medium text-blue-600">Final Review</span>
+                <span className="ml-2 text-sm font-medium text-[#7e22ce]">Final Review</span>
               </div>
             </li>
             <div className="flex-shrink-0 w-5 h-px bg-gray-300"></div>

@@ -4,10 +4,10 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTemplates, selectTemplates, selectTemplateLoading } from '../../store/slices/templateSlice';
-import { clearGeneratedExcel, clearFormData } from '../../store/slices/reportSlice';
+import { clearGeneratedExcel, clearFormData, clearRelatedDocuments } from '../../store/slices/reportSlice';
 import { AdminLayout } from '../../components/layouts';
 import { Loading } from '../../components/common';
 import {
@@ -21,26 +21,33 @@ import {
 
 const AdminGenerateReportPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const dispatch = useDispatch();
   const templates = useSelector(selectTemplates);
   const loading = useSelector(selectTemplateLoading);
-  
+  const assistedUserId = searchParams.get('assistedUserId') || '';
+  const reportHelpId = searchParams.get('reportHelpId') || '';
+  const isAssistedForClient = Boolean(assistedUserId && reportHelpId);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
 
   useEffect(() => {
-    // Clear any previously generated Excel data and form data
     dispatch(clearGeneratedExcel());
     dispatch(clearFormData());
-    
-    // Fetch templates
+    dispatch(clearRelatedDocuments());
     dispatch(fetchTemplates());
   }, [dispatch]);
 
   const handleTemplateSelect = (templateId) => {
-    navigate(
-      `/generate?templateId=${encodeURIComponent(templateId)}&admin=true&newDraft=1`
-    );
+    const params = new URLSearchParams({
+      templateId,
+      admin: 'true',
+      newDraft: '1',
+    });
+    if (assistedUserId) params.set('assistedUserId', assistedUserId);
+    if (reportHelpId) params.set('reportHelpId', reportHelpId);
+    navigate(`/generate?${params.toString()}`);
   };
 
   const filteredTemplates = (Array.isArray(templates) ? templates : []).filter((template) => {
@@ -78,7 +85,11 @@ const AdminGenerateReportPage = () => {
               <h1 className="text-2xl font-bold text-gray-800 font-['Manrope']">
                 Generate Reports
               </h1>
-              <p className="text-gray-500">Select a template to generate report (Admin - No credits required)</p>
+              <p className="text-gray-500">
+                {isAssistedForClient
+                  ? 'Select a template to generate a report for this client (report help request).'
+                  : 'Select a template to generate report (Admin — no credits required)'}
+              </p>
             </div>
           </div>
           
@@ -124,8 +135,8 @@ const AdminGenerateReportPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <FileText className="w-5 h-5 text-blue-600" />
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <FileText className="w-5 h-5 text-[#7e22ce]" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-800">{templates?.length || 0}</p>
@@ -177,7 +188,7 @@ const AdminGenerateReportPage = () => {
                     <div className="p-3 rounded-lg bg-green-100 group-hover:bg-green-200 transition-colors duration-200">
                       <FileText className="w-6 h-6 text-green-600" />
                     </div>
-                    <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                    <span className="px-3 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
                       v{template.version}
                     </span>
                   </div>

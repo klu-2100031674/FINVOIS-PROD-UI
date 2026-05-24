@@ -68,7 +68,9 @@ const PaymentModal = ({
   reportTitle,
   initialSelections,
   onPaymentSuccess,
-  analysisOptions
+  analysisOptions,
+  assistedUserId,
+  reportHelpRequestId,
 }) => {
   const [loading, setLoading] = useState(false);
   const [pricing, setPricing] = useState(null);
@@ -216,6 +218,11 @@ const PaymentModal = ({
         });
       }
 
+      const assistedOptions =
+        assistedUserId && reportHelpRequestId
+          ? { assistedUserId, reportHelpRequestId }
+          : null;
+
       if (isBetaMode) {
         const { bankName, branchName } = extractBankDetails();
         const orderResponse = await reportAPI.createReportPaymentOrder(
@@ -227,7 +234,8 @@ const PaymentModal = ({
           analysisOptions,
           savedFormData,
           bankName,
-          branchName
+          branchName,
+          assistedOptions
         );
         const { report_id } = orderResponse.data;
         const verifyResponse = await reportAPI.verifyReportPayment(report_id, {});
@@ -246,7 +254,8 @@ const PaymentModal = ({
         analysisOptions,
         savedFormData,
         bankName,
-        branchName
+        branchName,
+        assistedOptions
       );
       const { report_id, amount, currency, razorpay_order_id, razorpay_key_id } = orderResponse.data;
 

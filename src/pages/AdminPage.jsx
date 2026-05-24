@@ -212,7 +212,7 @@ const AdminPage = () => {
             <select
               value={selectedRole}
               onChange={(e) => setSelectedRole(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-[#7e22ce]"
             >
               <option value="">All Roles</option>
               <option value="admin">Super Admin</option>
@@ -257,7 +257,7 @@ const AdminPage = () => {
                           <select
                             value={user.role}
                             onChange={(e) => handleRoleChange(user._id, e.target.value)}
-                            className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-[#7e22ce] focus:border-[#7e22ce]"
                             disabled={user._id === user._id} // Can't change own role
                           >
                             <option value="user">User</option>

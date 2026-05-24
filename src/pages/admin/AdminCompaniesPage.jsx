@@ -7,7 +7,7 @@ import {
   Building2,
   Plus,
   Search,
-  Trash2,
+  // Trash2, // reserved if delete company is re-enabled
   Eye,
   ImageOff,
   ShieldCheck,
@@ -47,7 +47,7 @@ const AdminCompaniesPage = () => {
   const [loading, setLoading] = useState(true);
   const [successMessage, setSuccessMessage] = useState('');
   const [togglingId, setTogglingId] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
+  // const [deletingId, setDeletingId] = useState(null); // delete company UI removed
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -57,7 +57,14 @@ const AdminCompaniesPage = () => {
       const response = await companyAPI.getAllCompanies();
       setCompanies(response?.data || []);
     } catch (error) {
-      toast.error(error || 'Failed to fetch companies');
+      const msg =
+        typeof error === 'string'
+          ? error
+          : error?.response?.data?.error ||
+            error?.response?.data?.message ||
+            error?.message ||
+            'Failed to fetch companies';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -76,15 +83,21 @@ const AdminCompaniesPage = () => {
   }, [location.pathname, location.state, navigate]);
 
   const handleToggleCompanyStatus = async (company) => {
+    const companyId = company._id ?? company.id;
+    if (!companyId) {
+      toast.error('Missing company id');
+      return;
+    }
     const name = company.companyName || 'this company';
-    const nextIsActive = company.isActive === false;
+    const currentlyActive = company.isActive !== false;
+    const nextIsActive = !currentlyActive;
     const confirmed = window.confirm(
       `${nextIsActive ? 'Activate' : 'Deactivate'} "${name}"?`
     );
     if (!confirmed) return;
     try {
-      setTogglingId(company._id);
-      await companyAPI.updateCompanyStatus(company._id, nextIsActive);
+      setTogglingId(companyId);
+      await companyAPI.updateCompanyStatus(companyId, nextIsActive);
       toast.success(`Company ${nextIsActive ? 'activated' : 'deactivated'} successfully`);
       setSuccessMessage('');
       await fetchCompanies();
@@ -95,15 +108,21 @@ const AdminCompaniesPage = () => {
     }
   };
 
+  /* Delete company removed from UI — use deactivate instead if needed.
   const handleDeleteCompany = async (company) => {
+    const companyId = company._id ?? company.id;
+    if (!companyId) {
+      toast.error('Missing company id');
+      return;
+    }
     const name = company.companyName || 'this company';
     const confirmed = window.confirm(
       `Delete "${name}"?\n\nUser accounts will NOT be removed — they are only unassigned from this company. Former company admins become regular users. Reports stay in the system but are no longer linked to this company.\n\nThis cannot be undone.`
     );
     if (!confirmed) return;
     try {
-      setDeletingId(company._id);
-      await companyAPI.deleteCompany(company._id);
+      setDeletingId(companyId);
+      await companyAPI.deleteCompany(companyId);
       toast.success('Company deleted');
       setSuccessMessage('');
       await fetchCompanies();
@@ -113,6 +132,7 @@ const AdminCompaniesPage = () => {
       setDeletingId(null);
     }
   };
+  */
 
   const filteredCompanies = useMemo(() => {
     let list = [...companies];
@@ -272,7 +292,7 @@ const AdminCompaniesPage = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
                   {filteredCompanies.map((company) => (
-                    <tr key={company._id} className="hover:bg-gray-50">
+                    <tr key={company._id ?? company.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="font-semibold text-gray-900 text-sm">
                           {company.companyName || '—'}
@@ -284,12 +304,12 @@ const AdminCompaniesPage = () => {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <LogoThumb
-                            key={`${company._id}-ap-${company.apLogoUrl || ''}`}
+                            key={`${company._id ?? company.id}-ap-${company.apLogoUrl || ''}`}
                             url={company.apLogoDisplayUrl || company.apLogoUrl}
                             label="Logo 1"
                           />
                           <LogoThumb
-                            key={`${company._id}-cl-${company.companyLogoUrl || ''}`}
+                            key={`${company._id ?? company.id}-cl-${company.companyLogoUrl || ''}`}
                             url={company.companyLogoDisplayUrl || company.companyLogoUrl}
                             label="Logo 2"
                           />
@@ -328,7 +348,7 @@ const AdminCompaniesPage = () => {
                         <div className="flex flex-wrap justify-end gap-2">
                           <button
                             type="button"
-                            onClick={() => navigate(`/admin/companies/${company._id}`)}
+                            onClick={() => navigate(`/admin/companies/${company._id ?? company.id}`)}
                             className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-600 text-white hover:bg-purple-700"
                           >
                             <Eye size={12} /> View
@@ -336,28 +356,30 @@ const AdminCompaniesPage = () => {
                           <button
                             type="button"
                             onClick={() => handleToggleCompanyStatus(company)}
-                            disabled={togglingId === company._id}
+                            disabled={togglingId === (company._id ?? company.id)}
                             className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg border disabled:opacity-50 ${
                               company.isActive === false
                                 ? 'border-green-200 text-green-700 hover:bg-green-50'
                                 : 'border-red-200 text-red-700 hover:bg-red-50'
                             }`}
                           >
-                            {togglingId === company._id
+                            {togglingId === (company._id ?? company.id)
                               ? 'Updating…'
                               : company.isActive === false
                               ? 'Activate'
                               : 'Deactivate'}
                           </button>
+                          {/* Delete company button removed from UI — deactivate covers operational suspension.
                           <button
                             type="button"
                             onClick={() => handleDeleteCompany(company)}
-                            disabled={deletingId === company._id}
+                            disabled={deletingId === (company._id ?? company.id)}
                             className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50"
                           >
                             <Trash2 size={12} />
-                            {deletingId === company._id ? 'Deleting…' : 'Delete'}
+                            {deletingId === (company._id ?? company.id) ? 'Deleting…' : 'Delete'}
                           </button>
+                          */}
                         </div>
                       </td>
                     </tr>

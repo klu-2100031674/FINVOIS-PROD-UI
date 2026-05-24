@@ -126,7 +126,7 @@ const AdminPricingPage = () => {
     return (
       <AdminLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#7e22ce]"></div>
         </div>
       </AdminLayout>
     );
@@ -141,7 +141,7 @@ const AdminPricingPage = () => {
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="mt-4 md:mt-0 flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="mt-4 md:mt-0 flex items-center px-4 py-2 bg-[#7e22ce] text-white rounded-lg hover:bg-[#6b21a8] transition-colors"
         >
           <Plus size={18} className="mr-2" />
           Add New Price
@@ -174,7 +174,7 @@ const AdminPricingPage = () => {
               <div className="flex space-x-1">
                 <button
                   onClick={() => handleEdit(pricing)}
-                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                  className="p-1.5 text-[#7e22ce] hover:bg-purple-50 rounded-full transition-colors"
                 >
                   <Edit2 size={16} />
                 </button>
@@ -219,7 +219,7 @@ const AdminPricingPage = () => {
           <p className="text-gray-500 mt-4">No pricing configured yet</p>
           <button
             onClick={() => setShowModal(true)}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="mt-4 px-4 py-2 bg-[#7e22ce] text-white rounded-lg hover:bg-[#6b21a8] transition-colors"
           >
             Add First Price
           </button>
@@ -254,7 +254,7 @@ const AdminPricingPage = () => {
                     onChange={handleInputChange}
                     required
                     disabled={editMode}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent disabled:bg-gray-100"
                   >
                     <option value="">Select Report Type</option>
                     {reportTypes.map((type) => (
@@ -273,7 +273,7 @@ const AdminPricingPage = () => {
                     value={formData.name}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent"
                     placeholder="e.g., CC1 - Capital Cash Flow"
                   />
                 </div>
@@ -291,7 +291,7 @@ const AdminPricingPage = () => {
                       required
                       min="0"
                       step="1"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent"
                       placeholder="100"
                     />
                   </div>
@@ -306,7 +306,7 @@ const AdminPricingPage = () => {
                       onChange={handleInputChange}
                       required
                       min="1"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent"
                       placeholder="1"
                     />
                   </div>
@@ -321,7 +321,7 @@ const AdminPricingPage = () => {
                     value={formData.description}
                     onChange={handleInputChange}
                     rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent"
                     placeholder="Add a description for this pricing..."
                   />
                 </div>
@@ -333,7 +333,7 @@ const AdminPricingPage = () => {
                     name="is_active"
                     checked={formData.is_active}
                     onChange={handleInputChange}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    className="h-4 w-4 text-[#7e22ce] focus:ring-[#7e22ce] border-gray-300 rounded"
                   />
                   <label htmlFor="is_active" className="ml-2 text-sm text-gray-700">
                     Active (visible to users)
@@ -350,7 +350,7 @@ const AdminPricingPage = () => {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="flex-1 flex items-center justify-center px-4 py-2 bg-[#7e22ce] text-white rounded-lg hover:bg-[#6b21a8] transition-colors"
                   >
                     <Save size={18} className="mr-2" />
                     {editMode ? 'Update' : 'Create'}

@@ -7,11 +7,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector, useStore } from 'react-redux';
 import { useAuth } from '../hooks';
-import {
-  fetchTemplateById,
-  selectSelectedTemplate,
-  selectTemplateLoading,
-} from '../store/slices/templateSlice';
+import { fetchTemplateById, selectSelectedTemplate } from '../store/slices/templateSlice';
 import {
   applyFormData,
   selectGeneratedExcel,
@@ -42,7 +38,7 @@ import { ArrowLeftIcon, ChartBarIcon, ClipboardDocumentListIcon } from '@heroico
 import { ShieldCheck } from 'lucide-react';
 import NotificationBell from '../components/common/NotificationBell';
 import finvoisLogo from '../assets/finvois.png';
-import { normalizeUserRole } from '../utils/normalizeUserRole';
+import { normalizeUserRole, effectiveUserRole } from '../utils/normalizeUserRole';
 import { dashboardHomePath, generateHubLandingPath, myReportsPathForRole } from '../utils/routePaths';
 
 /** Full-width shell for /generate — top bar only, no client sidebar */
@@ -50,11 +46,11 @@ function GenerateStandaloneLayout({ children, withFonts = false }) {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const normalizedRole = normalizeUserRole(user?.role);
-  const resolvedDashboardPath = dashboardHomePath(user?.role);
+  const normalizedRole = effectiveUserRole(user);
+  const resolvedDashboardPath = dashboardHomePath(user);
 
   const handleMyReports = () => {
-    navigate(myReportsPathForRole(user?.role));
+    navigate(myReportsPathForRole(user));
   };
 
   return (
@@ -143,10 +139,13 @@ const GeneratePage = () => {
   /** From dashboard "start this template" — always INSERT first save, never update an old draft */
   const forceNewDraft =
     searchParams.get('newDraft') === '1' || searchParams.get('newDraft') === 'true';
+  const assistedUserId = searchParams.get('assistedUserId') || '';
+  const reportHelpId = searchParams.get('reportHelpId') || '';
+  const isAssistedGeneration = Boolean(assistedUserId && reportHelpId);
   const template = useSelector(selectSelectedTemplate);
   const generatedExcel = useSelector(selectGeneratedExcel);
-  const loading = useSelector(selectTemplateLoading);
   const reduxFormData = useSelector(selectFormData);
+  const generateInitKey = useRef('');
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSectionSelector, setShowSectionSelector] = useState(false);
@@ -287,34 +286,28 @@ const GeneratePage = () => {
   // never mutate the URL, so the generation flow is unaffected.
 
   useEffect(() => {
-    if (templateId) {
-      console.log('🎯 GeneratePage - fetching template:', templateId);
-      dispatch(fetchTemplateById(templateId)).then(result => {
-        console.log('📄 Template fetch result:', result);
-      });
-    }
-    console.log('🧹 GeneratePage - clearing any existing Excel data for fresh start');
-    dispatch(clearGeneratedExcel());
-    // Only clear form data if it's a completely different template or No data exists
-    // Actually, usually we clear it when entering from Dashboard for the first time.
-    // However, if the user "comes back" to this page from elsewhere, we might want to keep it.
-    // The user's specific complaint is about losing data when clicking "Back" in the generator itself.
-    // So let's NOT clear form data on every mount if it exists.
-    if (!reduxFormData || Object.keys(reduxFormData).length === 0) {
-      dispatch(clearFormData());
-    }
-    dispatch(clearRelatedDocuments());
-    generationRequestedRef.current = false;
-    hasMounted.current = true;
-
-    // Resume behavior: only load drafts when user comes from Drafts page with draftId.
-    // Otherwise, always start fresh (no confirm prompt).
-    if (!templateId || !user) {
+    if (!templateId) {
       setDraftCheckComplete(true);
       return;
     }
 
-    setDraftCheckComplete(false);
+    const initKey = `${templateId}|${draftId || ''}`;
+    const isNewVisit = generateInitKey.current !== initKey;
+    if (!isNewVisit) return;
+
+    generateInitKey.current = initKey;
+
+    const cached = store.getState().template.selectedTemplate;
+    const cachedId =
+      cached?.templateId || cached?.id || cached?._id || cached?.slug || null;
+    if (String(cachedId || '') !== String(templateId)) {
+      dispatch(fetchTemplateById(templateId));
+    }
+
+    dispatch(clearGeneratedExcel());
+    dispatch(clearRelatedDocuments());
+    generationRequestedRef.current = false;
+    hasMounted.current = true;
 
     if (!draftId) {
       setTempFormData(null);
@@ -323,6 +316,7 @@ const GeneratePage = () => {
       return;
     }
 
+    setDraftCheckComplete(false);
     dispatch(fetchDraftByIdV2(draftId))
       .unwrap()
       .then((draft) => {
@@ -337,7 +331,7 @@ const GeneratePage = () => {
         toast.error('Failed to load draft. Please try again.');
       })
       .finally(() => setDraftCheckComplete(true));
-  }, [templateId, draftId, dispatch, user]);
+  }, [templateId, draftId, dispatch, store]);
 
   useEffect(() => {
     if (!generationRequestedRef.current || !hasMounted.current) return;
@@ -347,8 +341,11 @@ const GeneratePage = () => {
     if (htmlContent) {
       setTimeout(() => {
         toast.success('Excel generated successfully!');
-        const adminParam = searchParams.get('admin') === 'true' ? '&admin=true' : '';
-        navigate(`/stage1?templateId=${templateId}${adminParam}`);
+        const stageParams = new URLSearchParams({ templateId });
+        if (searchParams.get('admin') === 'true') stageParams.set('admin', 'true');
+        if (assistedUserId) stageParams.set('assistedUserId', assistedUserId);
+        if (reportHelpId) stageParams.set('reportHelpId', reportHelpId);
+        navigate(`/stage1?${stageParams.toString()}`);
         generationRequestedRef.current = false;
         setIsProcessing(false);
       }, 100);
@@ -360,7 +357,7 @@ const GeneratePage = () => {
     );
     generationRequestedRef.current = false;
     setIsProcessing(false);
-  }, [generatedExcel, navigate, templateId, searchParams]);
+  }, [generatedExcel, navigate, templateId, searchParams, assistedUserId, reportHelpId]);
 
   // Check if admin mode (no credits required)
   const isAdminMode = searchParams.get('admin') === 'true' && normalizeUserRole(user?.role) === 'admin';
@@ -392,9 +389,6 @@ const GeneratePage = () => {
       console.log('⚡ [GeneratePage] Non-AI template detected, skipping ReportSectionSelector');
       setIsProcessing(true);
       generationRequestedRef.current = true;
-      // #region agent log
-      fetch('http://127.0.0.1:7384/ingest/fee4a383-4f25-45c3-bb64-8d6d21b935e9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'92ac45'},body:JSON.stringify({sessionId:'92ac45',runId:'pre-fix',hypothesisId:'H1-H2',location:'GeneratePage.jsx:NON_AI_applyFormData',message:'Dispatch applyFormData (non-AI template)',data:{templateId:String(templateId||''),role:String(user?.role||''),hasCompanyId:!!user?.companyId,companyIdType:typeof user?.companyId,hasApLogoUrl:!!(user?.apLogoUrl||user?.apLogoDisplayUrl),hasCompanyLogoUrl:!!(user?.companyLogoUrl||user?.companyLogoDisplayUrl),payloadHasApLogoUrl:!!(submittedFormData?.apLogoUrl||submittedFormData?.apLogoDisplayUrl),payloadHasCompanyLogoUrl:!!(submittedFormData?.companyLogoUrl||submittedFormData?.companyLogoDisplayUrl)},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       try {
         const finalWithLogos = await withTemplateLogos(submittedFormData);
         await dispatch(applyFormData({ templateId, formData: finalWithLogos })).unwrap();
@@ -433,9 +427,6 @@ const GeneratePage = () => {
 
     try {
       const finalWithLogos = await withTemplateLogos(finalFormData);
-      // #region agent log
-      fetch('http://127.0.0.1:7384/ingest/fee4a383-4f25-45c3-bb64-8d6d21b935e9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'92ac45'},body:JSON.stringify({sessionId:'92ac45',runId:'pre-fix',hypothesisId:'H1-H2',location:'GeneratePage.jsx:AI_applyFormData',message:'Dispatch applyFormData (AI template)',data:{templateId:String(templateId||''),role:String(user?.role||''),hasCompanyId:!!user?.companyId,hasApLogoUrl:!!(user?.apLogoUrl||user?.apLogoDisplayUrl),hasCompanyLogoUrl:!!(user?.companyLogoUrl||user?.companyLogoDisplayUrl),payloadHasApLogoUrl:!!(finalFormData?.apLogoUrl||finalFormData?.apLogoDisplayUrl),payloadHasCompanyLogoUrl:!!(finalFormData?.companyLogoUrl||finalFormData?.companyLogoDisplayUrl)},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       await dispatch(applyFormData({ templateId, formData: finalWithLogos })).unwrap();
     } catch (error) {
       generationRequestedRef.current = false;
@@ -453,7 +444,7 @@ const GeneratePage = () => {
     if (isAdminMode) {
       navigate('/admin/generate');
     } else {
-      navigate(generateHubLandingPath(user?.role));
+      navigate(generateHubLandingPath(user));
     }
   };
 
@@ -469,21 +460,11 @@ const GeneratePage = () => {
             <p className="text-gray-600 mb-4">
               Please select a template from the dashboard first.
             </p>
-            <Button onClick={() => navigate(generateHubLandingPath(user?.role))} variant="primary">
+            <Button onClick={() => navigate(generateHubLandingPath(user))} variant="primary">
               <ArrowLeftIcon className="w-4 h-4 inline mr-2" />
               Back to Dashboard
             </Button>
           </Card>
-        </div>
-      </GenerateStandaloneLayout>
-    );
-  }
-
-  if (loading) {
-    return (
-      <GenerateStandaloneLayout>
-        <div className="flex justify-center py-24">
-          <Loading text="Loading template..." />
         </div>
       </GenerateStandaloneLayout>
     );
@@ -528,6 +509,15 @@ const GeneratePage = () => {
           />
         ) : (
           <>
+
+            {isAssistedGeneration && (
+              <div className="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-xl text-sm text-purple-900">
+                <p className="font-semibold">Generating for your referred client</p>
+                <p className="mt-1 text-purple-800">
+                  This report will be submitted under the client&apos;s account for CA validation after you complete generation and payment.
+                </p>
+              </div>
+            )}
 
             {/* Page Title */}
             <div className="mb-6">
@@ -713,7 +703,7 @@ const GeneratePage = () => {
                   <p className="text-gray-600 mb-4">
                     Please select a template from the dashboard first.
                   </p>
-                  <Button onClick={() => navigate(generateHubLandingPath(user?.role))} variant="primary">
+                  <Button onClick={() => navigate(generateHubLandingPath(user))} variant="primary">
                     <ArrowLeftIcon className="w-4 h-4 inline mr-2" />
                     Back to Dashboard
                   </Button>

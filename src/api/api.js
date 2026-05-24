@@ -1,6 +1,10 @@
 import axios from 'axios';
 import { REPORT_HEAVY_TIMEOUT } from './apiClient';
 import { getApiBaseUrl } from '../utils/env';
+import { getTunnelRequestHeaders } from '../utils/tunnel';
+import { isPublicAnonymousApiPath } from './publicApiPaths';
+import { isPublicAppPath } from '../utils/publicAppPaths';
+import { resolveSignupApprovalStatus } from '../utils/signupApproval';
 
 /**
  * Centralized API Service
@@ -39,9 +43,21 @@ const setAuthToken = (token) => {
 // Request interceptor - Add auth token to all requests
 apiClient.interceptors.request.use(
   (config) => {
+    const tunnelHeaders = getTunnelRequestHeaders(
+      config.baseURL || API_BASE_URL || config.url,
+    );
+    Object.assign(config.headers, tunnelHeaders);
+
     const token = getAuthToken();
-    if (token) {
+    const reqPath = String(config?.url || '');
+    if (token && !isPublicAnonymousApiPath(reqPath)) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else if (isPublicAnonymousApiPath(reqPath) && config.headers) {
+      if (typeof config.headers.delete === 'function') {
+        config.headers.delete('Authorization');
+      } else {
+        delete config.headers.Authorization;
+      }
     }
     
     // Log API calls in development
@@ -71,13 +87,14 @@ apiClient.interceptors.response.use(
   (error) => {
     console.error('API Error:', error.response?.data || error.message);
     
-    // Handle 401 unauthorized - token expired or invalid
-    if (error.response?.status === 401) {
+    const errUrl = String(error?.config?.url || '');
+    const skipAuthRedirect =
+      isPublicAnonymousApiPath(errUrl) || isPublicAppPath();
+    if (error.response?.status === 401 && !skipAuthRedirect) {
       console.warn('401 Unauthorized - clearing token and redirecting to login');
       setAuthToken(null);
       localStorage.removeItem(import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data');
-      
-      // Redirect to login if not already there
+
       if (window.location.pathname !== '/auth') {
         window.location.href = '/auth';
       }
@@ -109,7 +126,21 @@ export const authAPI = {
   login: async (credentials) => {
     try {
       const response = await apiClient.post('/users/login', credentials);
-      if (response.data.success && response.data.data.token) {
+      const user = response.data?.data?.user;
+      if (user) {
+        const approvalStatus = resolveSignupApprovalStatus(user);
+        if (approvalStatus !== 'approved') {
+          setAuthToken(null);
+          const userKey = import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data';
+          localStorage.removeItem(userKey);
+          const message =
+            approvalStatus === 'rejected'
+              ? 'Your registration was not approved. Please contact support.'
+              : 'Your account is pending admin approval.';
+          throw { error: message, message };
+        }
+      }
+      if (response.data.success && response.data.data?.token) {
         setAuthToken(response.data.data.token);
       }
       return response.data;
@@ -337,17 +368,11 @@ export const reportAPI = {
   // Apply form data to template
   applyFormData: async (templateId, formData) => {
     try {
-      // #region agent log
-      fetch('http://127.0.0.1:7384/ingest/fee4a383-4f25-45c3-bb64-8d6d21b935e9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'92ac45'},body:JSON.stringify({sessionId:'92ac45',runId:'pre-fix',hypothesisId:'H1-H2',location:'api.js:reportAPI.applyFormData:pre',message:'Calling backend apply-form',data:{templateId:String(templateId||''),formDataKeysCount:formData&&typeof formData==='object'?Object.keys(formData).length:null,hasApLogoUrl:!!(formData?.apLogoUrl||formData?.apLogoDisplayUrl),hasCompanyLogoUrl:!!(formData?.companyLogoUrl||formData?.companyLogoDisplayUrl)},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       const response = await apiClient.post(
         `/reports/templates/${templateId}/apply-form`,
-        { formData },
+        formData,
         { timeout: REPORT_HEAVY_TIMEOUT }
       );
-      // #region agent log
-      fetch('http://127.0.0.1:7384/ingest/fee4a383-4f25-45c3-bb64-8d6d21b935e9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'92ac45'},body:JSON.stringify({sessionId:'92ac45',runId:'pre-fix',hypothesisId:'H3',location:'api.js:reportAPI.applyFormData:post',message:'Backend apply-form returned',data:{templateId:String(templateId||''),success:!!response?.data?.success,hasData:!!response?.data?.data,hasHtmlContent:!!response?.data?.data?.htmlContent,htmlContentLength:response?.data?.data?.htmlContent?response.data.data.htmlContent.length:null},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       return response.data;
     } catch (error) {
       throw error.response?.data || error;

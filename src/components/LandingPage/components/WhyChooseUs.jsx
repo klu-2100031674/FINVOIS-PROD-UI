@@ -64,14 +64,14 @@ const WhyChooseUs = () => {
                     className="flex gap-6 p-6 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300"
                   >
                     <div className={`w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 ${feature.color === 'purple' ? 'bg-purple-100 text-purple-600' :
-                        feature.color === 'blue' ? 'bg-blue-100 text-blue-600' :
+                        feature.color === 'blue' ? 'bg-purple-100 text-[#7e22ce]' :
                           'bg-orange-100 text-orange-600'
                       }`}>
                       <Icon className="w-7 h-7" />
                     </div>
                     <div>
                       <div className={`text-xs font-bold uppercase tracking-wider mb-1 ${feature.color === 'purple' ? 'text-purple-600' :
-                          feature.color === 'blue' ? 'text-blue-600' :
+                          feature.color === 'blue' ? 'text-[#7e22ce]' :
                             'text-orange-600'
                         }`}>
                         {feature.badge}

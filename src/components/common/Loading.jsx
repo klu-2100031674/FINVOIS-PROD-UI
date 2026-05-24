@@ -14,7 +14,7 @@ const Loading = ({ text = 'Loading...', size = 'md', fullScreen = false }) => {
   const spinner = (
     <div className="flex flex-col items-center justify-center">
       <svg
-        className={`animate-spin text-blue-600 ${sizes[size]}`}
+        className={`animate-spin text-[#7e22ce] ${sizes[size]}`}
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
         viewBox="0 0 24 24"

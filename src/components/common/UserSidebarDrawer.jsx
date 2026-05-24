@@ -11,7 +11,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useAuth } from '../../hooks';
-import { normalizeUserRole } from '../../utils/normalizeUserRole';
+import { effectiveUserRole } from '../../utils/normalizeUserRole';
 
 /**
  * Client right drawer — visual pattern aligned with AdminLayout sidebar
@@ -32,7 +32,7 @@ const UserSidebarDrawer = ({
   const displayName = userNameProp || user?.name || 'User';
   const displayEmail = user?.email || '';
 
-  const role = normalizeUserRole(user?.role);
+  const role = effectiveUserRole(user);
   const dashboardHomePath = (() => {
     if (role === 'agent') return '/agent/dashboard';
     if (role === 'company_user') return '/company/user/dashboard';
@@ -94,7 +94,7 @@ const UserSidebarDrawer = ({
       <aside className="absolute right-0 top-0 h-full w-64 max-w-[min(16rem,100vw)] bg-white border-l border-gray-200 flex flex-col shadow-xl">
         <div className="p-4 border-b border-gray-200 flex items-start gap-3">
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white font-semibold flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-purple-900 flex items-center justify-center text-white font-semibold flex-shrink-0">
               {displayName?.[0]?.toUpperCase() || 'U'}
             </div>
             <div className="flex-1 min-w-0">

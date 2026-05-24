@@ -14,7 +14,7 @@ import { AdminLayout } from '../../components/layouts';
 import api from '../../api/apiClient';
 import toast from 'react-hot-toast';
 
-const StatCard = ({ title, value, icon: Icon, trend, trendValue, bgColor = 'bg-blue-100', iconColor = 'text-blue-600' }) => (
+const StatCard = ({ title, value, icon: Icon, trend, trendValue, bgColor = 'bg-purple-100', iconColor = 'text-[#7e22ce]' }) => (
   <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 flex items-center group hover:shadow-lg transition-shadow duration-200">
     <div className={`p-3 rounded-lg ${bgColor} group-hover:opacity-80 transition-colors duration-200`}>
       <Icon className={`w-6 h-6 ${iconColor}`} />
@@ -38,13 +38,13 @@ const RecentActivity = ({ activities }) => (
     <div className="space-y-4">
       {activities.map((activity, index) => (
         <div key={index} className="flex items-start space-x-3 pb-3 border-b border-gray-100 last:border-0">
-          <div className={`p-2 rounded-full ${activity.type === 'success' ? 'bg-green-100' : activity.type === 'warning' ? 'bg-yellow-100' : 'bg-blue-100'}`}>
+          <div className={`p-2 rounded-full ${activity.type === 'success' ? 'bg-green-100' : activity.type === 'warning' ? 'bg-yellow-100' : 'bg-purple-100'}`}>
             {activity.type === 'success' ? (
               <CheckCircle className="text-green-500" size={16} />
             ) : activity.type === 'warning' ? (
               <Clock className="text-yellow-500" size={16} />
             ) : (
-              <FileText className="text-blue-500" size={16} />
+              <FileText className="text-purple-500" size={16} />
             )}
           </div>
           <div className="flex-1">
@@ -243,7 +243,7 @@ const AdminDashboardPage = () => {
   return (
     <AdminLayout>
       {/* Welcome Section - Matching main dashboard */}
-      <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-xl shadow-sm mb-8">
+      <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-6 rounded-xl shadow-sm mb-8">
         <h2 className="text-3xl font-bold text-gray-900 font-['Manrope'] mb-2">
           Admin Dashboard
         </h2>
@@ -258,8 +258,8 @@ const AdminDashboardPage = () => {
           icon={Users}
           trend="up"
           trendValue="+12% this month"
-          bgColor="bg-blue-100"
-          iconColor="text-blue-600"
+          bgColor="bg-purple-100"
+          iconColor="text-[#7e22ce]"
         />
         <StatCard
           title="Total channel partners"
@@ -325,12 +325,12 @@ const AdminDashboardPage = () => {
           </div>
           
           {/* Completed Withdrawals */}
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200">
-            <p className="text-sm text-blue-700 font-medium mb-1">Paid Withdrawals</p>
-            <p className="text-2xl font-bold text-blue-800 font-['Manrope']">
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200">
+            <p className="text-sm text-purple-700 font-medium mb-1">Paid Withdrawals</p>
+            <p className="text-2xl font-bold text-purple-800 font-['Manrope']">
               ₹{stats.completedWithdrawals.toLocaleString()}
             </p>
-            <p className="text-xs text-blue-600 mt-1">Total payouts</p>
+            <p className="text-xs text-[#7e22ce] mt-1">Total payouts</p>
           </div>
         </div>
         
@@ -369,8 +369,8 @@ const AdminDashboardPage = () => {
       <div className="mt-8 bg-white rounded-xl shadow-md border border-gray-100 p-6">
         <h3 className="text-lg font-semibold text-gray-800 font-['Manrope'] mb-4">Quick Stats</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-4 bg-blue-50 rounded-xl">
-            <p className="text-2xl font-bold text-blue-600 font-['Manrope']">{stats.pendingWithdrawals}</p>
+          <div className="text-center p-4 bg-purple-50 rounded-xl">
+            <p className="text-2xl font-bold text-[#7e22ce] font-['Manrope']">{stats.pendingWithdrawals}</p>
             <p className="text-sm text-gray-600">Pending Withdrawals</p>
           </div>
           <div className="text-center p-4 bg-green-50 rounded-xl">

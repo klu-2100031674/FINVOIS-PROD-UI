@@ -30,3 +30,15 @@ export function normalizeRoleFromUser(user) {
   }
   return r;
 }
+
+/**
+ * When `companyIsActive === false`, org roles keep their DB assignments but behave like retail `user`
+ * for navigation, route guards, and sidebar (per product: inactive company → personal experience).
+ */
+export function effectiveUserRole(user) {
+  const r = normalizeRoleFromUser(user);
+  if (user?.companyIsActive === false && (r === 'company_admin' || r === 'company_user')) {
+    return 'user';
+  }
+  return r;
+}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   FileText,
@@ -31,9 +31,9 @@ const colorMap = {
     icon: "bg-purple-600",
   },
   blue: {
-    bg: "from-blue-50 to-white",
-    border: "border-blue-200",
-    icon: "bg-blue-600",
+    bg: "from-purple-50 to-white",
+    border: "border-purple-200",
+    icon: "bg-[#7e22ce]",
   },
   green: {
     bg: "from-green-50 to-white",
@@ -611,3 +611,4 @@ const SchemeFinder = () => {
 };
 
 export default SchemeFinder;
+

@@ -7,6 +7,7 @@ export { default as WizardPlugin } from './wizardPlugin';
 export * from './templateMetadata';
 export * from './formDataMapper';
 import { getApiBaseUrl } from './env';
+import { getTunnelRequestHeaders } from './tunnel';
 
 /**
  * Format currency
@@ -109,8 +110,11 @@ export const downloadUserReportFile = async (report, kind) => {
   const token = localStorage.getItem(TOKEN_KEY);
   const response = await fetch(path, {
     method: 'GET',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    credentials: 'include'
+    headers: {
+      ...getTunnelRequestHeaders(path),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    credentials: 'include',
   });
   if (!response.ok) {
     let msg = isPdf ? 'Failed to download PDF' : 'Failed to download Excel';

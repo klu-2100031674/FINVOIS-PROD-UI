@@ -14,7 +14,6 @@ const CompanyUserDashboardPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const loading = useSelector(selectTemplateLoading);
-
   useGenerateHubPrep(dispatch);
 
   const handleTemplateSelect = (templateId, opts = {}) => {
@@ -39,7 +38,10 @@ const CompanyUserDashboardPage = () => {
 
   return (
     <ClientLayout>
-      <DashboardAISection onSelectTemplate={handleTemplateSelect} />
+      <DashboardAISection
+        onSelectTemplate={handleTemplateSelect}
+        showGenerationModeStep
+      />
     </ClientLayout>
   );
 };

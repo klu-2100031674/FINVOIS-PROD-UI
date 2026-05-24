@@ -4,6 +4,7 @@
 
 export { default as AgentDashboardPage } from './AgentDashboardPage';
 export { default as AgentReferralsPage } from './AgentReferralsPage';
+export { default as AgentReferralUserReportsPage } from './AgentReferralUserReportsPage';
 export { default as AgentReferralLinkPage } from './AgentReferralLinkPage';
 export { default as AgentReportsPage } from './AgentReportsPage';
 export { default as AgentCommissionsPage } from './AgentCommissionsPage';

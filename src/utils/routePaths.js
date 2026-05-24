@@ -1,10 +1,18 @@
 /**
  * Canonical client routes per normalized role — use for redirects and Generate header links.
+ * Pass a full `user` object when available so inactive-company members resolve to retail paths.
  */
-import { normalizeUserRole } from './normalizeUserRole';
+import { normalizeUserRole, effectiveUserRole } from './normalizeUserRole';
 
-export function dashboardHomePath(roleRaw) {
-  const r = normalizeUserRole(roleRaw);
+function navigationRole(roleOrUser) {
+  if (roleOrUser !== null && typeof roleOrUser === 'object' && !Array.isArray(roleOrUser)) {
+    return effectiveUserRole(roleOrUser);
+  }
+  return normalizeUserRole(roleOrUser);
+}
+
+export function dashboardHomePath(roleOrUser) {
+  const r = navigationRole(roleOrUser);
   if (r === 'company_admin') return '/company/dashboard';
   if (r === 'company_user') return '/company/user/dashboard';
   if (r === 'admin') return '/admin/dashboard';
@@ -12,8 +20,8 @@ export function dashboardHomePath(roleRaw) {
   return '/dashboard';
 }
 
-export function profilePathForRole(roleRaw) {
-  const r = normalizeUserRole(roleRaw);
+export function profilePathForRole(roleOrUser) {
+  const r = navigationRole(roleOrUser);
   if (r === 'company_admin') return '/company/profile';
   if (r === 'company_user') return '/company/user/profile';
   if (r === 'admin') return '/admin/profile';
@@ -21,8 +29,8 @@ export function profilePathForRole(roleRaw) {
   return '/profile';
 }
 
-export function myReportsPathForRole(roleRaw) {
-  const r = normalizeUserRole(roleRaw);
+export function myReportsPathForRole(roleOrUser) {
+  const r = navigationRole(roleOrUser);
   if (r === 'company_admin') return '/company/my-reports';
   if (r === 'company_user') return '/company/user/reports';
   if (r === 'admin') return '/admin/reports';
@@ -31,15 +39,15 @@ export function myReportsPathForRole(roleRaw) {
 }
 
 /** Where the Excel/generate wizard lives for this role (path prefix for query strings). */
-export function generateWizardPath(roleRaw) {
-  const r = normalizeUserRole(roleRaw);
+export function generateWizardPath(roleOrUser) {
+  const r = navigationRole(roleOrUser);
   if (r === 'company_user') return '/company/user/generate';
   return '/generate';
 }
 
 /** Home path when exiting the generate wizard (“back to dashboard / template picker”). */
-export function generateHubLandingPath(roleRaw) {
-  const r = normalizeUserRole(roleRaw);
+export function generateHubLandingPath(roleOrUser) {
+  const r = navigationRole(roleOrUser);
   if (r === 'company_admin') return '/company/generate';
   if (r === 'company_user') return '/company/user/dashboard';
   if (r === 'admin') return '/admin/dashboard';

@@ -1,6 +1,10 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api, { getAuthToken, setAuthToken } from '../../api/api';
 import { normalizeRoleFromUser } from '../../utils/normalizeUserRole';
+import {
+  resolveSignupApprovalStatus,
+  canAccessApplication
+} from '../../utils/signupApproval';
 
 /**
  * Auth Slice - User authentication state management
@@ -21,7 +25,13 @@ const loadUserFromStorage = () => {
     const userKey = import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data';
     const user = localStorage.getItem(userKey);
     if (token && user) {
-      return { token, user: normalizeStoredRole(JSON.parse(user)) };
+      const parsed = normalizeStoredRole(JSON.parse(user));
+      if (!canAccessApplication(parsed)) {
+        localStorage.removeItem(userKey);
+        localStorage.removeItem('ca_auth_token');
+        return { token: null, user: null };
+      }
+      return { token, user: parsed };
     }
   } catch (error) {
     console.error('Error loading user from storage:', error);
@@ -85,12 +95,24 @@ export const login = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const response = await api.auth.login(credentials);
-
-      // Store in localStorage (token is already set by the API)
       const userKey = import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data';
-      if (response.data && response.data.user) {
-        response.data.user = normalizeStoredRole(response.data.user);
-        localStorage.setItem(userKey, JSON.stringify(response.data.user));
+      const user = response?.data?.user;
+
+      if (user) {
+        const normalizedUser = normalizeStoredRole(user);
+        const approvalStatus = resolveSignupApprovalStatus(normalizedUser);
+        if (approvalStatus !== 'approved') {
+          setAuthToken(null);
+          localStorage.removeItem(userKey);
+          if (approvalStatus === 'rejected') {
+            return rejectWithValue(
+              'Your registration was not approved. Please contact support.'
+            );
+          }
+          return rejectWithValue('Your account is pending admin approval.');
+        }
+        response.data.user = normalizedUser;
+        localStorage.setItem(userKey, JSON.stringify(normalizedUser));
       }
 
       return response;
@@ -178,20 +200,27 @@ const authSlice = createSlice({
             mobile: action.payload.data.user.phone || action.payload.data.user.mobile
           });
 
-          // Check if email is verified
+          const approvalStatus = resolveSignupApprovalStatus(userData);
+
           if (userData.email_verified === false) {
-            console.warn('⚠️ Login prevented: Email not verified');
             state.user = null;
             state.token = null;
             state.isAuthenticated = false;
             state.error = 'Please verify your email address before logging in.';
-
-            // Ensure we don't save to localStorage if invalid
+            localStorage.removeItem(import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data');
+            localStorage.removeItem('ca_auth_token');
+          } else if (approvalStatus === 'pending') {
             state.user = null;
             state.token = null;
             state.isAuthenticated = false;
-            state.error = 'Please verify your email address before logging in.';
-
+            state.error = 'Your account is pending admin approval.';
+            localStorage.removeItem(import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data');
+            localStorage.removeItem('ca_auth_token');
+          } else if (approvalStatus === 'rejected') {
+            state.user = null;
+            state.token = null;
+            state.isAuthenticated = false;
+            state.error = 'Your registration was not approved. Please contact support.';
             localStorage.removeItem(import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data');
             localStorage.removeItem('ca_auth_token');
           } else if (userData.is_active === false) {
@@ -205,11 +234,11 @@ const authSlice = createSlice({
             state.user = userData;
             state.token = action.payload.data.token;
             state.isAuthenticated = true;
+            state.error = null;
           }
         } else {
           console.warn('Login response structure unexpected:', action.payload);
         }
-        state.error = null;
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
@@ -225,14 +254,21 @@ const authSlice = createSlice({
       .addCase(getProfile.fulfilled, (state, action) => {
         state.loading = false;
         if (action.payload.success && action.payload.data) {
-          // Map phone to mobile for consistency
           const userData = normalizeStoredRole({
             ...action.payload.data,
             mobile: action.payload.data.phone || action.payload.data.mobile
           });
+          if (!canAccessApplication(userData)) {
+            state.user = null;
+            state.token = null;
+            state.isAuthenticated = false;
+            const userKey = import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data';
+            localStorage.removeItem(userKey);
+            localStorage.removeItem(import.meta.env.VITE_TOKEN_STORAGE_KEY || 'ca_auth_token');
+            setAuthToken(null);
+            return;
+          }
           state.user = userData;
-
-          // Update localStorage to keep it in sync
           const userKey = import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data';
           localStorage.setItem(userKey, JSON.stringify(userData));
         }

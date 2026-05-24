@@ -28,10 +28,10 @@ import {
 import { setFormData } from '../store/slices/reportSlice';
 import { useAuth } from '../hooks';
 import { generateHubLandingPath } from '../utils/routePaths';
-import { normalizeUserRole } from '../utils/normalizeUserRole';
+import { effectiveUserRole } from '../utils/normalizeUserRole';
 
-function layoutForDraftsRole(roleRaw) {
-  const r = normalizeUserRole(roleRaw);
+function layoutForDraftsRole(userObj) {
+  const r = effectiveUserRole(userObj);
   if (r === 'admin' || r === 'company_admin') return AdminLayout;
   if (r === 'agent') return AgentLayout;
   return ClientLayout;
@@ -41,7 +41,7 @@ const DraftsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const Layout = layoutForDraftsRole(user?.role);
+  const Layout = layoutForDraftsRole(user);
   const drafts = useSelector(selectDrafts);
   const loading = useSelector(selectDraftsLoading);
 
@@ -176,7 +176,7 @@ const DraftsPage = () => {
               className="shrink-0 !bg-purple-600 hover:!bg-purple-700 focus:!ring-purple-500 shadow-md shadow-purple-500/20 sm:min-w-[160px] rounded-xl"
               onClick={() => {
                 toast.success('Select a template to start a new draft.');
-                navigate(generateHubLandingPath(user?.role));
+                navigate(generateHubLandingPath(user));
               }}
             >
               <span className="inline-flex items-center gap-2">

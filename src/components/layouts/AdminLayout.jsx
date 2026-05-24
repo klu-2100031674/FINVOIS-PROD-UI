@@ -30,9 +30,14 @@ import {
   Mail,
   Building2,
   FolderOpen,
+  Briefcase,
+  UserCheck,
+  Landmark,
+  Inbox,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { normalizeUserRole } from '../../utils/normalizeUserRole';
+import { getReportHelpNavLabel } from '../../utils/reportHelpNav';
 import { companyAPI } from '../../api/endpoints';
 
 const AdminLayout = ({ children, hideSidebar = false }) => {
@@ -68,6 +73,10 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
 
     if (role !== 'company_admin') {
       items.push({ to: '/admin/users', icon: Users, label: 'User Management' });
+      if (role === 'admin') {
+        items.push({ to: '/admin/user-approvals', icon: UserCheck, label: 'User Approvals' });
+        items.push({ to: '/admin/report-help', icon: Inbox, label: 'Report Help' });
+      }
     }
 
     if (role === 'company_admin') {
@@ -75,6 +84,11 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
         to: '/company/my-reports',
         icon: FileStack,
         label: 'My Reports'
+      });
+      items.push({
+        to: '/report-help',
+        icon: Inbox,
+        label: getReportHelpNavLabel(user),
       });
     }
 
@@ -102,13 +116,24 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
       label: role === 'company_admin' ? 'Company Reports' : 'Report Validation'
     });
 
+    if (role === 'admin') {
+      items.push({
+        to: '/admin/schemes',
+        icon: Landmark,
+        label: 'Schemes',
+      });
+    }
+
     if (role !== 'company_admin') {
       items.push(
         { to: '/admin/templates', icon: FileStack, label: 'Template Config' },
         { to: '/admin/withdrawals', icon: Wallet, label: 'Withdrawals' },
         { to: '/admin/payments', icon: CreditCard, label: 'Transactions' },
         { to: '/admin/free-credits', icon: Gift, label: 'Free Credits' },
-        { to: '/admin/promotional-emails', icon: Mail, label: 'Promo Emails' }
+        { to: '/admin/promotional-emails', icon: Mail, label: 'Promo Emails' },
+        { type: 'section', key: 'crm-section', label: 'CRM' },
+        { to: '/admin/services', icon: Briefcase, label: 'Services' },
+        { to: '/admin/leads', icon: UserCheck, label: 'Leads' }
       );
     }
 
@@ -179,7 +204,7 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
           {/* User Profile Section */}
           <div className={`p-4 border-b border-gray-200 ${!sidebarOpen ? 'flex justify-center' : ''}`}>
             <div className={`flex items-center ${!sidebarOpen ? '' : 'gap-3'}`}>
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white font-semibold flex-shrink-0">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-purple-900 flex items-center justify-center text-white font-semibold flex-shrink-0">
                 {user?.name?.[0]?.toUpperCase() || 'A'}
               </div>
               {sidebarOpen && (
@@ -254,7 +279,7 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
               {/* User Profile Section - Mobile */}
               <div className="p-4 border-b border-gray-200">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white font-semibold">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-purple-900 flex items-center justify-center text-white font-semibold">
                     {user?.name?.[0]?.toUpperCase() || 'A'}
                   </div>
                   <div className="flex-1 min-w-0">

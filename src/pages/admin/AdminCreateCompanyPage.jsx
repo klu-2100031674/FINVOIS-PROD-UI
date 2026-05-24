@@ -6,6 +6,7 @@ import { useAuth } from '../../hooks';
 import toast from 'react-hot-toast';
 import { normalizeUserRole } from '../../utils/normalizeUserRole';
 import { formatRoleForDisplay } from '../../utils/roleDisplay';
+import { isChannelPartner } from '../../utils/companyMembership';
 import {
   ArrowLeft,
   Building2,
@@ -17,13 +18,10 @@ import {
   Image as ImageIcon,
   ShieldCheck,
   ShieldAlert,
-  Pencil,
-  X,
   CheckCircle2,
   Users,
   BarChart3,
   UserCog,
-  UserPlus,
   RefreshCw,
   ExternalLink,
   Trash2
@@ -68,7 +66,7 @@ const InfoCard = ({ icon: Icon, label, value }) => (
 const StatCard = ({ icon: Icon, label, value, tone = 'gray' }) => {
   const toneMap = {
     gray: 'text-gray-900 bg-gray-100 text-gray-600',
-    blue: 'text-blue-700 bg-blue-50 text-blue-600',
+    blue: 'text-purple-700 bg-purple-50 text-[#7e22ce]',
     green: 'text-green-700 bg-green-50 text-green-600',
     yellow: 'text-yellow-700 bg-yellow-50 text-yellow-600',
     purple: 'text-purple-700 bg-purple-50 text-purple-600',
@@ -235,8 +233,6 @@ const AdminCreateCompanyPage = () => {
   const [apLogoClearing, setApLogoClearing] = useState(false);
   const [companyLogoClearing, setCompanyLogoClearing] = useState(false);
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
   const [analytics, setAnalytics] = useState(null);
   const [candidates, setCandidates] = useState([]);
   const [adminSearch, setAdminSearch] = useState('');
@@ -248,32 +244,13 @@ const AdminCreateCompanyPage = () => {
   const [updatingCompanyStatus, setUpdatingCompanyStatus] = useState(false);
   const [companyUsers, setCompanyUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
-  const [creatingUser, setCreatingUser] = useState(false);
   const [existingUserCandidates, setExistingUserCandidates] = useState([]);
   const [selectedExistingUserIds, setSelectedExistingUserIds] = useState([]);
   const [addingExistingUser, setAddingExistingUser] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [existingUserSearch, setExistingUserSearch] = useState('');
   const [showExistingUsersDropdown, setShowExistingUsersDropdown] = useState(false);
-  const [showCreateUserForm, setShowCreateUserForm] = useState(false);
   const existingUsersDropdownRef = useRef(null);
-  const [newUserForm, setNewUserForm] = useState({
-    name: '',
-    email: '',
-    password: '',
-    phone: '',
-    role: 'user'
-  });
-
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleNewUserChange = (event) => {
-    const { name, value } = event.target;
-    setNewUserForm((prev) => ({ ...prev, [name]: value }));
-  };
 
   const handleApLogoFileChange = (event) => {
     const file = event.target.files?.[0] || null;
@@ -378,22 +355,6 @@ const AdminCreateCompanyPage = () => {
     }
   };
 
-  const handleUpdateCompany = async (event) => {
-    event.preventDefault();
-    if (!companyId) return;
-    try {
-      setIsUpdating(true);
-      await companyAPI.updateCompany(companyId, formData);
-      toast.success('Company details updated successfully');
-      setIsEditing(false);
-      await fetchCompanyDetails();
-    } catch (error) {
-      toast.error(error || 'Failed to update company');
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
   // Explicit select + confirm flow for top-left logo visibility.
   const [topLeftLogosToggleSaving, setTopLeftLogosToggleSaving] = useState(false);
   const [topLeftLogoSelection, setTopLeftLogoSelection] = useState('yes');
@@ -436,7 +397,8 @@ const AdminCreateCompanyPage = () => {
 
   const handleToggleCompanyStatus = async () => {
     if (!companyId || !companyDetails?._id) return;
-    const nextIsActive = !companyDetails?.isActive;
+    const currentlyActive = companyDetails?.isActive !== false;
+    const nextIsActive = !currentlyActive;
     const confirmed = window.confirm(
       `${nextIsActive ? 'Activate' : 'Deactivate'} "${companyDetails.companyName || 'this company'}"?`
     );
@@ -469,7 +431,9 @@ const AdminCreateCompanyPage = () => {
       await fetchCompanyAnalytics();
       await fetchAdminCandidates();
     } catch (error) {
-      toast.error(error || 'Failed to add company admins');
+      const message =
+        error?.response?.data?.error || error?.message || error || 'Failed to add company admins';
+      toast.error(message);
     } finally {
       setAddingCompanyAdmins(false);
     }
@@ -480,7 +444,7 @@ const AdminCreateCompanyPage = () => {
     try {
       setRemovingAdminId(String(userId));
       await companyAPI.removeCompanyAdmin(companyId, userId);
-      toast.success('Company admin removed');
+      toast.success('Removed from company');
 
       const removedUserId = String(userId);
       const currentUserId = String(user?._id || user?.id || '');
@@ -495,35 +459,23 @@ const AdminCreateCompanyPage = () => {
 
       try {
         await fetchCompanyDetails();
+        await fetchCompanyUsers();
         await fetchCompanyAnalytics();
         await fetchAdminCandidates();
+        await fetchCompanyUserCandidates();
       } catch (refreshError) {
         // Removal already succeeded; avoid showing a misleading failure toast.
         console.warn('Company admin removed, but post-remove refresh failed', refreshError);
       }
     } catch (error) {
-      toast.error(error || 'Failed to remove company admin');
+      const message =
+        error?.response?.data?.error ||
+        error?.message ||
+        error ||
+        'Failed to remove company admin';
+      toast.error(message);
     } finally {
       setRemovingAdminId('');
-    }
-  };
-
-  const handleCreateCompanyUser = async (event) => {
-    event.preventDefault();
-    if (!companyId) return;
-    try {
-      setCreatingUser(true);
-      await companyAPI.createCompanyUser(companyId, newUserForm);
-      toast.success('User added to company successfully');
-      setNewUserForm({ name: '', email: '', password: '', phone: '', role: 'user' });
-      setShowCreateUserForm(false);
-      await fetchCompanyUsers();
-      await fetchCompanyAnalytics();
-      await fetchCompanyUserCandidates();
-    } catch (error) {
-      toast.error(error || 'Failed to create company user');
-    } finally {
-      setCreatingUser(false);
     }
   };
 
@@ -580,12 +532,20 @@ const AdminCreateCompanyPage = () => {
   const handleRemoveUserFromCompany = async (memberUser) => {
     try {
       await companyAPI.updateCompanyUser(memberUser._id, { companyId: null });
-      toast.success('User removed from company');
+      toast.success(
+        isChannelPartner(memberUser)
+          ? 'Channel partner removed from company'
+          : 'User removed from company'
+      );
+      await fetchCompanyDetails();
       await fetchCompanyUsers();
       await fetchCompanyUserCandidates();
+      await fetchAdminCandidates();
       await fetchCompanyAnalytics();
     } catch (error) {
-      toast.error(error || 'Failed to remove user');
+      const message =
+        error?.response?.data?.error || error?.message || error || 'Failed to remove user';
+      toast.error(message);
     }
   };
 
@@ -744,15 +704,20 @@ const AdminCreateCompanyPage = () => {
     );
   }, [companyUsers, userSearch]);
 
+  const eligibleUserCandidates = useMemo(
+    () => existingUserCandidates.filter((candidate) => !isChannelPartner(candidate)),
+    [existingUserCandidates]
+  );
+
   const filteredExistingUserCandidates = useMemo(() => {
-    if (!existingUserSearch.trim()) return existingUserCandidates;
+    if (!existingUserSearch.trim()) return eligibleUserCandidates;
     const term = existingUserSearch.trim().toLowerCase();
-    return existingUserCandidates.filter((candidate) =>
+    return eligibleUserCandidates.filter((candidate) =>
       [candidate.name, candidate.email, candidate.role]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(term))
     );
-  }, [existingUserCandidates, existingUserSearch]);
+  }, [eligibleUserCandidates, existingUserSearch]);
 
   const currentCompanyAdmins = useMemo(() => {
     const list = companyDetails?.companyAdminIds;
@@ -767,15 +732,20 @@ const AdminCreateCompanyPage = () => {
 
   const adminSlotsLeft = Math.max(0, MAX_COMPANY_ADMINS - currentCompanyAdmins.length);
 
+  const eligibleAdminCandidates = useMemo(
+    () => candidates.filter((candidate) => !isChannelPartner(candidate)),
+    [candidates]
+  );
+
   const filteredAdminCandidates = useMemo(() => {
-    if (!adminSearch.trim()) return candidates;
+    if (!adminSearch.trim()) return eligibleAdminCandidates;
     const term = adminSearch.trim().toLowerCase();
-    return candidates.filter((candidate) =>
+    return eligibleAdminCandidates.filter((candidate) =>
       [candidate.name, candidate.email, candidate.role]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(term))
     );
-  }, [candidates, adminSearch]);
+  }, [eligibleAdminCandidates, adminSearch]);
 
   const allFilteredAdminCandidatesSelected =
     filteredAdminCandidates.length > 0 &&
@@ -956,101 +926,22 @@ const AdminCreateCompanyPage = () => {
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-900">Company Overview</h2>
-                      <p className="text-sm text-gray-500 mt-0.5">Basic information about this company.</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsEditing((prev) => !prev)}
-                      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-indigo-200 text-indigo-700 hover:bg-indigo-50 inline-flex items-center gap-1.5"
-                    >
-                      {isEditing ? (
-                        <>
-                          <X size={14} /> Cancel
-                        </>
-                      ) : (
-                        <>
-                          <Pencil size={14} /> Edit
-                        </>
-                      )}
-                    </button>
+                  <div className="mb-4">
+                    <h2 className="text-lg font-semibold text-gray-900">Company Overview</h2>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      Basic information about this company (display only).
+                    </p>
                   </div>
 
-                  {isEditing ? (
-                    <form
-                      onSubmit={handleUpdateCompany}
-                      className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm"
-                    >
-                      <div>
-                        <label className="block text-gray-600 mb-1">Company Name</label>
-                        <input
-                          name="companyName"
-                          value={formData.companyName}
-                          onChange={handleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-gray-600 mb-1">Contact Person</label>
-                        <input
-                          name="contactPersonName"
-                          value={formData.contactPersonName}
-                          onChange={handleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-gray-600 mb-1">Contact Email</label>
-                        <input
-                          type="email"
-                          name="contactEmail"
-                          value={formData.contactEmail}
-                          onChange={handleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-gray-600 mb-1">Contact Phone</label>
-                        <input
-                          name="contactPhone"
-                          value={formData.contactPhone}
-                          onChange={handleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-gray-600 mb-1">Company Address</label>
-                        <textarea
-                          rows={3}
-                          name="companyAddress"
-                          value={formData.companyAddress}
-                          onChange={handleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                        />
-                      </div>
-                      <div className="md:col-span-2 flex justify-end">
-                        <button
-                          type="submit"
-                          disabled={isUpdating}
-                          className="px-4 py-2 text-sm font-semibold rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
-                        >
-                          {isUpdating ? 'Saving…' : 'Save Changes'}
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <InfoCard icon={Building2} label="Company Name" value={companyDetails?.companyName} />
-                      <InfoCard icon={UserIcon} label="Contact Person" value={companyDetails?.contactPersonName} />
-                      <InfoCard icon={Mail} label="Contact Email" value={companyDetails?.contactEmail} />
-                      <InfoCard icon={Phone} label="Contact Phone" value={companyDetails?.contactPhone} />
-                      <div className="md:col-span-2">
-                        <InfoCard icon={MapPin} label="Address" value={companyDetails?.companyAddress} />
-                      </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <InfoCard icon={Building2} label="Company Name" value={companyDetails?.companyName} />
+                    <InfoCard icon={UserIcon} label="Contact Person" value={companyDetails?.contactPersonName} />
+                    <InfoCard icon={Mail} label="Contact Email" value={companyDetails?.contactEmail} />
+                    <InfoCard icon={Phone} label="Contact Phone" value={companyDetails?.contactPhone} />
+                    <div className="md:col-span-2">
+                      <InfoCard icon={MapPin} label="Address" value={companyDetails?.companyAddress} />
                     </div>
-                  )}
+                  </div>
                 </>
               )}
             </section>
@@ -1172,21 +1063,36 @@ const AdminCreateCompanyPage = () => {
                     <ul className="space-y-2">
                       {currentCompanyAdmins.map((admin) => {
                         const id = admin._id || admin.id;
+                        const channelPartner = isChannelPartner(admin);
                         return (
                           <li
                             key={id}
-                            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+                            className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm ${
+                              channelPartner
+                                ? 'border-amber-200 bg-amber-50'
+                                : 'border-gray-200 bg-white'
+                            }`}
                           >
-                            <span className="text-gray-900 font-medium">
-                              {admin.name || '—'} <span className="text-gray-500 font-normal">({admin.email || '—'})</span>
+                            <span className="text-gray-900 font-medium min-w-0">
+                              {admin.name || '—'}{' '}
+                              <span className="text-gray-500 font-normal">({admin.email || '—'})</span>
+                              {channelPartner && (
+                                <span className="ml-2 inline-flex px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-amber-100 text-amber-800">
+                                  Channel partner — invalid
+                                </span>
+                              )}
                             </span>
                             <button
                               type="button"
                               onClick={() => handleRemoveCompanyAdminMember(id)}
                               disabled={removingAdminId === String(id)}
-                              className="px-2.5 py-1 text-xs font-semibold rounded-md border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50"
+                              className="px-2.5 py-1 text-xs font-semibold rounded-md border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50 shrink-0"
                             >
-                              {removingAdminId === String(id) ? 'Removing…' : 'Remove'}
+                              {removingAdminId === String(id)
+                                ? 'Removing…'
+                                : channelPartner
+                                  ? 'Remove from company'
+                                  : 'Remove'}
                             </button>
                           </li>
                         );
@@ -1201,7 +1107,7 @@ const AdminCreateCompanyPage = () => {
                       <h3 className="text-sm font-semibold text-gray-800">Add from existing users</h3>
                       <p className="text-xs text-gray-500 mt-1">
                         {adminSlotsLeft > 0
-                          ? `Select up to ${adminSlotsLeft} user(s) to add as company admin in one step.`
+                          ? `Select up to ${adminSlotsLeft} user(s) to add as company admin in one step. Channel partners cannot be company admins.`
                           : 'Remove a company admin to add a different user.'}
                       </p>
                     </div>
@@ -1299,92 +1205,14 @@ const AdminCreateCompanyPage = () => {
                     Manage users belonging to this company.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <input
-                    type="search"
-                    placeholder="Search users…"
-                    value={userSearch}
-                    onChange={(event) => setUserSearch(event.target.value)}
-                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateUserForm((prev) => !prev)}
-                    className="px-3 py-2 text-sm font-semibold rounded-lg bg-purple-600 text-white hover:bg-purple-700 inline-flex items-center gap-1.5"
-                  >
-                    <UserPlus size={14} /> {showCreateUserForm ? 'Close' : 'Create User'}
-                  </button>
-                </div>
+                <input
+                  type="search"
+                  placeholder="Search users…"
+                  value={userSearch}
+                  onChange={(event) => setUserSearch(event.target.value)}
+                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
               </div>
-
-              {showCreateUserForm && (
-                <form
-                  onSubmit={handleCreateCompanyUser}
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4"
-                >
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Full Name</label>
-                    <input
-                      name="name"
-                      value={newUserForm.name}
-                      onChange={handleNewUserChange}
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
-                    <input
-                      name="email"
-                      type="email"
-                      value={newUserForm.email}
-                      onChange={handleNewUserChange}
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Password</label>
-                    <input
-                      name="password"
-                      type="password"
-                      value={newUserForm.password}
-                      onChange={handleNewUserChange}
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Phone</label>
-                    <input
-                      name="phone"
-                      value={newUserForm.phone}
-                      onChange={handleNewUserChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
-                    <select
-                      name="role"
-                      value={newUserForm.role}
-                      onChange={handleNewUserChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
-                    >
-                      <option value="user">User</option>
-                    </select>
-                  </div>
-                  <div className="flex items-end">
-                    <button
-                      type="submit"
-                      disabled={creatingUser}
-                      className="w-full px-3 py-2 text-sm font-semibold rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
-                    >
-                      {creatingUser ? 'Creating…' : 'Add User'}
-                    </button>
-                  </div>
-                </form>
-              )}
 
               <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
                 <div className="mb-3 flex items-start justify-between gap-3">
@@ -1392,6 +1220,7 @@ const AdminCreateCompanyPage = () => {
                     <h3 className="text-sm font-semibold text-gray-800">Existing User</h3>
                     <p className="text-xs text-gray-500 mt-1">
                       You can select up to {MAX_USERS_PER_ADD_OPERATION} users per add operation.
+                      Channel partners are not eligible for company membership.
                     </p>
                   </div>
                   {selectedExistingUserIds.length > 0 && (
@@ -1509,16 +1338,25 @@ const AdminCreateCompanyPage = () => {
                     <tbody className="bg-white divide-y divide-gray-100">
                       {filteredCompanyUsers.map((memberUser) => {
                         const initial = memberUser.name?.[0]?.toUpperCase() || 'U';
+                        const channelPartner = isChannelPartner(memberUser);
                         return (
-                          <tr key={memberUser._id} className="hover:bg-gray-50">
+                          <tr
+                            key={memberUser._id}
+                            className={channelPartner ? 'bg-amber-50/60 hover:bg-amber-50' : 'hover:bg-gray-50'}
+                          >
                             <td className="px-4 py-3 text-sm">
                               <div className="flex items-center gap-3">
-                                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 text-white flex items-center justify-center font-semibold">
+                                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-purple-600 to-purple-800 text-white flex items-center justify-center font-semibold">
                                   {initial}
                                 </div>
                                 <div>
                                   <div className="font-medium text-gray-900">
                                     {memberUser.name || '—'}
+                                    {channelPartner && (
+                                      <span className="ml-2 inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-amber-100 text-amber-800">
+                                        Channel partner — remove
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="text-xs text-gray-500">
                                     {memberUser.email || '—'}
@@ -1567,7 +1405,7 @@ const AdminCreateCompanyPage = () => {
                                   onClick={() => handleRemoveUserFromCompany(memberUser)}
                                   className="px-2.5 py-1 text-xs font-medium rounded-md border border-red-200 text-red-700 hover:bg-red-50"
                                 >
-                                  Remove
+                                  {channelPartner ? 'Remove from company' : 'Remove'}
                                 </button>
                               </div>
                             </td>

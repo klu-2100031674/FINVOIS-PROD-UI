@@ -56,9 +56,9 @@ const ReferralCard = ({ referralCode, onCopy }) => (
 
 const RecentReferrals = ({ referrals }) => (
   <div className="bg-white rounded-lg shadow-md p-6">
-    <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Referrals</h3>
+    <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent users</h3>
     {referrals.length === 0 ? (
-      <p className="text-gray-500 text-sm text-center py-4">No referrals yet. Share your referral code to get started!</p>
+      <p className="text-gray-500 text-sm text-center py-4">No users yet. Share your referral code to get started!</p>
     ) : (
       <div className="space-y-3 max-h-96 overflow-y-auto">
         {referrals.slice(0, 10).map((referral, index) => (
@@ -99,7 +99,7 @@ const PendingWithdrawals = ({ withdrawals }) => (
             </div>
             <span className={`px-2 py-1 text-xs font-medium rounded-full ${
               withdrawal.status === 'completed' ? 'bg-green-100 text-green-700' :
-              withdrawal.status === 'approved' ? 'bg-blue-100 text-blue-700' :
+              withdrawal.status === 'approved' ? 'bg-purple-100 text-purple-700' :
               withdrawal.status === 'rejected' ? 'bg-red-100 text-red-700' :
               'bg-yellow-100 text-yellow-700'
             }`}>
@@ -254,7 +254,7 @@ const AgentDashboardPage = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
-          title="Total Referrals"
+          title="Total Users"
           value={stats.totalReferrals}
           icon={Users}
           trend="up"
@@ -279,7 +279,7 @@ const AgentDashboardPage = () => {
           title="Total Withdrawn"
           value={`₹${stats.withdrawnAmount.toLocaleString()}`}
           icon={TrendingUp}
-          bgColor="bg-blue-500"
+          bgColor="bg-[#7e22ce]"
         />
       </div>
 
@@ -301,8 +301,8 @@ const AgentDashboardPage = () => {
             <p className="text-3xl font-bold text-green-600">₹{stats.availableBalance.toLocaleString()}</p>
             <p className="text-sm text-gray-600">Available Balance</p>
           </div>
-          <div className="text-center p-4 bg-blue-50 rounded-lg">
-            <p className="text-3xl font-bold text-blue-600">₹{stats.totalCommissions.toLocaleString()}</p>
+          <div className="text-center p-4 bg-purple-50 rounded-lg">
+            <p className="text-3xl font-bold text-[#7e22ce]">₹{stats.totalCommissions.toLocaleString()}</p>
             <p className="text-sm text-gray-600">Lifetime Earnings</p>
           </div>
           <div className="text-center p-4 bg-yellow-50 rounded-lg">

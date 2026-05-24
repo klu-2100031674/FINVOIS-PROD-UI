@@ -7,7 +7,7 @@
  * - Filter and search reports
  */
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
   FileText,
   Check,
@@ -15,7 +15,7 @@ import {
   Eye,
   Download,
   Search,
-  Filter,
+  SlidersHorizontal,
   RefreshCw,
   Clock,
   CheckCircle,
@@ -30,12 +30,21 @@ import {
   MessageSquare,
   Loader2,
   Upload,
-  Settings
+  Settings,
+  Building2
 } from 'lucide-react';
 import { AdminLayout } from '../../components/layouts';
 import { useAuth } from '../../hooks';
 import api from '../../api/apiClient';
+import { companyAPI } from '../../api/endpoints';
 import toast from 'react-hot-toast';
+
+const getReportCompanyName = (report) => {
+  if (report?.companyId?.companyName) return report.companyId.companyName;
+  if (report?.user_id?.companyId?.companyName) return report.user_id.companyId.companyName;
+  if (report?.user_id?.company_name) return report.user_id.company_name;
+  return null;
+};
 
 const VALIDATION_STATUSES = [
   { value: '', label: 'All Reports', icon: FileText, color: 'gray' },
@@ -66,10 +75,13 @@ const AdminReportsPage = () => {
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
+  const [companyFilter, setCompanyFilter] = useState('');
+  const [companies, setCompanies] = useState([]);
   const [reportType, setReportType] = useState(''); // backend filter: report_type
   const [reportTypeOptions, setReportTypeOptions] = useState([]);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
-  const [showFilters, setShowFilters] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [groupByCompany, setGroupByCompany] = useState(false);
   
   // Modals
   const [showApproveModal, setShowApproveModal] = useState(false);
@@ -100,16 +112,19 @@ const AdminReportsPage = () => {
   useEffect(() => {
     fetchStats();
     fetchReports();
-  }, [activeTab]);
+  }, [activeTab, companyFilter]);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
-      const response = await api.get('/admin-reports/stats');
+      const params = new URLSearchParams();
+      if (companyFilter) params.append('company_id', companyFilter);
+      const query = params.toString();
+      const response = await api.get(`/admin-reports/stats${query ? `?${query}` : ''}`);
       setStats(response.data?.data || {});
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
-  };
+  }, [companyFilter]);
 
   const fetchReportTypes = useCallback(async () => {
     try {
@@ -131,6 +146,7 @@ const AdminReportsPage = () => {
       const params = new URLSearchParams();
       if (activeTab) params.append('status', activeTab);
       if (reportType) params.append('report_type', reportType);
+      if (companyFilter) params.append('company_id', companyFilter);
       if (searchQuery) params.append('search', searchQuery);
       if (dateRange.start) params.append('start_date', dateRange.start);
       if (dateRange.end) params.append('end_date', dateRange.end);
@@ -147,11 +163,39 @@ const AdminReportsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, reportType, searchQuery, dateRange]);
+  }, [activeTab, reportType, companyFilter, searchQuery, dateRange]);
 
   useEffect(() => {
     fetchReportTypes();
   }, [fetchReportTypes]);
+
+  useEffect(() => {
+    const loadCompanies = async () => {
+      try {
+        const response = await companyAPI.getAllCompanies();
+        const list = Array.isArray(response?.data) ? response.data : [];
+        setCompanies(
+          [...list].sort((a, b) =>
+            String(a.companyName || '').localeCompare(String(b.companyName || ''))
+          )
+        );
+      } catch (error) {
+        console.error('Error fetching companies:', error);
+      }
+    };
+    loadCompanies();
+  }, []);
+
+  const reportsByCompany = useMemo(() => {
+    if (!groupByCompany) return null;
+    const groups = new Map();
+    for (const report of reports) {
+      const name = getReportCompanyName(report) || 'Unassigned';
+      if (!groups.has(name)) groups.set(name, []);
+      groups.get(name).push(report);
+    }
+    return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [reports, groupByCompany]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -425,7 +469,7 @@ const AdminReportsPage = () => {
   const getStatusBadge = (status) => {
     const statusConfig = {
       pending_validation: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Pending' },
-      under_review: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Under Validation for CA' },
+      under_review: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Under Validation for CA' },
       approved: { bg: 'bg-green-100', text: 'text-green-700', label: 'Validated by CA' },
       rejected: { bg: 'bg-red-100', text: 'text-red-700', label: 'Rejected' },
       draft: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Draft' }
@@ -454,7 +498,7 @@ const AdminReportsPage = () => {
             </p>
           </div>
           <button
-            onClick={() => { fetchReports(); fetchStats(); }}
+            onClick={() => { fetchReports(); fetchStats(); fetchReportTypes(); }}
             className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
           >
             <RefreshCw size={18} className="mr-2" />
@@ -480,11 +524,11 @@ const AdminReportsPage = () => {
           <div 
             onClick={() => setActiveTab('under_review')}
             className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all ${
-              activeTab === 'under_review' ? 'border-blue-500' : 'border-transparent hover:border-blue-200'
+              activeTab === 'under_review' ? 'border-[#7e22ce]' : 'border-transparent hover:border-purple-200'
             }`}
           >
             <div className="flex items-center justify-between">
-              <AlertCircle className="text-blue-500" size={24} />
+              <AlertCircle className="text-purple-500" size={24} />
               <span className="text-2xl font-bold text-gray-800">{stats.under_review}</span>
             </div>
             <p className="text-sm text-gray-600 mt-2">Under Review</p>
@@ -532,82 +576,137 @@ const AdminReportsPage = () => {
 
         {/* Search and Filters */}
         <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
-            <div className="sm:w-56">
+          <form onSubmit={handleSearch} className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
               <select
                 value={reportType}
                 onChange={(e) => setReportType(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                className="w-full sm:w-44 shrink-0 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-sm"
                 title="Filter by report type"
               >
-                <option value="">All Types</option>
+                <option value="">All report types</option>
                 {reportTypeOptions.map((opt) => (
                   <option key={opt} value={opt}>
                     {opt}
                   </option>
                 ))}
               </select>
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search user, email, company, applicant, title..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                />
+              </div>
+              <button
+                type="submit"
+                className="shrink-0 px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium"
+              >
+                Search
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAdvancedFilters((prev) => !prev)}
+                className={`shrink-0 flex items-center justify-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${
+                  showAdvancedFilters
+                    ? 'border-purple-300 bg-purple-50 text-purple-800'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+                aria-expanded={showAdvancedFilters}
+              >
+                <SlidersHorizontal size={16} />
+                Advanced filters
+                {showAdvancedFilters ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
             </div>
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by applicant name or title..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              <Filter size={18} className="mr-2" />
-              Filters
-              {showFilters ? <ChevronUp size={16} className="ml-2" /> : <ChevronDown size={16} className="ml-2" />}
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-            >
-              Search
-            </button>
+
+            {showAdvancedFilters && (
+              <div className="pt-3 border-t border-gray-200 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Company</label>
+                    <div className="relative">
+                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+                      <select
+                        value={companyFilter}
+                        onChange={(e) => setCompanyFilter(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-sm"
+                        title="Filter by company"
+                      >
+                        <option value="">All companies</option>
+                        {companies.map((company) => {
+                          const id = company._id ?? company.id;
+                          return (
+                            <option key={id} value={id}>
+                              {company.companyName}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">From date</label>
+                    <input
+                      type="date"
+                      value={dateRange.start}
+                      onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">To date</label>
+                    <input
+                      type="date"
+                      value={dateRange.end}
+                      onChange={(e) => setDateRange((prev) => ({ ...prev, end: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 cursor-pointer text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={groupByCompany}
+                      onChange={(e) => setGroupByCompany(e.target.checked)}
+                      className="w-4 h-4 text-purple-600 rounded"
+                    />
+                    Group by company
+                  </label>
+                  {(companyFilter || searchQuery || reportType || dateRange.start || dateRange.end || groupByCompany) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDateRange({ start: '', end: '' });
+                        setSearchQuery('');
+                        setReportType('');
+                        setCompanyFilter('');
+                        setGroupByCompany(false);
+                      }}
+                      className="text-sm text-gray-600 hover:text-gray-900 underline-offset-2 hover:underline"
+                    >
+                      Reset filters
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </form>
 
-          {showFilters && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-200">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                <input
-                  type="date"
-                  value={dateRange.start}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                <input
-                  type="date"
-                  value={dateRange.end}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  onClick={() => { setDateRange({ start: '', end: '' }); setSearchQuery(''); setReportType(''); }}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                >
-                  Clear Filters
-                </button>
-              </div>
-            </div>
+          {companyFilter && (
+            <p className="mt-3 text-sm text-purple-700 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2 flex items-center gap-2">
+              <Building2 size={16} />
+              Showing reports for{" "}
+              <span className="font-medium">
+                {companies.find((c) => String(c._id ?? c.id) === String(companyFilter))?.companyName || 'selected company'}
+              </span>
+            </p>
           )}
         </div>
-
         {/* Bulk Actions */}
         {selectedReports.length > 0 && activeTab === 'pending_validation' && (
           <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-4 flex items-center justify-between">
@@ -666,7 +765,20 @@ const AdminReportsPage = () => {
               </div>
 
               {/* Report Rows */}
-              {reports.map((report) => (
+              {(groupByCompany && reportsByCompany ? reportsByCompany : [['', reports]]).map(([companyName, companyReports]) => (
+                <React.Fragment key={companyName || 'all-reports'}>
+                  {groupByCompany && companyName && (
+                    <div className="bg-purple-50/80 px-6 py-2.5 border-b border-purple-100 flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-sm font-semibold text-purple-900">
+                        <Building2 size={16} className="text-purple-600" />
+                        {companyName}
+                      </span>
+                      <span className="text-xs text-purple-700 bg-white/80 px-2 py-0.5 rounded-full border border-purple-100">
+                        {companyReports.length} report{companyReports.length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                  )}
+                  {companyReports.map((report) => (
                 <div key={report._id} className="border-b border-gray-100 last:border-0">
                   <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center hover:bg-gray-50">
                     {/* Checkbox */}
@@ -695,12 +807,23 @@ const AdminReportsPage = () => {
                     </div>
 
                     <div className="col-span-2 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-800 truncate" title={report.user_id?.name || 'Unknown'}>{report.user_id?.name || 'Unknown'}</p>
-                          <p className="text-xs text-gray-500 truncate" title={report.user_id?.email}>{report.user_id?.email}</p>
+                      <p className="text-sm font-medium text-gray-800 truncate" title={report.user_id?.name || 'Unknown'}>
+                        {report.user_id?.name || 'Unknown'}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate" title={report.user_id?.email}>
+                        {report.user_id?.email}
+                      </p>
+                      {getReportCompanyName(report) && (
+                        <div
+                          className="flex items-center gap-1.5 mt-0.5 min-w-0"
+                          title={getReportCompanyName(report)}
+                        >
+                          <Building2 size={14} className="text-purple-500 shrink-0" aria-hidden />
+                          <p className="text-xs text-purple-700 truncate">
+                            {getReportCompanyName(report)}
+                          </p>
                         </div>
-                      </div>
+                      )}
                     </div>
 
                     {/* Date */}
@@ -724,7 +847,7 @@ const AdminReportsPage = () => {
                       {report.pdf_file_url && (
                         <button
                           onClick={() => handleViewPdf(report)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-2 text-[#7e22ce] hover:bg-purple-50 rounded-lg transition-colors"
                           title="View PDF"
                         >
                           <Eye size={18} />
@@ -764,7 +887,7 @@ const AdminReportsPage = () => {
                       {report.validation_status === 'pending_validation' && (
                         <button
                           onClick={() => handleMarkUnderReview(report)}
-                          className="flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200"
+                          className="flex items-center gap-1 px-3 py-1.5 text-sm text-[#7e22ce] bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200"
                           title="Start Review"
                         >
                           <AlertCircle size={16} />
@@ -808,6 +931,9 @@ const AdminReportsPage = () => {
                             <p><span className="text-gray-500">Email:</span> {report.user_id?.email}</p>
                             <p><span className="text-gray-500">Phone:</span> {report.user_id?.phone || 'N/A'}</p>
                             <p><span className="text-gray-500">Role:</span> {report.user_id?.role}</p>
+                            {getReportCompanyName(report) && (
+                              <p><span className="text-gray-500">Company:</span> {getReportCompanyName(report)}</p>
+                            )}
                           </div>
                         </div>
 
@@ -862,7 +988,7 @@ const AdminReportsPage = () => {
                                   <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Requested Sheets</p>
                                   <div className="flex flex-wrap gap-2">
                                     {report.requested_sheets.map((sheet, idx) => (
-                                      <span key={idx} className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded border border-blue-100">
+                                      <span key={idx} className="px-2 py-1 bg-purple-50 text-purple-700 text-xs rounded border border-purple-100">
                                         {sheet}
                                       </span>
                                     ))}
@@ -900,6 +1026,8 @@ const AdminReportsPage = () => {
                     </div>
                   )}
                 </div>
+                  ))}
+                </React.Fragment>
               ))}
             </>
           )}
@@ -963,13 +1091,13 @@ const AdminReportsPage = () => {
               </label>
 
               {user?.signature_url ? (
-                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 flex items-start gap-3">
+                <div className="bg-purple-50 p-3 rounded-lg border border-purple-100 flex items-start gap-3">
                   <div className="mt-0.5">
-                    <CheckCircle className="text-blue-600" size={16} />
+                    <CheckCircle className="text-[#7e22ce]" size={16} />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-blue-800">Signature will be applied</p>
-                    <p className="text-[10px] text-blue-600 mt-0.5">Your digital signature will be automatically added to the PDF.</p>
+                    <p className="text-xs font-medium text-purple-800">Signature will be applied</p>
+                    <p className="text-[10px] text-[#7e22ce] mt-0.5">Your digital signature will be automatically added to the PDF.</p>
                   </div>
                 </div>
               ) : (
@@ -1145,13 +1273,13 @@ const AdminReportsPage = () => {
               </div>
 
               {user?.signature_url && (
-                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 flex items-start gap-3">
+                <div className="bg-purple-50 p-3 rounded-lg border border-purple-100 flex items-start gap-3">
                   <div className="mt-0.5">
-                    <CheckCircle className="text-blue-600" size={16} />
+                    <CheckCircle className="text-[#7e22ce]" size={16} />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-blue-800">Signature will be applied</p>
-                    <p className="text-[10px] text-blue-600 mt-0.5">Your digital signature will be automatically added to the regenerated PDF.</p>
+                    <p className="text-xs font-medium text-purple-800">Signature will be applied</p>
+                    <p className="text-[10px] text-[#7e22ce] mt-0.5">Your digital signature will be automatically added to the regenerated PDF.</p>
                   </div>
                 </div>
               )}

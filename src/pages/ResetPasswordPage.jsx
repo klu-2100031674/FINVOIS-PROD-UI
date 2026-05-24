@@ -1,6 +1,7 @@
 /**
  * Reset Password Page
- * Set new password after OTP verification
+ * Handles both platform users (OTP flow via state.resetToken)
+ * and lead partners (email link flow via ?token= URL param)
  */
 
 import { useState, useEffect } from 'react';
@@ -12,19 +13,24 @@ import { authAPI } from '../api/endpoints';
 const ResetPasswordPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // User OTP flow — token passed via router state after OTP verification
   const email = location.state?.email || '';
-  const resetToken = location.state?.resetToken || '';
-  
-  const [formData, setFormData] = useState({
-    password: '',
-    confirmPassword: '',
-  });
+  const stateToken = location.state?.resetToken || '';
+
+  // Lead email-link flow — token passed as URL query param
+  const urlToken = new URLSearchParams(location.search).get('token') || '';
+
+  // Whichever is present: URL token takes precedence (lead flow)
+  const activeToken = urlToken || stateToken;
+  const isLeadFlow = !!urlToken;
+
+  const [formData, setFormData] = useState({ password: '', confirmPassword: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Password strength indicators
   const [passwordStrength, setPasswordStrength] = useState({
     length: false,
     uppercase: false,
@@ -32,15 +38,14 @@ const ResetPasswordPage = () => {
     number: false,
   });
 
-  // Redirect if no token
+  // Guard: need at least a token to proceed
   useEffect(() => {
-    if (!resetToken || !email) {
-      toast.error('Invalid session. Please start over.');
+    if (!activeToken) {
+      toast.error('Invalid session. Please start the password reset again.');
       navigate('/forgot-password');
     }
-  }, [resetToken, email, navigate]);
+  }, [activeToken, navigate]);
 
-  // Check password strength
   useEffect(() => {
     setPasswordStrength({
       length: formData.password.length >= 8,
@@ -56,18 +61,15 @@ const ResetPasswordPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validation
+
     if (!formData.password) {
       toast.error('Please enter a new password');
       return;
     }
-
     if (formData.password.length < 6) {
       toast.error('Password must be at least 6 characters');
       return;
     }
-
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -75,22 +77,18 @@ const ResetPasswordPage = () => {
 
     setLoading(true);
     try {
-      await authAPI.resetPassword(resetToken, formData.password);
+      await authAPI.resetPassword(activeToken, formData.password);
       setSuccess(true);
       toast.success('Password reset successfully!');
-      // Redirect to login after 3 seconds
-      setTimeout(() => {
-        navigate('/auth', { replace: true });
-      }, 3000);
+      setTimeout(() => navigate('/auth', { replace: true }), 3000);
     } catch (error) {
-      console.error('Reset password error:', error);
-      toast.error(error?.response?.data?.message || error?.message || 'Failed to reset password. Please try again.');
+      const msg = error?.response?.data?.error || error?.response?.data?.message || error?.message || 'Failed to reset password. Please try again.';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  // Success State
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center px-4 py-12">
@@ -99,11 +97,9 @@ const ResetPasswordPage = () => {
             <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
               <CheckCircleIcon className="w-12 h-12 text-green-600" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Password Reset Successful!
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Password Reset Successful!</h1>
             <p className="text-gray-600 mb-6">
-              Your password has been changed successfully. You will be redirected to the login page shortly.
+              Your password has been changed. You will be redirected to the login page shortly.
             </p>
             <Link
               to="/auth"
@@ -120,39 +116,38 @@ const ResetPasswordPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center px-4 py-12">
       <div className="max-w-md w-full">
-        {/* Back Link */}
-        <Link 
-          to="/verify-otp" 
-          state={{ email }}
-          className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-8 transition-colors"
-        >
-          <ArrowLeftIcon className="w-5 h-5 mr-2" />
-          Back
-        </Link>
+        {/* Back link — context-aware */}
+        {isLeadFlow ? (
+          <Link
+            to="/auth"
+            className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-8 transition-colors"
+          >
+            <ArrowLeftIcon className="w-5 h-5 mr-2" />
+            Back to Login
+          </Link>
+        ) : (
+          <Link
+            to="/verify-otp"
+            state={{ email }}
+            className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-8 transition-colors"
+          >
+            <ArrowLeftIcon className="w-5 h-5 mr-2" />
+            Back
+          </Link>
+        )}
 
-        {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          {/* Header */}
           <div className="text-center mb-8">
             <div className="mx-auto w-16 h-16 bg-gray-900 rounded-2xl flex items-center justify-center mb-4">
               <LockClosedIcon className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Set New Password
-            </h1>
-            <p className="text-gray-600">
-              Create a strong password for your account
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Set New Password</h1>
+            <p className="text-gray-600">Create a strong password for your account</p>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* New Password */}
             <div>
-              <label 
-                htmlFor="password" 
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 New Password
               </label>
               <div className="relative">
@@ -174,43 +169,31 @@ const ResetPasswordPage = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                 >
-                  {showPassword ? (
-                    <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  )}
+                  {showPassword
+                    ? <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    : <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />}
                 </button>
               </div>
             </div>
 
-            {/* Password Strength Indicators */}
             {formData.password && (
               <div className="space-y-2 text-sm">
-                <div className={`flex items-center gap-2 ${passwordStrength.length ? 'text-green-600' : 'text-gray-400'}`}>
-                  <CheckCircleIcon className={`w-4 h-4 ${passwordStrength.length ? 'opacity-100' : 'opacity-40'}`} />
-                  At least 8 characters
-                </div>
-                <div className={`flex items-center gap-2 ${passwordStrength.uppercase ? 'text-green-600' : 'text-gray-400'}`}>
-                  <CheckCircleIcon className={`w-4 h-4 ${passwordStrength.uppercase ? 'opacity-100' : 'opacity-40'}`} />
-                  One uppercase letter
-                </div>
-                <div className={`flex items-center gap-2 ${passwordStrength.lowercase ? 'text-green-600' : 'text-gray-400'}`}>
-                  <CheckCircleIcon className={`w-4 h-4 ${passwordStrength.lowercase ? 'opacity-100' : 'opacity-40'}`} />
-                  One lowercase letter
-                </div>
-                <div className={`flex items-center gap-2 ${passwordStrength.number ? 'text-green-600' : 'text-gray-400'}`}>
-                  <CheckCircleIcon className={`w-4 h-4 ${passwordStrength.number ? 'opacity-100' : 'opacity-40'}`} />
-                  One number
-                </div>
+                {[
+                  [passwordStrength.length, 'At least 8 characters'],
+                  [passwordStrength.uppercase, 'One uppercase letter'],
+                  [passwordStrength.lowercase, 'One lowercase letter'],
+                  [passwordStrength.number, 'One number'],
+                ].map(([met, label]) => (
+                  <div key={label} className={`flex items-center gap-2 ${met ? 'text-green-600' : 'text-gray-400'}`}>
+                    <CheckCircleIcon className={`w-4 h-4 ${met ? 'opacity-100' : 'opacity-40'}`} />
+                    {label}
+                  </div>
+                ))}
               </div>
             )}
 
-            {/* Confirm Password */}
             <div>
-              <label 
-                htmlFor="confirmPassword" 
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
                 Confirm Password
               </label>
               <div className="relative">
@@ -236,11 +219,9 @@ const ResetPasswordPage = () => {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                 >
-                  {showConfirmPassword ? (
-                    <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  )}
+                  {showConfirmPassword
+                    ? <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    : <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />}
                 </button>
               </div>
               {formData.confirmPassword && formData.password !== formData.confirmPassword && (
@@ -248,7 +229,6 @@ const ResetPasswordPage = () => {
               )}
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading || !formData.password || formData.password !== formData.confirmPassword}
@@ -266,9 +246,7 @@ const ResetPasswordPage = () => {
                   </svg>
                   Resetting Password...
                 </span>
-              ) : (
-                'Reset Password'
-              )}
+              ) : 'Reset Password'}
             </button>
           </form>
         </div>

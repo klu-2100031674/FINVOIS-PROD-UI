@@ -163,9 +163,6 @@ const BuyCreditsPage = () => {
 
     setLoading(true);
     try {
-      // #region agent log
-      fetch('http://127.0.0.1:7384/ingest/fee4a383-4f25-45c3-bb64-8d6d21b935e9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'76235b'},body:JSON.stringify({sessionId:'76235b',runId:'pre-fix',hypothesisId:'H6-H7',location:'BuyCreditsPage.jsx:handlePayment:start',message:'Buy credits payment flow started',data:{selectedPackageId:selectedPackage?.id,credits:selectedPackage?.credits,amount:selectedPackage?.price},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       // Create order in backend
       const response = await orderAPI.createOrder({
         pack_type: 'report',
@@ -175,9 +172,6 @@ const BuyCreditsPage = () => {
       });
 
       const { order, razorpay_order, key_id } = response;
-      // #region agent log
-      fetch('http://127.0.0.1:7384/ingest/fee4a383-4f25-45c3-bb64-8d6d21b935e9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'76235b'},body:JSON.stringify({sessionId:'76235b',runId:'pre-fix',hypothesisId:'H6',location:'BuyCreditsPage.jsx:handlePayment:orderResponse',message:'Create order response received',data:{orderId:order?._id || null,hasRazorpayOrder:!!razorpay_order,hasKeyId:!!key_id},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
 
       // If Razorpay is not configured (dev mode), simulate success
       if (!razorpay_order || !key_id) {
@@ -208,9 +202,6 @@ const BuyCreditsPage = () => {
         order_id: razorpay_order.id,
         handler: async function (response) {
           try {
-            // #region agent log
-            fetch('http://127.0.0.1:7384/ingest/fee4a383-4f25-45c3-bb64-8d6d21b935e9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'76235b'},body:JSON.stringify({sessionId:'76235b',runId:'pre-fix',hypothesisId:'H8',location:'BuyCreditsPage.jsx:handler:start',message:'Razorpay callback received in buy credits flow',data:{hasPaymentId:!!response?.razorpay_payment_id,hasOrderId:!!response?.razorpay_order_id,hasSignature:!!response?.razorpay_signature},timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
             // Verify payment on backend
             const verifyResponse = await orderAPI.verifyPayment({
               razorpay_order_id: response.razorpay_order_id,
@@ -263,9 +254,6 @@ const BuyCreditsPage = () => {
         return;
       }
       razorpayInstance.on('payment.failed', function (response) {
-        // #region agent log
-        fetch('http://127.0.0.1:7384/ingest/fee4a383-4f25-45c3-bb64-8d6d21b935e9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'76235b'},body:JSON.stringify({sessionId:'76235b',runId:'pre-fix',hypothesisId:'H9',location:'BuyCreditsPage.jsx:paymentFailed:event',message:'Razorpay payment.failed event fired',data:{code:response?.error?.code || null,description:response?.error?.description || null,source:response?.error?.source || null,step:response?.error?.step || null,reason:response?.error?.reason || null,metadataOrderId:response?.error?.metadata?.order_id || null,metadataPaymentId:response?.error?.metadata?.payment_id || null},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         console.error('Payment failed:', response.error);
         toast.error(response.error.description || 'Payment failed');
         navigate('/payment-failure', { 
@@ -277,9 +265,6 @@ const BuyCreditsPage = () => {
       });
       razorpayInstance.open();
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7384/ingest/fee4a383-4f25-45c3-bb64-8d6d21b935e9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'76235b'},body:JSON.stringify({sessionId:'76235b',runId:'pre-fix',hypothesisId:'H6-H7',location:'BuyCreditsPage.jsx:handlePayment:catch',message:'Buy credits payment failed in catch',data:{httpStatus:error?.response?.status || null,apiError:error?.response?.data?.error || null,errorMessage:error?.message || null,responseDataKeys:error?.response?.data ? Object.keys(error.response.data) : []},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       console.error('Order creation failed:', error);
       toast.error(error?.response?.data?.error || 'Failed to initiate payment');
     } finally {

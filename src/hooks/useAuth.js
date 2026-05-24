@@ -1,5 +1,5 @@
 import { useSelector, useDispatch } from 'react-redux';
-import { useEffect } from 'react';
+import { useCallback } from 'react';
 import {
   selectAuth,
   selectUser,
@@ -35,9 +35,9 @@ const useAuth = () => {
     dispatch(logout());
   };
 
-  const handleGetProfile = async () => {
+  const handleGetProfile = useCallback(async () => {
     return dispatch(getProfile()).unwrap();
-  };
+  }, [dispatch]);
 
   const handleClearError = () => {
     dispatch(clearError());

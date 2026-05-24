@@ -47,7 +47,7 @@ export const PrivacyPolicyPage = () => (
                                 "Send you technical notices, updates, and support messages"
                             ].map((item, idx) => (
                                 <li key={idx} className="flex items-start gap-3 text-gray-600">
-                                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0"></span>
+                                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#7e22ce] flex-shrink-0"></span>
                                     <span className="leading-relaxed">{item}</span>
                                 </li>
                             ))}
@@ -59,7 +59,7 @@ export const PrivacyPolicyPage = () => (
                             <span className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-sm">3</span>
                             Data Security
                         </h3>
-                        <p className="text-gray-600 leading-relaxed bg-blue-50 p-6 rounded-xl border border-blue-100">
+                        <p className="text-gray-600 leading-relaxed bg-purple-50 p-6 rounded-xl border border-purple-100">
                             We implement appropriate technical and organizational measures to protect your personal data against unauthorized access, alteration, disclosure, or destruction. However, no method of transmission over the Internet or electronic storage is 100% secure.
                         </p>
                     </section>
@@ -153,9 +153,9 @@ export const CookiesPage = () => (
                                 <span className="block font-semibold text-purple-900 mb-1">Essential Cookies</span>
                                 <span className="text-sm text-purple-700">Strictly necessary for the website to function.</span>
                             </div>
-                            <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                                <span className="block font-semibold text-blue-900 mb-1">Analytics Cookies</span>
-                                <span className="text-sm text-blue-700">Help us understand how visitors interact with the website.</span>
+                            <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
+                                <span className="block font-semibold text-purple-900 mb-1">Analytics Cookies</span>
+                                <span className="text-sm text-purple-700">Help us understand how visitors interact with the website.</span>
                             </div>
                         </div>
                     </div>

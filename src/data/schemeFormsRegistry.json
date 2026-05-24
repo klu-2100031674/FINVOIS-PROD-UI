@@ -1,0 +1,31 @@
+{
+  "forms": [
+    {
+      "id": "pmegp",
+      "title": "PMEGP",
+      "description": "Prime Minister's Employment Generation Programme",
+      "publicFormPath": "/schemes/pmegp",
+      "adminPdfUploadPath": "/admin/schemes/pmegp"
+    },
+    {
+      "id": "ap-idp",
+      "title": "AP IDP 4.0",
+      "description": "Andhra Pradesh Industrial Development Policy 4.0 — Client Screening Questionnaire",
+      "publicFormPath": "/schemes/ap-idp",
+      "adminPdfUploadPath": "/admin/schemes/ap-idp"
+    },
+    {
+      "id": "cmep",
+      "title": "CMEP",
+      "description": "Chief Minister's Employment Programme — Client Screening & Consultancy Questionnaire",
+      "publicFormPath": "/schemes/cmep",
+      "adminPdfUploadPath": "/admin/schemes/cmep"
+    },
+    {
+      "id": "client-screening",
+      "title": "Client screening",
+      "description": "Mail-only intake: name, phone, and topics — all messages go to one inbox set in Manage Emails.",
+      "publicFormPath": "/client-screening"
+    }
+  ]
+}

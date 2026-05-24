@@ -14,7 +14,7 @@ const SECTION_CONFIG = [
     prompt_ref: "constitution",
     fields: [
       { name: "firm_name", label: "Firm Name", type: "text", required: true },
-      { name: "organisation_type", label: "Organization Type", type: "select", options: ["Proprietorship", "Partnership", "Private Limited", "LLP", "Other"] },
+      { name: "organisation_type", label: "Sector", type: "select", options: ["Proprietorship", "Partnership", "Private Limited", "LLP", "Other"] },
       { name: "nature_of_business", label: "Nature of Business", type: "text", placeholder: "Prefilled from previous page" },
       { name: "proprietor_name", label: "Name of Authorised person", type: "text", required: true },
       { name: "pan_number", label: "PAN Number", type: "text" },
@@ -78,7 +78,7 @@ const SECTION_CONFIG = [
     title: "5. Details of Product Manufactured or Stock / Finished Product",
     prompt_ref: "product_details",
     fields: [
-      { name: "product_category", label: "Product Category", type: "text", placeholder: "e.g., Construction Materials, Textiles, etc." },
+      { name: "product_category", label: "Sector", type: "text", placeholder: "e.g., Manufacturing sector, Service sector, etc." },
       { name: "main_product", label: "Main Product Manufactured", type: "text", placeholder: "Manually enter Main Product Manufactured" }
     ]
   },
@@ -409,10 +409,10 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
             }];
           } else if (field.name === 'milestones') {
             testData[section.id][field.name] = [
-              { description: "Construction", start_date: "01/04/2025", end_date: "30/06/2025" },
-              { description: "Machinery/Equipment Erection", start_date: "01/07/2025", end_date: "15/08/2025" },
-              { description: "Machinery/Equipment Trail Run", start_date: "16/08/2025", end_date: "31/08/2025" },
-              { description: "Commercial Run start date", start_date: "01/09/2025", end_date: "01/09/2025" }
+              { description: "Construction", start_date: "01/04/2026", end_date: "30/06/2026" },
+              { description: "Machinery/Equipment Erection", start_date: "01/07/2026", end_date: "15/08/2026" },
+              { description: "Machinery/Equipment Trail Run", start_date: "16/08/2026", end_date: "31/08/2026" },
+              { description: "Commercial Run start date", start_date: "01/09/2026", end_date: "01/09/2026" }
             ];
           } else if (field.name === 'manpower_requirements') {
             testData[section.id][field.name] = [
@@ -478,6 +478,70 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
         }
       });
     });
+
+    // Stage-1 / auto-map often creates non-empty group_list rows with empty subfields
+    // (experience, installed capacity, milestone dates). The loop above skips those
+    // because the array length > 0 — patch missing subfields without wiping mapped data.
+    if (testData.promoter_details?.promoters?.length) {
+      testData.promoter_details.promoters = testData.promoter_details.promoters.map((p) => ({
+        ...p,
+        experience:
+          p.experience !== undefined && p.experience !== null && String(p.experience).trim() !== ''
+            ? p.experience
+            : '15 years in manufacturing, production planning, and plant operations.',
+      }));
+    }
+
+    if (!testData.manufacturing_capacity) testData.manufacturing_capacity = {};
+    const capList = testData.manufacturing_capacity.product_capacity_list;
+    if (Array.isArray(capList) && capList.length > 0) {
+      testData.manufacturing_capacity.product_capacity_list = capList.map((row) => ({
+        ...row,
+        product_name:
+          row.product_name !== undefined && row.product_name !== null && String(row.product_name).trim() !== ''
+            ? row.product_name
+            : 'Fly Ash Bricks',
+        capacity:
+          row.capacity !== undefined && row.capacity !== null && String(row.capacity).trim() !== ''
+            ? row.capacity
+            : '60,00,000 bricks per annum (installed capacity)',
+      }));
+    } else {
+      testData.manufacturing_capacity.product_capacity_list = [
+        { product_name: 'Fly Ash Bricks', capacity: '60,00,000 bricks per annum (installed capacity)' },
+      ];
+    }
+
+    const milestoneDateDefaults = [
+      { start_date: '01/04/2026', end_date: '30/06/2026' },
+      { start_date: '01/07/2026', end_date: '15/08/2026' },
+      { start_date: '16/08/2026', end_date: '31/08/2026' },
+      { start_date: '01/09/2026', end_date: '01/09/2026' },
+    ];
+    if (!testData.implementation_timeline) testData.implementation_timeline = {};
+    if (testData.implementation_timeline.milestones?.length) {
+      testData.implementation_timeline.milestones = testData.implementation_timeline.milestones.map((m, idx) => {
+        const d = milestoneDateDefaults[idx] || { start_date: '01/01/2026', end_date: '31/01/2026' };
+        const isCommercialRun = m.description === 'Commercial Run start date';
+        const start =
+          m.start_date !== undefined && m.start_date !== null && String(m.start_date).trim() !== ''
+            ? String(m.start_date).trim()
+            : d.start_date;
+        let end =
+          m.end_date !== undefined && m.end_date !== null && String(m.end_date).trim() !== ''
+            ? String(m.end_date).trim()
+            : d.end_date;
+        if (isCommercialRun) end = end || start;
+        return { ...m, start_date: start, end_date: end };
+      });
+    } else {
+      testData.implementation_timeline.milestones = [
+        { description: 'Construction', start_date: '01/04/2026', end_date: '30/06/2026' },
+        { description: 'Machinery/Equipment Erection', start_date: '01/07/2026', end_date: '15/08/2026' },
+        { description: 'Machinery/Equipment Trail Run', start_date: '16/08/2026', end_date: '31/08/2026' },
+        { description: 'Commercial Run start date', start_date: '01/09/2026', end_date: '01/09/2026' },
+      ];
+    }
 
     // Specific pre-fills for statutory_approvals
     if (testData.statutory_approvals) {
@@ -946,7 +1010,7 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
                 value={currentSectionData[field.name] || ''}
                 />
             )}
-             <p className="text-xs text-blue-600 flex items-center gap-1">
+             <p className="text-xs text-[#7e22ce] flex items-center gap-1">
                 <InformationCircleIcon className="w-3 h-3"/>
                 Pre-filled from previous forms
              </p>
@@ -1332,10 +1396,10 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 p-6">
           <div className="flex items-center justify-between mb-2">
             <div>
-              <h2 className="text-2xl font-semibold text-gray-900">Customize Your Report Sections</h2>
-              <p className="text-sm text-gray-600 mt-1">
+              <h2 className="text-2xl font-bold text-gray-900">PROJECT PROFILE AND BUSINESS ANALYSIS:</h2>
+              {/* <p className="text-sm text-gray-600 mt-1">
                 Select the sections you want to include in the Detailed Project Report and provide necessary details.
-              </p>
+              </p> */}
             </div>
             <button
               onClick={fillTestData}
@@ -1408,7 +1472,7 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
                     <div className="px-4 pb-4 border-t border-gray-100">
                       <div className="pt-4 space-y-4">
                         {/* {section.note && (
-                          <div className="flex items-center gap-2 p-3 bg-blue-50 text-blue-700 rounded-md text-sm border border-blue-100">
+                          <div className="flex items-center gap-2 p-3 bg-purple-50 text-purple-700 rounded-md text-sm border border-purple-100">
                             <InformationCircleIcon className="w-4 h-4" />
                             <span>{section.note}</span>
                           </div>
@@ -1416,7 +1480,7 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
                         {(() => {
                           const renderedFields = section.fields.map(field => renderField(field, section.id)).filter(f => f !== null);
                           return renderedFields.length > 0 ? renderedFields : (
-                            <div className="flex items-center gap-2 p-3 bg-blue-50 text-blue-700 rounded-md text-sm border border-blue-100">
+                            <div className="flex items-center gap-2 p-3 bg-purple-50 text-purple-700 rounded-md text-sm border border-purple-100">
                               <InformationCircleIcon className="w-4 h-4" />
                               <span>All details for this section are already pre-filled from your previous inputs.</span>
                             </div>

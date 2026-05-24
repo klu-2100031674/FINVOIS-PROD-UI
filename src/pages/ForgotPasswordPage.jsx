@@ -4,15 +4,18 @@
  */
 
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { EnvelopeIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { EnvelopeIcon, ArrowLeftIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { authAPI } from '../api/endpoints';
 
 const ForgotPasswordPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const linkSent = location.state?.linkSent;
+  const sentEmail = location.state?.email;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,24 +34,61 @@ const ForgotPasswordPage = () => {
 
     setLoading(true);
     try {
-      await authAPI.forgotPassword(email);
-      toast.success('OTP sent to your email address');
-      // Navigate to OTP verification page with email
-      navigate('/verify-otp', { state: { email } });
+      const data = await authAPI.forgotPassword(email);
+      if (data.type === 'link') {
+        toast.success('Password reset link sent to your email');
+        navigate('/forgot-password', { state: { linkSent: true, email } });
+      } else {
+        toast.success('OTP sent to your email address');
+        navigate('/verify-otp', { state: { email } });
+      }
     } catch (error) {
-      console.error('Forgot password error:', error);
-      toast.error(error?.response?.data?.message || error?.message || 'Failed to send OTP. Please try again.');
+      toast.error(error?.response?.data?.error || error?.message || 'Failed to send reset. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  if (linkSent) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center px-4 py-12">
+        <div className="max-w-md w-full">
+          <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mb-4">
+              <CheckCircleIcon className="w-8 h-8 text-green-600" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Check your email</h1>
+            <p className="text-gray-600 mb-1">
+              We sent a password reset link to
+            </p>
+            <p className="font-medium text-gray-900 mb-6">{sentEmail}</p>
+            <p className="text-sm text-gray-500 mb-6">
+              Click the link in the email to reset your password. The link expires in 1 hour.
+            </p>
+            <Link to="/auth" className="inline-block w-full py-3 px-4 rounded-lg font-medium bg-gray-900 hover:bg-gray-800 text-white text-center transition-colors">
+              Back to Login
+            </Link>
+            <p className="text-gray-500 text-sm mt-4">
+              Didn't receive it?{' '}
+              <button
+                onClick={() => navigate('/forgot-password', { replace: true })}
+                className="font-medium text-gray-900 hover:underline"
+              >
+                Try again
+              </button>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center px-4 py-12">
       <div className="max-w-md w-full">
         {/* Back Link */}
-        <Link 
-          to="/auth" 
+        <Link
+          to="/auth"
           className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-8 transition-colors"
         >
           <ArrowLeftIcon className="w-5 h-5 mr-2" />

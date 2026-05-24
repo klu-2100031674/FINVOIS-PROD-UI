@@ -1461,7 +1461,6 @@ const FRTermLoanWithStockForm = ({
                 <option value="PMMSY">PMMSY</option>
                 <option value="Startup India">Startup India</option>
                    <option value="CMEGP">CMEGP</option>
-                   <option value="CMPE">CMPE</option>
                 <option value="Other MSME">Other MSME</option>
               </select>
             </div>
@@ -1725,13 +1724,13 @@ const FRTermLoanWithStockForm = ({
 
         return (
           <div className="space-y-6">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h3 className="text-lg font-medium text-blue-800 mb-2">Schedule for Assets</h3>
-              <p className="text-sm text-blue-600">
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <h3 className="text-lg font-medium text-purple-800 mb-2">Schedule for Assets</h3>
+              <p className="text-sm text-[#7e22ce]">
                 Please enter the details for each asset category. Select a category tab to view its items.
               </p>
-              <div className="mt-3 p-3 bg-white rounded-lg border border-blue-200">
-                <p className="text-sm text-blue-700">
+              <div className="mt-3 p-3 bg-white rounded-lg border border-purple-200">
+                <p className="text-sm text-purple-700">
                   <strong>Progress:</strong> {visitedAssetCategories.size} of {assetCategories.length} categories visited.
                 </p>
               </div>
@@ -1914,9 +1913,9 @@ const FRTermLoanWithStockForm = ({
                 </ul>
               </div>
             )}
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h3 className="text-lg font-medium text-blue-800 mb-2">Schedule for Indirect Expenses</h3>
-              <p className="text-sm text-blue-600">
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <h3 className="text-lg font-medium text-purple-800 mb-2">Schedule for Indirect Expenses</h3>
+              <p className="text-sm text-[#7e22ce]">
                 Please enter the details and increment percentage for each expense category.
               </p>
             </div>

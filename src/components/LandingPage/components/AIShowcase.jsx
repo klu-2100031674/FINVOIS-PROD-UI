@@ -131,7 +131,7 @@ const AIShowcase = () => {
                           initial={{ width: 0 }}
                           whileInView={{ width: '85%' }}
                           transition={{ duration: 1.5, delay: 0.5 }}
-                          className="bg-blue-500 h-1.5 rounded-full"
+                          className="bg-[#7e22ce] h-1.5 rounded-full"
                         />
                       </div>
                     </div>
@@ -153,7 +153,7 @@ const AIShowcase = () => {
             </div>
 
             {/* Background Decor */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-br from-purple-100/50 to-blue-100/50 rounded-full blur-3xl -z-10"></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-br from-purple-100/50 to-purple-100/50 rounded-full blur-3xl -z-10"></div>
           </motion.div>
         </div>
       </div>

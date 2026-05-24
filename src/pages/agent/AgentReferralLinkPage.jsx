@@ -186,7 +186,7 @@ const AgentReferralLinkPage = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <Users className="text-blue-500 mx-auto mb-2" size={24} />
+              <Users className="text-purple-500 mx-auto mb-2" size={24} />
               <p className="text-2xl font-bold text-gray-800">{stats.referred_users}</p>
               <p className="text-sm text-gray-500">Total Referrals</p>
             </div>
@@ -216,7 +216,7 @@ const AgentReferralLinkPage = () => {
             </button>
             <button
               onClick={shareOnEmail}
-              className="flex items-center justify-center space-x-2 px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              className="flex items-center justify-center space-x-2 px-4 py-3 bg-[#7e22ce] text-white rounded-lg hover:bg-[#7e22ce] transition-colors"
             >
               <Share2 size={20} />
               <span>Share via Email</span>
@@ -225,9 +225,9 @@ const AgentReferralLinkPage = () => {
         </div>
 
         {/* Instructions */}
-        <div className="bg-blue-50 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-800 mb-2">How it works</h3>
-          <ul className="text-blue-700 space-y-2 text-sm">
+        <div className="bg-purple-50 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-purple-800 mb-2">How it works</h3>
+          <ul className="text-purple-700 space-y-2 text-sm">
             <li>• Share your referral link or code with potential users</li>
             <li>• When they sign up and purchase reports, you earn commission</li>
             <li>• Commission rate: {user?.commission_rate || 10}% of report value</li>

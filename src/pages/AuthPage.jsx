@@ -5,14 +5,19 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { useAuth } from '../hooks';
+import { setLeadAuth } from '../store/slices/leadAuthSlice';
 import finvoisLogo from '../assets/finvois.png';
 import toast from 'react-hot-toast';
 import { normalizeRoleFromUser, normalizeUserRole } from '../utils/normalizeUserRole';
+import { resolveSignupApprovalStatus } from '../utils/signupApproval';
 import { getVmStartUrl } from '../utils/env';
+import { shouldSkipVmOnLogin } from '../utils/tunnel';
 
 const AuthPage = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
   const { login, register, logout, loading: authLoading, error, clearError } = useAuth();
   const [activeTab, setActiveTab] = useState('login');
@@ -146,35 +151,63 @@ const ensureVmReady = async () => {
       setApiError(null);
       setIsVmLoading(true);
 
-      const vmReady = await ensureVmReady();
-      if (!vmReady) {
-        toast.error('Server is taking too long to start. Please try again in 1 minute.');
+      if (!shouldSkipVmOnLogin()) {
+        const vmReady = await ensureVmReady();
+        if (!vmReady) {
+          toast.error('Server is taking too long to start. Please try again in 1 minute.');
+          return;
+        }
+      }
+
+      // Single unified login call — backend handles all user types
+      let result;
+      try {
+        result = await login(loginData);
+      } catch (loginErr) {
+        // 401 from backend (invalid credentials for all user types)
+        const errorMsg = typeof loginErr === 'string' ? loginErr : (loginErr?.message || 'Invalid credentials');
+        setApiError(errorMsg);
+        toast.error(errorMsg);
         return;
       }
 
-      const result = await login(loginData);
-
-      if (result && (result.success === false || result.status === 'error')) {
-        const apiMsg = result.message || result?.data?.message || 'Login failed';
-        toast.error(apiMsg);
+      // Lead partner — backend returned userType: 'lead'
+      if (result?.userType === 'lead') {
+        const { token, lead } = result;
+        dispatch(setLeadAuth({ token, lead }));
+        toast.success('Login successful!');
+        if (lead?.passwordResetRequired) {
+          navigate('/reset-password', { state: { resetToken: token }, replace: true });
+        } else {
+          navigate('/lead/dashboard', { replace: true });
+        }
         return;
       }
 
-      setApiError(null);
-
+      // Platform user — route by role
       const loggedInUser = result?.data?.user || (result?.role ? { role: result.role } : null);
       const userRole = loggedInUser
         ? normalizeRoleFromUser(loggedInUser)
         : normalizeUserRole(result?.role);
       const emailVerified = result?.data?.user?.email_verified;
       const isActive = result?.data?.user?.is_active;
+      const approvalStatus = resolveSignupApprovalStatus(result?.data?.user);
 
       if (emailVerified === false) {
         toast.error('Please verify your email address before logging in.');
         logout();
         return;
       }
-
+      if (approvalStatus === 'pending') {
+        toast.error('Your account is pending admin approval.');
+        logout();
+        return;
+      }
+      if (approvalStatus === 'rejected') {
+        toast.error('Your registration was not approved. Please contact support.');
+        logout();
+        return;
+      }
       if (isActive === false) {
         toast.error('Your account is disabled. Please contact support.');
         logout();
@@ -259,7 +292,9 @@ const ensureVmReady = async () => {
 
       setIsVmLoading(false);
       await register(registerData);
-      toast.success('Registration successful! Please check your email and verify your account before logging in.');
+      toast.success(
+        'Registration successful! Please verify your email. After verification, an admin will review your account before you can log in.'
+      );
       setActiveTab('login');
       setRegisterStep(1);
       setRegisterData({

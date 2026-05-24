@@ -571,13 +571,13 @@ const FRCC2Form = ({
         <div key={field.id} className="space-y-1.5">
           <label style={{ fontFamily: 'Manrope, sans-serif' }} className="block text-xs font-semibold text-gray-800">
             {field.label}
-            <span className="ml-1 text-xs font-normal text-blue-600">(auto-filled)</span>
+            <span className="ml-1 text-xs font-normal text-[#7e22ce]">(auto-filled)</span>
           </label>
           <input
             type="text"
             value={auditedClosingStock || 'From Audited Closing Stock'}
             disabled
-            className="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg bg-blue-50 text-blue-700"
+            className="w-full px-3 py-2 text-sm border border-purple-200 rounded-lg bg-purple-50 text-purple-700"
           />
           {field.note && <p className="text-xs text-gray-500 mt-1">{field.note}</p>}
         </div>

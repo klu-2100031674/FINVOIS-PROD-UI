@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../hooks';
 import { myReportsPathForRole } from '../utils/routePaths';
 import { getApiBaseUrl } from '../utils/env';
+import { getTunnelRequestHeaders } from '../utils/tunnel';
 
 const Stage2Page = () => {
   const navigate = useNavigate();
@@ -38,8 +39,12 @@ const Stage2Page = () => {
       setIsLoading(true);
       
       const token = localStorage.getItem(import.meta.env.VITE_TOKEN_STORAGE_KEY || 'ca_auth_token');
-      const response = await fetch(`${getApiBaseUrl()}/reports/${reportId}/json-data`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      const url = `${getApiBaseUrl()}/reports/${reportId}/json-data`;
+      const response = await fetch(url, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...getTunnelRequestHeaders(url),
+        },
       });
       
       if (!response.ok) throw new Error('Failed to load Excel data');
@@ -100,7 +105,7 @@ const Stage2Page = () => {
       ).unwrap();
       
       toast.success('Report finalized successfully!');
-      navigate(myReportsPathForRole(user?.role));
+      navigate(myReportsPathForRole(user));
     } catch (error) {
       console.error('Error finalizing report:', error);
       toast.error('Failed to finalize report');

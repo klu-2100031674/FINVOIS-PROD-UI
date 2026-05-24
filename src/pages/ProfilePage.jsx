@@ -16,7 +16,8 @@ import {
   ShieldCheck,
   CreditCard,
   Briefcase,
-  Gift
+  Gift,
+  Handshake
 } from 'lucide-react';
 import ClientLayout from '../components/layouts/ClientLayout';
 import { formatRoleForDisplay } from '../utils/roleDisplay';
@@ -71,6 +72,7 @@ const ProfilePage = () => {
     '';
   const displayRole = formatRoleForDisplay(dataSource?.role || 'user', dataSource);
   const freeCredits = Number(dataSource?.free_reports_count || 0);
+  const referringAgent = dataSource?.referring_agent || null;
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -167,7 +169,7 @@ const ProfilePage = () => {
       <div className="py-4 sm:py-6">
         <h1 className="text-xl font-bold text-gray-900 font-manrope mb-6">Profile settings</h1>
         {freeCredits > 0 && (
-          <div className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-100 rounded-xl p-4">
+          <div className="mb-6 bg-gradient-to-r from-purple-50 to-purple-50 border border-purple-100 rounded-xl p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white rounded-lg border border-purple-100">
                 <Gift className="w-5 h-5 text-purple-700" />
@@ -192,7 +194,7 @@ const ProfilePage = () => {
                     <User className="w-full h-full p-6 text-gray-400" />
                   )}
                 </div>
-                <label className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full cursor-pointer hover:bg-blue-700 transition-all shadow-lg hover:scale-105">
+                <label className="absolute bottom-0 right-0 p-2 bg-[#7e22ce] text-white rounded-full cursor-pointer hover:bg-[#6b21a8] transition-all shadow-lg hover:scale-105">
                   <Camera className="w-4 h-4" />
                   <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload('profile_logo')} />
                 </label>
@@ -211,12 +213,39 @@ const ProfilePage = () => {
               </div>
             </div>
 
+            {referringAgent && (
+              <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-purple-50 rounded-lg">
+                    <Handshake className="w-5 h-5 text-purple-700" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-gray-900">Your channel partner</h3>
+                </div>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-0.5">Name</p>
+                    <p className="font-medium text-gray-800">{referringAgent.name || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-0.5">Email</p>
+                    <p className="font-medium text-gray-800 break-all">{referringAgent.email || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-0.5">Phone</p>
+                    <p className="font-medium text-gray-800">
+                      {referringAgent.phone || 'Not provided'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Navigation Menu (Desktop) */}
             <nav className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2 hidden lg:block">
               <button
                 onClick={() => setActiveTab('personal')}
                 className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all ${activeTab === 'personal'
-                    ? 'bg-blue-50 text-blue-700'
+                    ? 'bg-purple-50 text-purple-700'
                     : 'text-gray-600 hover:bg-gray-50'
                   }`}
               >
@@ -226,7 +255,7 @@ const ProfilePage = () => {
               <button
                 onClick={() => setActiveTab('company')}
                 className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all ${activeTab === 'company'
-                    ? 'bg-blue-50 text-blue-700'
+                    ? 'bg-purple-50 text-purple-700'
                     : 'text-gray-600 hover:bg-gray-50'
                   }`}
               >
@@ -303,7 +332,7 @@ const ProfilePage = () => {
                             name="designation"
                             value={formData.designation}
                             onChange={handleInputChange}
-                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white appearance-none"
+                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent transition-all bg-white appearance-none"
                           >
                             <option value="">Select Designation</option>
                             <option value="CA">CA (Chartered Accountant)</option>
@@ -322,7 +351,7 @@ const ProfilePage = () => {
                             value={formData.designation_other}
                             onChange={handleInputChange}
                             placeholder="Please specify your designation"
-                            className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                            className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent transition-all"
                           />
                         )}
                       </div>

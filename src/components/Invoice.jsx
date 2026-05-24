@@ -47,7 +47,7 @@ const Invoice = ({ report, payment }) => {
       {/* Header */}
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-gray-800 mb-2">INVOICE</h1>
-        <div className="w-24 h-1 bg-blue-600 mx-auto"></div>
+        <div className="w-24 h-1 bg-[#7e22ce] mx-auto"></div>
       </div>
 
       {/* Company Info */}

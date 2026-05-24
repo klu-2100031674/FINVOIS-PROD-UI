@@ -16,6 +16,7 @@ import { resolveReportTitle } from "../utils/reportTitle";
 import toast from "react-hot-toast";
 import ClientLayout from "../components/layouts/ClientLayout";
 import AdminLayout from "../components/layouts/AdminLayout";
+import { effectiveUserRole } from "../utils/normalizeUserRole";
 
 const Stage1Page = () => {
   const navigate = useNavigate();
@@ -25,12 +26,13 @@ const Stage1Page = () => {
   const [searchParams] = useSearchParams();
   const dispatch = useDispatch();
   const { user } = useAuth();
-  const normalizedRole = String(user?.role || "").toLowerCase();
-  const isCompanyAdmin = normalizedRole === "company_admin";
+  const isCompanyAdmin = effectiveUserRole(user) === "company_admin";
   const LayoutComponent = isCompanyAdmin ? AdminLayout : ClientLayout;
   const layoutProps = isCompanyAdmin ? {} : { wideContent: true };
   const reportId = searchParams.get("reportId");
   const templateId = searchParams.get("templateId");
+  const assistedUserId = searchParams.get("assistedUserId") || "";
+  const reportHelpId = searchParams.get("reportHelpId") || "";
   const hideSidebar = true;
   const isAdminMode = searchParams.get("admin") === "true";
   const [isLoading, setIsLoading] = useState(true);
@@ -383,20 +385,6 @@ const Stage1Page = () => {
     console.log("✅ [Stage1Page.useEffect] HTML content available - rendering");
     setFileName(pdfFileName || "FinalWorkings");
     lastRenderedHtmlRef.current = htmlContent;
-    // #region agent log
-    try {
-      const htmlString = String(htmlContent || "");
-      const imgTags = htmlString.match(/<img\b[^>]*>/gi) || [];
-      const srcs = Array.from(htmlString.matchAll(/\bsrc\s*=\s*["']([^"']+)["']/gi))
-        .map((m) => m[1])
-        .filter(Boolean);
-      const hasApLike = srcs.some((s) => /aplogo|ap_logo|logo1|apLogo/i.test(s));
-      const hasCompanyLike = srcs.some((s) => /companylogo|company_logo|logo2|companyLogo/i.test(s));
-      fetch('http://127.0.0.1:7384/ingest/fee4a383-4f25-45c3-bb64-8d6d21b935e9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'92ac45'},body:JSON.stringify({sessionId:'92ac45',runId:'pre-fix',hypothesisId:'H3-H4',location:'Stage1Page.jsx:374',message:'Scanned htmlContent for images/logos',data:{templateId:String(templateId||''),htmlLen:htmlString.length,imgTagCount:imgTags.length,srcCount:srcs.length,hasApLike,hasCompanyLike,sampleSrcs:srcs.slice(0,4).map(s=>String(s).slice(0,120))},timestamp:Date.now()})}).catch(()=>{});
-    } catch (_) {
-      fetch('http://127.0.0.1:7384/ingest/fee4a383-4f25-45c3-bb64-8d6d21b935e9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'92ac45'},body:JSON.stringify({sessionId:'92ac45',runId:'pre-fix',hypothesisId:'H3-H4',location:'Stage1Page.jsx:374',message:'Failed scanning htmlContent',data:{templateId:String(templateId||'')},timestamp:Date.now()})}).catch(()=>{});
-    }
-    // #endregion
     displayHTMLContent(htmlContent);
   }, [
     displayHTMLContent,
@@ -1032,6 +1020,8 @@ const Stage1Page = () => {
         initialSelections={initialSheetSelections}
         onPaymentSuccess={handlePaymentSuccess}
         analysisOptions={analysisData}
+        assistedUserId={assistedUserId || undefined}
+        reportHelpRequestId={reportHelpId || undefined}
       />
 
       <AnalysisSheetsModal

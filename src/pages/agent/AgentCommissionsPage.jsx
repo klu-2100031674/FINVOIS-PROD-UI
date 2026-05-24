@@ -167,9 +167,9 @@ const AgentCommissionsPage = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">This Month</p>
-              <p className="text-2xl font-bold text-blue-600">₹{stats.thisMonth.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-[#7e22ce]">₹{stats.thisMonth.toLocaleString()}</p>
             </div>
-            <Calendar className="text-blue-500" size={24} />
+            <Calendar className="text-purple-500" size={24} />
           </div>
         </div>
         <div className="bg-white rounded-lg shadow-md p-4">

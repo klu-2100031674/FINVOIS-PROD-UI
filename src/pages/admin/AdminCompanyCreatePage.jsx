@@ -22,9 +22,7 @@ const initialFormState = {
   companyAddress: '',
   contactPersonName: '',
   contactEmail: '',
-  contactPhone: '',
-  adminName: '',
-  adminEmail: ''
+  contactPhone: ''
 };
 
 const ACCEPTED_IMAGE_TYPES = 'image/png,image/jpeg,image/webp';
@@ -63,9 +61,9 @@ const LogoDropzone = ({
     setDragActive(active);
   }, []);
 
-  const accentRing = badgeColor === 'purple' ? 'ring-purple-500' : 'ring-blue-500';
-  const accentBg = badgeColor === 'purple' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700';
-  const accentBorder = badgeColor === 'purple' ? 'border-purple-300' : 'border-blue-300';
+  const accentRing = badgeColor === 'purple' ? 'ring-purple-500' : 'ring-[#7e22ce]';
+  const accentBg = badgeColor === 'purple' ? 'bg-purple-50 text-purple-700' : 'bg-purple-50 text-purple-700';
+  const accentBorder = badgeColor === 'purple' ? 'border-purple-300' : 'border-purple-300';
 
   return (
     <div className="space-y-2">
@@ -259,7 +257,7 @@ const AdminCompanyCreatePage = () => {
                 onChange={handleChange}
                 required
                 autoComplete="organization"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-[#7e22ce]"
               />
             </div>
 
@@ -273,7 +271,7 @@ const AdminCompanyCreatePage = () => {
                 value={formData.companyAddress}
                 onChange={handleChange}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-[#7e22ce]"
               />
             </div>
 
@@ -290,7 +288,7 @@ const AdminCompanyCreatePage = () => {
                   value={formData.contactPersonName}
                   onChange={handleChange}
                   autoComplete="name"
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-[#7e22ce]"
                 />
               </div>
             </div>
@@ -309,7 +307,7 @@ const AdminCompanyCreatePage = () => {
                     value={formData.contactEmail}
                     onChange={handleChange}
                     autoComplete="email"
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-[#7e22ce]"
                   />
                 </div>
               </div>
@@ -326,53 +324,7 @@ const AdminCompanyCreatePage = () => {
                     value={formData.contactPhone}
                     onChange={handleChange}
                     autoComplete="tel"
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="border-t border-gray-100 pt-6 space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="h-10 w-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                <UserIcon size={20} />
-              </div>
-              <div>
-                <h2 className="text-base font-semibold text-gray-900">Company Admin</h2>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  Optionally create a company admin account. A temporary password <strong>Test@000</strong> is set and the admin will be asked to change it on first login.
-                </p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="adminName" className="block text-sm font-medium text-gray-700 mb-1">Admin Name</label>
-                <div className="relative">
-                  <UserIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    id="adminName"
-                    name="adminName"
-                    type="text"
-                    value={formData.adminName}
-                    onChange={handleChange}
-                    placeholder="Full name"
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="adminEmail" className="block text-sm font-medium text-gray-700 mb-1">Admin Email</label>
-                <div className="relative">
-                  <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    id="adminEmail"
-                    name="adminEmail"
-                    type="email"
-                    value={formData.adminEmail}
-                    onChange={handleChange}
-                    placeholder="admin@company.com"
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-[#7e22ce]"
                   />
                 </div>
               </div>
@@ -451,7 +403,7 @@ const AdminCompanyCreatePage = () => {
               <button
                 type="submit"
                 disabled={isSubmitting || !canSubmit}
-                className="px-5 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 inline-flex items-center gap-2"
+                className="px-5 py-2 text-sm font-semibold rounded-lg bg-[#7e22ce] text-white hover:bg-[#6b21a8] disabled:opacity-50 inline-flex items-center gap-2"
               >
                 {isSubmitting ? (
                   <>

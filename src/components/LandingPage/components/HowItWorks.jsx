@@ -20,7 +20,7 @@ const HowItWorks = () => {
       {/* Background Elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute top-[10%] left-[5%] w-96 h-96 bg-purple-100 rounded-full blur-3xl opacity-30 mix-blend-multiply"></div>
-        <div className="absolute bottom-[10%] right-[5%] w-96 h-96 bg-blue-100 rounded-full blur-3xl opacity-30 mix-blend-multiply"></div>
+        <div className="absolute bottom-[10%] right-[5%] w-96 h-96 bg-purple-100 rounded-full blur-3xl opacity-30 mix-blend-multiply"></div>
       </div>
 
       <div className="max-w-6xl mx-auto relative z-10">

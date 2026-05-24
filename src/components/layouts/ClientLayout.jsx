@@ -19,9 +19,11 @@ import {
   User,
   Zap,
   ShieldCheck,
+  Inbox,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { normalizeUserRole } from '../../utils/normalizeUserRole';
+import { effectiveUserRole } from '../../utils/normalizeUserRole';
+import { getReportHelpNavLabel } from '../../utils/reportHelpNav';
 
 const linkClass = ({ isActive }) =>
   `flex items-center px-3 py-2.5 rounded-lg transition-colors ${
@@ -43,7 +45,7 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
   };
 
   const { dashboardPath, profilePath, myReportsPath, generatePath, roleBadge, isAdminRole } = useMemo(() => {
-    const role = normalizeUserRole(user?.role);
+    const role = effectiveUserRole(user);
     const isAgent = role === 'agent';
     const isSuperAdmin = role === 'admin';
     const isCompanyAdmin = role === 'company_admin';
@@ -101,7 +103,7 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
       roleBadge: badge,
       isAdminRole: isAdmin,
     };
-  }, [user?.role]);
+  }, [user]);
 
   const navItems = useMemo(() => {
     const items = [
@@ -111,12 +113,19 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
       items.push({ to: generatePath, icon: Zap, label: 'Generate report' });
     }
     items.push({ to: '/drafts', icon: FileText, label: 'Drafts' });
+    if (['user', 'company_user', 'company_admin'].includes(effectiveUserRole(user))) {
+      items.push({
+        to: '/report-help',
+        icon: Inbox,
+        label: getReportHelpNavLabel(user),
+      });
+    }
     items.push(
       { to: myReportsPath, icon: FileStack, label: isAdminRole ? 'Report Validation' : 'My reports' },
       { to: profilePath, icon: User, label: 'Profile' }
     );
     return items;
-  }, [dashboardPath, generatePath, myReportsPath, profilePath, isAdminRole]);
+  }, [dashboardPath, generatePath, myReportsPath, profilePath, isAdminRole, user]);
 
   const shell = `min-h-screen bg-gray-50 font-['Inter'] ${shellClassName}`.trim();
 
@@ -183,7 +192,7 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
             className={`p-4 border-b border-gray-200 ${!sidebarOpen ? 'flex justify-center' : ''}`}
           >
             <div className={`flex items-center ${!sidebarOpen ? '' : 'gap-3'}`}>
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white font-semibold flex-shrink-0">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-purple-900 flex items-center justify-center text-white font-semibold flex-shrink-0">
                 {user?.name?.[0]?.toUpperCase() || 'U'}
               </div>
               {sidebarOpen && (
@@ -246,7 +255,7 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
             <aside className="fixed left-0 top-16 bottom-0 w-64 bg-white border-r border-gray-200 z-50 overflow-y-auto shadow-lg">
               <div className="p-4 border-b border-gray-200">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white font-semibold">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-purple-900 flex items-center justify-center text-white font-semibold">
                     {user?.name?.[0]?.toUpperCase() || 'U'}
                   </div>
                   <div className="flex-1 min-w-0">

@@ -89,14 +89,14 @@ const PaymentFailurePage = () => {
         {/* Help Section */}
         <div className="mt-6 bg-white rounded-xl p-4 shadow-md">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <ChatBubbleLeftRightIcon className="w-5 h-5 text-blue-600" />
+            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <ChatBubbleLeftRightIcon className="w-5 h-5 text-[#7e22ce]" />
             </div>
             <div className="text-left">
               <h4 className="font-medium text-gray-900">Need Help?</h4>
               <p className="text-sm text-gray-600">
                 Contact our support team at{' '}
-                <a href="mailto:support@careport.com" className="text-blue-600 hover:underline">
+                <a href="mailto:support@careport.com" className="text-[#7e22ce] hover:underline">
                   support@careport.com
                 </a>
               </p>

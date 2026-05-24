@@ -5,6 +5,12 @@ import reportReducer from './slices/reportSlice';
 import templateReducer from './slices/templateSlice';
 import userReducer from './slices/userSlice';
 import draftsReducer from './slices/draftSlice';
+import serviceReducer from './slices/serviceSlice';
+import formReducer from './slices/formSlice';
+import adminServiceReducer from './slices/adminServiceSlice';
+import leadSliceReducer from './slices/leadSlice';
+import leadAuthReducer from './slices/leadAuthSlice';
+import leadAnalyticsReducer from './slices/leadAnalyticsSlice';
 
 /**
  * Redux Store Configuration
@@ -19,6 +25,12 @@ const store = configureStore({
     template: templateReducer,
     user: userReducer,
     drafts: draftsReducer,
+    services: serviceReducer,
+    form: formReducer,
+    adminService: adminServiceReducer,
+    lead: leadSliceReducer,
+    leadAuth: leadAuthReducer,
+    leadAnalytics: leadAnalyticsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

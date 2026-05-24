@@ -1,0 +1,328 @@
+/**
+ * Admin Leads List Page
+ * View and manage all registered leads
+ */
+
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchAllLeads, toggleLeadStatus, resendLeadCredentials } from '@/store/slices/leadSlice';
+import {
+  Plus,
+  Search,
+  Edit,
+  UserCheck,
+  Mail,
+  ArrowUpDown,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  ToggleLeft,
+  ToggleRight,
+  ShieldAlert,
+  Loader2,
+} from 'lucide-react';
+import toast from 'react-hot-toast';
+import { AdminLayout } from '@/components/layouts';
+
+const AdminLeadsPage = () => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { leads, loading, error } = useSelector((state) => state.lead);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [resendingId, setResendingId] = useState(null);
+
+  useEffect(() => {
+    dispatch(fetchAllLeads({ limit: 200 }));
+  }, [dispatch]);
+
+  const handleResendCredentials = async (lead) => {
+    setResendingId(lead._id);
+    try {
+      await dispatch(resendLeadCredentials(lead._id)).unwrap();
+      toast.success(`Credentials resent to ${lead.email}`);
+    } catch (err) {
+      toast.error(err || 'Failed to resend credentials');
+    } finally {
+      setResendingId(null);
+    }
+  };
+
+  const handleToggleStatus = async (lead) => {
+    const newStatus = !lead.isActive;
+    const action = newStatus ? 'activate' : 'deactivate';
+    if (!window.confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} lead "${lead.name}"? They will receive an email notification.`)) return;
+    try {
+      await dispatch(toggleLeadStatus({ id: lead._id, isActive: newStatus })).unwrap();
+      toast.success(`Lead ${newStatus ? 'activated' : 'deactivated'} — notification email sent.`);
+    } catch {
+      toast.error('Failed to update lead status');
+    }
+  };
+
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const filtered = leads.filter(
+    (l) =>
+      l.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      l.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      l.services?.some((s) =>
+        (s.name || s).toLowerCase().includes(searchTerm.toLowerCase())
+      )
+  );
+
+  const sorted = [...filtered].sort((a, b) => {
+    let aVal = sortBy === 'createdAt' ? new Date(a.createdAt) : (a[sortBy] || '');
+    let bVal = sortBy === 'createdAt' ? new Date(b.createdAt) : (b[sortBy] || '');
+    if (typeof aVal === 'string') {
+      return sortOrder === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    }
+    return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+  });
+
+  return (
+    <AdminLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Lead Management</h1>
+            <p className="text-muted-foreground mt-1">
+              Register and manage leads who receive service notifications
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/admin/leads/register')}
+            className="flex items-center gap-2 px-4 py-2 bg-[#7e22ce] text-white rounded-lg hover:bg-[#6b21a8] font-medium"
+          >
+            <Plus className="h-4 w-4" />
+            Register Lead
+          </button>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <p className="text-red-600 font-medium">{error}</p>
+            <button
+              onClick={() => dispatch(fetchAllLeads({ limit: 200 }))}
+              className="ml-auto px-3 py-1 text-sm border border-red-300 rounded-lg hover:bg-red-100"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white rounded-lg border p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Leads</p>
+                <p className="text-3xl font-bold mt-1">{leads.length}</p>
+              </div>
+              <div className="p-3 bg-purple-100 rounded-full">
+                <UserCheck className="h-6 w-6 text-[#7e22ce]" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg border p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Active Leads</p>
+                <p className="text-3xl font-bold mt-1">
+                  {leads.filter((l) => l.isActive !== false).length}
+                </p>
+              </div>
+              <div className="p-3 bg-green-100 rounded-full">
+                <CheckCircle className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg border p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Inactive Leads</p>
+                <p className="text-3xl font-bold mt-1">
+                  {leads.filter((l) => l.isActive === false).length}
+                </p>
+              </div>
+              <div className="p-3 bg-red-100 rounded-full">
+                <XCircle className="h-6 w-6 text-red-500" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Search */}
+        <div className="bg-white rounded-lg border p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search leads by name, email, or linked service..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-[#7e22ce]"
+            />
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="bg-white rounded-lg border">
+          <div className="px-6 py-4 border-b">
+            <h2 className="text-lg font-semibold">All Leads ({sorted.length})</h2>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#7e22ce] mx-auto" />
+                <p className="mt-3 text-muted-foreground">Loading leads...</p>
+              </div>
+            </div>
+          ) : sorted.length === 0 ? (
+            <div className="text-center py-12">
+              <UserCheck className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-muted-foreground mb-4">
+                {searchTerm ? 'No leads match your search' : 'No leads registered yet'}
+              </p>
+              {!searchTerm && (
+                <button
+                  onClick={() => navigate('/admin/leads/register')}
+                  className="px-4 py-2 bg-[#7e22ce] text-white rounded-lg hover:bg-[#6b21a8]"
+                >
+                  Register your first lead
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-gray-50">
+                    <th className="text-left py-3 px-4 font-medium">
+                      <button
+                        onClick={() => handleSort('name')}
+                        className="flex items-center gap-1 hover:text-[#7e22ce]"
+                      >
+                        Name <ArrowUpDown className="h-4 w-4" />
+                      </button>
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium">Email</th>
+                    <th className="text-left py-3 px-4 font-medium">Linked Services</th>
+                    <th className="text-left py-3 px-4 font-medium">
+                      <button
+                        onClick={() => handleSort('createdAt')}
+                        className="flex items-center gap-1 hover:text-[#7e22ce]"
+                      >
+                        Registered <ArrowUpDown className="h-4 w-4" />
+                      </button>
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium">Status</th>
+                    <th className="text-left py-3 px-4 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.map((lead) => (
+                    <tr key={lead._id} className="border-b hover:bg-gray-50 transition-colors">
+                      <td className="py-3 px-4 font-medium">{lead.name}</td>
+                      <td className="py-3 px-4 text-gray-600">{lead.email}</td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-wrap gap-1">
+                          {lead.services && lead.services.length > 0 ? (
+                            lead.services.map((s) => (
+                              <span
+                                key={s._id || s}
+                                className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full"
+                              >
+                                {s.name || s}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-gray-400 text-sm">None</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-gray-600 text-sm">
+                        {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : '—'}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-col gap-1">
+                          {lead.isActive !== false ? (
+                            <span className="flex items-center gap-1 text-green-600 text-sm font-medium">
+                              <CheckCircle className="h-4 w-4" /> Active
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-red-500 text-sm font-medium">
+                              <XCircle className="h-4 w-4" /> Inactive
+                            </span>
+                          )}
+                          {lead.passwordResetRequired && (
+                            <span className="flex items-center gap-1 text-amber-600 text-xs font-medium">
+                              <ShieldAlert className="h-3.5 w-3.5" /> Not activated
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => navigate(`/admin/leads/${lead._id}`)}
+                            className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg"
+                            title="Edit lead"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleToggleStatus(lead)}
+                            className={`p-1.5 rounded-lg transition-colors ${
+                              lead.isActive !== false
+                                ? 'text-green-600 hover:bg-green-50'
+                                : 'text-gray-400 hover:bg-gray-100'
+                            }`}
+                            title={lead.isActive !== false ? 'Deactivate lead' : 'Activate lead'}
+                          >
+                            {lead.isActive !== false
+                              ? <ToggleRight className="h-5 w-5" />
+                              : <ToggleLeft className="h-5 w-5" />
+                            }
+                          </button>
+                          {lead.passwordResetRequired && (
+                            <button
+                              onClick={() => handleResendCredentials(lead)}
+                              disabled={resendingId === lead._id}
+                              className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors disabled:opacity-50"
+                              title="Resend credentials email"
+                            >
+                              {resendingId === lead._id
+                                ? <Loader2 className="h-4 w-4 animate-spin" />
+                                : <Mail className="h-4 w-4" />
+                              }
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </AdminLayout>
+  );
+};
+
+export default AdminLeadsPage;

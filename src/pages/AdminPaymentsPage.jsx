@@ -140,8 +140,8 @@ const AdminPaymentsPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <Card className="p-6">
               <div className="flex items-center">
-                <div className="p-3 rounded-lg bg-blue-100">
-                  <BanknotesIcon className="w-6 h-6 text-blue-600" />
+                <div className="p-3 rounded-lg bg-purple-100">
+                  <BanknotesIcon className="w-6 h-6 text-[#7e22ce]" />
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Revenue</p>

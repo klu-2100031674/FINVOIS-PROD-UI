@@ -10,6 +10,8 @@ const initialState = {
   selectedTemplate: null,
   templateForm: null,
   loading: false,
+  listLoading: false,
+  detailLoading: false,
   error: null,
   filters: {
     category: '',
@@ -83,11 +85,13 @@ const templateSlice = createSlice({
     builder
       .addCase(fetchTemplates.pending, (state) => {
         state.loading = true;
+        state.listLoading = true;
         state.error = null;
       })
       .addCase(fetchTemplates.fulfilled, (state, action) => {
         console.log('📄 fetchTemplates.fulfilled - payload:', action.payload);
         state.loading = false;
+        state.listLoading = false;
         // Handle API response structure - extract templates array from data
         if (action.payload.success && action.payload.data) {
           const responseData = action.payload.data;
@@ -110,17 +114,18 @@ const templateSlice = createSlice({
       })
       .addCase(fetchTemplates.rejected, (state, action) => {
         state.loading = false;
+        state.listLoading = false;
         state.error = action.payload || 'Failed to fetch templates';
       });
 
     // Fetch Template By ID
     builder
       .addCase(fetchTemplateById.pending, (state) => {
-        state.loading = true;
+        state.detailLoading = true;
         state.error = null;
       })
       .addCase(fetchTemplateById.fulfilled, (state, action) => {
-        state.loading = false;
+        state.detailLoading = false;
         // Handle new API response structure
         if (action.payload.success && action.payload.data) {
           state.selectedTemplate = action.payload.data;
@@ -131,19 +136,19 @@ const templateSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchTemplateById.rejected, (state, action) => {
-        state.loading = false;
+        state.detailLoading = false;
         state.error = action.payload || 'Failed to fetch template';
       });
 
     // Fetch Template Form
     builder
       .addCase(fetchTemplateForm.pending, (state) => {
-        state.loading = true;
+        state.detailLoading = true;
         state.error = null;
       })
       .addCase(fetchTemplateForm.fulfilled, (state, action) => {
         console.log('🔧 fetchTemplateForm.fulfilled - payload:', action.payload);
-        state.loading = false;
+        state.detailLoading = false;
         // Handle new API response structure - extract HTML from data
         if (action.payload.success && action.payload.data) {
           console.log('✅ Extracting HTML from action.payload.data.html');
@@ -160,7 +165,7 @@ const templateSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchTemplateForm.rejected, (state, action) => {
-        state.loading = false;
+        state.detailLoading = false;
         state.error = action.payload || 'Failed to fetch template form';
       });
   },
@@ -174,5 +179,9 @@ export default templateSlice.reducer;
 export const selectTemplates = (state) => state.template.templates;
 export const selectSelectedTemplate = (state) => state.template.selectedTemplate;
 export const selectTemplateForm = (state) => state.template.templateForm;
-export const selectTemplateLoading = (state) => state.template.loading;
+/** List fetch (dashboard template picker) — not single-template detail. */
+export const selectTemplateListLoading = (state) => state.template.listLoading;
+export const selectTemplateDetailLoading = (state) => state.template.detailLoading;
+/** @deprecated Prefer list vs detail selectors; kept for list-only screens. */
+export const selectTemplateLoading = (state) => state.template.listLoading;
 export const selectTemplateFilters = (state) => state.template.filters;

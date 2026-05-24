@@ -76,7 +76,7 @@ const AdminWithdrawalsPage = () => {
   const getStatusBadge = (status) => {
     const badges = {
       pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: Clock },
-      approved: { bg: 'bg-blue-100', text: 'text-blue-800', icon: CheckCircle },
+      approved: { bg: 'bg-purple-100', text: 'text-purple-800', icon: CheckCircle },
       processing: { bg: 'bg-purple-100', text: 'text-purple-800', icon: RefreshCw },
       completed: { bg: 'bg-green-100', text: 'text-green-800', icon: CheckCircle },
       rejected: { bg: 'bg-red-100', text: 'text-red-800', icon: XCircle }
@@ -102,7 +102,7 @@ const AdminWithdrawalsPage = () => {
     return (
       <AdminLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#7e22ce]"></div>
         </div>
       </AdminLayout>
     );
@@ -130,9 +130,9 @@ const AdminWithdrawalsPage = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Approved</p>
-              <p className="text-2xl font-bold text-blue-600">{stats.approved}</p>
+              <p className="text-2xl font-bold text-[#7e22ce]">{stats.approved}</p>
             </div>
-            <CheckCircle className="text-blue-400" size={24} />
+            <CheckCircle className="text-purple-400" size={24} />
           </div>
         </div>
         <div className="bg-white rounded-lg shadow-md p-4">
@@ -175,7 +175,7 @@ const AdminWithdrawalsPage = () => {
               placeholder="Search by channel partner name or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent"
             />
           </div>
 
@@ -185,7 +185,7 @@ const AdminWithdrawalsPage = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent appearance-none"
             >
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
@@ -275,7 +275,7 @@ const AdminWithdrawalsPage = () => {
                       <div className="flex items-center justify-end space-x-2">
                         <button
                           onClick={() => handleViewDetails(withdrawal)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                          className="p-2 text-[#7e22ce] hover:bg-purple-50 rounded-full transition-colors"
                           title="View Details"
                         >
                           <Eye size={18} />
@@ -421,7 +421,7 @@ const AdminWithdrawalsPage = () => {
                 {(selectedWithdrawal.razorpay_payout_id || selectedWithdrawal.payment_link_url) && (
                   <div className="pt-4 border-t border-gray-200">
                     <h4 className="font-medium text-gray-800 mb-2">Razorpay Payment Details</h4>
-                    <div className="bg-blue-50 p-3 rounded-lg text-sm space-y-1">
+                    <div className="bg-purple-50 p-3 rounded-lg text-sm space-y-1">
                       {selectedWithdrawal.razorpay_payout_id && (
                         <p><span className="text-gray-600">Payout ID:</span> {selectedWithdrawal.razorpay_payout_id}</p>
                       )}
@@ -446,7 +446,7 @@ const AdminWithdrawalsPage = () => {
                             href={selectedWithdrawal.payment_link_url} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="ml-1 text-blue-600 hover:text-blue-800 underline"
+                            className="ml-1 text-[#7e22ce] hover:text-purple-800 underline"
                           >
                             Open Payment Link
                           </a>
@@ -470,7 +470,7 @@ const AdminWithdrawalsPage = () => {
                       <span className="text-sm text-gray-600">Invoice: {selectedWithdrawal.invoice_number}</span>
                       <button
                         onClick={() => {/* TODO: Generate PDF on frontend */}}
-                        className="px-3 py-1 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition-colors"
+                        className="px-3 py-1 bg-[#7e22ce] text-white text-xs rounded-lg hover:bg-[#6b21a8] transition-colors"
                       >
                         Download Invoice
                       </button>
@@ -496,7 +496,7 @@ const AdminWithdrawalsPage = () => {
                     <button
                       onClick={() => handleStatusChange(selectedWithdrawal._id, 'approved')}
                       disabled={processingId === selectedWithdrawal._id}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                      className="flex-1 px-4 py-2 bg-[#7e22ce] text-white rounded-lg hover:bg-[#6b21a8] transition-colors disabled:opacity-50"
                     >
                       Approve
                     </button>

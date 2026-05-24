@@ -33,7 +33,7 @@ const AdminProfilePage = () => {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-6">
-          <div className="bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-8">
+          <div className="bg-gradient-to-r from-purple-600 to-purple-800 px-6 py-8">
             <div className="flex items-center gap-4">
               <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white text-3xl font-bold border-4 border-white/30">
                 {user?.name?.[0]?.toUpperCase() || 'A'}
@@ -60,7 +60,7 @@ const AdminProfilePage = () => {
               <p className="text-sm text-gray-500">Pending</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-blue-600">{stats.under_review}</p>
+              <p className="text-2xl font-bold text-[#7e22ce]">{stats.under_review}</p>
               <p className="text-sm text-gray-500">Under Review</p>
             </div>
             <div className="text-center">

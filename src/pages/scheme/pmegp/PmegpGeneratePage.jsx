@@ -1,5 +1,6 @@
-import PmegpSectionAForm from '../components/forms/Pmegp';
-import ClientLayout from '../components/layouts/ClientLayout';
+import PmegpSectionAForm from '../../../components/forms/scheme/Pmegp';
+import ClientLayout from '../../../components/layouts/ClientLayout';
+import { PMEGP_GENERATE_PATH } from '../../../components/forms/scheme/pmegpSchemeMailConstants';
 
 const PmegpGeneratePage = () => {
   return (
@@ -10,22 +11,17 @@ const PmegpGeneratePage = () => {
             <div className="min-w-0">
               <h1 className="text-2xl font-bold text-gray-900 mb-1">PMEGP Form</h1>
               <p className="text-sm text-gray-600">
-                This route is hidden for now. Open via manual URL: <span className="font-mono">/generate/pmegp</span>
+                This route is hidden for now. Open via manual URL:{' '}
+                <span className="font-mono">{PMEGP_GENERATE_PATH}</span>
               </p>
             </div>
           </div>
         </div>
 
-        <PmegpSectionAForm
-          onSubmit={(formData) => {
-            // TODO: connect this payload to backend once API contract is finalized.
-            console.log('PMEGP payload:', formData);
-          }}
-        />
+        <PmegpSectionAForm />
       </div>
     </ClientLayout>
   );
 };
 
 export default PmegpGeneratePage;
-

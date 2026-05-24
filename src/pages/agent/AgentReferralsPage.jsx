@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Users, Search, Copy, Mail, Phone, Calendar } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Users, Search, Copy, Mail, Phone, Calendar, ChevronRight, FileText } from 'lucide-react';
 import { AgentLayout } from '../../components/layouts';
 import useAuth from '../../hooks/useAuth';
 import api from '../../api/apiClient';
 import toast from 'react-hot-toast';
 
 const AgentReferralsPage = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [referrals, setReferrals] = useState([]);
   const [filteredReferrals, setFilteredReferrals] = useState([]);
@@ -60,6 +62,12 @@ const AgentReferralsPage = () => {
     toast.success('Referral link copied!');
   };
 
+  const openReferralReports = (referral) => {
+    navigate(`/agent/referrals/${referral._id}/reports`, {
+      state: { userName: referral.name || referral.email || 'User' }
+    });
+  };
+
   if (loading) {
     return (
       <AgentLayout>
@@ -74,7 +82,7 @@ const AgentReferralsPage = () => {
     <AgentLayout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">My Referrals</h1>
-        <p className="text-gray-500 mt-1">View and manage all users you've referred</p>
+        <p className="text-gray-500 mt-1">Click a referred user to view all their reports</p>
       </div>
 
       {/* Referral Code Section */}
@@ -131,7 +139,7 @@ const AgentReferralsPage = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">This Month</p>
-              <p className="text-2xl font-bold text-blue-600">
+              <p className="text-2xl font-bold text-[#7e22ce]">
                 {referrals.filter(r => {
                   const date = new Date(r.createdAt);
                   const now = new Date();
@@ -139,7 +147,7 @@ const AgentReferralsPage = () => {
                 }).length}
               </p>
             </div>
-            <Calendar className="text-blue-500" size={24} />
+            <Calendar className="text-purple-500" size={24} />
           </div>
         </div>
       </div>
@@ -170,7 +178,20 @@ const AgentReferralsPage = () => {
         ) : (
           <div className="divide-y divide-gray-200">
             {filteredReferrals.map((referral) => (
-              <div key={referral._id} className="p-4 hover:bg-gray-50 transition-colors">
+              <div
+                key={referral._id}
+                role="button"
+                tabIndex={0}
+                className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                onClick={() => openReferralReports(referral)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openReferralReports(referral);
+                  }
+                }}
+                title="Click to view all reports"
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-semibold text-lg">
@@ -183,16 +204,16 @@ const AgentReferralsPage = () => {
                           <Mail size={14} className="mr-1" />
                           {referral.email}
                         </span>
-                        {referral.mobile && (
+                        {(referral.mobile || referral.phone) && (
                           <span className="flex items-center text-sm text-gray-500">
                             <Phone size={14} className="mr-1" />
-                            {referral.mobile}
+                            {referral.mobile || referral.phone}
                           </span>
                         )}
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex flex-col items-end">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                       referral.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
                     }`}>
@@ -201,6 +222,11 @@ const AgentReferralsPage = () => {
                     <p className="text-xs text-gray-400 mt-1">
                       Joined {referral.createdAt ? new Date(referral.createdAt).toLocaleDateString() : 'N/A'}
                     </p>
+                    <span className="inline-flex items-center text-xs text-purple-600 mt-2 font-medium">
+                      <FileText size={14} className="mr-1" />
+                      View reports
+                      <ChevronRight size={14} className="ml-0.5" />
+                    </span>
                   </div>
                 </div>
               </div>

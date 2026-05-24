@@ -298,7 +298,7 @@ const CompanyManageCreditsPage = () => {
                           </td>
                           <td className="px-5 py-3 text-gray-500">{member?.email || '-'}</td>
                           <td className="px-5 py-3">
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
                               {memberRole}
                             </span>
                           </td>

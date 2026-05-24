@@ -10,10 +10,35 @@
         "label": "How it works",
         "href": "#how-it-works"
       },
-    
+      {
+        "label": "Services",
+        "href": "/services"
+      },
       {
         "label": "Schemes",
-        "href": "/schemes"
+        "dropdown": [
+          {
+            "label": "PMEGP",
+            "href": "/schemes/pmegp"
+          },
+          {
+            "label": "AP IDP",
+            "href": "/schemes/ap-idp"
+          },
+          {
+            "label": "CMEP",
+            "href": "/schemes/cmep"
+          }
+        ]
+      },
+      {
+        "label": "Calculators",
+        "dropdown": [
+          {
+            "label": "EMI Calculator",
+            "href": "/calculators/emi-calculator"
+          }
+        ]
       },
       {
         "label": "FAQ",
@@ -25,23 +50,23 @@
       "href": "/auth"
     },
     "ctaText": {
-      "text": "Get Started",
-      "href": "/auth"
+      "text": "Client Screening",
+      "href": "/client-screening"
     }
   },
   "hero": {
     "badge": "AI-Powered DPR Generation",
     "title": "Generate Professional DPRs in",
     "titleHighlight": "Minutes",
-    "subtitle": "Identify schemes, auto-generate financials & get bank-approved PDFs. No Excel knowledge needed.",
-    "primaryCTA": "Get started for free",
-    "primaryLink": "/auth",
+    "subtitle": "Identify schemes, auto-generate financials & get bank Compliant DPRs",
+    "primaryCTA": "Challenge or Doubt your MSME is facing now",
+    "primaryLink": "/client-screening",
     "secondaryCTA": "Contact Sales",
     "secondaryLink": "/contact",
     "benefits": [
       "No credit card required",
-      "Free scheme discovery",
-      "Bank-approved formats"
+      "Guided DPR workflow",
+      "Bank Compliant formats"
     ],
     "stats": [
       {
@@ -68,8 +93,8 @@
     "MSME",
     "Startup India",
     "SIDBI",
-    "PMEGP",
-    "Mudra"
+    "Mudra",
+    "Banks"
   ],
   "features": {
     "title": "Everything you need to create professional DPRs",
@@ -87,8 +112,8 @@
       },
       {
         "icon": "Search",
-        "title": "Scheme Matching",
-        "description": "Find government subsidies and funding opportunities"
+        "title": "Template Library",
+        "description": "Bank-aligned DPR formats for common loan products"
       },
       {
         "icon": "FileCheck",
@@ -118,8 +143,8 @@
       },
       {
         "step": "2",
-        "title": "AI Matches Schemes",
-        "desc": "Get eligible subsidies and funding"
+        "title": "Pick Your Template",
+        "desc": "Choose the report type that fits your loan"
       },
       {
         "step": "3",
@@ -226,7 +251,7 @@
     }
   ],
   "reportTypes": {
-    "title": "COMPREHENSIVE DPR SOLUTIONS FOR EVERY LOAN SCHEME",
+    "title": "COMPREHENSIVE DPR SOLUTIONS FOR COMMON LOAN PRODUCTS",
     "subtitle": "OUR REPORTS",
     "reports": [
       {
@@ -235,8 +260,8 @@
         "image": "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=1200"
       },
       {
-        "title": "PMEGP Loan Reports",
-        "description": "Complete project reports for PMEGP scheme with detailed financial projections and market analysis.",
+        "title": "MSME Term Loan DPR",
+        "description": "Detailed project reports with financial projections and market analysis for term-loan applications.",
         "image": "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80&w=1200"
       },
       {
@@ -288,8 +313,8 @@
   "cta": {
     "title": "Ready to create your professional DPR?",
     "subtitle": "Join thousands of entrepreneurs who have successfully generated DPRs with AI",
-    "primaryCTA": "Get started for free",
-    "primaryLink": "/auth",
+    "primaryCTA": "Client Screening",
+    "primaryLink": "/client-screening",
     "secondaryCTA": "Contact Sales",
     "secondaryLink": "/contact",
     "benefits": [
@@ -320,8 +345,8 @@
             "href": "/#features"
           },
           {
-            "label": "Schemes",
-            "href": "/schemes"
+            "label": "Pricing",
+            "href": "/pricing"
           }
         ]
       },

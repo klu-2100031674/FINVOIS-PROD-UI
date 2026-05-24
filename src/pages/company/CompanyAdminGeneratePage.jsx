@@ -39,7 +39,7 @@ const CompanyAdminGeneratePage = () => {
 
   return (
     <AdminLayout>
-      <DashboardAISection onSelectTemplate={handleTemplateSelect} />
+      <DashboardAISection onSelectTemplate={handleTemplateSelect} showGenerationModeStep />
     </AdminLayout>
   );
 };

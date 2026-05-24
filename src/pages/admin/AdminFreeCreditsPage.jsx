@@ -257,7 +257,7 @@ const AdminFreeCreditsPage = () => {
                               ? 'bg-purple-100 text-purple-700'
                               : normalizedRole === 'company_admin'
                                 ? 'bg-amber-100 text-amber-700'
-                                : 'bg-blue-100 text-blue-700'
+                                : 'bg-purple-100 text-purple-700'
                           }`}>
                             {formatRoleForDisplay(u.role, u)}
                           </span>

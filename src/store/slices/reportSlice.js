@@ -30,7 +30,7 @@ export const applyFormData = createAsyncThunk(
     } catch (error) {
       const thrown = error?.response?.data ?? error;
       const msg =
-        (typeof thrown === 'object' && thrown !== null && (thrown.message || thrown.error)) ||
+        (typeof thrown === 'object' && thrown !== null && (thrown.details || thrown.message || thrown.error)) ||
         (typeof thrown === 'string' ? thrown : null) ||
         (typeof error === 'string' ? error : null) ||
         error?.message ||

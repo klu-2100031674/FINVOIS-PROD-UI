@@ -8,6 +8,7 @@ const EmailVerificationPage = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState('verifying'); // verifying, success, error, already-verified
   const [message, setMessage] = useState('');
+  const [signupApprovalStatus, setSignupApprovalStatus] = useState('approved');
   const [countdown, setCountdown] = useState(5);
 
   const token = searchParams.get('token');
@@ -22,13 +23,13 @@ const EmailVerificationPage = () => {
   }, [token]);
 
   useEffect(() => {
-    if (status === 'success' && countdown > 0) {
+    if (status === 'success' && signupApprovalStatus !== 'pending' && countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (status === 'success' && countdown === 0) {
+    } else if (status === 'success' && signupApprovalStatus !== 'pending' && countdown === 0) {
       navigate('/auth');
     }
-  }, [status, countdown, navigate]);
+  }, [status, countdown, navigate, signupApprovalStatus]);
 
   const verifyEmail = async () => {
     try {
@@ -38,6 +39,12 @@ const EmailVerificationPage = () => {
         setStatus('already-verified');
         setMessage('Your email has already been verified.');
       } else {
+        const rawStatus = response.data?.signup_approval_status;
+        const approvalStatus =
+          rawStatus === 'approved' || rawStatus === 'rejected'
+            ? rawStatus
+            : 'pending';
+        setSignupApprovalStatus(approvalStatus);
         setStatus('success');
         setMessage(response.data?.message || 'Email verified successfully!');
       }
@@ -55,8 +62,8 @@ const EmailVerificationPage = () => {
       case 'verifying':
         return (
           <div className="text-center">
-            <div className="mx-auto w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-6">
-              <Loader className="w-10 h-10 text-blue-600 animate-spin" />
+            <div className="mx-auto w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mb-6">
+              <Loader className="w-10 h-10 text-[#7e22ce] animate-spin" />
             </div>
             <h1 className="text-2xl font-bold text-gray-800 mb-2">Verifying Your Email</h1>
             <p className="text-gray-600">Please wait while we verify your email address...</p>
@@ -71,40 +78,63 @@ const EmailVerificationPage = () => {
             </div>
             <h1 className="text-2xl font-bold text-gray-800 mb-2">Email Verified!</h1>
             <p className="text-gray-600 mb-6">{message}</p>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-              <p className="text-green-700 text-sm">
-                Your account is now active. You can log in and start using our services.
-              </p>
-            </div>
-            <p className="text-gray-500 text-sm mb-4">
-              Redirecting to login in <span className="font-bold text-blue-600">{countdown}</span> seconds...
-            </p>
-            <Link
-              to="/auth"
-              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-            >
-              Login Now
-              <ArrowRight className="ml-2 w-4 h-4" />
-            </Link>
+            {signupApprovalStatus === 'pending' ? (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <p className="text-yellow-800 text-sm">
+                  Your email is verified. Your account is pending approval from our admin team.
+                  You will receive an email once approved, then you can log in.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <p className="text-green-700 text-sm">
+                  Your account is ready. You can log in and start using our services.
+                </p>
+              </div>
+            )}
+            {signupApprovalStatus !== 'pending' && (
+              <>
+                <p className="text-gray-500 text-sm mb-4">
+                  Redirecting to login in{' '}
+                  <span className="font-bold text-[#7e22ce]">{countdown}</span> seconds...
+                </p>
+                <Link
+                  to="/auth"
+                  className="inline-flex items-center px-6 py-3 bg-[#7e22ce] text-white rounded-lg hover:bg-[#6b21a8] transition-colors font-medium"
+                >
+                  Login Now
+                  <ArrowRight className="ml-2 w-4 h-4" />
+                </Link>
+              </>
+            )}
+            {signupApprovalStatus === 'pending' && (
+              <Link
+                to="/auth"
+                className="inline-flex items-center px-6 py-3 bg-[#7e22ce] text-white rounded-lg hover:bg-[#6b21a8] transition-colors font-medium"
+              >
+                Back to Login
+                <ArrowRight className="ml-2 w-4 h-4" />
+              </Link>
+            )}
           </div>
         );
 
       case 'already-verified':
         return (
           <div className="text-center">
-            <div className="mx-auto w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-6">
-              <CheckCircle className="w-10 h-10 text-blue-600" />
+            <div className="mx-auto w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mb-6">
+              <CheckCircle className="w-10 h-10 text-[#7e22ce]" />
             </div>
             <h1 className="text-2xl font-bold text-gray-800 mb-2">Already Verified</h1>
             <p className="text-gray-600 mb-6">{message}</p>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <p className="text-blue-700 text-sm">
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+              <p className="text-purple-700 text-sm">
                 Your email was already verified. You can proceed to login.
               </p>
             </div>
             <Link
               to="/auth"
-              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="inline-flex items-center px-6 py-3 bg-[#7e22ce] text-white rounded-lg hover:bg-[#6b21a8] transition-colors font-medium"
             >
               Go to Login
               <ArrowRight className="ml-2 w-4 h-4" />
@@ -134,7 +164,7 @@ const EmailVerificationPage = () => {
               </Link>
               <Link
                 to="/auth?mode=register"
-                className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="inline-flex items-center justify-center px-6 py-3 bg-[#7e22ce] text-white rounded-lg hover:bg-[#6b21a8] transition-colors font-medium"
               >
                 Register Again
               </Link>
@@ -148,11 +178,11 @@ const EmailVerificationPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         {/* Logo/Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-[#7e22ce] rounded-2xl mb-4">
             <Mail className="w-8 h-8 text-white" />
           </div>
           <h2 className="text-xl font-semibold text-gray-700">CA Report Generation</h2>
@@ -167,7 +197,7 @@ const EmailVerificationPage = () => {
         <div className="text-center mt-6">
           <p className="text-gray-500 text-sm">
             Need help?{' '}
-            <a href="mailto:support@careport.com" className="text-blue-600 hover:underline">
+            <a href="mailto:support@careport.com" className="text-[#7e22ce] hover:underline">
               Contact Support
             </a>
           </p>

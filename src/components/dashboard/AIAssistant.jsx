@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     BuildingOfficeIcon,
@@ -8,11 +9,12 @@ import {
     ArchiveBoxIcon,
     DocumentTextIcon,
     ArrowRightIcon,
-    ArrowLeftIcon
+    ArrowLeftIcon,
+    UserIcon,
+    UserGroupIcon,
 } from '@heroicons/react/24/outline';
-import toast from 'react-hot-toast';
-
 const STEPS = {
+    GENERATION_MODE: 100,
     REPORT_TYPE: 0,
     SECTOR: 1,
     LOAN_TYPE_MFG: 2,
@@ -28,10 +30,21 @@ const STEPS = {
     CMA_PROVISIONAL_AUDITED_NO: 11,
 };
 
-const AIAssistant = ({ onSelectTemplate }) => {
-    const [currentStep, setCurrentStep] = useState(STEPS.REPORT_TYPE);
+const AIAssistant = ({ onSelectTemplate, showGenerationModeStep = false }) => {
+    const navigate = useNavigate();
+    const [currentStep, setCurrentStep] = useState(
+        showGenerationModeStep ? STEPS.GENERATION_MODE : STEPS.REPORT_TYPE
+    );
     const [history, setHistory] = useState([]);
     const [direction, setDirection] = useState(1); // 1 for forward, -1 for back
+
+    useEffect(() => {
+        if (showGenerationModeStep) {
+            setCurrentStep((step) => (step === STEPS.REPORT_TYPE ? STEPS.GENERATION_MODE : step));
+            return;
+        }
+        setCurrentStep((step) => (step === STEPS.GENERATION_MODE ? STEPS.REPORT_TYPE : step));
+    }, [showGenerationModeStep]);
 
     const handleNext = (nextStep) => {
         setDirection(1);
@@ -65,6 +78,28 @@ const AIAssistant = ({ onSelectTemplate }) => {
     };
 
     // --- Step Content Renderers ---
+
+    const renderGenerationMode = () => (
+        <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+                Please select the type of report you would like
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <SelectionCard
+                    icon={UserIcon}
+                    title="Generate report"
+                    description="(to generate Report on your own)"
+                    onClick={() => handleNext(STEPS.REPORT_TYPE)}
+                />
+                <SelectionCard
+                    icon={UserGroupIcon}
+                    title="Send Data for Report"
+                    description="(our Team will help you in preparing report)"
+                    onClick={() => navigate('/generate/report-help/new')}
+                />
+            </div>
+        </div>
+    );
 
     const renderReportType = () => (
         <div className="space-y-4">
@@ -417,6 +452,7 @@ const AIAssistant = ({ onSelectTemplate }) => {
                         exit="exit"
                         className="w-full"
                     >
+                        {currentStep === STEPS.GENERATION_MODE && renderGenerationMode()}
                         {currentStep === STEPS.REPORT_TYPE && renderReportType()}
                         {currentStep === STEPS.SECTOR && renderSector()}
                         {currentStep === STEPS.LOAN_TYPE_MFG && renderLoanTypeMfg()}
@@ -439,6 +475,7 @@ const AIAssistant = ({ onSelectTemplate }) => {
 
 const SelectionCard = ({ icon: Icon, title, description, onClick, badge, compact = false }) => (
     <button
+        type="button"
         onClick={onClick}
         className={`
       flex flex-col items-start p-6 rounded-xl border-2 border-transparent 

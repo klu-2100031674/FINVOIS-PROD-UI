@@ -21,6 +21,7 @@ import {
   LinkIcon,
   ClipboardDocumentCheckIcon,
   ClipboardDocumentListIcon,
+  InboxIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -40,6 +41,7 @@ const AgentLayout = ({ children, activeTab }) => {
     { name: 'Drafts', href: '/drafts', icon: ClipboardDocumentListIcon, tab: 'drafts' },
     { name: 'My Reports', href: '/agent/reports', icon: DocumentTextIcon, tab: 'reports' },
     { name: 'Referred Users', href: '/agent/referrals', icon: UsersIcon, tab: 'referrals' },
+    { name: 'Report Help', href: '/agent/report-help', icon: InboxIcon, tab: 'report-help' },
     { name: 'Commissions', href: '/agent/commissions', icon: CurrencyDollarIcon, tab: 'commissions' },
     { name: 'Withdrawals', href: '/agent/withdrawals', icon: BanknotesIcon, tab: 'withdrawals' },
     { name: 'Referral Link', href: '/agent/referral-link', icon: LinkIcon, tab: 'referral-link' },

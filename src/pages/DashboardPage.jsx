@@ -1,11 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { selectTemplateLoading } from '../store/slices/templateSlice';
-import { Loading } from '../components/common';
+import { useDispatch } from 'react-redux';
 import ClientLayout from '../components/layouts/ClientLayout';
 import DashboardAISection from '../components/dashboard/DashboardAISection';
 import useGenerateHubPrep from '../hooks/useGenerateHubPrep';
+import useAuth from '../hooks/useAuth';
 
 /**
  * Retail Finvois user home (`/dashboard`) — standalone from company org users.
@@ -13,7 +12,11 @@ import useGenerateHubPrep from '../hooks/useGenerateHubPrep';
 const DashboardPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const loading = useSelector(selectTemplateLoading);
+  const { getProfile } = useAuth();
+
+  useEffect(() => {
+    getProfile().catch(() => {});
+  }, [getProfile]);
 
   useGenerateHubPrep(dispatch);
 
@@ -27,19 +30,12 @@ const DashboardPage = () => {
     navigate(`/generate?${params.toString()}`);
   };
 
-  if (loading) {
-    return (
-      <ClientLayout>
-        <div className="flex justify-center py-24">
-          <Loading text="Loading dashboard..." />
-        </div>
-      </ClientLayout>
-    );
-  }
-
   return (
     <ClientLayout>
-      <DashboardAISection onSelectTemplate={handleTemplateSelect} />
+      <DashboardAISection
+        onSelectTemplate={handleTemplateSelect}
+        showGenerationModeStep
+      />
     </ClientLayout>
   );
 };

@@ -8,7 +8,7 @@ import { Bell, Check, Trash2, X, CheckCircle, XCircle, AlertCircle, Mail } from 
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks';
 import api from '../../api/apiClient';
-import { normalizeUserRole } from '../../utils/normalizeUserRole';
+import { effectiveUserRole } from '../../utils/normalizeUserRole';
 
 const NotificationBell = () => {
   const navigate = useNavigate();
@@ -76,22 +76,23 @@ const NotificationBell = () => {
   const handleNotificationClick = (notification) => {
     handleMarkAsRead(notification._id);
     setIsOpen(false);
-    
+
+    const r = effectiveUserRole(user);
+
     // Navigate based on notification type
     if (notification.data?.report_id) {
-      if (normalizeUserRole(user?.role) === 'company_admin') {
+      if (r === 'company_admin') {
         navigate('/company/reports');
-      } else if (normalizeUserRole(user?.role) === 'company_user') {
+      } else if (r === 'company_user') {
         navigate('/company/user/reports');
-      } else if (normalizeUserRole(user?.role) === 'admin') {
+      } else if (r === 'admin') {
         navigate('/admin/reports');
-      } else if (normalizeUserRole(user?.role) === 'agent') {
+      } else if (r === 'agent') {
         navigate('/agent/reports');
       } else {
         navigate('/reports');
       }
     } else if (notification.data?.withdrawal_id) {
-      const r = normalizeUserRole(user?.role);
       if (r === 'agent') navigate('/agent/profile');
       else if (r === 'admin') navigate('/admin/profile');
       else if (r === 'company_admin') navigate('/company/profile');
@@ -107,7 +108,7 @@ const NotificationBell = () => {
       case 'report_rejected':
         return <XCircle className="text-red-500" size={20} />;
       case 'report_under_review':
-        return <AlertCircle className="text-blue-500" size={20} />;
+        return <AlertCircle className="text-purple-500" size={20} />;
       case 'withdrawal_approved':
       case 'withdrawal_rejected':
         return <Mail className="text-purple-500" size={20} />;

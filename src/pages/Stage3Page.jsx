@@ -152,7 +152,7 @@ const Stage3Page = () => {
   };
 
   const handleGoBack = () => {
-    navigate(myReportsPathForRole(user?.role));
+    navigate(myReportsPathForRole(user));
   };
 
   return (
