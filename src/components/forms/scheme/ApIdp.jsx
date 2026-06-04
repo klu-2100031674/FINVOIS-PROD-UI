@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AP_IDP_SCHEME_MAIL_PATH } from './apIdpSchemeMailConstants';
 import { saveSchemeFormSession } from '../../../utils/schemeFormSession';
+import { saveSchemeFormProgress } from '../../../api/schemeFormsAPI';
 
 const LEGAL_STRUCTURE_OPTIONS = [
   'Sole Proprietorship',
@@ -676,7 +677,7 @@ const ApIdpSectionAForm = ({
         gstin: '37ABCDE1234F1Z5',
         udyamRegistrationNumber: 'UDYAM-AP-12-0000123',
         panEnterpriseOrOwner: 'ABCDE1234F',
-        ownerFullName: 'Ravi Kumar',
+        ownerFullName: 'Sai Kumar',
         ownerGender: 'Male',
         ownerAge: 32,
         ownerMobile: '9876543210',
@@ -688,9 +689,9 @@ const ApIdpSectionAForm = ({
         unitMandal: 'Vijayawada (Rural)',
         unitVillageOrCity: 'Vijayawada',
         ruralUrbanStatus: 'Urban',
-        mainSector: 'Service Sector',
+        mainSector: 'Manufacturing Sector',
         businessActivityDetails:
-          'Proposed FMCG trading and distribution unit with last-mile delivery in nearby mandals, focused on kirana stores and small retailers. Will maintain basic inventory and use digital billing.',
+          ' Proposed to start paper plate manufacturing unit',
         projectType: 'New Enterprise',
         // Branch A — Section 2
         msmeClassification: 'Micro (Investment ≤ ₹2.5 Cr & Turnover ≤ ₹10 Cr)',
@@ -742,7 +743,7 @@ const ApIdpSectionAForm = ({
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const payload = {
       ...data,
@@ -758,6 +759,11 @@ const ApIdpSectionAForm = ({
     };
     onSubmit?.(payload);
     saveSchemeFormSession('apIdpForm', payload);
+    try {
+      await saveSchemeFormProgress('ap-idp', payload);
+    } catch (err) {
+      console.warn('[AP IDP] Could not save form progress to server', err);
+    }
     navigate(schemeMailPath, { state: { apIdpForm: payload } });
   };
 

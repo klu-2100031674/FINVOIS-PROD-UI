@@ -13,6 +13,8 @@ export function isPublicAnonymousApiPath(url) {
     u.includes('/cmep-ai/chat') ||
     u.includes('/cmep-ai/chat/stream') ||
     u.includes('/support/cmep') ||
-    u.includes('/support/client-screening')
+    u.includes('/support/client-screening') ||
+    u.includes('/form-submissions/emi-calculator/submit') ||
+    u.includes('/scheme-forms/')
   );
 }

@@ -11,6 +11,7 @@ import adminServiceReducer from './slices/adminServiceSlice';
 import leadSliceReducer from './slices/leadSlice';
 import leadAuthReducer from './slices/leadAuthSlice';
 import leadAnalyticsReducer from './slices/leadAnalyticsSlice';
+import franchiseReducer from './slices/franchiseSlice';
 
 /**
  * Redux Store Configuration
@@ -31,6 +32,7 @@ const store = configureStore({
     lead: leadSliceReducer,
     leadAuth: leadAuthReducer,
     leadAnalytics: leadAnalyticsReducer,
+    franchise: franchiseReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

@@ -555,3 +555,43 @@ export const QUICK_AMOUNTS = [
   { label: '₹50L', value: 5000000 },
   { label: '₹1Cr', value: 10000000 },
 ];
+
+/** API payload for EMI calculator master-data submission (no undefined numeric keys). */
+export function buildEmiSubmissionPayload({
+  name,
+  phone,
+  principalAmount,
+  interestRate,
+  tenureYears,
+  interestFrequency,
+  moratoriumMonths,
+  calculationMode,
+  emi,
+  totalInterest,
+  totalAmount,
+  totalInstallments,
+}) {
+  const payload = {
+    name: String(name || '').trim(),
+    phone: String(phone || '').trim(),
+  };
+
+  const addNum = (key, value) => {
+    const n = Number(value);
+    if (Number.isFinite(n)) payload[key] = n;
+  };
+
+  addNum('principalAmount', principalAmount);
+  addNum('interestRate', interestRate);
+  addNum('tenureYears', tenureYears);
+  addNum('moratoriumMonths', moratoriumMonths);
+  addNum('emi', emi);
+  addNum('totalInterest', totalInterest);
+  addNum('totalAmount', totalAmount);
+  addNum('totalInstallments', totalInstallments);
+
+  if (interestFrequency) payload.interestFrequency = String(interestFrequency);
+  if (calculationMode) payload.calculationMode = String(calculationMode);
+
+  return payload;
+}

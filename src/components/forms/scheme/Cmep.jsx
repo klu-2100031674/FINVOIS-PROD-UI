@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CMEP_SCHEME_MAIL_PATH } from './cmepSchemeMailConstants';
 import { saveSchemeFormSession } from '../../../utils/schemeFormSession';
+import { saveSchemeFormProgress } from '../../../api/schemeFormsAPI';
 
 const SPECIAL_CATEGORIES = [
   'Woman',
@@ -374,7 +375,7 @@ const CmepSectionAForm = ({
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const payload = {
       ...data,
@@ -384,6 +385,11 @@ const CmepSectionAForm = ({
     };
     onSubmit?.(payload);
     saveSchemeFormSession('cmepForm', payload);
+    try {
+      await saveSchemeFormProgress('cmep', payload);
+    } catch (err) {
+      console.warn('[CMEP] Could not save form progress to server', err);
+    }
     navigate(schemeMailPath, { state: { cmepForm: payload } });
   };
 

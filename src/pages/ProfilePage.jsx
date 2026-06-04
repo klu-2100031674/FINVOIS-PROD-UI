@@ -17,13 +17,44 @@ import {
   CreditCard,
   Briefcase,
   Gift,
-  Handshake
+  Handshake,
+  Trash2
 } from 'lucide-react';
 import ClientLayout from '../components/layouts/ClientLayout';
 import { formatRoleForDisplay } from '../utils/roleDisplay';
 import { companyAPI } from '../api/endpoints';
 
-const ProfilePage = () => {
+function mapProfileToForm(source) {
+  if (!source) return null;
+  return {
+    name: source.name || '',
+    company_name: source.company_name || '',
+    phone: source.phone || '',
+    address: source.address || '',
+    profile_logo: source.profile_logo || '',
+    company_logo: source.company_logo || '',
+    village_city: source.village_city || 'Vijayawada & Gudiwada',
+    mandal: source.mandal || '',
+    district: source.district || '',
+    state: source.state || '',
+    designation: source.designation || '',
+    designation_other: source.designation_other || '',
+    organization_name: source.organization_name || '',
+    signature_image: source.signature_image || '',
+    supervisor_signature: source.supervisor_signature || '',
+    verified_by: source.verified_by || 'M.Suresh Babu',
+    firm_contact: source.firm_contact || '9014221011, 9491349091, 0866-6551011, 6464786',
+    supervised_by: source.supervised_by ?? 'MD.Khaja',
+    report_city: source.report_city ?? 'Vijayawada & Gudiwada'
+  };
+}
+
+const ProfilePage = ({ variant }) => {
+  const isExecutiveProfile = variant === 'executive';
+  const execIdentityHighlight =
+    'rounded-xl border-2 border-sky-300 bg-sky-50/80 p-4 md:p-5 shadow-sm';
+  const execReportHighlight =
+    'rounded-xl border-2 border-purple-300 bg-purple-50/70 p-4 md:p-5 shadow-sm';
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user, isAuthenticated } = useAuth();
@@ -45,7 +76,13 @@ const ProfilePage = () => {
     state: '',
     designation: '',
     designation_other: '',
-    organization_name: ''
+    organization_name: '',
+    signature_image: '',
+    supervisor_signature: '',
+    verified_by: '',
+    firm_contact: '',
+    supervised_by: '',
+    report_city: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('personal');
@@ -83,24 +120,18 @@ const ProfilePage = () => {
   }, [dispatch, isAuthenticated, navigate]);
 
   useEffect(() => {
-    if (dataSource) {
-      setFormData({
-        name: dataSource.name || '',
-        company_name: dataSource.company_name || '',
-        phone: dataSource.phone || '',
-        address: dataSource.address || '',
-        profile_logo: dataSource.profile_logo || '',
-        company_logo: dataSource.company_logo || '',
-        village_city: dataSource.village_city || '',
-        mandal: dataSource.mandal || '',
-        district: dataSource.district || '',
-        state: dataSource.state || '',
-        designation: dataSource.designation || '',
-        designation_other: dataSource.designation_other || '',
-        organization_name: dataSource.organization_name || ''
-      });
+    if (profile) {
+      const mapped = mapProfileToForm(profile);
+      if (mapped) setFormData(mapped);
     }
-  }, [user, profile, dataSource]);
+  }, [profile]);
+
+  useEffect(() => {
+    if (!profile && user) {
+      const mapped = mapProfileToForm(user);
+      if (mapped) setFormData(mapped);
+    }
+  }, [profile, user]);
 
   useEffect(() => {
     const loadCompanyBranding = async () => {
@@ -145,7 +176,11 @@ const ProfilePage = () => {
     if (e) e.preventDefault();
     setIsSubmitting(true);
     try {
-      await dispatch(updateProfile(formData)).unwrap();
+      const result = await dispatch(updateProfile(formData)).unwrap();
+      const mapped = mapProfileToForm(result?.data);
+      if (mapped) {
+        setFormData(mapped);
+      }
       toast.success('Profile updated successfully!');
     } catch (error) {
       toast.error(error || 'Failed to update profile');
@@ -168,7 +203,7 @@ const ProfilePage = () => {
     <ClientLayout>
       <div className="py-4 sm:py-6">
         <h1 className="text-xl font-bold text-gray-900 font-manrope mb-6">Profile settings</h1>
-        {freeCredits > 0 && (
+        {!isExecutiveProfile && freeCredits > 0 && (
           <div className="mb-6 bg-gradient-to-r from-purple-50 to-purple-50 border border-purple-100 rounded-xl p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white rounded-lg border border-purple-100">
@@ -213,7 +248,7 @@ const ProfilePage = () => {
               </div>
             </div>
 
-            {referringAgent && (
+            {!isExecutiveProfile && referringAgent && (
               <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="p-2 bg-purple-50 rounded-lg">
@@ -252,16 +287,18 @@ const ProfilePage = () => {
                 <User className="w-4 h-4" />
                 Personal Information
               </button>
-              <button
-                onClick={() => setActiveTab('company')}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all ${activeTab === 'company'
-                    ? 'bg-purple-50 text-purple-700'
-                    : 'text-gray-600 hover:bg-gray-50'
-                  }`}
-              >
-                <Building2 className="w-4 h-4" />
-                Company Details
-              </button>
+              {!isExecutiveProfile && (
+                <button
+                  onClick={() => setActiveTab('company')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all ${activeTab === 'company'
+                      ? 'bg-purple-50 text-purple-700'
+                      : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                >
+                  <Building2 className="w-4 h-4" />
+                  Company Details
+                </button>
+              )}
               <div className="h-px bg-gray-100 my-2" />
               <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-400 cursor-not-allowed">
                 <ShieldCheck className="w-4 h-4" />
@@ -290,7 +327,13 @@ const ProfilePage = () => {
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div
+                      className={
+                        isExecutiveProfile
+                          ? `${execIdentityHighlight} grid grid-cols-1 md:grid-cols-2 gap-6 mb-6`
+                          : 'grid grid-cols-1 md:grid-cols-2 gap-6'
+                      }
+                    >
                       <Input
                         label="Full Name"
                         name="name"
@@ -309,6 +352,9 @@ const ProfilePage = () => {
                         icon={Phone}
                         type="tel"
                       />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
                         <div className="relative">
@@ -400,6 +446,114 @@ const ProfilePage = () => {
                           placeholder="Enter state"
                           icon={MapPin}
                         />
+                      </div>
+                    </div>
+
+                    {/* Signatures & Report settings */}
+                    <div
+                      className={
+                        isExecutiveProfile
+                          ? `mt-6 ${execReportHighlight}`
+                          : 'mt-6 border-t border-gray-100 pt-6'
+                      }
+                    >
+                      <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">
+                        Report & Verification Defaults
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Input
+                          label="Supervised Name"
+                          name="supervised_by"
+                          value={formData.supervised_by}
+                          onChange={handleInputChange}
+                          placeholder="e.g. MD.Khaja"
+                          icon={User}
+                        />
+                        <Input
+                          label="Default Verifier Name (Verified By)"
+                          name="verified_by"
+                          value={formData.verified_by}
+                          onChange={handleInputChange}
+                          placeholder="e.g. M.Suresh Babu"
+                          icon={User}
+                        />
+                        <Input
+                          label="Default Firm Contact Numbers"
+                          name="firm_contact"
+                          value={formData.firm_contact}
+                          onChange={handleInputChange}
+                          placeholder="e.g. 9014221011, 9491349091"
+                          icon={Phone}
+                        />
+                        <Input
+                          label="Report City"
+                          name="report_city"
+                          value={formData.report_city}
+                          onChange={handleInputChange}
+                          placeholder="e.g. Vijayawada & Gudiwada"
+                          icon={MapPin}
+                        />
+                      </div>
+                      {isExecutiveProfile && (
+                        <p className="text-xs text-purple-700/80 mt-3">
+                          Report City appears in the left footer of SBI House, Office, and Business PDFs.
+                        </p>
+                      )}
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">Executive Signature</label>
+                          <div className="relative group border border-gray-200 bg-gray-50 rounded-xl h-28 flex items-center justify-center overflow-hidden">
+                            {formData.signature_image ? (
+                              <img src={formData.signature_image} alt="Executive Signature" className="h-full w-full object-contain p-2" />
+                            ) : (
+                              <span className="text-xs text-gray-400">No executive signature uploaded</span>
+                            )}
+                            {formData.signature_image && (
+                              <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, signature_image: '' }))}
+                                className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition-all shadow-md hover:scale-105"
+                                title="Delete Executive Signature"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <label className="absolute bottom-2 right-2 p-1.5 bg-[#7e22ce] text-white rounded-full cursor-pointer hover:bg-[#6b21a8] transition-all shadow-md">
+                              <Camera className="w-3.5 h-3.5" />
+                              <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload('signature_image')} />
+                            </label>
+                          </div>
+                          <p className="text-[10px] text-gray-400">Rendered on page 2 beside &quot;FIELD EXECUTIVE SIGN&quot;.</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">Supervisor Signature</label>
+                          <div className="relative group border border-gray-200 bg-gray-50 rounded-xl h-28 flex items-center justify-center overflow-hidden">
+                            {formData.supervisor_signature ? (
+                              <img src={formData.supervisor_signature} alt="Supervisor Signature" className="h-full w-full object-contain p-2" />
+                            ) : (
+                              <span className="text-xs text-gray-400">No supervisor signature uploaded</span>
+                            )}
+                            {formData.supervisor_signature && (
+                              <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, supervisor_signature: '' }))}
+                                className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition-all shadow-md hover:scale-105"
+                                title="Delete Supervisor Signature"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <label className="absolute bottom-2 right-2 p-1.5 bg-[#7e22ce] text-white rounded-full cursor-pointer hover:bg-[#6b21a8] transition-all shadow-md">
+                              <Camera className="w-3.5 h-3.5" />
+                              <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload('supervisor_signature')} />
+                            </label>
+                          </div>
+                          <p className="text-[10px] text-gray-400">
+                            Rendered on the bottom footer of every page above &quot;Supervised by&quot;.
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>

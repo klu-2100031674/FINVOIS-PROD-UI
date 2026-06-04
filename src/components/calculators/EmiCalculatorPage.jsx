@@ -2,10 +2,11 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import { Copy, Download, RotateCcw } from 'lucide-react';
+import { Copy, Download, RotateCcw, User, Phone, Calculator } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Navbar from '../LandingPage/components/Navbar';
 import Footer from '../LandingPage/components/Footer';
+import apiClient from '../../api/apiClient';
 import {
   QUICK_AMOUNTS,
   INTEREST_FREQUENCIES,
@@ -32,14 +33,14 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 const ACCENT = '#00B386';
 
-const DEFAULT_LOAN = 1000000;
+const DEFAULT_LOAN = 0;
 const DEFAULT_RATE = 10.5;
 const DEFAULT_TENURE_YEARS = 20;
 const DEFAULT_FREQUENCY = 'monthly';
 const DEFAULT_MORATORIUM_MONTHS = 0;
 const DEFAULT_CALCULATION_MODE = 'principal_fixed';
 const DEFAULT_LOAN_START_DATE = defaultLoanStartDate();
-const LOAN_MIN = 10000;
+const LOAN_MIN = 0;
 const LOAN_MAX = 1000000000;
 const RATE_MIN = 1;
 const RATE_MAX = 36;
@@ -239,6 +240,11 @@ function SummaryLine({ label, value, highlight }) {
 }
 
 const EmiCalculatorPage = () => {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [savingInfo, setSavingInfo] = useState(false);
+  const [calculatorUnlocked, setCalculatorUnlocked] = useState(false);
+
   const [loanAmount, setLoanAmount] = useState(DEFAULT_LOAN);
   const [calculationMode, setCalculationMode] = useState(DEFAULT_CALCULATION_MODE);
   const [interestRate, setInterestRate] = useState(DEFAULT_RATE);
@@ -285,6 +291,43 @@ const EmiCalculatorPage = () => {
     moratoriumPeriods,
     repaymentPeriods,
   } = loanResult;
+
+  const handleFormSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      if (!name.trim()) {
+        toast.error('Please enter your name');
+        return;
+      }
+      if (!phone.trim()) {
+        toast.error('Please enter your phone number');
+        return;
+      }
+      const cleanPhone = phone.replace(/\D/g, '');
+      if (cleanPhone.length < 10) {
+        toast.error('Please enter a valid 10-digit phone number');
+        return;
+      }
+
+      try {
+        setSavingInfo(true);
+        await apiClient.post('/form-submissions/emi-calculator/submit', {
+          name: name.trim(),
+          phone: cleanPhone,
+        });
+        setCalculatorUnlocked(true);
+        toast.success('Details saved! You can now use the calculator.');
+      } catch (err) {
+        console.error(err);
+        toast.error(
+          typeof err === 'string' ? err : 'Failed to save information. Please try again.',
+        );
+      } finally {
+        setSavingInfo(false);
+      }
+    },
+    [name, phone],
+  );
 
   const installmentLabel = useMemo(
     () => getInstallmentLabel(interestFrequency),
@@ -505,10 +548,72 @@ const EmiCalculatorPage = () => {
       <Navbar />
 
       <main className="pt-28 pb-16 px-4 sm:px-6 max-w-5xl mx-auto">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-8">
-          EMI Calculator
-        </h1>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              EMI Calculator
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Submit your name and phone number to access the EMI calculator.
+            </p>
+          </div>
 
+          <form onSubmit={handleFormSubmit} className="flex flex-col sm:flex-row gap-3 items-end bg-white border border-gray-200 rounded-2xl p-4 shadow-sm w-full md:w-auto">
+            <div className="w-full sm:w-44">
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Full Name
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Full Name"
+                  required
+                  className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-transparent transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="w-full sm:w-44">
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Phone Number
+              </label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Phone Number"
+                  required
+                  className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-transparent transition-all"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={savingInfo}
+              className="w-full sm:w-auto px-5 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-400 text-white rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm flex items-center justify-center gap-1.5 h-[38px] shrink-0 font-['Inter',system-ui,sans-serif]"
+            >
+              {savingInfo ? 'Submitting...' : 'Submit'}
+            </button>
+          </form>
+        </div>
+
+        {!calculatorUnlocked ? (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-10 sm:p-14 text-center">
+            <Calculator className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
+            <h2 className="text-lg font-semibold text-gray-900">Calculator locked</h2>
+            <p className="text-sm text-gray-500 mt-2 max-w-md mx-auto">
+              Enter your name and phone number above, then click Submit to unlock the EMI
+              calculator.
+            </p>
+          </div>
+        ) : (
+        <>
         <motion.div
           layout
           initial={{ opacity: 0, y: 12 }}
@@ -886,6 +991,8 @@ const EmiCalculatorPage = () => {
             </table>
           </div>
         </motion.div>
+        </>
+        )}
       </main>
 
       <Footer />

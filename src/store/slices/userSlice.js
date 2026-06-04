@@ -38,18 +38,15 @@ export const updateProfile = createAsyncThunk(
   'user/updateProfile',
   async (profileData, { dispatch, rejectWithValue }) => {
     try {
-      console.log("triggred");
       const response = await api.user.updateProfile(profileData);
-      
-      // If update was successful, also update the auth state to keep it in sync
-      if (response && response.data) {
-        // Use a dynamic import to avoid circular dependency
+
+      if (response?.data) {
         const authActions = await import('./authSlice');
-        if (authActions && authActions.updateUser) {
+        if (authActions?.updateUser) {
           dispatch(authActions.updateUser(response.data));
         }
       }
-      
+
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || 'Failed to update profile');

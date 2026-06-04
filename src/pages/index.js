@@ -5,6 +5,13 @@
 
 export { default as AuthPage } from './AuthPage';
 export { default as DashboardPage } from './DashboardPage';
+export { default as ExecutiveDashboardPage } from './Executive/ExecutiveDashboardPage';
+export { default as ExecutiveSbiHousePage } from './Executive/ExecutiveSbiHousePage';
+export { default as ExecutiveSbiOfficePage } from './Executive/ExecutiveSbiOfficePage';
+export { default as ExecutiveSbiBussinessPage } from './Executive/ExecutiveSbiBussinessPage';
+export { default as ExecutiveIncomeTaxPage } from './Executive/ExecutiveIncomeTaxPage';
+export { default as ExecutiveReportsPage } from './Executive/ExecutiveReportsPage';
+export { default as ExecutiveDraftsPage } from './Executive/ExecutiveDraftsPage';
 export { default as DraftsPage } from './DraftsPage';
 export { default as GeneratePage } from './GeneratePage';
 export { default as ReportsPage } from './ReportsPage';

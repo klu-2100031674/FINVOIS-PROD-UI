@@ -23,6 +23,7 @@ export function formatRoleForDisplay(role, userContext = null) {
   }
   const r = normalizeUserRole(role);
   if (r === 'agent') return 'Channel partner';
+  if (r === 'executive') return 'Executive';
   if (r === 'company_admin') return 'Company admin';
   // Display label kept as "Super admin" even though the code-level role is `admin`.
   if (r === 'admin') return 'Super admin';

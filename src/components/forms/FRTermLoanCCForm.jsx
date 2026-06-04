@@ -382,6 +382,11 @@ const FRTermLoanCCForm = ({
   const [assetValidationErrors, setAssetValidationErrors] = useState({});
   const [generalInfoErrors, setGeneralInfoErrors] = useState({});
   const [meansOfFinanceErrors, setMeansOfFinanceErrors] = useState({});
+  // UI-only (not sent to API / Excel) — Prepared By section extras for TERM_LOAN_CC
+  const [preparedByUiOnly, setPreparedByUiOnly] = useState({
+    bankerMailId: '',
+    cibilScore: '',
+  });
 
   const [assetItems, setAssetItems] = useState(() => {
     if (initialData && initialData['Fixed Assets Schedule']) {
@@ -1588,7 +1593,7 @@ const FRTermLoanCCForm = ({
               {renderInput('General Information', 'i17', 'Name of firm/Company (Optional)')}
               {renderInput('General Information', 'i18', 'PAN of firm/Company (Optional)')}
               {renderInput('General Information', 'i19', 'Education Qualification', 'text', ['Below 8th', 'Above 8th', 'SSC 10th', 'intermediate +2', 'Graduate', 'Post Graduate'])}
-              {renderInput('General Information', 'i20', 'Project covered under which Scheme', 'text', ['AP IDP 4.0', 'Industrial park Land Allotment', 'PMEGP', 'Mudra', 'PMFME', 'PMMSY', 'Startup India', 'Other MSME', 'NLM scheme', 'CMEGP'])}
+              {renderInput('General Information', 'i20', 'Project covered under which Scheme', 'text', ['AP IDP 4.0', 'Industrial park Land Allotment', 'PMEGP', 'Mudra', 'PMFME', 'PMMSY', 'Startup India', 'Other MSME', 'NLM scheme', 'CMEP'])}
               {renderInput('General Information', 'i21', 'Caste', 'text', ['OC', 'SC', 'ST', 'BC', 'Minority'])}
               {renderInput('General Information', 'i22', 'Unit location', 'text', ['Rural(Panchayat)', 'Urban(Other than Panchayat)'])}
             </div>
@@ -2000,6 +2005,37 @@ const FRTermLoanCCForm = ({
                   onChange={(e) => handleInputChange('General Information', 'branch_name', e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
                   placeholder="Enter branch name"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-gray-800">
+                  Banker Mail ID
+                </label>
+                <input
+                  type="email"
+                  value={preparedByUiOnly.bankerMailId}
+                  onChange={(e) =>
+                    setPreparedByUiOnly((prev) => ({ ...prev, bankerMailId: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+                  placeholder="Enter banker email"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-gray-800">
+                  CIBIL Score
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={preparedByUiOnly.cibilScore}
+                  onChange={(e) =>
+                    setPreparedByUiOnly((prev) => ({ ...prev, cibilScore: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+                  placeholder="e.g. 750"
+                  autoComplete="off"
                 />
               </div>
             </div>

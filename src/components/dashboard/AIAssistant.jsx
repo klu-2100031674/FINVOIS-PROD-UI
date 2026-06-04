@@ -190,7 +190,7 @@ const AIAssistant = ({ onSelectTemplate, showGenerationModeStep = false }) => {
     const renderStockCheck = () => (
         <div className="space-y-4">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-                Does your business maintain stock or inventory?
+                Does your business maintain stock or Inventory Holdings?
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SelectionCard
@@ -202,7 +202,7 @@ const AIAssistant = ({ onSelectTemplate, showGenerationModeStep = false }) => {
                 <SelectionCard
                     icon={BuildingOfficeIcon}
                     title="No"
-                    description="Pure service based, no significant inventory"
+                    description="Pure service based, no significant inventory holdings"
                     onClick={() =>
                         onSelectTemplate('TERM_LOAN_SERVICE_WITHOUT_STOCK', {
                             presetSector: 'service sector without stock',

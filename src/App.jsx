@@ -38,6 +38,13 @@ import {
   Stage3Page,
   FRCC1FormPage,
   ProfilePage,
+  ExecutiveDashboardPage,
+  ExecutiveSbiHousePage,
+  ExecutiveSbiOfficePage,
+  ExecutiveSbiBussinessPage,
+  ExecutiveIncomeTaxPage,
+  ExecutiveReportsPage,
+  ExecutiveDraftsPage,
   AdminPage,
   AdminPaymentsPage,
 } from "./pages";
@@ -51,6 +58,8 @@ import {
   AdminWithdrawalsPage,
   AdminTemplateConfigPage,
   AdminReportsPage,
+  AdminBankerReportsPage,
+  AdminMasterDataPage,
   AdminProfilePage,
   AdminGenerateReportPage,
   AdminFreeCreditsPage,
@@ -70,6 +79,10 @@ import {
   AdminCmepPdfUploadPage,
   AdminSchemesPage,
   SchemeMailManagePage,
+  AdminFranchisesPage,
+  AdminFranchiseNewPage,
+  AdminFranchiseEditPage,
+  AdminFranchiseApplicationsPage,
 } from "./pages/admin";
 import {
   AgentDashboardPage,
@@ -119,6 +132,9 @@ import LeadDashboardPage from "./pages/lead/LeadDashboardPage";
 import ServicesPage from "./pages/ServicesPage";
 import ServiceDetailPage from "./pages/ServiceDetailPage";
 import ServiceLayout from "./components/layouts/ServiceLayout";
+import FranchisesPage from "./pages/franchise/FranchisesPage";
+import FranchiseDetailPage from "./pages/franchise/FranchiseDetailPage";
+import FranchiseApplyPage from "./pages/franchise/FranchiseApplyPage";
 // BuyCreditsPage removed - using pay-per-report model
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import PaymentFailurePage from "./pages/PaymentFailurePage";
@@ -237,6 +253,26 @@ const RetailUserRoute = ({ children }) => {
     return <Navigate to="/auth" replace />;
   }
   if (r !== 'user') {
+    return <Navigate to={dashboardHomePath(user)} replace />;
+  }
+  return children;
+};
+
+const ExecutiveRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const r = effectiveUserRole(user);
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  if (r !== 'executive') {
+    return <Navigate to={dashboardHomePath(user)} replace />;
+  }
+  return children;
+};
+
+const NonExecutiveRoute = ({ children }) => {
+  const { user } = useAuth();
+  if (effectiveUserRole(user) === 'executive') {
     return <Navigate to={dashboardHomePath(user)} replace />;
   }
   return children;
@@ -434,6 +470,70 @@ function App() {
           }
         />
         <Route
+          path="/executive/dashboard"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveDashboardPage />
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/templates/sbi-house"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveSbiHousePage />
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/templates/sbi-office"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveSbiOfficePage />
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/templates/sbi-bussiness"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveSbiBussinessPage />
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/templates/income-tax"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveIncomeTaxPage />
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/reports"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveReportsPage />
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/drafts"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveDraftsPage />
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/profile"
+          element={
+            <ExecutiveRoute>
+              <ProfilePage variant="executive" />
+            </ExecutiveRoute>
+          }
+        />
+        <Route
           path="/company/dashboard"
           element={
             <AdminOrCompanyAdminRoute>
@@ -469,7 +569,9 @@ function App() {
           path="/drafts"
           element={
             <ProtectedRoute>
-              <DraftsPage />
+              <NonExecutiveRoute>
+                <DraftsPage />
+              </NonExecutiveRoute>
             </ProtectedRoute>
           }
         />
@@ -850,6 +952,22 @@ function App() {
           }
         />
         <Route
+          path="/admin/banker-reports"
+          element={
+            <SuperAdminRoute>
+              <AdminBankerReportsPage />
+            </SuperAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/master-data"
+          element={
+            <AdminOnlyRoute>
+              <AdminMasterDataPage />
+            </AdminOnlyRoute>
+          }
+        />
+        <Route
           path="/admin/schemes"
           element={
             <AdminOnlyRoute>
@@ -983,6 +1101,38 @@ function App() {
             <AdminRoute>
               <AdminServiceEditPage />
             </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/franchises/applications"
+          element={
+            <AdminOnlyRoute>
+              <AdminFranchiseApplicationsPage />
+            </AdminOnlyRoute>
+          }
+        />
+        <Route
+          path="/admin/franchises/new"
+          element={
+            <AdminOnlyRoute>
+              <AdminFranchiseNewPage />
+            </AdminOnlyRoute>
+          }
+        />
+        <Route
+          path="/admin/franchises/:id"
+          element={
+            <AdminOnlyRoute>
+              <AdminFranchiseEditPage />
+            </AdminOnlyRoute>
+          }
+        />
+        <Route
+          path="/admin/franchises"
+          element={
+            <AdminOnlyRoute>
+              <AdminFranchisesPage />
+            </AdminOnlyRoute>
           }
         />
         <Route
@@ -1192,6 +1342,9 @@ function App() {
         {/* Lead & Service Management Routes */}
         <Route path="/services" element={<ServiceLayout><ServicesPage /></ServiceLayout>} />
         <Route path="/services/:id" element={<ServiceLayout><ServiceDetailPage /></ServiceLayout>} />
+        <Route path="/franchises" element={<ServiceLayout><FranchisesPage /></ServiceLayout>} />
+        <Route path="/franchises/:id/apply" element={<ServiceLayout><FranchiseApplyPage /></ServiceLayout>} />
+        <Route path="/franchises/:id" element={<ServiceLayout><FranchiseDetailPage /></ServiceLayout>} />
         <Route path="/lead/dashboard" element={<LeadRoute><LeadDashboardPage /></LeadRoute>} />
 
         {/* 404 Route */}

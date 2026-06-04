@@ -195,6 +195,7 @@ const AdminUsersPage = () => {
               <option value="admin">Super Admin</option>
               <option value="company_admin">Company Admin</option>
               <option value="agent">Channel partner</option>
+              <option value="executive">Executive</option>
               <option value="user">User</option>
             </select>
           </div>
@@ -314,13 +315,42 @@ const AdminUsersPage = () => {
                               <Edit2 size={16} className="mr-2" /> Edit Commission
                             </button>
                           )}
-                          <button
-                            onClick={() => handleRoleChange(user._id, user.role === 'agent' ? 'user' : 'agent')}
-                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          >
-                            <Edit2 size={16} className="mr-2" /> 
-                            {user.role === 'agent' ? 'Demote to User' : 'Promote to channel partner'}
-                          </button>
+                          {user.role === 'user' && (
+                            <>
+                              <button
+                                onClick={() => handleRoleChange(user._id, 'agent')}
+                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              >
+                                <Edit2 size={16} className="mr-2" />
+                                Promote to channel partner
+                              </button>
+                              <button
+                                onClick={() => handleRoleChange(user._id, 'executive')}
+                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              >
+                                <Edit2 size={16} className="mr-2" />
+                                Promote to Executive
+                              </button>
+                            </>
+                          )}
+                          {user.role === 'agent' && (
+                            <button
+                              onClick={() => handleRoleChange(user._id, 'user')}
+                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                              <Edit2 size={16} className="mr-2" />
+                              Demote to User
+                            </button>
+                          )}
+                          {user.role === 'executive' && (
+                            <button
+                              onClick={() => handleRoleChange(user._id, 'user')}
+                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                              <Edit2 size={16} className="mr-2" />
+                              Demote to User
+                            </button>
+                          )}
                           <button
                             onClick={() => handleStatusChange(user._id, !isUserActive(user))}
                             className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

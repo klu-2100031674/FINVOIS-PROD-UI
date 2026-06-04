@@ -59,6 +59,17 @@ apiClient.interceptors.request.use(
         delete config.headers.Authorization;
       }
     }
+
+    // FormData: let the browser set multipart boundary (required for multer file uploads)
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      if (config.headers) {
+        if (typeof config.headers.delete === 'function') {
+          config.headers.delete('Content-Type');
+        } else {
+          delete config.headers['Content-Type'];
+        }
+      }
+    }
     
     // Log API calls in development
     if (import.meta.env.VITE_ENABLE_DEBUG === 'true') {

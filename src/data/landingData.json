@@ -15,6 +15,10 @@
         "href": "/services"
       },
       {
+        "label": "Franchise",
+        "href": "/franchises"
+      },
+      {
         "label": "Schemes",
         "dropdown": [
           {

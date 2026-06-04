@@ -6,7 +6,7 @@ import { useAuth } from '../../hooks';
 import toast from 'react-hot-toast';
 import { normalizeUserRole } from '../../utils/normalizeUserRole';
 import { formatRoleForDisplay } from '../../utils/roleDisplay';
-import { isChannelPartner } from '../../utils/companyMembership';
+import { isChannelPartner, isExecutive } from '../../utils/companyMembership';
 import {
   ArrowLeft,
   Building2,
@@ -705,7 +705,7 @@ const AdminCreateCompanyPage = () => {
   }, [companyUsers, userSearch]);
 
   const eligibleUserCandidates = useMemo(
-    () => existingUserCandidates.filter((candidate) => !isChannelPartner(candidate)),
+    () => existingUserCandidates.filter((candidate) => !isChannelPartner(candidate) && !isExecutive(candidate)),
     [existingUserCandidates]
   );
 
@@ -733,7 +733,7 @@ const AdminCreateCompanyPage = () => {
   const adminSlotsLeft = Math.max(0, MAX_COMPANY_ADMINS - currentCompanyAdmins.length);
 
   const eligibleAdminCandidates = useMemo(
-    () => candidates.filter((candidate) => !isChannelPartner(candidate)),
+    () => candidates.filter((candidate) => !isChannelPartner(candidate) && !isExecutive(candidate)),
     [candidates]
   );
 

@@ -12,6 +12,9 @@ const PUBLIC_SCHEME_PREFIXES = ['/schemes/pmegp', '/schemes/ap-idp', '/schemes/c
 /** Public calculator tools (no login). */
 const PUBLIC_CALCULATOR_PREFIXES = ['/calculators'];
 
+/** Public franchise listing and applications (no login). */
+const PUBLIC_FRANCHISE_PREFIXES = ['/franchises'];
+
 /**
  * @param {string} [pathname] — defaults to current location
  */
@@ -28,6 +31,9 @@ export function isPublicAppPath(pathname) {
   }
   if (p === '/schemes') return true;
   if (PUBLIC_CALCULATOR_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`))) {
+    return true;
+  }
+  if (PUBLIC_FRANCHISE_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`))) {
     return true;
   }
   return PUBLIC_SCHEME_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`));

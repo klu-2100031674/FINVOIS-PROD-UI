@@ -8,6 +8,13 @@ export const isChannelPartner = (user) => {
   return false;
 };
 
+export const isExecutive = (user) => {
+  if (!user) return false;
+  if (normalizeRoleFromUser(user.role) === 'executive') return true;
+  if (user.userCategory === 'FEXEC') return true;
+  return false;
+};
+
 export const resolveCompanyDisplayName = (user) => {
   if (!user) return null;
   const populated = user.companyId;

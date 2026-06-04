@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PMEGP_SCHEME_MAIL_PATH } from './pmegpSchemeMailConstants';
 import { saveSchemeFormSession } from '../../../utils/schemeFormSession';
+import { saveSchemeFormProgress } from '../../../api/schemeFormsAPI';
 
 const SPECIAL_CATEGORIES = [
   'SC',
@@ -385,7 +386,7 @@ const PmegpSectionAForm = ({
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!(data.specialZones || []).length) {
       window.alert(
@@ -399,6 +400,11 @@ const PmegpSectionAForm = ({
     };
     onSubmit?.(payload);
     saveSchemeFormSession('pmegpForm', payload);
+    try {
+      await saveSchemeFormProgress('pmegp', payload);
+    } catch (err) {
+      console.warn('[PMEGP] Could not save form progress to server', err);
+    }
     navigate(schemeMailPath, { state: { pmegpForm: payload } });
   };
 

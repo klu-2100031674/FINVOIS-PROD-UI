@@ -34,6 +34,8 @@ import {
   UserCheck,
   Landmark,
   Inbox,
+  Store,
+  Layers,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { normalizeUserRole } from '../../utils/normalizeUserRole';
@@ -118,9 +120,27 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
 
     if (role === 'admin') {
       items.push({
+        to: '/admin/banker-reports',
+        icon: Briefcase,
+        label: 'Banker Reports'
+      });
+      items.push({
+        to: '/admin/master-data',
+        icon: Layers,
+        label: 'Master Data'
+      });
+    }
+
+    if (role === 'admin') {
+      items.push({
         to: '/admin/schemes',
         icon: Landmark,
         label: 'Schemes',
+      });
+      items.push({
+        to: '/admin/franchises',
+        icon: Store,
+        label: 'Franchise',
       });
     }
 

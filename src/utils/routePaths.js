@@ -17,6 +17,7 @@ export function dashboardHomePath(roleOrUser) {
   if (r === 'company_user') return '/company/user/dashboard';
   if (r === 'admin') return '/admin/dashboard';
   if (r === 'agent') return '/agent/dashboard';
+  if (r === 'executive') return '/executive/dashboard';
   return '/dashboard';
 }
 
@@ -26,6 +27,7 @@ export function profilePathForRole(roleOrUser) {
   if (r === 'company_user') return '/company/user/profile';
   if (r === 'admin') return '/admin/profile';
   if (r === 'agent') return '/agent/profile';
+  if (r === 'executive') return '/executive/profile';
   return '/profile';
 }
 
@@ -35,6 +37,7 @@ export function myReportsPathForRole(roleOrUser) {
   if (r === 'company_user') return '/company/user/reports';
   if (r === 'admin') return '/admin/reports';
   if (r === 'agent') return '/agent/reports';
+  if (r === 'executive') return '/executive/reports';
   return '/reports';
 }
 
@@ -52,5 +55,6 @@ export function generateHubLandingPath(roleOrUser) {
   if (r === 'company_user') return '/company/user/dashboard';
   if (r === 'admin') return '/admin/dashboard';
   if (r === 'agent') return '/agent/dashboard';
+  if (r === 'executive') return '/executive/dashboard';
   return '/dashboard';
 }

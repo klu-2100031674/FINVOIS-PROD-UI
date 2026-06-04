@@ -106,7 +106,7 @@ const ClientScreeningSchemeMailForm = ({
               Client screening
             </p>
             <h1 className="mt-2 text-balance text-2xl font-bold leading-snug tracking-tight text-gray-900 sm:text-[1.75rem]">
-              What is your main challenge or doubt your MSME is facing right now?
+              What is the main challenge or doubt your MSME is facing right now?
             </h1>
           </div>
         </div>

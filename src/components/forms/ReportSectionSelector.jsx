@@ -13,7 +13,7 @@ const SECTION_CONFIG = [
     title: "1. Constitution of the Firm",
     prompt_ref: "constitution",
     fields: [
-      { name: "firm_name", label: "Firm Name", type: "text", required: true },
+      { name: "firm_name", label: "Firm Name", type: "text", required: false },
       { name: "organisation_type", label: "Sector", type: "select", options: ["Proprietorship", "Partnership", "Private Limited", "LLP", "Other"] },
       { name: "nature_of_business", label: "Nature of Business", type: "text", placeholder: "Prefilled from previous page" },
       { name: "proprietor_name", label: "Name of Authorised person", type: "text", required: true },
@@ -217,7 +217,7 @@ const SECTION_CONFIG = [
           { name: "type_of_material", label: "Raw Material / Finished Product", type: "text" },
           { name: "quantity_to_be_stored_per_month", label: "Quantity to be Stored", type: "text" },
           { name: "no_of_days_stock", label: "No of Days of Stock", type: "text" },
-          { name: "justification", label: "Justification, if any", type: "text" }
+          { name: "justification", label: "Justification, if any", type: "text", required: false }
         ]
       }
     ]
@@ -254,7 +254,7 @@ const SECTION_CONFIG = [
           { name: "name", label: "Raw Material Name", type: "text" },
           { name: "quantity", label: "Quantity Required Per day/month/year", type: "text" },
           { name: "supplier", label: "Supplier Details (Name, Place)", type: "text" },
-          { name: "description", label: "Description regarding the Raw Materials , Demand , supply , availability nearer to your unit.", type: "textarea" }
+          { name: "description", label: "Description regarding the Raw Materials , Demand , supply , availability nearer to your unit.", type: "textarea", required: false }
         ]
       }
     ]
@@ -650,7 +650,9 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
       SECTION_CONFIG.forEach(section => {
         // Specific pre-filling logic based on section id
         if (section.id === 'firm_constitution') {
-          setMapped('firm_constitution', 'firm_name', getS1('General Information', 'i17'));
+          const firmFromForm =
+            getS1('General Information', 'i17') || getS1('General Information', 'i8');
+          setMapped('firm_constitution', 'firm_name', firmFromForm);
           setMapped('firm_constitution', 'organisation_type', getS1('General Information', 'i14'));
           setMapped('firm_constitution', 'nature_of_business', getS1('General Information', 'i15') || getS1('General Information', 'i9'));
           setMapped('firm_constitution', 'proprietor_name', getS1('General Information', 'i8'));
@@ -846,7 +848,6 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
 
     for (const field of visibleFields) {
       const value = currentSectionData[field.name];
-
       if (field.required && !isValuePresent(value)) {
         return `Please fill ${field.label}.`;
       }
@@ -865,6 +866,7 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
           const subFields = field.subFields || [];
           return subFields.some((subField) => {
             if (subField.readOnly) return false;
+            if (subField.required === false) return false;
             return !isValuePresent(item[subField.name]);
           });
         });
@@ -897,6 +899,10 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
         if (value === true) {
           hasCheckedCheckbox = true;
         }
+        continue;
+      }
+
+      if (!field.required && !isValuePresent(value)) {
         continue;
       }
 

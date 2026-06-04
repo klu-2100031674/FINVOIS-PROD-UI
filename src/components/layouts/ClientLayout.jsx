@@ -47,6 +47,7 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
   const { dashboardPath, profilePath, myReportsPath, generatePath, roleBadge, isAdminRole } = useMemo(() => {
     const role = effectiveUserRole(user);
     const isAgent = role === 'agent';
+    const isExecutive = role === 'executive';
     const isSuperAdmin = role === 'admin';
     const isCompanyAdmin = role === 'company_admin';
     const isCompanyUser = role === 'company_user';
@@ -60,7 +61,9 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
           ? '/admin/dashboard'
           : isAgent
             ? '/agent/dashboard'
-            : '/dashboard';
+            : isExecutive
+              ? '/executive/dashboard'
+              : '/dashboard';
     const prof = isCompanyUser
       ? '/company/user/profile'
       : isCompanyAdmin
@@ -69,16 +72,20 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
           ? '/admin/profile'
           : isAgent
             ? '/agent/profile'
-            : '/profile';
-    const reports = isCompanyUser
-      ? '/company/user/reports'
-      : isCompanyAdmin
-        ? '/company/reports'
-        : isSuperAdmin
-          ? '/admin/reports'
-          : isAgent
-            ? '/agent/reports'
-            : '/reports';
+            : isExecutive
+              ? '/executive/profile'
+              : '/profile';
+    const reports = isExecutive
+      ? '/executive/reports'
+      : isCompanyUser
+        ? '/company/user/reports'
+        : isCompanyAdmin
+          ? '/company/reports'
+          : isSuperAdmin
+            ? '/admin/reports'
+            : isAgent
+              ? '/agent/reports'
+              : '/reports';
     const gen = isCompanyUser
       ? '/company/user/dashboard'
       : isAdmin
@@ -94,6 +101,7 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
     else if (isCompanyAdmin) badge = 'Company Admin';
     else if (isCompanyUser) badge = 'Company user';
     else if (isAgent) badge = 'Channel partner';
+    else if (isExecutive) badge = 'Executive';
 
     return {
       dashboardPath: dash,
@@ -106,6 +114,15 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
   }, [user]);
 
   const navItems = useMemo(() => {
+    const role = effectiveUserRole(user);
+    if (role === 'executive') {
+      return [
+        { to: dashboardPath, icon: LayoutDashboard, label: 'Dashboard' },
+        { to: '/executive/drafts', icon: FileText, label: 'Drafts' },
+        { to: myReportsPath, icon: FileStack, label: 'Reports' },
+        { to: profilePath, icon: User, label: 'Profile' },
+      ];
+    }
     const items = [
       { to: dashboardPath, icon: LayoutDashboard, label: isAdminRole ? 'Admin Dashboard' : 'Dashboard' },
     ];
@@ -113,7 +130,7 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
       items.push({ to: generatePath, icon: Zap, label: 'Generate report' });
     }
     items.push({ to: '/drafts', icon: FileText, label: 'Drafts' });
-    if (['user', 'company_user', 'company_admin'].includes(effectiveUserRole(user))) {
+    if (['user', 'company_user', 'company_admin'].includes(role)) {
       items.push({
         to: '/report-help',
         icon: Inbox,
