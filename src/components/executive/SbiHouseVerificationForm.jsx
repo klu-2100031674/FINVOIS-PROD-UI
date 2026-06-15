@@ -163,6 +163,16 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === 'field_executive_intro') {
+      const sanitized = value.replace(/\r?\n|\r/g, '').slice(0, 300);
+      setForm((prev) => ({ ...prev, [name]: sanitized }));
+      return;
+    }
+    if (name === 'residence_note') {
+      const sanitized = value.replace(/\r?\n|\r/g, '').slice(0, 420);
+      setForm((prev) => ({ ...prev, [name]: sanitized }));
+      return;
+    }
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -303,7 +313,8 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
   };
 
   const handleApplyOptimizedIntro = () => {
-    setForm((prev) => ({ ...prev, field_executive_intro: introOptimizedPreview }));
+    const sanitized = (introOptimizedPreview || '').replace(/\r?\n|\r/g, '').slice(0, 300);
+    setForm((prev) => ({ ...prev, field_executive_intro: sanitized }));
     setShowIntroPreview(false);
     setIntroOptimizedPreview('');
   };
@@ -359,6 +370,22 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
       !form.accommodation_type_other?.trim()
     ) {
       toast.error('Please specify the accommodation type');
+      return;
+    }
+    if ((form.field_executive_intro || '').length > 300) {
+      toast.error('Opening line should be a maximum of 300 characters');
+      return;
+    }
+    if (/\r?\n/.test(form.field_executive_intro || '')) {
+      toast.error('Opening line must not contain newlines');
+      return;
+    }
+    if ((form.residence_note || '').length > 420) {
+      toast.error('Note should be a maximum of 420 characters');
+      return;
+    }
+    if (/\r?\n/.test(form.residence_note || '')) {
+      toast.error('Note must not contain newlines');
       return;
     }
     setGenerating(true);
@@ -844,7 +871,18 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
               onChange={handleChange}
               rows={2}
               className="mb-0"
+              maxLength={300}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                }
+              }}
             />
+            <p
+              className={`text-xs mt-1 ${(form.field_executive_intro || '').length > 300 ? 'text-red-500 font-semibold' : 'text-gray-500'}`}
+            >
+              Characters: {(form.field_executive_intro || '').length} / 300
+            </p>
             <div className="mt-3 flex items-center gap-3">
               <Button type="button" variant="outline" disabled={optimizingIntro} onClick={handleOptimizeIntro}>
                 {optimizingIntro ? 'Optimizing…' : 'Optimize'}
@@ -1064,7 +1102,18 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
                       placeholder="e.g. WE TOOK BOTH APPLICANT'S AADHAAR CARDS AS A SUPPORTING DOCUMENT..."
                       rows={2}
                       className="mb-0"
+                      maxLength={420}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                        }
+                      }}
                     />
+                    <p
+                      className={`text-xs mt-1 ${(form.residence_note || '').length > 420 ? 'text-red-500 font-semibold' : 'text-gray-500'}`}
+                    >
+                      Characters: {(form.residence_note || '').length} / 420
+                    </p>
                     <div className="mt-3 flex items-center gap-3">
                       <Button type="button" variant="outline" disabled={optimizingNote} onClick={handleOptimizeNote}>
                         {optimizingNote ? 'Optimizing…' : 'Optimize'}

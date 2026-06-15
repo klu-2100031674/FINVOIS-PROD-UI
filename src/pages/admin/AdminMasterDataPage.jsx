@@ -23,25 +23,33 @@ const FORM_TYPE_OPTIONS = [
 //   { value: 'msme', label: 'MSME' },
 //   { value: 'sidbi', label: 'SIDBI' },
 //   { value: 'ap_idp_4_0', label: 'AP IDP 4.0' },
-//   { value: 'cmep', label: 'CMEP' },
-//   { value: 'client-screening', label: 'Client Screening' }
+//   { value: 'cmep', label: 'CMEP' }
 // ];
 
 const TABS = [
   { id: 'executive', label: 'SBI Executive' },
   { id: 'emi', label: 'Calculator' },
   // { id: 'scheme', label: 'Scheme' },
+  { id: 'client-screening', label: 'Client Screening' },
   { id: 'franchise', label: 'Franchise' },
   { id: 'lead-request', label: 'Lead Request' },
   { id: 'lead-dpr', label: 'Lead DPR' }
 ];
 
 const LEAD_TABS = new Set(['lead-request', 'lead-dpr']);
+const CLIENT_SCREENING_TAB = 'client-screening';
+
+const getMasterDataColumnCount = (tab) => {
+  if (tab === 'emi') return 3;
+  if (tab === CLIENT_SCREENING_TAB) return 4;
+  return 5;
+};
 
 const getSearchPlaceholder = (tab) => {
   if (tab === 'executive') return 'Search applicant, form type, file name…';
   if (tab === 'emi') return 'Search name, phone number…';
   // if (tab === 'scheme') return 'Search name, phone number, scheme, business name…';
+  if (tab === 'client-screening') return 'Search name, phone number, topics…';
   if (tab === 'franchise') return 'Search applicant name, phone, email, city, franchise…';
   if (tab === 'lead-request') return 'Search name, phone, email, service, partner…';
   if (tab === 'lead-dpr') return 'Search name, phone, business type, loan amount…';
@@ -51,6 +59,7 @@ const getSearchPlaceholder = (tab) => {
 const getFormTypeColumnLabel = (tab) => {
   if (tab === 'executive') return 'Form Type';
   // if (tab === 'scheme') return 'Scheme';
+  if (tab === 'client-screening') return 'Form Type';
   if (tab === 'franchise') return 'Franchise';
   if (tab === 'lead-request') return 'Service';
   if (tab === 'lead-dpr') return 'Business Type';
@@ -314,9 +323,11 @@ const AdminMasterDataPage = () => {
                             ? 'Loan / Business'
                             : 'Business/Job'}
                         </th>
-                        <th className="px-4 py-3 text-left font-semibold">
-                          {LEAD_TABS.has(activeTab) ? 'Email / Partner / Date' : 'Location / Address'}
-                        </th>
+                        {activeTab !== CLIENT_SCREENING_TAB && (
+                          <th className="px-4 py-3 text-left font-semibold">
+                            {LEAD_TABS.has(activeTab) ? 'Email / Partner / Date' : 'Location / Address'}
+                          </th>
+                        )}
                       </>
                     )}
                   </tr>
@@ -324,7 +335,7 @@ const AdminMasterDataPage = () => {
                 <tbody className="divide-y divide-gray-100">
                   {rows.length === 0 ? (
                     <tr>
-                      <td colSpan={activeTab === 'emi' ? 3 : 5} className="px-4 py-10 text-center text-gray-500">
+                      <td colSpan={getMasterDataColumnCount(activeTab)} className="px-4 py-10 text-center text-gray-500">
                         No data found for the selected filters.
                       </td>
                     </tr>
@@ -345,7 +356,9 @@ const AdminMasterDataPage = () => {
                             <td className="px-4 py-3">{showCell(r.name)}</td>
                             <td className="px-4 py-3 whitespace-nowrap">{showCell(r.phone)}</td>
                             <td className="px-4 py-3">{showCell(r.business_job)}</td>
-                            <td className="px-4 py-3">{showCell(r.address)}</td>
+                            {activeTab !== CLIENT_SCREENING_TAB && (
+                              <td className="px-4 py-3">{showCell(r.address)}</td>
+                            )}
                           </>
                         )}
                       </tr>

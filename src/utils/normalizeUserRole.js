@@ -7,6 +7,7 @@ export function normalizeUserRole(role) {
     return 'company_user';
   }
   if (normalized === 'super_admin') return 'admin';
+  if (['lead manager', 'lead-manager', 'leadmanager', 'service manager', 'service-manager', 'servicemanager'].includes(normalized)) return 'lead_manager';
   return normalized;
 }
 

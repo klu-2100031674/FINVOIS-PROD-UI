@@ -42,7 +42,7 @@ const AgentGeneratePage = () => {
                     </p>
                 </div>
 
-                <AIAssistant onSelectTemplate={handleTemplateSelect} />
+                <AIAssistant onSelectTemplate={handleTemplateSelect} showHeader={false} />
             </div>
         </AgentLayout>
     );

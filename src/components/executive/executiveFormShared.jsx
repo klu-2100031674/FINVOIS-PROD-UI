@@ -111,7 +111,7 @@ export function FormFieldGrid({ children, cols = 2 }) {
   return <div className={`grid ${colClass} gap-3 sm:gap-4`}>{children}</div>;
 }
 
-export function FormTextarea({ label, name, value, onChange, rows = 3, required = false, readOnly = false, className = '' }) {
+export function FormTextarea({ label, name, value, onChange, rows = 3, required = false, readOnly = false, className = '', maxLength }) {
   return (
     <div className={`mb-4 ${className}`}>
       {label && (
@@ -128,6 +128,7 @@ export function FormTextarea({ label, name, value, onChange, rows = 3, required 
         rows={rows}
         required={required}
         readOnly={readOnly}
+        maxLength={maxLength}
         className={`${textareaClassName} ${readOnly ? 'bg-gray-50' : ''}`}
       />
     </div>

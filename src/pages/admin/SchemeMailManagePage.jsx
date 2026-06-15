@@ -7,7 +7,6 @@ import api from '../../api/apiClient';
 import { CHALLENGE_OPTIONS as PMEGP_OPTIONS } from '../../components/forms/scheme/pmegpSchemeMailConstants';
 import { CHALLENGE_OPTIONS as AP_IDP_OPTIONS } from '../../components/forms/scheme/apIdpSchemeMailConstants';
 import { CHALLENGE_OPTIONS as CMEP_OPTIONS } from '../../components/forms/scheme/cmepSchemeMailConstants';
-import { CLIENT_SCREENING_ROUTING_OPTIONS } from '../../components/forms/scheme/clientScreeningSchemeMailConstants';
 
 /** Strips the trailing "(Send message to <X>)" hint from option labels for cleaner display. */
 const stripRecipientHint = (label) => String(label || '').replace(/\s*\(Send[^)]*\)\s*$/i, '');
@@ -32,12 +31,6 @@ const SCHEMES = [
   { key: 'pmegp', title: 'PMEGP', subtitle: '/schemes/pmegp/support', options: PMEGP_OPTIONS },
   { key: 'ap-idp', title: 'AP IDP 4.0', subtitle: '/schemes/ap-idp/support', options: AP_IDP_OPTIONS },
   { key: 'cmep', title: 'CMEP', subtitle: '/schemes/cmep/support', options: CMEP_OPTIONS },
-  {
-    key: 'client-screening',
-    title: 'Client screening',
-    subtitle: '/client-screening',
-    options: CLIENT_SCREENING_ROUTING_OPTIONS,
-  },
 ];
 
 const SchemeMailManagePage = () => {

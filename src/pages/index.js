@@ -41,26 +41,20 @@ export { default as OrderHistoryPage } from './OrderHistoryPage';
 // PMEGP Pages
 export { default as PmegpGeneratePage } from './scheme/pmegp/PmegpGeneratePage';
 export { default as PmegpSchemeMailPage } from './scheme/pmegp/PmegpSchemeMailPage';
-export { default as PmegpAiChatPage } from './scheme/pmegp/PmegpAiChatPage';
 export { default as PublicPmegpSchemeMailPage } from './scheme/pmegp/PublicPmegpSchemeMailPage';
-export { default as PublicPmegpAiChatPage } from './scheme/pmegp/PublicPmegpAiChatPage';
 export { default as PublicPmegpFormPage } from './scheme/pmegp/PublicPmegpFormPage';
 
 // CMEP Pages
 export { default as CmepGeneratePage } from './scheme/cmep/CmepGeneratePage';
 export { default as CmepSchemeMailPage } from './scheme/cmep/CmepSchemeMailPage';
-export { default as CmepAiChatPage } from './scheme/cmep/CmepAiChatPage';
 export { default as PublicCmepSchemeMailPage } from './scheme/cmep/PublicCmepSchemeMailPage';
-export { default as PublicCmepAiChatPage } from './scheme/cmep/PublicCmepAiChatPage';
 export { default as PublicCmepFormPage } from './scheme/cmep/PublicCmepFormPage';
 
 // AP IDP Pages
 export { default as ApIdpGeneratePage } from './scheme/apIdp/ApIdpGeneratePage';
 export { default as ApIdpSchemeMailPage } from './scheme/apIdp/ApIdpSchemeMailPage';
-export { default as ApIdpAiChatPage } from './scheme/apIdp/ApIdpAiChatPage';
 export { default as PublicApIdpFormPage } from './scheme/apIdp/PublicApIdpFormPage';
 export { default as PublicApIdpSchemeMailPage } from './scheme/apIdp/PublicApIdpSchemeMailPage';
-export { default as PublicApIdpAiChatPage } from './scheme/apIdp/PublicApIdpAiChatPage';
 
-// Client screening (mail-only)
-export { default as PublicClientScreeningSchemeMailPage } from './scheme/clientScreening/PublicClientScreeningSchemeMailPage';
+// Client screening (standalone — not a scheme form)
+export { default as PublicClientScreeningPage } from './clientScreening/PublicClientScreeningPage';

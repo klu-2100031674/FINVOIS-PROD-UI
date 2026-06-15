@@ -82,6 +82,19 @@ export const deleteLead = createAsyncThunk(
   }
 );
 
+// Assign credits to a service provider (Lead Manager / Admin)
+export const assignLeadCredits = createAsyncThunk(
+  'lead/assignCredits',
+  async ({ id, credits, action = 'add' }, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.post(`/leads/${id}/credits`, { credits, action });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.error || error.message);
+    }
+  }
+);
+
 export const resendLeadCredentials = createAsyncThunk(
   'lead/resendCredentials',
   async (id, { rejectWithValue }) => {
@@ -209,6 +222,18 @@ const leadSlice = createSlice({
       // Resend credentials — no loading state, handled locally in the component
       .addCase(resendLeadCredentials.rejected, (state, action) => {
         state.error = action.payload || 'Failed to resend credentials';
+      })
+      // Assign credits — update the lead in place
+      .addCase(assignLeadCredits.fulfilled, (state, action) => {
+        if (action.payload?.data) {
+          const index = state.leads.findIndex(l => l._id === action.payload.data.id);
+          if (index !== -1) {
+            state.leads[index] = { ...state.leads[index], ...action.payload.data };
+          }
+        }
+      })
+      .addCase(assignLeadCredits.rejected, (state, action) => {
+        state.error = action.payload || 'Failed to assign credits';
       });
   }
 });

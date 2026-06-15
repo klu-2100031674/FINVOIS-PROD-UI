@@ -30,20 +30,17 @@ const STEPS = {
     CMA_PROVISIONAL_AUDITED_NO: 11,
 };
 
-const AIAssistant = ({ onSelectTemplate, showGenerationModeStep = false }) => {
+const AIAssistant = ({ onSelectTemplate, showGenerationModeStep = false, showHeader = true }) => {
     const navigate = useNavigate();
-    const [currentStep, setCurrentStep] = useState(
-        showGenerationModeStep ? STEPS.GENERATION_MODE : STEPS.REPORT_TYPE
-    );
+    const [currentStep, setCurrentStep] = useState(STEPS.REPORT_TYPE);
+    const [selectedReportType, setSelectedReportType] = useState(null);
     const [history, setHistory] = useState([]);
     const [direction, setDirection] = useState(1); // 1 for forward, -1 for back
 
     useEffect(() => {
-        if (showGenerationModeStep) {
-            setCurrentStep((step) => (step === STEPS.REPORT_TYPE ? STEPS.GENERATION_MODE : step));
-            return;
-        }
-        setCurrentStep((step) => (step === STEPS.GENERATION_MODE ? STEPS.REPORT_TYPE : step));
+        setCurrentStep(STEPS.REPORT_TYPE);
+        setSelectedReportType(null);
+        setHistory([]);
     }, [showGenerationModeStep]);
 
     const handleNext = (nextStep) => {
@@ -82,14 +79,20 @@ const AIAssistant = ({ onSelectTemplate, showGenerationModeStep = false }) => {
     const renderGenerationMode = () => (
         <div className="space-y-4">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-                Please select the type of report you would like
+                Please select the type of report you would like to be prepared
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SelectionCard
                     icon={UserIcon}
                     title="Generate report"
                     description="(to generate Report on your own)"
-                    onClick={() => handleNext(STEPS.REPORT_TYPE)}
+                    onClick={() => {
+                        if (selectedReportType === 'CMA') {
+                            handleNext(STEPS.CMA_WC_LIMIT);
+                        } else {
+                            handleNext(STEPS.SECTOR);
+                        }
+                    }}
                 />
                 <SelectionCard
                     icon={UserGroupIcon}
@@ -104,20 +107,34 @@ const AIAssistant = ({ onSelectTemplate, showGenerationModeStep = false }) => {
     const renderReportType = () => (
         <div className="space-y-4">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-                Please select the type of report you would like to have prepared
+                Please select the type of report you would like to be prepared
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SelectionCard
                     icon={DocumentTextIcon}
                     title="DPR (Detailed Project Report)"
                     description="For comprehensive project planning and bank loans"
-                    onClick={() => handleNext(STEPS.SECTOR)}
+                    onClick={() => {
+                        setSelectedReportType('DPR');
+                        if (showGenerationModeStep) {
+                            handleNext(STEPS.GENERATION_MODE);
+                        } else {
+                            handleNext(STEPS.SECTOR);
+                        }
+                    }}
                 />
                 <SelectionCard
                     icon={ClipboardDocumentCheckIcon}
                     title="CMA Data Projections"
                     description="Credit Monitoring Arrangement data for working capital"
-                    onClick={() => handleNext(STEPS.CMA_WC_LIMIT)}
+                    onClick={() => {
+                        setSelectedReportType('CMA');
+                        if (showGenerationModeStep) {
+                            handleNext(STEPS.GENERATION_MODE);
+                        } else {
+                            handleNext(STEPS.CMA_WC_LIMIT);
+                        }
+                    }}
                 />
             </div>
         </div>
@@ -425,49 +442,61 @@ const AIAssistant = ({ onSelectTemplate, showGenerationModeStep = false }) => {
     );
 
     return (
-        <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-            {/* Header */}
-            <div className="text-gray-800 flex items-center justify-between p-2">
+        <div className="w-full max-w-4xl mx-auto">
+            {showHeader && (
+                <div className="mb-8 text-left">
+                    <h1 className="text-3xl font-extrabold text-gray-900 font-['Outfit'] tracking-tight">
+                        Comprehensive Report Generation System
+                    </h1>
+                    <p className="text-gray-500 mt-2 text-base font-medium font-['Inter']">
+                        Use our AI Assistant to Generate the perfect report for you
+                    </p>
+                </div>
+            )}
 
-                {history.length > 0 && (
-                    <button
-                        onClick={handleBack}
-                        className="flex items-center gap-2 px-4 py-2  rounded-lg transition-colors text-sm font-medium"
-                    >
-                        <ArrowLeftIcon className="w-4 h-4" />
-                        Back
-                    </button>
-                )}
-            </div>
+            <div className="w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+                {/* Header */}
+                <div className="text-gray-800 flex items-center justify-between p-2">
+                    {history.length > 0 && (
+                        <button
+                            onClick={handleBack}
+                            className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium"
+                        >
+                            <ArrowLeftIcon className="w-4 h-4" />
+                            Back
+                        </button>
+                    )}
+                </div>
 
-            {/* Content */}
-            <div className="p-8 min-h-[400px] flex flex-col justify-center">
-                <AnimatePresence mode="wait" custom={direction}>
-                    <motion.div
-                        key={currentStep}
-                        custom={direction}
-                        variants={containerVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                        className="w-full"
-                    >
-                        {currentStep === STEPS.GENERATION_MODE && renderGenerationMode()}
-                        {currentStep === STEPS.REPORT_TYPE && renderReportType()}
-                        {currentStep === STEPS.SECTOR && renderSector()}
-                        {currentStep === STEPS.LOAN_TYPE_MFG && renderLoanTypeMfg()}
-                        {currentStep === STEPS.LOAN_TYPE_TRADING && renderLoanTypeTrading()}
-                        {currentStep === STEPS.STOCK_CHECK && renderStockCheck()}
-                        {currentStep === STEPS.LOAN_TYPE_SERVICE_STOCK && renderLoanTypeServiceStock()}
-                        {currentStep === STEPS.CMA_WC_LIMIT && renderCMAWCLimit()}
-                        {currentStep === STEPS.CMA_NEW_TERM_LOAN && renderCMANewTermLoan()}
-                        {currentStep === STEPS.CMA_TOPUP_WITH_TERM_LOAN && renderCMATopupWithTermLoan()}
-                        {currentStep === STEPS.CMA_TOPUP_WITHOUT_TERM_LOAN && renderCMATopupWithoutTermLoan()}
-                        {currentStep === STEPS.CMA_AUDITED_LAST_YEAR && renderCMAAuditedLastYear()}
-                        {currentStep === STEPS.CMA_PROVISIONAL_AUDITED_YES && renderCMAProvisionalAuditedYes()}
-                        {currentStep === STEPS.CMA_PROVISIONAL_AUDITED_NO && renderCMAProvisionalAuditedNo()}
-                    </motion.div>
-                </AnimatePresence>
+                {/* Content */}
+                <div className="p-8 min-h-[400px] flex flex-col justify-center">
+                    <AnimatePresence mode="wait" custom={direction}>
+                        <motion.div
+                            key={currentStep}
+                            custom={direction}
+                            variants={containerVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
+                            className="w-full"
+                        >
+                            {currentStep === STEPS.GENERATION_MODE && renderGenerationMode()}
+                            {currentStep === STEPS.REPORT_TYPE && renderReportType()}
+                            {currentStep === STEPS.SECTOR && renderSector()}
+                            {currentStep === STEPS.LOAN_TYPE_MFG && renderLoanTypeMfg()}
+                            {currentStep === STEPS.LOAN_TYPE_TRADING && renderLoanTypeTrading()}
+                            {currentStep === STEPS.STOCK_CHECK && renderStockCheck()}
+                            {currentStep === STEPS.LOAN_TYPE_SERVICE_STOCK && renderLoanTypeServiceStock()}
+                            {currentStep === STEPS.CMA_WC_LIMIT && renderCMAWCLimit()}
+                            {currentStep === STEPS.CMA_NEW_TERM_LOAN && renderCMANewTermLoan()}
+                            {currentStep === STEPS.CMA_TOPUP_WITH_TERM_LOAN && renderCMATopupWithTermLoan()}
+                            {currentStep === STEPS.CMA_TOPUP_WITHOUT_TERM_LOAN && renderCMATopupWithoutTermLoan()}
+                            {currentStep === STEPS.CMA_AUDITED_LAST_YEAR && renderCMAAuditedLastYear()}
+                            {currentStep === STEPS.CMA_PROVISIONAL_AUDITED_YES && renderCMAProvisionalAuditedYes()}
+                            {currentStep === STEPS.CMA_PROVISIONAL_AUDITED_NO && renderCMAProvisionalAuditedNo()}
+                        </motion.div>
+                    </AnimatePresence>
+                </div>
             </div>
         </div>
     );

@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchAllLeads, toggleLeadStatus, resendLeadCredentials } from '@/store/slices/leadSlice';
+import { fetchAllLeads, toggleLeadStatus, resendLeadCredentials, assignLeadCredits } from '@/store/slices/leadSlice';
 import {
   Plus,
   Search,
@@ -21,6 +21,9 @@ import {
   ToggleRight,
   ShieldAlert,
   Loader2,
+  CreditCard,
+  RefreshCw,
+  X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AdminLayout } from '@/components/layouts';
@@ -33,6 +36,35 @@ const AdminLeadsPage = () => {
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
   const [resendingId, setResendingId] = useState(null);
+
+  // Credits modal
+  const [creditModal, setCreditModal]   = useState(null); // { id, name, current }
+  const [creditInput, setCreditInput]   = useState('');
+  const [creditAction, setCreditAction] = useState('add');
+  const [creditSaving, setCreditSaving] = useState(false);
+
+  const openCreditModal = (e, lead) => {
+    e.stopPropagation();
+    setCreditModal({ id: lead._id, name: lead.name, current: lead.credits ?? 0 });
+    setCreditInput('');
+    setCreditAction('add');
+  };
+
+  const handleSaveCredits = async () => {
+    const val = parseInt(creditInput, 10);
+    if (isNaN(val) || val < 0) { toast.error('Enter a valid number'); return; }
+    setCreditSaving(true);
+    try {
+      await dispatch(assignLeadCredits({ id: creditModal.id, credits: val, action: creditAction })).unwrap();
+      toast.success(`Credits updated for ${creditModal.name}`);
+      setCreditModal(null);
+      dispatch(fetchAllLeads({ limit: 200 }));
+    } catch (err) {
+      toast.error(err || 'Failed to update credits');
+    } finally {
+      setCreditSaving(false);
+    }
+  };
 
   useEffect(() => {
     dispatch(fetchAllLeads({ limit: 200 }));
@@ -95,9 +127,9 @@ const AdminLeadsPage = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Lead Management</h1>
+            <h1 className="text-3xl font-bold">Service Provider Management</h1>
             <p className="text-muted-foreground mt-1">
-              Register and manage leads who receive service notifications
+              Register and manage service providers who receive DPR notifications
             </p>
           </div>
           <button
@@ -105,7 +137,7 @@ const AdminLeadsPage = () => {
             className="flex items-center gap-2 px-4 py-2 bg-[#7e22ce] text-white rounded-lg hover:bg-[#6b21a8] font-medium"
           >
             <Plus className="h-4 w-4" />
-            Register Lead
+            Add Service Provider
           </button>
         </div>
 
@@ -229,6 +261,8 @@ const AdminLeadsPage = () => {
                         Registered <ArrowUpDown className="h-4 w-4" />
                       </button>
                     </th>
+                    <th className="text-left py-3 px-4 font-medium">Credits</th>
+                    <th className="text-left py-3 px-4 font-medium">Assign Credits</th>
                     <th className="text-left py-3 px-4 font-medium">Status</th>
                     <th className="text-left py-3 px-4 font-medium">Actions</th>
                   </tr>
@@ -256,6 +290,25 @@ const AdminLeadsPage = () => {
                       </td>
                       <td className="py-3 px-4 text-gray-600 text-sm">
                         {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : '—'}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="text-sm">
+                          <span className={`font-medium ${(lead.freeLeadsUsed || 0) < 3 ? 'text-green-600' : (lead.credits || 0) > 0 ? 'text-blue-600' : 'text-red-500'}`}>
+                            {(lead.freeLeadsUsed || 0) < 3
+                              ? `Free (${3 - (lead.freeLeadsUsed || 0)} left)`
+                              : (lead.credits || 0) > 0
+                                ? `${lead.credits} credits`
+                                : 'Locked'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <button
+                          onClick={(e) => openCreditModal(e, lead)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors whitespace-nowrap"
+                        >
+                          <CreditCard className="h-3 w-3" /> Credits
+                        </button>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex flex-col gap-1">
@@ -321,6 +374,90 @@ const AdminLeadsPage = () => {
           )}
         </div>
       </div>
+      {/* ── Assign Credits Modal ───────────────────────────────────────── */}
+      {creditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold">Assign Credits</h3>
+                <p className="text-sm text-gray-500 mt-0.5">{creditModal.name}</p>
+              </div>
+              <button onClick={() => setCreditModal(null)} className="p-1.5 hover:bg-gray-100 rounded-lg">
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-4 flex items-center justify-between">
+              <span className="text-sm text-gray-500">Current Credits</span>
+              <span className="text-2xl font-bold text-purple-600">{creditModal.current}</span>
+            </div>
+
+            <div className="flex rounded-lg border overflow-hidden">
+              <button
+                onClick={() => setCreditAction('add')}
+                className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                  creditAction === 'add' ? 'bg-purple-600 text-white' : 'hover:bg-gray-50 text-gray-600'
+                }`}
+              >
+                + Add Credits
+              </button>
+              <button
+                onClick={() => setCreditAction('set')}
+                className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                  creditAction === 'set' ? 'bg-purple-600 text-white' : 'hover:bg-gray-50 text-gray-600'
+                }`}
+              >
+                = Set Credits
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {creditAction === 'add' ? 'Credits to Add' : 'Set Total Credits To'}
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={creditInput}
+                onChange={e => setCreditInput(e.target.value)}
+                placeholder="Enter amount"
+                className="w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-lg font-semibold"
+                autoFocus
+                onKeyDown={e => e.key === 'Enter' && handleSaveCredits()}
+              />
+              {creditInput && !isNaN(parseInt(creditInput, 10)) && (
+                <p className="text-xs text-gray-400 mt-1">
+                  {creditAction === 'add'
+                    ? `New total: ${creditModal.current + parseInt(creditInput, 10)} credits`
+                    : `Will be set to: ${parseInt(creditInput, 10)} credits`}
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setCreditModal(null)}
+                className="flex-1 px-4 py-2.5 border rounded-lg hover:bg-gray-50 font-medium text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveCredits}
+                disabled={creditSaving || !creditInput}
+                className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {creditSaving
+                  ? <RefreshCw className="h-4 w-4 animate-spin" />
+                  : <CreditCard className="h-4 w-4" />
+                }
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </AdminLayout>
   );
 };

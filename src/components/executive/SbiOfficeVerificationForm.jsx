@@ -90,6 +90,11 @@ const SbiOfficeVerificationForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === 'business_note') {
+      const sanitized = value.replace(/\r?\n|\r/g, '').slice(0, 200);
+      setForm((prev) => ({ ...prev, [name]: sanitized }));
+      return;
+    }
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -203,6 +208,14 @@ const SbiOfficeVerificationForm = () => {
     e.preventDefault();
     if (!form.applicant_name?.trim()) {
       toast.error('Applicant name is required');
+      return;
+    }
+    if ((form.business_note || '').length > 200) {
+      toast.error('Note should be a maximum of 200 characters');
+      return;
+    }
+    if (/\r?\n/.test(form.business_note || '')) {
+      toast.error('Note must not contain newlines');
       return;
     }
     setGenerating(true);
@@ -457,7 +470,18 @@ const SbiOfficeVerificationForm = () => {
                   onChange={handleChange}
                   rows={4}
                   className="mb-0"
+                  maxLength={200}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                    }
+                  }}
                 />
+                <p
+                  className={`text-xs mt-1 ${(form.business_note || '').length > 200 ? 'text-red-500 font-semibold' : 'text-gray-500'}`}
+                >
+                  Characters: {(form.business_note || '').length} / 200
+                </p>
                 <div className="mt-3 flex items-center gap-3">
                   <Button type="button" variant="outline" disabled={optimizingNote} onClick={handleOptimizeBusinessNote}>
                     {optimizingNote ? 'Optimizing…' : 'Optimize'}

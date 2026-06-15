@@ -13,25 +13,20 @@ import {
   DashboardPage,
   DraftsPage,
   GeneratePage,
-  PmegpGeneratePage,
-  PmegpSchemeMailPage,
-  PmegpAiChatPage,
-  PublicPmegpSchemeMailPage,
-  PublicPmegpAiChatPage,
-  PublicPmegpFormPage,
-  CmepGeneratePage,
-  CmepSchemeMailPage,
-  CmepAiChatPage,
-  PublicCmepSchemeMailPage,
-  PublicCmepAiChatPage,
-  PublicCmepFormPage,
-  ApIdpGeneratePage,
-  ApIdpSchemeMailPage,
-  ApIdpAiChatPage,
-  PublicApIdpFormPage,
-  PublicApIdpSchemeMailPage,
-  PublicApIdpAiChatPage,
-  PublicClientScreeningSchemeMailPage,
+  // SCHEME_FORMS_DISABLED — re-enable when scheme forms return
+  // PmegpGeneratePage,
+  // PmegpSchemeMailPage,
+  // PublicPmegpSchemeMailPage,
+  // PublicPmegpFormPage,
+  // CmepGeneratePage,
+  // CmepSchemeMailPage,
+  // PublicCmepSchemeMailPage,
+  // PublicCmepFormPage,
+  // ApIdpGeneratePage,
+  // ApIdpSchemeMailPage,
+  // PublicApIdpFormPage,
+  // PublicApIdpSchemeMailPage,
+  // PublicApIdpSchemeMailPage,
   ReportsPage,
   Stage1Page,
   Stage2Page,
@@ -47,6 +42,7 @@ import {
   ExecutiveDraftsPage,
   AdminPage,
   AdminPaymentsPage,
+  PublicClientScreeningPage,
 } from "./pages";
 import {
   AdminDashboardPage,
@@ -74,15 +70,15 @@ import {
   AdminLeadsPage,
   AdminLeadRegisterPage,
   AdminLeadEditPage,
-  AdminPmegpPdfUploadPage,
-  AdminApIdpPdfUploadPage,
-  AdminCmepPdfUploadPage,
-  AdminSchemesPage,
-  SchemeMailManagePage,
+  // SCHEME_FORMS_DISABLED — re-enable when scheme forms return
+  // AdminSchemesPage,
+  // SchemeMailManagePage,
   AdminFranchisesPage,
   AdminFranchiseNewPage,
   AdminFranchiseEditPage,
   AdminFranchiseApplicationsPage,
+  ClientScreeningMailPage,
+  AdminMsmeDprDashboardPage,
 } from "./pages/admin";
 import {
   AgentDashboardPage,
@@ -129,9 +125,14 @@ import OTPVerificationPage from "./pages/OTPVerificationPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 // Lead pages
 import LeadDashboardPage from "./pages/lead/LeadDashboardPage";
+import AdminBanksPage from "./pages/admin/AdminBanksPage";
+import BankDPRPage from "./pages/admin/BankDPRPage";
+import LeadManagerDashboardPage from "./pages/admin/LeadManagerDashboardPage";
 import ServicesPage from "./pages/ServicesPage";
 import ServiceDetailPage from "./pages/ServiceDetailPage";
 import ServiceLayout from "./components/layouts/ServiceLayout";
+import MsmeDprLeadFormPage from "./pages/msmeDpr/MsmeDprLeadFormPage";
+import MsmeDprDashboardPage from "./pages/msmeDpr/MsmeDprDashboardPage";
 import FranchisesPage from "./pages/franchise/FranchisesPage";
 import FranchiseDetailPage from "./pages/franchise/FranchiseDetailPage";
 import FranchiseApplyPage from "./pages/franchise/FranchiseApplyPage";
@@ -142,8 +143,9 @@ import OrderHistoryPage from "./pages/OrderHistoryPage";
 import Landing from "./components/LandingPage/Landing";
 import EmiCalculatorPage from "./components/calculators/EmiCalculatorPage";
 import Pricing from "./components/Pricing/Pricing";
-import SchemeFinder from "./components/schemeFinder/SchemeFinder";
-import EligibilityResult from "./components/schemeFinder/EligibilityResult";
+// SCHEME_FORMS_DISABLED — re-enable when scheme forms return
+// import SchemeFinder from "./components/schemeFinder/SchemeFinder";
+// import EligibilityResult from "./components/schemeFinder/EligibilityResult";
 import FAQ from "./components/FAQ/FQA";
 import TemplatesPage from "./components/LandingPage/pages/TemplatesPage";
 import DocumentationPage from "./components/LandingPage/pages/DocumentationPage";
@@ -197,6 +199,19 @@ const AdminRoute = ({ children }) => {
   return children;
 };
 
+// Allows admin OR lead_manager to access a route
+const LeadManagerRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const normalizedRole = effectiveUserRole(user);
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  if (normalizedRole !== 'admin' && normalizedRole !== 'lead_manager') {
+    return <Navigate to={dashboardHomePath(user)} replace />;
+  }
+  return children;
+};
+
 const AdminOnlyRoute = ({ children }) => {
   const { isAuthenticated, user } = useAuth();
   const normalizedRole = effectiveUserRole(user);
@@ -207,6 +222,18 @@ const AdminOnlyRoute = ({ children }) => {
     return <Navigate to="/company/dashboard" replace />;
   }
   if (normalizedRole !== 'admin') {
+    return <Navigate to={dashboardHomePath(user)} replace />;
+  }
+  return children;
+};
+
+const MsmeDprViewerRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const r = effectiveUserRole(user);
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  if (r !== 'msme_dpr_viewer') {
     return <Navigate to={dashboardHomePath(user)} replace />;
   }
   return children;
@@ -402,6 +429,8 @@ const PublicRoute = ({ children }) => {
     return <Navigate to="/admin/dashboard" replace />;
   } else if (effectiveUserRole(user) === 'agent') {
     return <Navigate to="/agent/dashboard" replace />;
+  } else if (normalizedRole === 'msme_dpr_viewer') {
+    return <Navigate to="/msme-dpr-dashboard" replace />;
   }
   return <Navigate to="/dashboard" replace />;
 };
@@ -611,6 +640,7 @@ function App() {
             </ReportHelpUserRoute>
           }
         />
+        {/* SCHEME_FORMS_DISABLED — re-enable when scheme forms return
         <Route
           path="/generate/pmegp"
           element={
@@ -624,14 +654,6 @@ function App() {
           element={
             <GenerateWizardRoute>
               <PmegpSchemeMailPage />
-            </GenerateWizardRoute>
-          }
-        />
-        <Route
-          path="/generate/pmegp/ai-chat"
-          element={
-            <GenerateWizardRoute>
-              <PmegpAiChatPage />
             </GenerateWizardRoute>
           }
         />
@@ -652,14 +674,6 @@ function App() {
           }
         />
         <Route
-          path="/generate/ap-idp/ai-chat"
-          element={
-            <GenerateWizardRoute>
-              <ApIdpAiChatPage />
-            </GenerateWizardRoute>
-          }
-        />
-        <Route
           path="/generate/cmep"
           element={
             <GenerateWizardRoute>
@@ -675,14 +689,7 @@ function App() {
             </GenerateWizardRoute>
           }
         />
-        <Route
-          path="/generate/cmep/ai-chat"
-          element={
-            <GenerateWizardRoute>
-              <CmepAiChatPage />
-            </GenerateWizardRoute>
-          }
-        />
+        */}
         <Route
           path="/reports"
           element={
@@ -967,6 +974,7 @@ function App() {
             </AdminOnlyRoute>
           }
         />
+        {/* SCHEME_FORMS_DISABLED — re-enable when scheme forms return
         <Route
           path="/admin/schemes"
           element={
@@ -975,30 +983,7 @@ function App() {
             </AdminOnlyRoute>
           }
         />
-        <Route
-          path="/admin/schemes/pmegp"
-          element={
-            <AdminOnlyRoute>
-              <AdminPmegpPdfUploadPage />
-            </AdminOnlyRoute>
-          }
-        />
-        <Route
-          path="/admin/schemes/ap-idp"
-          element={
-            <AdminOnlyRoute>
-              <AdminApIdpPdfUploadPage />
-            </AdminOnlyRoute>
-          }
-        />
-        <Route
-          path="/admin/schemes/cmep"
-          element={
-            <AdminOnlyRoute>
-              <AdminCmepPdfUploadPage />
-            </AdminOnlyRoute>
-          }
-        />
+        */}
         <Route
           path="/company/reports"
           element={
@@ -1074,33 +1059,33 @@ function App() {
         <Route
           path="/admin/services"
           element={
-            <AdminRoute>
+            <LeadManagerRoute>
               <AdminServicesPage />
-            </AdminRoute>
+            </LeadManagerRoute>
           }
         />
         <Route
           path="/admin/services/new"
           element={
-            <AdminRoute>
+            <LeadManagerRoute>
               <AdminServiceNewPage />
-            </AdminRoute>
+            </LeadManagerRoute>
           }
         />
         <Route
           path="/admin/services/create"
           element={
-            <AdminRoute>
+            <LeadManagerRoute>
               <AdminServiceCreatePage />
-            </AdminRoute>
+            </LeadManagerRoute>
           }
         />
         <Route
           path="/admin/services/:id"
           element={
-            <AdminRoute>
+            <LeadManagerRoute>
               <AdminServiceEditPage />
-            </AdminRoute>
+            </LeadManagerRoute>
           }
         />
         <Route
@@ -1136,27 +1121,67 @@ function App() {
           }
         />
         <Route
-          path="/admin/leads"
+          path="/admin/msme-dpr-dashboard"
           element={
             <AdminOnlyRoute>
-              <AdminLeadsPage />
+              <AdminMsmeDprDashboardPage />
             </AdminOnlyRoute>
+          }
+        />
+        <Route
+          path="/msme-dpr-dashboard"
+          element={
+            <MsmeDprViewerRoute>
+              <MsmeDprDashboardPage />
+            </MsmeDprViewerRoute>
+          }
+        />
+        <Route
+          path="/admin/leads"
+          element={
+            <LeadManagerRoute>
+              <AdminLeadsPage />
+            </LeadManagerRoute>
           }
         />
         <Route
           path="/admin/leads/register"
           element={
-            <AdminOnlyRoute>
+            <LeadManagerRoute>
               <AdminLeadRegisterPage />
-            </AdminOnlyRoute>
+            </LeadManagerRoute>
           }
         />
         <Route
           path="/admin/leads/:id"
           element={
-            <AdminOnlyRoute>
+            <LeadManagerRoute>
               <AdminLeadEditPage />
-            </AdminOnlyRoute>
+            </LeadManagerRoute>
+          }
+        />
+        <Route
+          path="/admin/lead-manager/dashboard"
+          element={
+            <LeadManagerRoute>
+              <LeadManagerDashboardPage />
+            </LeadManagerRoute>
+          }
+        />
+        <Route
+          path="/admin/banks"
+          element={
+            <LeadManagerRoute>
+              <AdminBanksPage />
+            </LeadManagerRoute>
+          }
+        />
+        <Route
+          path="/admin/banks/send-dpr"
+          element={
+            <LeadManagerRoute>
+              <BankDPRPage />
+            </LeadManagerRoute>
           }
         />
         <Route
@@ -1300,11 +1325,27 @@ function App() {
         {/* Default Route */}
         <Route path="/" element={<Landing />} />
         <Route path="/pricing" element={<Pricing />} />
+        <Route path="/client-screening" element={<PublicClientScreeningPage />} />
+        <Route
+          path="/msme-dpr-lead-data"
+          element={
+            <ServiceLayout>
+              <MsmeDprLeadFormPage />
+            </ServiceLayout>
+          }
+        />
+        <Route
+          path="/admin/client-screening/emails"
+          element={
+            <AdminOnlyRoute>
+              <ClientScreeningMailPage />
+            </AdminOnlyRoute>
+          }
+        />
+        {/* SCHEME_FORMS_DISABLED — re-enable when scheme forms return
         <Route path="/schemes" element={<SchemeFinder />} />
         <Route path="/schemes/pmegp/support" element={<PublicPmegpSchemeMailPage />} />
-        <Route path="/schemes/pmegp/ai-chat" element={<PublicPmegpAiChatPage />} />
         <Route path="/schemes/pmegp" element={<PublicPmegpFormPage />} />
-        <Route path="/client-screening" element={<PublicClientScreeningSchemeMailPage />} />
         <Route
           path="/schemes/mail"
           element={
@@ -1314,12 +1355,11 @@ function App() {
           }
         />
         <Route path="/schemes/ap-idp/support" element={<PublicApIdpSchemeMailPage />} />
-        <Route path="/schemes/ap-idp/ai-chat" element={<PublicApIdpAiChatPage />} />
         <Route path="/schemes/ap-idp" element={<PublicApIdpFormPage />} />
         <Route path="/schemes/cmep/support" element={<PublicCmepSchemeMailPage />} />
-        <Route path="/schemes/cmep/ai-chat" element={<PublicCmepAiChatPage />} />
         <Route path="/schemes/cmep" element={<PublicCmepFormPage />} />
         <Route path="/eligibility-result" element={<EligibilityResult />} />
+        */}
         <Route path="/faq" element={<FAQ />} />
         <Route path="/calculators/emi-calculator" element={<EmiCalculatorPage />} />
 

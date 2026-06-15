@@ -194,7 +194,8 @@ export const reportAPI = {
       aiProvider = 'grok',
       sheets,
       analysisOptions = null,
-      paidReportId = null
+      paidReportId = null,
+      user_comment = null
     } = options || {};
 
     console.log('🔗 [endpoints.generateFullReport] templateId:', templateId, 'type:', typeof templateId);
@@ -210,6 +211,10 @@ export const reportAPI = {
 
     if (paidReportId) {
       payload.paidReportId = paidReportId;
+    }
+
+    if (user_comment) {
+      payload.user_comment = user_comment;
     }
 
     if (aiApiKey) {
@@ -727,12 +732,13 @@ export const promotionalEmailsAPI = {
   },
 };
 
-export const schemeEligibilityAPI = {
-  checkEligibility: async (formData) => {
-    const response = await apiClient.post('/scheme-eligibility/check-eligibility', formData);
-    return response.data;
-  },
-};
+// SCHEME_FORMS_DISABLED — re-enable when scheme forms return
+// export const schemeEligibilityAPI = {
+//   checkEligibility: async (formData) => {
+//     const response = await apiClient.post('/scheme-eligibility/check-eligibility', formData);
+//     return response.data;
+//   },
+// };
 
 // ============================================================================
 // Report Help (structured channel partner requests)

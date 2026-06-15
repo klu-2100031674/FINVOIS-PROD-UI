@@ -95,6 +95,11 @@ const SbiBussinessVerificationForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === 'business_note') {
+      const sanitized = value.replace(/\r?\n|\r/g, '').slice(0, 420);
+      setForm((prev) => ({ ...prev, [name]: sanitized }));
+      return;
+    }
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -227,9 +232,12 @@ const SbiBussinessVerificationForm = () => {
       toast.error('Applicant name is required');
       return;
     }
-    const noteLines = (form.business_note || '').split('\n');
-    if (noteLines.length > 4) {
-      toast.error('Note (GST / supporting documents) should be a maximum of 4 lines');
+    if ((form.business_note || '').length > 420) {
+      toast.error('Note (GST / supporting documents) should be a maximum of 420 characters');
+      return;
+    }
+    if (/\r?\n/.test(form.business_note || '')) {
+      toast.error('Note (GST / supporting documents) must not contain newlines');
       return;
     }
     setGenerating(true);
@@ -513,6 +521,39 @@ const SbiBussinessVerificationForm = () => {
                 inputClassName={EXECUTIVE_INPUT_CLASS}
               />
               <div className="md:col-span-2">
+                <div className="mb-2 flex flex-col md:flex-row md:items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-purple-900">
+                    ⚡ Quick Select Note Wording:
+                  </span>
+                  <select
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val) {
+                        setForm((prev) => ({ ...prev, business_note: val }));
+                      }
+                      e.target.value = '';
+                    }}
+                    className="px-2 py-1 border border-purple-200 rounded text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#7e22ce] text-purple-900 font-medium cursor-pointer max-w-md"
+                    aria-label="Select Note Option"
+                  >
+                    <option value="">-- Choose Predefined Note --</option>
+                    <option value="We obtained the Form-C of Durga Furniture Works and verified the details on the Commissioner of Municipal Administration website for applicant proprietorship confirmation. As per the available records, the applicant was found to be the proprietor of Durga Furniture Works. The relevant Form-C verification records have been obtained and attached as supporting documents.">
+                      Option 1: Durga Furniture Works (Form-C)
+                    </option>
+                    <option value="The applicant is engaged in security agency and manpower supply services, providing trained security guards and workforce to various establishments. GST verification of Sindhu Man Power Supply confirmed the applicant’s proprietorship. GST records show active GST No. 37BZMPG3801K1Z8 and annual aggregate turnover under the ₹0–40 lakh slab. Supporting records are attached.">
+                      Option 2: Sindhu Man Power Supply (GST)
+                    </option>
+                    <option value="We verified the GST details of Verizon Associates through the GST portal for confirmation of the applicant’s status as Managing Partner. Records show that Verizon Associates is a partnership firm with annual aggregate turnover in the ₹1.5 crore to ₹5 crore slab. GST No. 37AAQFV7442R1ZZ was found active. The relevant verification records have been attached.">
+                      Option 3: Verizon Associates (GST - Partner)
+                    </option>
+                    <option value="We visited the given address and met the co-applicant. During the visit, the address was found to be the co-applicant’s residential address. Upon enquiry regarding business activities, the co-applicant stated that the same address is used as the registered business address, while the actual business operations and related activities are carried out outside the premises.">
+                      Option 4: Residential address used as business address
+                    </option>
+                    <option value="The co-applicant stated that the given address is his residential as well as registered business address, while business activities are conducted elsewhere. His business involves electrical motors, water pipeline works, and civil works. Work agreements were obtained as supporting documents. Form-C verification confirms that the co-applicant is the proprietor of Prakash & Sons, and records are attached.">
+                      Option 5: Prakash & Sons (Form-C)
+                    </option>
+                  </select>
+                </div>
                 <FormTextarea
                   label="Note (GST / supporting documents)"
                   name="business_note"
@@ -520,11 +561,17 @@ const SbiBussinessVerificationForm = () => {
                   onChange={handleChange}
                   rows={4}
                   className="mb-0"
+                  maxLength={420}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                    }
+                  }}
                 />
                 <p
-                  className={`text-xs mt-1 ${form.business_note?.split('\n').length > 4 ? 'text-red-500 font-semibold' : 'text-gray-500'}`}
+                  className={`text-xs mt-1 ${(form.business_note || '').length > 420 ? 'text-red-500 font-semibold' : 'text-gray-500'}`}
                 >
-                  Note should be 4 lines maximum. Current lines: {form.business_note?.split('\n').length || 0} / 4
+                  Characters: {(form.business_note || '').length} / 420
                 </p>
                 <div className="mt-3 flex items-center gap-3">
                   <Button type="button" variant="outline" disabled={optimizingNote} onClick={handleOptimizeBusinessNote}>

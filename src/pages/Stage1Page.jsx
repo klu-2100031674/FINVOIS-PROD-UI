@@ -298,6 +298,15 @@ const Stage1Page = () => {
       iframeDoc.write(htmlString);
       iframeDoc.close();
 
+      const normalizeStyle = iframeDoc.createElement("style");
+      normalizeStyle.textContent = `
+        .table-wrapper {
+          border: none !important;
+          border-radius: 0 !important;
+        }
+      `;
+      iframeDoc.head?.appendChild(normalizeStyle);
+
       console.log(
         "✅ [displayHTMLContent] HTML content displayed successfully"
       );
@@ -745,12 +754,19 @@ const Stage1Page = () => {
       console.log("🚀 Generating full AI report with form data:", formData);
       console.log("🔑 Admin mode:", isAdminMode);
 
+      // Get optional user comment from report-user-comment textarea in the iframe
+      const iframeNode = iframeRef.current;
+      const iframeDoc = iframeNode?.contentDocument || iframeNode?.contentWindow?.document;
+      const commentTextArea = iframeDoc?.getElementById("report-user-comment");
+      const userComment = commentTextArea ? commentTextArea.value.trim() : "";
+
       // Call the full report generation API
       const result = await reportAPI.generateFullReport(templateId, formData, {
         isAdmin: isAdminMode,
         paidReportId: paidReportId, // Link to the paid report
         analysisOptions: analysisOptions, // Pass analysis options to backend
-        sheets: sheets // Explicit sheet filter (CC templates pass this from payment selection)
+        sheets: sheets, // Explicit sheet filter (CC templates pass this from payment selection)
+        user_comment: userComment // Pass the optional user comment
       });
 
       if (result.success) {

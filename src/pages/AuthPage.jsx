@@ -224,6 +224,8 @@ const ensureVmReady = async () => {
         navigate('/admin/dashboard', { replace: true });
       } else if (userRole === 'agent') {
         navigate('/agent/dashboard', { replace: true });
+      } else if (userRole === 'msme_dpr_viewer') {
+        navigate('/msme-dpr-dashboard', { replace: true });
       } else {
         navigate('/dashboard', { replace: true });
       }

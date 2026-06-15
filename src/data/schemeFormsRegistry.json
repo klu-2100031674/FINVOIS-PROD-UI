@@ -20,12 +20,6 @@
       "description": "Chief Minister's Employment Programme — Client Screening & Consultancy Questionnaire",
       "publicFormPath": "/schemes/cmep",
       "adminPdfUploadPath": "/admin/schemes/cmep"
-    },
-    {
-      "id": "client-screening",
-      "title": "Client screening",
-      "description": "Mail-only intake: name, phone, and topics — all messages go to one inbox set in Manage Emails.",
-      "publicFormPath": "/client-screening"
     }
   ]
 }

@@ -8,6 +8,29 @@ import {
   resolveCompanyDisplayName,
   userBelongsToCompany,
 } from '../../utils/companyMembership';
+import { resolveSignupApprovalStatus } from '../../utils/signupApproval';
+
+const isSignupPending = (user) => resolveSignupApprovalStatus(user) === 'pending';
+const isSignupRejected = (user) => resolveSignupApprovalStatus(user) === 'rejected';
+const isSignupApproved = (user) => resolveSignupApprovalStatus(user) === 'approved';
+const isSignupRestricted = (user) => !isSignupApproved(user);
+
+const isUserActive = (user) => {
+  if (typeof user?.is_active === 'boolean') return user.is_active;
+  return String(user?.status || '').toLowerCase() !== 'inactive';
+};
+
+const getUserStatusLabel = (user) => {
+  if (isSignupPending(user)) return 'REVIEW';
+  if (isSignupRejected(user)) return 'REJECTED';
+  return isUserActive(user) ? 'ACTIVE' : 'INACTIVE';
+};
+
+const getUserStatusBadgeClass = (user) => {
+  if (isSignupPending(user)) return 'bg-blue-100 text-blue-800';
+  if (isSignupRejected(user)) return 'bg-red-100 text-red-800';
+  return isUserActive(user) ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+};
 
 const AdminUsersPage = () => {
   const [users, setUsers] = useState([]);
@@ -21,6 +44,12 @@ const AdminUsersPage = () => {
   const [actionMenu, setActionMenu] = useState(null);
   const [showCommissionModal, setShowCommissionModal] = useState(false);
   const [commissionRate, setCommissionRate] = useState(0);
+
+  // Create User modal state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const EMPTY_NEW_USER = { name: '', email: '', password: '', role: 'user', phone: '' };
+  const [newUser, setNewUser] = useState(EMPTY_NEW_USER);
 
   useEffect(() => {
     fetchUsers();
@@ -66,9 +95,17 @@ const AdminUsersPage = () => {
     }
 
     // Status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter((user) =>
-        statusFilter === 'active' ? isUserActive(user) : !isUserActive(user)
+    if (statusFilter === 'review') {
+      filtered = filtered.filter((user) => isSignupPending(user));
+    } else if (statusFilter === 'rejected') {
+      filtered = filtered.filter((user) => isSignupRejected(user));
+    } else if (statusFilter === 'active') {
+      filtered = filtered.filter(
+        (user) => isSignupApproved(user) && isUserActive(user)
+      );
+    } else if (statusFilter === 'inactive') {
+      filtered = filtered.filter(
+        (user) => isSignupApproved(user) && !isUserActive(user)
       );
     }
 
@@ -117,15 +154,36 @@ const AdminUsersPage = () => {
     }
   };
 
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    if (!newUser.name.trim() || !newUser.email.trim() || !newUser.password.trim()) {
+      toast.error('Name, email and password are required');
+      return;
+    }
+    setCreating(true);
+    try {
+      await api.post('/users/create-admin', {
+        name: newUser.name.trim(),
+        email: newUser.email.trim(),
+        password: newUser.password,
+        role: newUser.role,
+        phone: newUser.phone.trim() || undefined,
+      });
+      toast.success(`User "${newUser.name}" created successfully`);
+      setShowCreateModal(false);
+      setNewUser(EMPTY_NEW_USER);
+      fetchUsers();
+    } catch (error) {
+      toast.error(error?.response?.data?.error || error?.error || 'Failed to create user');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const handleViewUser = (user) => {
     setSelectedUser(user);
     setShowModal(true);
     setActionMenu(null);
-  };
-
-  const isUserActive = (user) => {
-    if (typeof user?.is_active === 'boolean') return user.is_active;
-    return String(user?.status || '').toLowerCase() !== 'inactive';
   };
 
   const getRoleBadgeColor = (role) => {
@@ -139,10 +197,6 @@ const AdminUsersPage = () => {
       default:
         return 'bg-purple-100 text-purple-800';
     }
-  };
-
-  const getStatusBadgeColor = (isActive) => {
-    return isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
   };
 
   if (loading) {
@@ -162,7 +216,10 @@ const AdminUsersPage = () => {
           <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
           <p className="text-gray-500 mt-1">Manage all users, channel partners, and company admins</p>
         </div>
-        <button className="mt-4 md:mt-0 flex items-center px-4 py-2 bg-[#7e22ce] text-white rounded-lg hover:bg-[#6b21a8] transition-colors">
+        <button
+          onClick={() => { setNewUser(EMPTY_NEW_USER); setShowCreateModal(true); }}
+          className="mt-4 md:mt-0 flex items-center px-4 py-2 bg-[#7e22ce] text-white rounded-lg hover:bg-[#6b21a8] transition-colors"
+        >
           <UserPlus size={18} className="mr-2" />
           Add New User
         </button>
@@ -193,6 +250,7 @@ const AdminUsersPage = () => {
             >
               <option value="all">All Roles</option>
               <option value="admin">Super Admin</option>
+              <option value="lead_manager">Service Manager</option>
               <option value="company_admin">Company Admin</option>
               <option value="agent">Channel partner</option>
               <option value="executive">Executive</option>
@@ -211,6 +269,8 @@ const AdminUsersPage = () => {
               <option value="all">All Status</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
+              <option value="review">Review</option>
+              <option value="rejected">Rejected</option>
             </select>
           </div>
 
@@ -256,6 +316,7 @@ const AdminUsersPage = () => {
               {filteredUsers.map((user) => {
                 const companyName = resolveCompanyDisplayName(user);
                 const inCompany = userBelongsToCompany(user);
+                const signupRestricted = isSignupRestricted(user);
                 return (
                 <tr key={user._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -280,8 +341,8 @@ const AdminUsersPage = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadgeColor(isUserActive(user))}`}>
-                      {isUserActive(user) ? 'ACTIVE' : 'INACTIVE'}
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getUserStatusBadgeClass(user)}`}>
+                      {getUserStatusLabel(user)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -291,7 +352,19 @@ const AdminUsersPage = () => {
                     {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
+                    {signupRestricted ? (
+                      <button
+                        type="button"
+                        onClick={() => handleViewUser(user)}
+                        className="p-2 text-[#7e22ce] hover:bg-purple-50 rounded-full transition-colors"
+                        title="View details (manage in User Approvals)"
+                      >
+                        <Eye size={18} />
+                      </button>
+                    ) : (
+                      <>
                     <button
+                      type="button"
                       onClick={() => setActionMenu(actionMenu === user._id ? null : user._id)}
                       className="text-gray-400 hover:text-gray-600"
                     >
@@ -302,6 +375,7 @@ const AdminUsersPage = () => {
                       <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
                         <div className="py-1">
                           <button
+                            type="button"
                             onClick={() => handleViewUser(user)}
                             className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           >
@@ -369,6 +443,8 @@ const AdminUsersPage = () => {
                         </div>
                       </div>
                     )}
+                      </>
+                    )}
                   </td>
                 </tr>
               );
@@ -420,7 +496,7 @@ const AdminUsersPage = () => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Status</p>
-                    <p className="font-medium">{isUserActive(selectedUser) ? 'ACTIVE' : 'INACTIVE'}</p>
+                    <p className="font-medium">{getUserStatusLabel(selectedUser)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Mobile</p>
@@ -535,6 +611,108 @@ const AdminUsersPage = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Create New User Modal ─────────────────────────────── */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-xl font-bold text-gray-800">Add New User</h2>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateUser} className="p-6 space-y-4">
+              {/* Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  value={newUser.name}
+                  onChange={(e) => setNewUser(u => ({ ...u, name: e.target.value }))}
+                  placeholder="e.g. Ramesh Kumar"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent"
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                <input
+                  type="email"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser(u => ({ ...u, email: e.target.value }))}
+                  placeholder="user@example.com"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent"
+                />
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+                <input
+                  type="password"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser(u => ({ ...u, password: e.target.value }))}
+                  placeholder="Min 8 characters"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent"
+                />
+              </div>
+
+              {/* Role */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
+                <select
+                  value={newUser.role}
+                  onChange={(e) => setNewUser(u => ({ ...u, role: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent"
+                >
+                  <option value="user">User</option>
+                  <option value="agent">Channel Partner</option>
+                  <option value="executive">Executive</option>
+                  <option value="lead_manager">Service Manager</option>
+                  <option value="admin">Super Admin</option>
+                </select>
+              </div>
+
+              {/* Phone (optional) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone <span className="text-gray-400 font-normal">(optional)</span></label>
+                <input
+                  type="tel"
+                  value={newUser.phone}
+                  onChange={(e) => setNewUser(u => ({ ...u, phone: e.target.value }))}
+                  placeholder="+91 9999999999"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="flex-1 px-4 py-2 bg-[#7e22ce] text-white rounded-lg hover:bg-[#6b21a8] font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {creating && <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />}
+                  {creating ? 'Creating...' : 'Create User'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

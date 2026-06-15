@@ -919,7 +919,7 @@ const AdminReportsPage = () => {
                   {/* Expanded Details */}
                   {expandedReport === report._id && (
                     <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className={`grid grid-cols-1 gap-6 ${report.user_comment ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
                         {/* User Details */}
                         <div>
                           <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
@@ -975,9 +975,22 @@ const AdminReportsPage = () => {
                           </div>
                         </div>
 
+                        {/* User Comment */}
+                        {report.user_comment && (
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                              <MessageSquare size={16} className="mr-2" />
+                              User Comment
+                            </h4>
+                            <div className="space-y-1 text-sm bg-white p-3 rounded-lg border border-gray-200 min-h-[80px]">
+                              <p className="text-gray-700 whitespace-pre-wrap">{report.user_comment}</p>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Term Loan Analysis Options */}
                         {(report.requested_sheets?.length > 0 || report.analysis_options) && (
-                          <div className="col-span-1 md:col-span-3 mt-4 pt-4 border-t border-gray-200">
+                          <div className={`col-span-1 mt-4 pt-4 border-t border-gray-200 ${report.user_comment ? 'md:col-span-4' : 'md:col-span-3'}`}>
                             <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
                               <Settings size={16} className="mr-2" />
                               Requested Analysis & Parameters

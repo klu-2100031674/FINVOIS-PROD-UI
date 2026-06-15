@@ -33,6 +33,7 @@ import {
   Briefcase,
   UserCheck,
   Landmark,
+  Send,
   Inbox,
   Store,
   Layers,
@@ -56,7 +57,29 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
 
   const role = normalizeUserRole(user?.role);
 
+  const roleBadgeLabel = {
+    admin:         'Super Admin',
+    company_admin: 'Company Admin',
+    lead_manager:  'Service Manager',
+    agent:         'Channel Partner',
+    executive:     'Executive',
+  }[role] || 'User';
+
   const navItems = useMemo(() => {
+
+    // ── Service Manager: isolated sidebar — CRM items only, no profile ──
+    if (role === 'lead_manager') {
+      return [
+        { to: '/admin/lead-manager/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { type: 'section', key: 'crm-section', label: 'CRM' },
+        { to: '/admin/leads',          icon: UserCheck,  label: 'Service Providers' },
+        { to: '/admin/services',       icon: Briefcase,  label: 'Services' },
+        { to: '/admin/banks',          icon: Landmark,   label: 'Banks' },
+        { to: '/admin/banks/send-dpr', icon: Send,       label: 'Send to Banks' },
+      ];
+    }
+    // ─────────────────────────────────────────────────────────────────
+
     const companyIdForRoutes = companyAPI.normalizeCompanyId(
       user?.companyId?._id ||
         user?.companyId?.id ||
@@ -132,28 +155,46 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
     }
 
     if (role === 'admin') {
+      // SCHEME_FORMS_DISABLED — re-enable when scheme forms return
+      // items.push({
+      //   to: '/admin/schemes',
+      //   icon: Landmark,
+      //   label: 'Schemes',
+      // });
       items.push({
-        to: '/admin/schemes',
-        icon: Landmark,
-        label: 'Schemes',
+        to: '/admin/client-screening/emails',
+        icon: UserCheck,
+        label: 'Client Screening',
       });
       items.push({
         to: '/admin/franchises',
         icon: Store,
         label: 'Franchise',
       });
+      items.push({
+        to: '/admin/msme-dpr-dashboard',
+        icon: FileText,
+        label: 'MSME DPR',
+      });
     }
 
-    if (role !== 'company_admin') {
+    if (role !== 'company_admin' && role !== 'lead_manager') {
       items.push(
         { to: '/admin/templates', icon: FileStack, label: 'Template Config' },
         { to: '/admin/withdrawals', icon: Wallet, label: 'Withdrawals' },
         { to: '/admin/payments', icon: CreditCard, label: 'Transactions' },
         { to: '/admin/free-credits', icon: Gift, label: 'Free Credits' },
         { to: '/admin/promotional-emails', icon: Mail, label: 'Promo Emails' },
+      );
+    }
+
+    // CRM section — visible to admin AND lead_manager
+    if (role !== 'company_admin') {
+      items.push(
         { type: 'section', key: 'crm-section', label: 'CRM' },
         { to: '/admin/services', icon: Briefcase, label: 'Services' },
-        { to: '/admin/leads', icon: UserCheck, label: 'Leads' }
+        { to: '/admin/leads', icon: UserCheck, label: 'Service Providers' },
+        { to: '/admin/banks', icon: Landmark, label: 'Banks' },
       );
     }
 
@@ -237,7 +278,7 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
             {sidebarOpen && (
               <div className="flex items-center gap-2 mt-2">
                 <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
-                  {normalizeUserRole(user?.role) === 'admin' ? 'Super Admin' : 'Company Admin'}
+                  {roleBadgeLabel}
                 </span>
               </div>
             )}
@@ -309,7 +350,7 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
                 </div>
                 <div className="flex items-center gap-2 mt-2">
                   <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
-                    {normalizeUserRole(user?.role) === 'admin' ? 'Super Admin' : 'Company Admin'}
+                    {roleBadgeLabel}
                   </span>
                 </div>
               </div>
