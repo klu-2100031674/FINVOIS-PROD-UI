@@ -12,7 +12,6 @@ import {
   FORM_COPY,
   MSME_WEBSITE_URL,
   getOptionLabel,
-  MSME_DPR_TEST_FORM,
 } from '@/constants/msmeDprFormTranslations';
 
 const INITIAL_FORM = {
@@ -61,11 +60,6 @@ const MsmeDprLeadFormPage = () => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFillTestData = () => {
-    setForm({ ...MSME_DPR_TEST_FORM });
-    setError('');
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -107,15 +101,6 @@ const MsmeDprLeadFormPage = () => {
               ))}
             </select>
           </div>
-          {!success && (
-            <button
-              type="button"
-              onClick={handleFillTestData}
-              className="px-4 py-2 text-sm font-medium text-orange-600 border border-orange-300 rounded-lg hover:bg-orange-50 transition-colors"
-            >
-              {copy.fillTestData}
-            </button>
-          )}
         </div>
 
         <p className="text-xs font-semibold uppercase tracking-wider text-orange-600 mb-1">
