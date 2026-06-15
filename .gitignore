@@ -70,7 +70,8 @@ dist
 
 # Gatsby files
 .cache/
-public
+public/**
+!public/staticwebapp.config.json
 
 # Storybook build outputs
 .out
