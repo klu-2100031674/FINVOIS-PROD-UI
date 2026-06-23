@@ -14,7 +14,6 @@ import {
 } from '@heroicons/react/24/outline';
 
 import SaveDraftButton from '../common/SaveDraftButton';
-import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD } from '../../utils/frccFormUi';
 
 // Generate financial year options in 2024-25 format, current year to +20 years
 const generateFinancialYearOptions = () => {
@@ -26,9 +25,6 @@ const generateFinancialYearOptions = () => {
   return options;
 };
 
-const parseNumberInput = (val) => val === '' ? '' : (val.endsWith('.') || val.endsWith('.0') ? val : (isNaN(parseFloat(val)) ? val : parseFloat(val)));
-
-
 // Audited fields config
 const AUDITED_FIELDS = [
   { id: 'i23', label: 'Turnover (₹)',                                      type: 'number', min: 0, required: true },
@@ -37,8 +33,8 @@ const AUDITED_FIELDS = [
   { id: 'i26', label: 'Closing Stock (₹)',                                  type: 'number', min: 0, required: true },
   { id: 'i27', label: 'Non Operating Income (₹)',                           type: 'number', min: 0, required: true },
   { id: 'i28', label: 'Depreciation (₹)',                                   type: 'number', min: 0, required: true },
-  { id: 'i29', label: 'Electricity/Power Expense (₹)',                      type: 'number', min: 0, required: true },
-  { id: 'i30', label: 'Rent/Lease Expenses (₹)',                            type: 'number', min: 0, required: true },
+  { id: 'i29', label: 'Electricity (₹)',                                    type: 'number', min: 0, required: true },
+  { id: 'i30', label: 'Rent (₹)',                                           type: 'number', min: 0, required: true },
   { id: 'i31', label: 'Salaries & Wages (₹)',                               type: 'number', min: 0, required: true },
   { id: 'i32', label: 'Interest on Other Loans (₹)',                        type: 'number', min: 0, required: true },
   { id: 'i33', label: 'Net Profit Before Tax (₹)',                          type: 'number', min: 0, required: true },
@@ -63,12 +59,11 @@ const PROVISIONAL_FIELDS = [
   { id: 'i50', label: 'Closing Stock (₹)',                                  type: 'number', min: 0, required: true },
   { id: 'i51', label: 'Non Operating Income (₹)',                           type: 'number', min: 0, required: true },
   { id: 'i52', label: 'Depreciation (₹)',                                   type: 'number', min: 0, required: true },
-  { id: 'i53', label: 'Electricity/Power Expense (₹)',                      type: 'number', min: 0, required: true },
-  { id: 'i54', label: 'Rent/Lease Expenses (₹)',                            type: 'number', min: 0, required: true },
+  { id: 'i53', label: 'Electricity (₹)',                                    type: 'number', min: 0, required: true },
+  { id: 'i54', label: 'Rent (₹)',                                           type: 'number', min: 0, required: true },
   { id: 'i55', label: 'Salaries & Wages (₹)',                               type: 'number', min: 0, required: true },
   { id: 'i56', label: 'Interest on Other Loans (Secured & Unsecured) (₹)', type: 'number', min: 0, required: true },
   { id: 'i57', label: 'Net Profit Before Tax (₹)',                          type: 'number', min: 0, required: true },
-  { id: 'i58_display', label: 'Office Admin, Marketing & Misc. Expenses (₹)', type: 'computed', note: 'Auto-calculated balancing figure (Excel formula row I58)' },
   { id: 'i59', label: 'Net Capital (Opening + Profit - Drawings) (₹)',      type: 'number', min: 0, required: true },
   { id: 'i60', label: 'Term Loans (Secured + Unsecured Total) (₹)',         type: 'number', min: 0, required: true },
   { id: 'i61', label: 'Current Liabilities (₹)',                            type: 'number', min: 0, required: true },
@@ -77,31 +72,6 @@ const PROVISIONAL_FIELDS = [
   { id: 'i67', label: 'Cash and Cash Equivalents (₹)',                      type: 'number', min: 0, required: true },
   { id: 'i68', label: 'Other Current Assets (₹)',                           type: 'number', min: 0, required: true },
 ];
-
-// Projection assumption fields (Assumptions.1 rows 71–85) — drive Estimated & Projected P&L columns
-const ASSUMPTIONS_FIELDS = [
-  { id: 'i71', label: 'Sales Growth (Estimated & Projected Years)',              type: 'number', min: 1, step: 0.001, required: true, note: 'Growth multiplier, e.g. 1.05 for 5% annual growth' },
-  { id: 'i72', label: 'Other Expenses Growth',                                   type: 'number', min: 1, step: 0.001, required: true, note: 'Multiplier, e.g. 1.02 for 2% growth' },
-  { id: 'i73', label: 'Working Capital Interest Growth',                         type: 'number', min: 1, step: 0.001, required: true, note: 'Multiplier, e.g. 1.005 for 0.5% growth' },
-  { id: 'i74', label: 'Non Operating Income Growth (if applicable)',             type: 'number', min: 1, step: 0.001, required: true, note: 'Multiplier applied when provisional non-op income exists' },
-  { id: 'i75', label: 'Closing Stock Multiplier (Estimated Year)',               type: 'number', min: 0, step: 0.01, required: true, note: 'Multiplier for estimated closing stock, e.g. 1.3' },
-  { id: 'i76', label: 'Stock Growth Every Year',                                 type: 'number', min: 1, step: 0.001, required: true, note: 'Annual stock growth multiplier, e.g. 1.01' },
-  { id: 'i77', label: 'No. of Months in a Financial Year',                       type: 'number', min: 1, max: 12, required: true, note: 'Usually 12 months' },
-  { id: 'i79', label: 'Cash & Cash Equivalents — 1st Projected Year',            type: 'number', min: 0, max: 1, step: 0.01, required: true, note: 'Ratio of turnover, e.g. 0.05 for 5%' },
-  { id: 'i80', label: 'Cash & Cash Equivalents — 2nd Projected Year',            type: 'number', min: 0, max: 1, step: 0.01, required: true, note: 'Ratio of turnover, e.g. 0.07 for 7%' },
-  { id: 'i81', label: 'Cash & Cash Equivalents — 3rd Projected Year',            type: 'number', min: 0, max: 1, step: 0.01, required: true, note: 'Ratio of turnover, e.g. 0.10 for 10%' },
-  { id: 'i83', label: 'Debtors — 1st Projected Year',                            type: 'number', min: 0, max: 1, step: 0.01, required: true, note: 'Ratio of turnover, e.g. 0.08 for 8%' },
-  { id: 'i84', label: 'Debtors — 2nd Projected Year',                            type: 'number', min: 0, max: 1, step: 0.01, required: true, note: 'Ratio of turnover, e.g. 0.09 for 9%' },
-  { id: 'i85', label: 'Debtors — 3rd Projected Year',                            type: 'number', min: 0, max: 1, step: 0.01, required: true, note: 'Ratio of turnover, e.g. 0.10 for 10%' },
-  { id: 'i101', label: 'Other Term Loans (if any) in Provisionals (₹)',           type: 'number', min: 0, required: false, note: 'Optional — only if separate from i60 term loans' },
-  { id: 'i103', label: 'Balance Period Remaining for Other Term Loans (Years)',   type: 'number', min: 1, required: true, note: 'Used for yearly principal deduction (default 4 years)' },
-];
-
-const DEFAULT_ASSUMPTIONS = {
-  i71: 1.05, i72: 1.02, i73: 1.005, i74: 1.05, i75: 1.3, i76: 1.01, i77: 12,
-  i79: 0.05, i80: 0.07, i81: 0.10, i83: 0.08, i84: 0.09, i85: 0.10,
-  i101: 0, i103: 4,
-};
 
 // Form sections
 const sections = [
@@ -113,7 +83,7 @@ const sections = [
       { id: 'i3', label: 'Name of Firm',                      type: 'text',     required: true, note: 'Enter your company/firm name' },
       { id: 'i4', label: 'Status of Concern',                 type: 'select',   options: ['Sole Proprietorship', 'Partnership Firm', 'Private limited Company', 'LLP', 'Society', 'Trust', 'Federation', 'SHG'], required: true, note: 'Select business structure' },
       { id: 'i5', label: 'Name of Authorised Person',         type: 'text',     required: true, note: 'Enter the authorised person name' },
-      { id: 'i6', label: 'Business Address',                  type: 'textarea', required: true, note: 'Enter complete business address' },
+      { id: 'i6', label: 'Firm Address',                      type: 'textarea', required: true, note: 'Enter complete business address' },
       { id: 'i7', label: 'Contact No. of Authorised Person',  type: 'text',     required: true, note: 'Enter contact number' },
       { id: 'i8', label: 'Sector',                            type: 'select',   options: ['Manufacturing sector', 'Service sector (with stock)', 'Trading sector'], required: true, note: 'Select your primary business sector' },
       { id: 'i9', label: 'Nature of Business',                type: 'text',     required: true, note: 'Describe your business activity' },
@@ -126,8 +96,8 @@ const sections = [
     fields: [
       { id: 'i11',  label: 'Do you have working capital limit at present?', type: 'select', options: ['Yes', 'No'], required: true, disabled: true },
       { id: 'i12',  label: 'Working Capital Loan Requirement (₹)',          type: 'number', min: 0, required: true },
-      { id: 'h13',  label: 'Working Capital Loan Interest %',               type: 'number', min: 0, max: 100, step: 0.01, required: true },
-      { id: 'h14',  label: 'Processing Fees %',                             type: 'number', min: 0, required: true },
+      { id: 'h13',  label: 'Working Capital Loan Interest (Annual %)',      type: 'number', min: 0, max: 100, step: 0.01, required: true },
+      { id: 'h14',  label: 'Processing Fees (Including GST) %',             type: 'number', min: 0, required: true },
       { id: 'h15',  label: 'Working Capital (% of Turnover)',               type: 'number', min: 0, step: 0.01, required: true, note: '15% or more' },
     ]
   },
@@ -147,14 +117,8 @@ const sections = [
     icon: ChartBarIcon,
   },
   {
-    key: 'assumptions',
-    title: 'Projection Assumptions',
-    icon: ChartBarIcon,
-    fields: ASSUMPTIONS_FIELDS,
-  },
-  {
     key: 'fixed',
-    title: 'Assets Schedule',
+    title: 'Fixed Assets Schedule',
     icon: BuildingOfficeIcon,
     categories: [
       { title: 'Plant and Machinery',                          startIndex: 122, itemCount: 10 },
@@ -181,7 +145,6 @@ const sections = [
       { id: 'j124', label: 'Name 2',    type: 'text', required: true },
       { id: 'j125', label: 'Address',   type: 'text', required: true },
       { id: 'j126', label: 'Contact',   type: 'text', required: true },
-      FRCC_REQUIRED_STAMP_FIELD,
     ]
   }
 ];
@@ -233,7 +196,6 @@ const FRCC2Form = ({
       "i59": "", "i60": "", "i61": "",
       "i65": "", "i66": "", "i67": "", "i68": ""
     },
-    "Projection Assumptions": { ...DEFAULT_ASSUMPTIONS },
     "Fixed Assets Schedule": {
       "Plant and Machinery":                         { items: [], total: 0 },
       "Service Equipment":                           { items: [], total: 0 },
@@ -252,8 +214,7 @@ const FRCC2Form = ({
       "j123": "PARVEZ AND NARAYANA",
       "j124": "Chartered Accountants",
       "j125": "",
-      "j126": "9014221011",
-      "required_stamp": FRCC_REQUIRED_STAMP_DEFAULT,
+      "j126": "9014221011"
     }
   });
 
@@ -264,13 +225,7 @@ const FRCC2Form = ({
 
   useEffect(() => {
     if (initialData && isEditMode) {
-      setFormData({
-        ...initialData,
-        "Projection Assumptions": {
-          ...DEFAULT_ASSUMPTIONS,
-          ...(initialData["Projection Assumptions"] || {}),
-        },
-      });
+      setFormData(initialData);
     }
   }, [initialData, isEditMode]);
 
@@ -299,15 +254,6 @@ const FRCC2Form = ({
 
   // Derived: audited closing stock auto-fills provisional opening stock
   const auditedClosingStock = formData["Audited Financial Statements"]["i26"] || 0;
-
-  const computeProvisionalOfficeAdmin = useCallback(() => {
-    const p = formData["Provisional Financial Statements"] || {};
-    const opening = parseFloat(auditedClosingStock) || 0;
-    const nums = ['i47', 'i49', 'i50', 'i51', 'i52', 'i53', 'i54', 'i55', 'i56', 'i57']
-      .map((k) => parseFloat(p[k]) || 0);
-    const [turnover, directMat, closing, nonOp, depr, elec, rent, sal, interest, npat] = nums;
-    return turnover - opening - directMat + closing + nonOp - depr - elec - rent - sal - interest - npat;
-  }, [formData, auditedClosingStock]);
 
   const addFixedAssetItem = useCallback((categoryName) => {
     setFormData(prev => {
@@ -361,7 +307,6 @@ const FRCC2Form = ({
         "i59": 10000000, "i60": 9500000, "i61": 5500000,
         "i65": 1000000, "i66": 2900000, "i67": 1750000, "i68": 2500000
       },
-      "Projection Assumptions": { ...DEFAULT_ASSUMPTIONS },
       "Fixed Assets Schedule": {
         "Plant and Machinery": { items: [{ description: "Packaging Machine", amount: 800000 }, { description: "Conveyor System", amount: 300000 }], total: 1100000 },
         "Service Equipment":                           { items: [], total: 0 },
@@ -378,8 +323,7 @@ const FRCC2Form = ({
       "Prepared By": {
         "bank_name": "SBI", "branch_name": "Main Branch",
         "j123": "PARVEZ AND NARAYANA", "j124": "Chartered Accountants",
-        "j125": "Hyderabad, Telangana", "j126": "9014221011",
-        "required_stamp": FRCC_REQUIRED_STAMP_DEFAULT,
+        "j125": "Hyderabad, Telangana", "j126": "9014221011"
       }
     });
   }, []);
@@ -407,11 +351,6 @@ const FRCC2Form = ({
     ['i47','i49','i50','i51','i52','i53','i54','i55','i56','i57',
      'i59','i60','i61','i65','i66','i67','i68'].forEach(k => {
       excelData[k] = data['Provisional Financial Statements'][k];
-    });
-
-    // Projection assumptions (Estimated & Projected year calculations)
-    ASSUMPTIONS_FIELDS.forEach(({ id }) => {
-      excelData[id] = data['Projection Assumptions']?.[id];
     });
 
     // Prepared By
@@ -517,14 +456,6 @@ const FRCC2Form = ({
           const months = Number(value);
           if (months < 1 || months > 12) errors[key] = 'Months must be between 1 and 12';
         }
-        if (field.id === 'i77') {
-          const months = Number(value);
-          if (months < 1 || months > 12) errors[key] = 'Months must be between 1 and 12';
-        }
-        if (field.id === 'i103') {
-          const years = Number(value);
-          if (years < 1) errors[key] = 'Must be at least 1 year';
-        }
       });
     });
     return errors;
@@ -539,9 +470,6 @@ const FRCC2Form = ({
       let idx = sections.findIndex(s => s.title === errTitle);
       if (idx === -1 && (errTitle === 'Audited Financial Statements' || errTitle === 'Provisional Financial Statements')) {
         idx = sections.findIndex(s => s.key === 'financial-statements');
-      }
-      if (idx === -1 && errTitle === 'Projection Assumptions') {
-        idx = sections.findIndex(s => s.key === 'assumptions');
       }
       if (idx !== -1) setCurrentStep(idx);
       return;
@@ -597,8 +525,6 @@ const FRCC2Form = ({
           if (field.id === 'h13') { if (Number(value) <= 0) sectionErrors[key] = 'Interest rate must be greater than 0'; return; }
           if (field.id === 'h15') { if (Number(value) < 15) sectionErrors[key] = 'Working capital must be 15% or more of turnover'; return; }
           if (field.id === 'k18') { const m = Number(value); if (m < 1 || m > 12) sectionErrors[key] = 'Months must be between 1 and 12'; }
-          if (field.id === 'i77') { const m = Number(value); if (m < 1 || m > 12) sectionErrors[key] = 'Months must be between 1 and 12'; }
-          if (field.id === 'i103') { const y = Number(value); if (y < 1) sectionErrors[key] = 'Must be at least 1 year'; }
         });
       }
       if (Object.keys(sectionErrors).length > 0) {
@@ -659,31 +585,17 @@ const FRCC2Form = ({
     }
 
     if (field.type === 'computed') {
-      const computedValue = field.id === 'i58_display'
-        ? computeProvisionalOfficeAdmin()
-        : value;
-      const displayValue = field.id === 'i58_display' && Number.isFinite(computedValue)
-        ? computedValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })
-        : (value || 'Auto-calculated');
       return (
         <div key={field.id} className="space-y-1.5">
           <label style={{ fontFamily: 'Manrope, sans-serif' }} className="block text-xs font-semibold text-gray-800">
             {field.label}
-            <span className="ml-1 text-xs font-normal text-[#7e22ce]">(auto-calculated)</span>
           </label>
           <input
             type="text"
-            value={displayValue}
+            value={value || 'Auto-calculated'}
             disabled
-            className={`w-full px-3 py-2 text-sm border rounded-lg bg-gray-100 text-gray-600 ${
-              field.id === 'i58_display' && computedValue < 0 ? 'border-amber-400 text-amber-800' : 'border-gray-300'
-            }`}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
           />
-          {field.id === 'i58_display' && computedValue < 0 && (
-            <p className="text-xs text-amber-700 mt-1">
-              Negative value means provisional P&amp;L items do not tie out — review turnover, expenses, and net profit.
-            </p>
-          )}
           {field.note && (
             <p className="text-xs text-gray-500 mt-1">{field.note}</p>
           )}
@@ -747,7 +659,7 @@ const FRCC2Form = ({
         <input
           type={field.type || 'text'}
           value={value}
-          onChange={(e) => updateField(sectionTitle, field.id, field.type === 'number' ? parseNumberInput(e.target.value) : e.target.value)}
+          onChange={(e) => updateField(sectionTitle, field.id, field.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value)}
           required={field.required}
           min={field.min}
           max={field.max}
@@ -768,10 +680,6 @@ const FRCC2Form = ({
     if (!currentCategory) return null;
 
     const categoryData = formData["Fixed Assets Schedule"][currentCategory.title] || { items: [], total: 0 };
-    const grossTotal = Object.values(formData["Fixed Assets Schedule"]).reduce((sum, cat) => sum + (Number(cat.total) || 0), 0);
-    const firstYear = formData['Financial Years']?.['i17'] || '';
-    const secondYear = formData['Financial Years']?.['i18'] || '';
-    const netTotal = formData['Audited Financial Statements']?.['i38'] || 0;
 
     return (
       <div className="space-y-4">
@@ -828,8 +736,8 @@ const FRCC2Form = ({
                   placeholder="Amount"
                   min="0"
                   step="0.01"
-                  value={item.amount ?? ''}
-                  onChange={(e) => updateFixedAssetItem(currentCategory.title, idx, 'amount', parseNumberInput(e.target.value))}
+                  value={item.amount || ''}
+                  onChange={(e) => updateFixedAssetItem(currentCategory.title, idx, 'amount', parseFloat(e.target.value) || 0)}
                   className="col-span-5 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
                 />
                 <button
@@ -851,32 +759,6 @@ const FRCC2Form = ({
             <PlusIcon className="w-4 h-4" />
             Add Item ({categoryData.items?.length || 0}/{currentCategory.itemCount})
           </button>
-
-          {/* Summary Box */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
-            <div className="space-y-1.5">
-              <label style={{ fontFamily: 'Manrope, sans-serif' }} className="block text-xs font-semibold text-gray-700">
-                Gross Total Asset( Opening Balance: {secondYear || '—'} )
-              </label>
-              <input
-                type="text"
-                value={`₹${grossTotal.toLocaleString('en-IN')}`}
-                disabled
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-100 text-gray-800 font-bold font-mono"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label style={{ fontFamily: 'Manrope, sans-serif' }} className="block text-xs font-semibold text-gray-700">
-                Net Total Asset( Closing Balance: {firstYear || '—'} )
-              </label>
-              <input
-                type="text"
-                value={`₹${netTotal.toLocaleString('en-IN')}`}
-                disabled
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-100 text-gray-800 font-bold font-mono"
-              />
-            </div>
-          </div>
         </div>
       </div>
     );
@@ -975,7 +857,7 @@ const FRCC2Form = ({
                   disabled={index > currentStep}
                 >
                   <IconComponent className="w-4 h-4" />
-                  <span className="hidden sm:inline">{getAuditedSectionDisplayTitle(section.title)}</span>
+                  <span className="hidden sm:inline">{section.title}</span>
                   {index < currentStep && <CheckCircleIcon className="w-3.5 h-3.5 text-green-600" />}
                 </button>
               );
@@ -996,7 +878,7 @@ const FRCC2Form = ({
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
                   <h3 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-base font-bold text-gray-800 mb-1">
-                    {getAuditedSectionDisplayTitle('Audited Financial Statements')}
+                    Audited Financial Statements
                   </h3>
                   <p className="text-xs text-gray-500 mb-4">Year: {formData["Financial Years"]["i17"] || '—'}</p>
                   <div className="space-y-3">
