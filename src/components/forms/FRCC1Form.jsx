@@ -15,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 import SaveDraftButton from '../common/SaveDraftButton';
+import { FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_CIBIL_FIELD, isFrccPreparedByValid } from '../../utils/frccFormUi';
 
 // Generate financial year options in 2024-25 format, current year to +20 years
 const generateFinancialYearOptions = () => {
@@ -27,6 +28,9 @@ const generateFinancialYearOptions = () => {
   return options;
 };
 
+const parseNumberInput = (val) => val === '' ? '' : (val.endsWith('.') || val.endsWith('.0') ? val : (isNaN(parseFloat(val)) ? val : parseFloat(val)));
+
+
 // Form configuration
 const sections = [
   {
@@ -37,7 +41,7 @@ const sections = [
       { id: 'i4', label: 'Name of Firm', type: 'text', required: true, note: 'Enter your company/firm name' },
       { id: 'i5', label: 'Status of Concern', type: 'select', options: ['Sole Proprietorship', 'Partnership Firm', 'Private limited Company', 'LLP', 'Society', 'Trust', 'Federation', 'SHG'], required: true, note: 'Select the legal status' },
       { id: 'i6', label: 'Name of Authorised Person', type: 'text', required: true, note: 'Enter the authorised person name' },
-      { id: 'i7', label: 'Firm Address', type: 'textarea', required: true, note: 'Enter complete business address' },
+      { id: 'i7', label: 'Business Address', type: 'textarea', required: true, note: 'Enter complete business address' },
       { id: 'i8', label: 'Contact No. of Authorised Person', type: 'text', required: true, note: 'Enter contact number' },
       { id: 'i9', label: 'Sector', type: 'select', options: ['Manufacturing sector', 'Service sector (with stock)', 'Trading sector'], required: true, note: 'Select your primary business sector' },
       { id: 'i10', label: 'Nature of Business', type: 'text', required: true, note: 'Describe your business activity' }
@@ -50,8 +54,8 @@ const sections = [
     fields: [
       { id: 'i12', label: 'Do you have working capital limit at present?', type: 'select', options: ['Yes', 'No'], required: true, note: 'Select if you have existing loan', disabled: true },
       { id: 'i13', label: 'Working Capital Loan Requirement (₹)', type: 'number', min: 0, required: true, note: 'Enter loan amount in rupees' },
-      { id: 'h14', label: 'Working Capital Loan Interest (Annual %)', type: 'number', min: 0, max: 100, step: 0.01, required: true, note: 'Enter annual interest rate' },
-      { id: 'h15', label: 'Processing Fees (Including GST) %', type: 'number', min: 0, required: true, note: 'Enter processing fee percentage' },
+      { id: 'h14', label: 'Working Capital Loan Interest %', type: 'number', min: 0, max: 100, step: 0.01, required: true, note: 'Enter annual interest rate' },
+      { id: 'h15', label: 'Processing Fees %', type: 'number', min: 0, required: true, note: 'Enter processing fee percentage' },
       { id: 'h16', label: 'Working Capital (% of Turnover)', type: 'number', min: 0, max: 100, step: 0.01, required: true, note: 'Enter working capital % of turnover (15% or more)' }
     ]
   },
@@ -72,9 +76,9 @@ const sections = [
     title: 'Indirect Expenses',
     icon: ChartBarIcon,
     fields: [
-      { id: 'i24', label: 'Rent / Lease per Month (₹)', type: 'number', min: 0, required: true, note: 'Enter monthly rent or lease amount' },
+      { id: 'i24', label: 'Rent/Lease Expenses per Month (₹)', type: 'number', min: 0, required: true, note: 'Enter monthly rent or lease amount' },
       { id: 'H25', label: 'Rental Increment (Annual %)', type: 'number', min: 0, step: 0.1, required: true, note: 'Enter annual rental increase percentage' },
-      { id: 'i26', label: 'Power Charges per Month (₹)', type: 'number', min: 0, required: true, note: 'Enter monthly electricity cost' },
+      { id: 'i26', label: 'Electricity/Power Expense per Month (₹)', type: 'number', min: 0, required: true, note: 'Enter monthly electricity cost' },
       { id: 'h27', label: 'Power Charges Increment (Annual %)', type: 'number', min: 0, step: 0.1, required: true, note: 'Enter annual power charges increase percentage' },
       { id: 'h28', label: 'Sales Growth (Annual %)', type: 'number', min: 0, step: 0.1, required: true, note: 'Enter annual sales growth percentage' },
       { id: 'i29', label: 'No of Months Interest paid in First Financial Year', type: 'number', min: 1, max: 12, required: true, note: 'Enter number of months' },
@@ -83,7 +87,7 @@ const sections = [
   },
   {
     key: 'fixed',
-    title: 'Fixed Assets Schedule',
+    title: 'Assets Schedule',
     icon: BuildingOfficeIcon,
     categories: [
       { title: 'Plant and Machinery',                          startIndex: 95,  itemCount: 10 },
@@ -104,12 +108,15 @@ const sections = [
     title: 'Prepared By',
     icon: UsersIcon,
     fields: [
-      { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text', required: true, note: 'Enter bank or department name' },
-      { id: 'branch_name', label: 'Branch Name',                 type: 'text', required: true, note: 'Enter branch name' },
-      { id: 'j94', label: 'Name 1',    type: 'text', required: true, note: 'Enter name 1' },
-      { id: 'j95', label: 'Name 2',    type: 'text', required: true, note: 'Enter name 2' },
-      { id: 'j96', label: 'Address',   type: 'text', required: true, note: 'Enter address' },
-      { id: 'j97', label: 'Contact',   type: 'text', required: true, note: 'Enter contact number' }
+      { id: 'j94', label: 'Name 1 (Prepared By)', type: 'text', required: false, note: 'Enter name 1' },
+      { id: 'j95', label: 'Name 2 (Prepared By)', type: 'text', required: false, note: 'Enter name 2' },
+      { id: 'j96', label: 'Address (Prepared By)', type: 'text', required: true, note: 'Enter address' },
+      { id: 'j97', label: 'Mobile Number (Prepared By)', type: 'text', required: true, note: 'Enter mobile number' },
+      { id: 'bank_name', label: 'Bank Name / Department Name', type: 'text', required: true, note: 'Enter bank or department name' },
+      { id: 'branch_name', label: 'Branch Name', type: 'text', required: true, note: 'Enter branch name' },
+      PREPARED_BY_BANKER_MAIL_FIELD,
+      PREPARED_BY_CIBIL_FIELD,
+      FRCC_REQUIRED_STAMP_FIELD,
     ]
   }
 ];
@@ -170,7 +177,8 @@ const FRCC1Form = ({
       "j94": "PARVEZ AND NARAYANA",
       "j95": "Chartered Accountants",
       "j96": "",
-      "j97": "9014221011"
+      "j97": "9014221011",
+      "required_stamp": FRCC_REQUIRED_STAMP_DEFAULT,
     }
   });
 
@@ -178,7 +186,7 @@ const FRCC1Form = ({
   const [showResult, setShowResult] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
 
-  // Initialize form with initialData if provided
+  // Initialize form with initialData if provided (edit mode only)
   useEffect(() => {
     if (initialData && isEditMode) {
       console.log('📝 [FRCC1Form] Loading initial data for edit mode:', initialData);
@@ -202,7 +210,10 @@ const FRCC1Form = ({
           "Other Assets (Including Amortisable Assets)": { items: [], total: 0 },
           "Other Assets (Nil Depreciation)":             { items: [], total: 0 }
         },
-        "Prepared By": initialData["Prepared By"] || {},
+        "Prepared By": {
+          required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
+          ...(initialData["Prepared By"] || {}),
+        },
         ...initialData
       }));
     }
@@ -216,6 +227,10 @@ const FRCC1Form = ({
       return true;
     }
 
+    if (currentSection.key === 'prepared_by') {
+      return isFrccPreparedByValid(currentSection.fields, formData[currentSection.title] || {});
+    }
+
     const sectionData = formData[currentSection.title];
 
     for (const field of currentSection.fields) {
@@ -224,7 +239,7 @@ const FRCC1Form = ({
         if (value === '' || value === null || value === undefined) {
           return false;
         }
-        if (field.type === 'number' && (value === 0 || value === '')) {
+        if (field.type === 'number' && value === '') {
           return false;
         }
       }
@@ -347,7 +362,8 @@ const FRCC1Form = ({
         "j94": "PARVEZ AND NARAYANA",
         "j95": "Chartered Accountants",
         "j96": "Hyderabad, Telangana",
-        "j97": "9014221011"
+        "j97": "9014221011",
+        "required_stamp": FRCC_REQUIRED_STAMP_DEFAULT,
       }
     });
   }, []);
@@ -412,15 +428,15 @@ const FRCC1Form = ({
       i4:  { label: "Name of Firm",                        value: gi["i4"]  || "" },
       i5:  { label: "Status of Concern",                   value: gi["i5"]  || "" },
       i6:  { label: "Name of Authorised Person",            value: gi["i6"]  || "" },
-      i7:  { label: "Firm Address",                         value: gi["i7"]  || "" },
+      i7:  { label: "Business Address",                     value: gi["i7"]  || "" },
       i8:  { label: "Contact No. of Authorised Person",     value: gi["i8"]  || "" },
       i9:  { label: "Sector",                               value: gi["i9"]  || "" },
       i10: { label: "Nature of Business",                   value: gi["i10"] || "" },
 
       i12:  { label: "Do you have working capital limit at present?", value: mf["i12"]  || "" },
       i13:  { label: "Working Capital Loan Requirement",              value: mf["i13"]  || 0  },
-      h14:  { label: "Working Capital Loan Interest",                 value: mf["h14"]  || 0  },
-      h15:  { label: "Processing Fees (Including GST) %",             value: mf["h15"]  || 0  },
+      h14:  { label: "Working Capital Loan Interest %",               value: mf["h14"]  || 0  },
+      h15:  { label: "Processing Fees %",                             value: mf["h15"]  || 0  },
       h16: { label: "Working Capital (% of Turnover)",               value: mf["h16"] || 0  },
 
       i18: { label: "1st Financial Year", value: fy["i18"] || "" },
@@ -429,9 +445,9 @@ const FRCC1Form = ({
       i21: { label: "4th Financial Year", value: fy["i21"] || "" },
       i22: { label: "5th Financial Year", value: fy["i22"] || "" },
 
-      i24: { label: "Rent / Lease per Month",                           value: ie["i24"] || 0 },
+      i24: { label: "Rent/Lease Expenses per Month",                    value: ie["i24"] || 0 },
       H25: { label: "Rental Increment (Annual %)",                      value: ie["H25"] || 0 },
-      i26: { label: "Power Charges per Month",                          value: ie["i26"] || 0 },
+      i26: { label: "Electricity/Power Expense per Month",               value: ie["i26"] || 0 },
       h27: { label: "Power Charges Increment (Annual %)",               value: ie["h27"] || 0 },
       h28: { label: "Sales Growth (Annual %)",                          value: ie["h28"] || 0 },
       i29: { label: "Months Interest paid in First Financial Year",     value: ie["i29"] || 0 },
@@ -716,6 +732,7 @@ const FRCC1Form = ({
                 data={formData["Fixed Assets Schedule"]}
                 onUpdate={updateFixedAsset}
                 onDelete={deleteFixedAsset}
+                secondYear={formData["Financial Years"]?.["i19"]}
               />
             ) : (
               <RegularFieldsSection
@@ -750,7 +767,7 @@ const FRCC1Form = ({
               <button
                 className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                 onClick={handleSubmit}
-                disabled={isProcessing}
+                disabled={isProcessing || !canProceed}
               >
                 {isProcessing ? (
                   <>
@@ -769,8 +786,9 @@ const FRCC1Form = ({
               </button>
             ) : (
               <button
-                className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-medium text-sm flex items-center gap-1"
+                className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-sm flex items-center gap-1"
                 onClick={goToNextStep}
+                disabled={!canProceed}
               >
                 Next
                 <ChevronRightIcon className="w-4 h-4" />
@@ -779,7 +797,7 @@ const FRCC1Form = ({
           </div>
         </div>
 
-        {!canProceed && !isLastStep && (
+        {!canProceed && (
           <div className="mt-3 text-xs text-red-600 text-center">
             Please fill all required fields to proceed
           </div>
@@ -827,8 +845,8 @@ const RegularFieldsSection = ({ section, data = {}, onUpdate, fieldErrors = {} }
             ) : (
               <input
                 type={field.type}
-                value={data[field.id] || ''}
-                onChange={(e) => onUpdate(section.title, field.id, field.type === 'number' ? Number(e.target.value) || 0 : e.target.value)}
+                value={data[field.id] ?? ''}
+                onChange={(e) => onUpdate(section.title, field.id, field.type === 'number' ? parseNumberInput(e.target.value) : e.target.value)}
                 placeholder={field.label}
                 min={field.min}
                 max={field.max}
@@ -851,12 +869,14 @@ const RegularFieldsSection = ({ section, data = {}, onUpdate, fieldErrors = {} }
 };
 
 // Fixed assets section component
-const FixedAssetsSection = ({ categories, data = {}, onUpdate, onDelete }) => {
+const FixedAssetsSection = ({ categories, data = {}, onUpdate, onDelete, secondYear }) => {
   const [activeTab, setActiveTab] = useState(0);
 
   const currentCategory = categories[activeTab];
   const categoryData = data[currentCategory.title] || { items: [], total: 0 };
   const maxAllowed = currentCategory.itemCount;
+
+  const grossTotal = Object.values(data).reduce((sum, cat) => sum + (Number(cat.total) || 0), 0);
 
   const addItem = () => {
     const currentItems = categoryData.items?.length || 0;
@@ -926,8 +946,8 @@ const FixedAssetsSection = ({ categories, data = {}, onUpdate, onDelete }) => {
                 placeholder="Amount"
                 min="0"
                 step="0.01"
-                value={item.amount || ''}
-                onChange={(e) => onUpdate(currentCategory.title, index, 'amount', Number(e.target.value) || 0, currentCategory.startIndex)}
+                value={item.amount ?? ''}
+                onChange={(e) => onUpdate(currentCategory.title, index, 'amount', parseNumberInput(e.target.value), currentCategory.startIndex)}
                 className="col-span-5 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
               />
               <button
@@ -954,6 +974,21 @@ const FixedAssetsSection = ({ categories, data = {}, onUpdate, onDelete }) => {
           <PlusIcon className="w-4 h-4" />
           Add Item ({categoryData.items?.length || 0}/{maxAllowed})
         </button>
+
+        {/* Gross Total Box */}
+        <div className="mt-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
+          <div className="space-y-1.5">
+            <label style={{ fontFamily: 'Manrope, sans-serif' }} className="block text-xs font-semibold text-gray-700">
+              Gross Total Asset( Opening Balance: {secondYear || '—'} )
+            </label>
+            <input
+              type="text"
+              value={`₹${grossTotal.toLocaleString('en-IN')}`}
+              disabled
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-100 text-gray-800 font-bold font-mono"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

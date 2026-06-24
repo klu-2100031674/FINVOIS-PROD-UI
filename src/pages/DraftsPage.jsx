@@ -30,6 +30,19 @@ import { useAuth } from '../hooks';
 import { generateHubLandingPath } from '../utils/routePaths';
 import { effectiveUserRole } from '../utils/normalizeUserRole';
 
+const AUTHORISED_PERSON_FIELD_BY_FORM = {
+  frcc1: 'i6',
+  frcc2: 'i5',
+  frcc3: 'i6',
+  frcc4: 'i5',
+  frcc5: 'i5',
+  frcc6: 'i5',
+  frcc7: 'i5',
+  term_loan_service_without_stock: 'i8',
+  term_loan_manufacturing_service_with_stock: 'i8',
+  term_loan_cc: 'i8',
+};
+
 function layoutForDraftsRole(userObj) {
   const r = effectiveUserRole(userObj);
   if (r === 'admin' || r === 'company_admin') return AdminLayout;
@@ -86,18 +99,24 @@ const DraftsPage = () => {
       .replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
-  const getAuthorisedPersonName = (formData) => {
+  const getAuthorisedPersonName = (formData, formType) => {
     const general = formData?.['General Information'] || formData?.formData?.['General Information'];
-    const name =
-      general?.i6 ||
-      general?.['Name of Authorised Person'] ||
-      general?.R5C2 ||
-      formData?.authorisedPerson ||
-      formData?.authorizedPerson ||
-      null;
+    const formKey = String(formType || '').toLowerCase();
+    const primaryField = AUTHORISED_PERSON_FIELD_BY_FORM[formKey];
 
-    const s = name ? String(name).trim() : '';
-    return s.length ? s : null;
+    const candidates = [
+      primaryField ? general?.[primaryField] : null,
+      general?.i8,
+      general?.i5,
+      general?.i6,
+      general?.['Name of Authorised Person'],
+      general?.R5C2,
+      formData?.authorisedPerson,
+      formData?.authorizedPerson,
+    ];
+
+    const name = candidates.find((value) => value != null && String(value).trim().length > 0);
+    return name ? String(name).trim() : null;
   };
 
   useEffect(() => {
@@ -295,7 +314,7 @@ const DraftsPage = () => {
                                 <div>
                                   <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Authorised person</dt>
                                   <dd className="mt-0.5 font-medium text-gray-900">
-                                    {getAuthorisedPersonName(d.formData) || (
+                                    {getAuthorisedPersonName(d.formData, d.formType) || (
                                       <span className="font-normal text-slate-400">Not filled</span>
                                     )}
                                   </dd>

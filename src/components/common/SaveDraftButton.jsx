@@ -3,6 +3,8 @@ import { useDispatch } from 'react-redux';
 import { useSearchParams } from 'react-router-dom';
 import { saveDraftV2 } from '../../store/slices/draftSlice';
 import toast from 'react-hot-toast';
+import { withSyncedRawFormData } from '../../utils/draftSourceData';
+import { resolveTemplateSector } from '../../utils/templateSectorConfig';
 
 /**
  * Save Draft button.
@@ -17,7 +19,7 @@ import toast from 'react-hot-toast';
  *   - `?newDraft=1` forces a brand-new row (user clicked "start this template"
  *     from the dashboard and must not overwrite a stale draft of the same type).
  */
-const SaveDraftButton = ({ templateId, currentStep, currentFormData }) => {
+const SaveDraftButton = ({ templateId, currentStep, currentFormData, onSavedSuccess }) => {
   const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
   const [isSaving, setIsSaving] = useState(false);
@@ -42,9 +44,26 @@ const SaveDraftButton = ({ templateId, currentStep, currentFormData }) => {
 
       const targetDraftId = sessionDraftIdRef.current || undefined;
 
+      const urlPresetSector = searchParams.get('presetSector');
+      const urlLockSector =
+        searchParams.get('lockSector') === '1' ||
+        String(searchParams.get('lockSector') || '').toLowerCase() === 'true';
+      const flatFormData = currentFormData || {};
+      const { presetSector, lockSector } = resolveTemplateSector(templateId, {
+        urlPresetSector,
+        urlLockSector,
+        draftPresetSector: flatFormData.presetSector,
+        draftLockSector: flatFormData.lockSector,
+        savedFormSector: flatFormData?.['General Information']?.i14,
+      });
+
+      let formData = withSyncedRawFormData(flatFormData);
+      if (presetSector) formData.presetSector = presetSector;
+      if (lockSector) formData.lockSector = lockSector;
+
       const payload = {
         formType: templateId,
-        formData: currentFormData || {},
+        formData,
         draftId: targetDraftId,
       };
       if (currentStep) payload.currentStep = currentStep;
@@ -58,6 +77,10 @@ const SaveDraftButton = ({ templateId, currentStep, currentFormData }) => {
         // URL mid-session was the root cause of the previous bug where
         // auto-save would race with the Generate button.
         sessionDraftIdRef.current = saved._id;
+      }
+
+      if (onSavedSuccess) {
+        onSavedSuccess(payload.formData);
       }
 
       toast.success('Draft saved');

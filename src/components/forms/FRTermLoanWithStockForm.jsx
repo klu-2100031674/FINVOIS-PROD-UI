@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   DocumentTextIcon,
   CurrencyRupeeIcon,
@@ -15,6 +15,9 @@ import {
 } from '@heroicons/react/24/outline';
 
 import SaveDraftButton from '../common/SaveDraftButton';
+import { FRCC_REQUIRED_STAMP_DEFAULT, getTermLoanPreparedByErrors } from '../../utils/frccFormUi';
+import { resolveDraftSourceData, withSyncedRawFormData } from '../../utils/draftSourceData';
+import { toExcelLoanStartMonth, toExcelFirstSaleBillMonth, toMonthInputValue } from '../../utils/monthFieldFormat';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -111,7 +114,11 @@ const FRTermLoanWithStockForm = ({
   templateId = null,
   presetSector = null,
   lockSector = false,
+  onSaveDraft = null,
+  savingDraft = false,
+  onRegisterStage1SnapshotGetter = null,
 }) => {
+  const sourceData = resolveDraftSourceData(initialData);
   const defaultFormData = {
     'General Information': {
       'i7': '', // Status of Concern
@@ -136,7 +143,8 @@ const FRTermLoanWithStockForm = ({
       'j136': 'PARVEZ AND NARAYANA',
       'j137': 'Chartered Accountants',
       'j138': 'Vijayawada',
-      'j139': '9014221011'
+      'j139': '9014221011',
+      'required_stamp': FRCC_REQUIRED_STAMP_DEFAULT
     },
     'Expected Employment Generation': {
       'i24': '', 'j24': '', // Skilled
@@ -244,14 +252,14 @@ const FRTermLoanWithStockForm = ({
   };
 
   const [formData, setFormData] = useState(() => {
-    if (initialData && Object.keys(initialData).length > 0) {
+    if (sourceData && Object.keys(sourceData).length > 0) {
       const merged = { ...defaultFormData };
-      for (const key in initialData) {
-        if (Object.hasOwn(initialData, key)) {
-          if (typeof initialData[key] === 'object' && initialData[key] !== null && typeof merged[key] === 'object' && merged[key] !== null) {
-            merged[key] = { ...merged[key], ...initialData[key] };
+      for (const key in sourceData) {
+        if (Object.hasOwn(sourceData, key)) {
+          if (typeof sourceData[key] === 'object' && sourceData[key] !== null && typeof merged[key] === 'object' && merged[key] !== null) {
+            merged[key] = { ...merged[key], ...sourceData[key] };
           } else {
-            merged[key] = initialData[key];
+            merged[key] = sourceData[key];
           }
         }
       }
@@ -284,8 +292,8 @@ const FRTermLoanWithStockForm = ({
 
   // Loan percentage state for each asset category (maps to K28-K39)
   const [loanPercentages, setLoanPercentages] = useState(() => {
-    if (initialData && initialData['Asset Loan Percentages']) {
-      return initialData['Asset Loan Percentages'];
+    if (sourceData && sourceData['Asset Loan Percentages']) {
+      return sourceData['Asset Loan Percentages'];
     }
     // Default all categories to 0%
     const defaults = {};
@@ -297,8 +305,8 @@ const FRTermLoanWithStockForm = ({
 
   // Loan amount state for each asset category (direct entry)
   const [loanAmounts, setLoanAmounts] = useState(() => {
-    if (initialData && initialData['Asset Loan Amounts']) {
-      return initialData['Asset Loan Amounts'];
+    if (sourceData && sourceData['Asset Loan Amounts']) {
+      return sourceData['Asset Loan Amounts'];
     }
     // Default all categories to empty
     const defaults = {};
@@ -318,6 +326,7 @@ const FRTermLoanWithStockForm = ({
   const [assetValidationErrors, setAssetValidationErrors] = useState({});
   const [generalInfoErrors, setGeneralInfoErrors] = useState({});
   const [meansOfFinanceErrors, setMeansOfFinanceErrors] = useState({});
+  const [preparedByErrors, setPreparedByErrors] = useState({});
 
   const sections = [
     { key: 'general', title: 'General Information', icon: DocumentTextIcon },
@@ -329,19 +338,19 @@ const FRTermLoanWithStockForm = ({
   ];
 
   useEffect(() => {
-    if (onFormDataChange) {
-      onFormDataChange(formData);
+    const source = resolveDraftSourceData(initialData);
+    if (source['Asset Loan Percentages']) {
+      setLoanPercentages(source['Asset Loan Percentages']);
     }
-  }, [formData, onFormDataChange]);
-
-  // Load loan percentages from initialData if available
-  useEffect(() => {
-    if (initialData && Object.keys(initialData).length > 0) {
-      if (initialData['Asset Loan Percentages']) {
-        setLoanPercentages(initialData['Asset Loan Percentages']);
-      }
+    if (source['Asset Loan Amounts']) {
+      setLoanAmounts(source['Asset Loan Amounts']);
     }
   }, [initialData]);
+
+  const onFormDataChangeRef = useRef(onFormDataChange);
+  useEffect(() => {
+    onFormDataChangeRef.current = onFormDataChange;
+  });
 
   // Calculate loan amount from percentage (for display purposes)
   const calculateLoanAmount = (category, total) => {
@@ -628,6 +637,10 @@ const FRTermLoanWithStockForm = ({
     // Special validation for Schedule for Assets
     if (sectionKey === 'assets') {
       return true;
+    }
+
+    if (sectionKey === 'prepared_by') {
+      return Object.keys(getTermLoanPreparedByErrors(formData)).length === 0;
     }
 
     if (required.length === 0) return true;
@@ -938,7 +951,8 @@ const FRTermLoanWithStockForm = ({
         'j136': 'PARVEZ AND NARAYANA',
         'j137': 'Chartered Accountants',
         'j138': 'Vijayawada',
-        'j139': '9014221011'
+        'j139': '9014221011',
+        'required_stamp': FRCC_REQUIRED_STAMP_DEFAULT
       },
       'Expected Employment Generation': {
         'i24': '5', 'j24': '100000',
@@ -1136,6 +1150,12 @@ const FRTermLoanWithStockForm = ({
     }
 
     const skipCanProceedGate = currentSection.key === 'general' || currentSection.key === 'term';
+    if (currentSection.key === 'prepared_by') {
+      const errors = getTermLoanPreparedByErrors(formData);
+      setPreparedByErrors(errors);
+      if (Object.keys(errors).length > 0) return;
+    }
+
     if ((skipCanProceedGate || canProceed) && currentStep < sections.length - 1) {
       setCurrentStep(prev => prev + 1);
     }
@@ -1147,7 +1167,28 @@ const FRTermLoanWithStockForm = ({
     }
   };
 
-  const handleSubmit = () => {
+  const buildLoanPercentageCells = () => {
+    const cells = {};
+    const currentSections = getAssetSections(formData['Term Loan Details']?.['i46']);
+    Object.entries(currentSections).forEach(([categoryName, config]) => {
+      if (config.loanCell) {
+        cells[config.loanCell] = loanPercentages[categoryName] || 0;
+      }
+    });
+    return cells;
+  };
+
+  const buildDraftSnapshot = () => ({
+    ...formData,
+    bank_name: formData['General Information']?.bank_name,
+    branch_name: formData['General Information']?.branch_name,
+    'Schedule for Assets': { ...(formData['Schedule for Assets'] || {}) },
+    'Asset Loan Percentages': loanPercentages,
+    'Asset Loan Amounts': loanAmounts,
+    'Loan Percentage Cells': buildLoanPercentageCells(),
+  });
+
+  const buildSubmitPayload = () => {
     const extractCellData = (obj, result = {}) => {
       for (const [key, value] of Object.entries(obj)) {
         if (/^[a-z]+\d+$/i.test(key)) {
@@ -1159,133 +1200,186 @@ const FRTermLoanWithStockForm = ({
       return result;
     };
 
-    // Keep nested payload (CC-style) so ReportSectionSelector can prefill from Stage-1 sections
     const updatedFormData = {
-      ...formData,
+      ...buildDraftSnapshot(),
       'Term Loan Details': {
         ...formData['Term Loan Details']
       }
     };
 
-    // Convert month inputs to backend-compatible formats
-    if (updatedFormData['Term Loan Details']?.['i52'] && updatedFormData['Term Loan Details']['i52'].includes('-')) {
-      const [year, month] = updatedFormData['Term Loan Details']['i52'].split('-');
-      if (year && month) {
-        updatedFormData['Term Loan Details']['i52'] = `${month.padStart(2, '0')}-01-${year}`;
-      }
+    const loanStartMonth = updatedFormData['Term Loan Details']?.['i52'];
+    if (loanStartMonth) {
+      updatedFormData['Term Loan Details']['i52'] = toExcelLoanStartMonth(loanStartMonth);
     }
-    if (updatedFormData['Term Loan Details']?.['i53'] && updatedFormData['Term Loan Details']['i53'].includes('-')) {
-      const [year, month] = updatedFormData['Term Loan Details']['i53'].split('-');
-      const date = new Date(year, month - 1, 1);
-      const monthName = date.toLocaleString('en-US', { month: 'short' });
-      updatedFormData['Term Loan Details']['i53'] = `${monthName}-${year.slice(-2)}`;
+    const firstSaleMonth = updatedFormData['Term Loan Details']?.['i53'];
+    if (firstSaleMonth) {
+      updatedFormData['Term Loan Details']['i53'] = toExcelFirstSaleBillMonth(firstSaleMonth);
     }
 
-    // Also prepare flattened excelData for compatibility with existing backend handling
     const excelData = extractCellData(updatedFormData);
 
-    // Build loan percentages mapping for Excel cells K28-K39
-    const loanPercentageCells = {};
-    const currentSections = getAssetSections(formData['Term Loan Details']?.['i46']);
-    Object.entries(currentSections).forEach(([categoryName, config]) => {
-      if (config.loanCell) {
-        loanPercentageCells[config.loanCell] = loanPercentages[categoryName] || 0;
-      }
-    });
-
-    onSubmit({
+    return {
       ...updatedFormData,
       rawFormData: JSON.parse(JSON.stringify(formData)),
       excelData,
-      bank_name: formData['General Information']['bank_name'],
-      branch_name: formData['General Information']['branch_name'],
-      'Asset Loan Percentages': loanPercentages,
-      'Loan Percentage Cells': loanPercentageCells
-    });
+    };
+  };
+
+  const getDraftSnapshot = () => withSyncedRawFormData(buildDraftSnapshot());
+
+  const lastSyncedSnapshotRef = useRef('');
+  useEffect(() => {
+    if (!onFormDataChangeRef.current) return;
+    const snapshot = getDraftSnapshot();
+    const signature = JSON.stringify(snapshot);
+    if (lastSyncedSnapshotRef.current === signature) return;
+    lastSyncedSnapshotRef.current = signature;
+    onFormDataChangeRef.current(snapshot);
+  }, [formData, loanPercentages, loanAmounts]);
+
+  useEffect(() => {
+    if (!onRegisterStage1SnapshotGetter) return;
+    onRegisterStage1SnapshotGetter(getDraftSnapshot);
+    return () => onRegisterStage1SnapshotGetter(null);
+  }, [onRegisterStage1SnapshotGetter]);
+
+  const handleSubmit = () => {
+    const errors = getTermLoanPreparedByErrors(formData);
+    setPreparedByErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+    onSubmit(buildSubmitPayload());
   };
 
 
 
 
 
-  const renderPreparedBy = () => (
+  const renderPreparedBy = () => {
+    const errors = getTermLoanPreparedByErrors(formData);
+    const fieldBorder = (key) => (errors[key] ? 'border-red-400' : 'border-gray-300');
+
+    return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Partner Name 1 (Prepared By)
+            Name 1 (Prepared By)
           </label>
           <input
             type="text"
             value={(formData['Prepared By'] && formData['Prepared By']['j136']) || ''}
             onChange={(e) => handleFieldChange('Prepared By', 'j136', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-            placeholder="Enter partner name 1"
+            placeholder="Enter name 1"
           />
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Partner Name 2 (Prepared By)
+            Name 2 (Prepared By)
           </label>
           <input
             type="text"
             value={(formData['Prepared By'] && formData['Prepared By']['j137']) || ''}
             onChange={(e) => handleFieldChange('Prepared By', 'j137', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-            placeholder="Enter partner name 2"
+            placeholder="Enter name 2"
           />
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Address (Prepared By)
+            Address (Prepared By) <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
             value={(formData['Prepared By'] && formData['Prepared By']['j138']) || ''}
             onChange={(e) => handleFieldChange('Prepared By', 'j138', e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            className={`w-full px-3 py-2 text-sm border ${fieldBorder('j138')} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
             placeholder="Enter address"
           />
+          {errors.j138 && <p className="text-xs text-red-600">{errors.j138}</p>}
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Mobile Number (Prepared By)
+            Mobile Number (Prepared By) <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
             value={(formData['Prepared By'] && formData['Prepared By']['j139']) || ''}
             onChange={(e) => handleFieldChange('Prepared By', 'j139', e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            className={`w-full px-3 py-2 text-sm border ${fieldBorder('j139')} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
             placeholder="Enter mobile number"
           />
+          {errors.j139 && <p className="text-xs text-red-600">{errors.j139}</p>}
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Bank Name / Department Name
+            Bank Name / Department Name <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
             value={formData['General Information']['bank_name'] || ''}
             onChange={(e) => handleFieldChange('General Information', 'bank_name', e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            className={`w-full px-3 py-2 text-sm border ${fieldBorder('bank_name')} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
             placeholder="Enter bank or department name"
           />
+          {errors.bank_name && <p className="text-xs text-red-600">{errors.bank_name}</p>}
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Branch Name
+            Branch Name <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
             value={formData['General Information']['branch_name'] || ''}
             onChange={(e) => handleFieldChange('General Information', 'branch_name', e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            className={`w-full px-3 py-2 text-sm border ${fieldBorder('branch_name')} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
             placeholder="Enter branch name"
           />
+          {errors.branch_name && <p className="text-xs text-red-600">{errors.branch_name}</p>}
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            Banker Mail ID
+          </label>
+          <input
+            type="email"
+            value={(formData['Prepared By'] && formData['Prepared By']['banker_mail_id']) || ''}
+            onChange={(e) => handleFieldChange('Prepared By', 'banker_mail_id', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="Enter banker email"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            CIBIL Score
+          </label>
+          <input
+            type="text"
+            value={(formData['Prepared By'] && formData['Prepared By']['cibil_score']) || ''}
+            onChange={(e) => handleFieldChange('Prepared By', 'cibil_score', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="Enter CIBIL score"
+          />
+        </div>
+        <div className="space-y-1.5 md:col-span-2">
+          <label className="block text-xs font-semibold text-gray-800">
+            Required Stamp <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={(formData['Prepared By'] && formData['Prepared By']['required_stamp']) || 'No'}
+            onChange={(e) => handleFieldChange('Prepared By', 'required_stamp', e.target.value)}
+            className={`w-full md:w-1/2 px-3 py-2 text-sm border ${fieldBorder('required_stamp')} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
+          >
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+          {errors.required_stamp && <p className="text-xs text-red-600">{errors.required_stamp}</p>}
+          <span className="text-xs text-gray-500 block">Select whether CA stamp is required on the report</span>
         </div>
       </div>
     </div>
-  );
+    );
+  };
 
   const renderCurrentStep = () => {
     switch (sections[currentStep].key) {
@@ -1672,7 +1766,7 @@ const FRTermLoanWithStockForm = ({
               <input
                 type="month"
                 className="w-full p-2 border border-gray-300 rounded-md"
-                value={formData['Term Loan Details']['i52']}
+                value={toMonthInputValue(formData['Term Loan Details']['i52'])}
                 onChange={(e) => handleFieldChange('Term Loan Details', 'i52', e.target.value)}
               />
             </div>
@@ -1681,7 +1775,7 @@ const FRTermLoanWithStockForm = ({
               <input
                 type="month"
                 className="w-full p-2 border border-gray-300 rounded-md"
-                value={formData['Term Loan Details']['i53']}
+                value={toMonthInputValue(formData['Term Loan Details']['i53'])}
                 onChange={(e) => handleFieldChange('Term Loan Details', 'i53', e.target.value)}
               />
             </div>
@@ -2165,17 +2259,28 @@ const FRTermLoanWithStockForm = ({
           </button>
 
           <div className="flex gap-3">
-            <SaveDraftButton 
-              templateId={templateId} 
-              currentStep={`/stage1?templateId=${templateId}`} 
-              currentFormData={formData} 
-            />
+            {onSaveDraft ? (
+              <button
+                type="button"
+                onClick={() => onSaveDraft(getDraftSnapshot())}
+                disabled={savingDraft}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {savingDraft ? 'Saving…' : 'Save & draft'}
+              </button>
+            ) : (
+              <SaveDraftButton
+                templateId={templateId}
+                currentStep={`/stage1?templateId=${templateId}`}
+                currentFormData={getDraftSnapshot()}
+              />
+            )}
             {currentStep === sections.length - 1 ? (
               <button
                 type="button"
                 className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                 onClick={handleSubmit}
-                disabled={isProcessing}
+                disabled={isProcessing || !canProceed}
               >
                 {isProcessing ? (
                   <>
@@ -2206,7 +2311,7 @@ const FRTermLoanWithStockForm = ({
           </div>
         </div>
 
-        {!canProceed && currentStep < sections.length - 1 && (
+        {!canProceed && (
           <div className="mt-3 text-xs text-red-600 text-center">
             Please fill all required fields to proceed
           </div>

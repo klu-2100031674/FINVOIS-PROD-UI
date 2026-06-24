@@ -675,13 +675,18 @@ const Stage1Page = () => {
     if (isTermLoan) {
       setShowAnalysisModal(true);
     } else {
-      // Show payment modal for regular users
-      setReportTitle(resolvedTitle);
-      setShowPaymentModal(true);
+      if (isAdminMode) {
+        // Direct call to generateReport since admin gets free generation and bypasses payment modal
+        await generateReport(null, null, null);
+      } else {
+        // Show payment modal for regular users
+        setReportTitle(resolvedTitle);
+        setShowPaymentModal(true);
+      }
     }
   };
 
-  const handleAnalysisConfirm = (data) => {
+  const handleAnalysisConfirm = async (data) => {
     setAnalysisData(data);
     setShowAnalysisModal(false);
 
@@ -692,10 +697,14 @@ const Stage1Page = () => {
     });
     setReportTitle(resolvedTitle);
     
-    // Pass analysis selections to payment modal
-    setInitialSheetSelections(data.allSelections || {});
-    
-    setShowPaymentModal(true);
+    if (isAdminMode) {
+      // Directly call generateReport for admin, bypassing payment modal
+      await generateReport(null, data, data.selectedSheets);
+    } else {
+      // Pass analysis selections to payment modal
+      setInitialSheetSelections(data.allSelections || {});
+      setShowPaymentModal(true);
+    }
   };
 
   const uploadRelatedDocumentsForReport = useCallback(async (targetReportId) => {
@@ -839,7 +848,7 @@ const Stage1Page = () => {
             variant={isEditMode ? "outline" : "primary"}
             size="md"
           >
-            {isEditMode ? "Exit Edit Mode" : "Edit Financial Generated"}
+            {isEditMode ? "Exit Edit Mode" : "Edit Financials Generated"}
           </Button>
         )}
         <Button

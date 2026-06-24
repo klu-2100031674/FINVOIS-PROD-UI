@@ -154,7 +154,7 @@ const AdminFreeCreditsPage = () => {
             <Gift className="w-6 h-6 text-purple-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-800 font-['Manrope']">Free Report Credits</h1>
+            <h1 className="text-2xl font-bold text-gray-800 font-['Manrope']">Free Reports</h1>
             <p className="text-gray-500 text-sm">Manage per-user free credits</p>
           </div>
         </div>
@@ -225,7 +225,7 @@ const AdminFreeCreditsPage = () => {
                     <th className="text-left py-3 px-5 font-semibold text-gray-600">Name</th>
                     <th className="text-left py-3 px-5 font-semibold text-gray-600">Email</th>
                     <th className="text-left py-3 px-5 font-semibold text-gray-600">Role</th>
-                    <th className="text-center py-3 px-5 font-semibold text-gray-600">Free Credits</th>
+                    <th className="text-center py-3 px-5 font-semibold text-gray-600">Free Reports</th>
                   </tr>
                 </thead>
                 <tbody>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
   DollarSign, 
@@ -15,8 +16,14 @@ import useAuth from '../../hooks/useAuth';
 import api from '../../api/apiClient';
 import toast from 'react-hot-toast';
 
-const StatCard = ({ title, value, icon: Icon, trend, trendValue, bgColor = 'bg-purple-500' }) => (
-  <div className="bg-white rounded-lg shadow-md p-6">
+const StatCard = ({ title, value, icon: Icon, trend, trendValue, bgColor = 'bg-purple-500', onClick }) => (
+  <div
+    className={`bg-white rounded-lg shadow-md p-6 ${onClick ? 'cursor-pointer hover:shadow-lg transition-shadow' : ''}`}
+    onClick={onClick}
+    onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); } : undefined}
+    role={onClick ? 'button' : undefined}
+    tabIndex={onClick ? 0 : undefined}
+  >
     <div className="flex items-center justify-between">
       <div>
         <p className="text-gray-500 text-sm font-medium">{title}</p>
@@ -114,6 +121,7 @@ const PendingWithdrawals = ({ withdrawals }) => (
 
 const AgentDashboardPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalReferrals: 0,
     totalCommissions: 0,
@@ -260,6 +268,7 @@ const AgentDashboardPage = () => {
           trend="up"
           trendValue="+2 this week"
           bgColor="bg-purple-500"
+          onClick={() => navigate('/agent/referrals')}
         />
         <StatCard
           title="Total Commissions"

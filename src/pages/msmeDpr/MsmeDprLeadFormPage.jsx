@@ -6,12 +6,14 @@ import {
   MSME_DPR_GENDER_OPTIONS,
   MSME_DPR_LOAN_TYPE_OPTIONS,
   MSME_DPR_RURAL_URBAN_OPTIONS,
+  MSME_DPR_NEED_CA_STAMP_OPTIONS,
 } from '@/constants/msmeDprSchemes';
 import {
   LANGUAGES,
   FORM_COPY,
   MSME_WEBSITE_URL,
   getOptionLabel,
+  MSME_DPR_TEST_FORM,
 } from '@/constants/msmeDprFormTranslations';
 
 const INITIAL_FORM = {
@@ -25,6 +27,7 @@ const INITIAL_FORM = {
   villageCity: '',
   mandal: '',
   district: '',
+  needCaStamp: '',
   description: '',
 };
 
@@ -58,6 +61,11 @@ const MsmeDprLeadFormPage = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleFillTestData = () => {
+    setForm({ ...MSME_DPR_TEST_FORM });
+    setError('');
   };
 
   const handleSubmit = async (e) => {
@@ -101,6 +109,15 @@ const MsmeDprLeadFormPage = () => {
               ))}
             </select>
           </div>
+          {!success && (
+            <button
+              type="button"
+              onClick={handleFillTestData}
+              className="px-4 py-2 text-sm font-medium text-orange-600 border border-orange-300 rounded-lg hover:bg-orange-50 transition-colors"
+            >
+              {copy.fillTestData}
+            </button>
+          )}
         </div>
 
         <p className="text-xs font-semibold uppercase tracking-wider text-orange-600 mb-1">
@@ -278,6 +295,23 @@ const MsmeDprLeadFormPage = () => {
                 placeholder={copy.placeholderDistrict}
                 className={inputClass}
               />
+            </FormField>
+
+            <FormField label={copy.needCaStamp} required>
+              <select
+                name="needCaStamp"
+                value={form.needCaStamp}
+                onChange={handleChange}
+                required
+                className={selectClass}
+              >
+                <option value="">{copy.selectNeedCaStamp}</option>
+                {MSME_DPR_NEED_CA_STAMP_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {getOptionLabel(language, 'needCaStamp', opt)}
+                  </option>
+                ))}
+              </select>
             </FormField>
 
             <FormField label={copy.description} required>

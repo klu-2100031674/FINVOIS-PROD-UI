@@ -456,6 +456,13 @@ const ensureVmReady = async () => {
                     </div>
                   ) : 'Log In'}
                 </button>
+
+                <p className="text-center text-sm text-gray-500 mt-4 font-['Inter']">
+                  Sales team?{' '}
+                  <Link to="/crm/login" className="text-violet-600 hover:text-violet-700 font-medium">
+                    CRM Portal →
+                  </Link>
+                </p>
               </form>
             )}
 

@@ -250,7 +250,7 @@ const MsmeDprDashboard = ({
     ? 'No submissions match the selected filters.'
     : 'No submissions yet.';
 
-  const tableColSpan = showServiceAvailed ? 12 : 11;
+  const tableColSpan = showServiceAvailed ? 13 : 12;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
@@ -552,6 +552,7 @@ const MsmeDprDashboard = ({
                     <th className="px-3 py-3">Village / City</th>
                     <th className="px-3 py-3">Mandal</th>
                     <th className="px-3 py-3">District</th>
+                    <th className="px-3 py-3">Need CA Stamp</th>
                     {showServiceAvailed && <th className="px-3 py-3">Service Availed</th>}
                   </tr>
                 </thead>
@@ -590,6 +591,7 @@ const MsmeDprDashboard = ({
                           <td className="px-3 py-3 text-gray-600">{s.villageCity}</td>
                           <td className="px-3 py-3 text-gray-600">{s.mandal}</td>
                           <td className="px-3 py-3 text-gray-600">{s.district}</td>
+                          <td className="px-3 py-3 text-gray-600">{s.needCaStamp || 'No'}</td>
                           {showServiceAvailed && (
                             <td className="px-3 py-3">
                               <ServiceAvailedToggle
@@ -661,6 +663,9 @@ const MsmeDprDashboard = ({
                       </p>
                       <p>
                         <span className="font-medium text-gray-700">District:</span> {s.district}
+                      </p>
+                      <p>
+                        <span className="font-medium text-gray-700">Need CA Stamp:</span> {s.needCaStamp || 'No'}
                       </p>
                       {s.description && (
                         <p>

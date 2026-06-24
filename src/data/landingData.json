@@ -37,12 +37,7 @@
       },
       {
         "label": "Calculators",
-        "dropdown": [
-          {
-            "label": "EMI Calculator",
-            "href": "/calculators/emi-calculator"
-          }
-        ]
+        "href": "/calculators/emi-calculator"
       },
       {
         "label": "FAQ",

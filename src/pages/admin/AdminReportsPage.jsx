@@ -38,6 +38,8 @@ import { useAuth } from '../../hooks';
 import api from '../../api/apiClient';
 import { companyAPI } from '../../api/endpoints';
 import toast from 'react-hot-toast';
+import { reportRequiresCaStamp } from '../../utils/frccFormUi';
+import caIndiaStamp from '../../assets/CA_INDIA.jpg';
 
 const getReportCompanyName = (report) => {
   if (report?.companyId?.companyName) return report.companyId.companyName;
@@ -45,6 +47,24 @@ const getReportCompanyName = (report) => {
   if (report?.user_id?.company_name) return report.user_id.company_name;
   return null;
 };
+
+const isFrccReport = (templateId) => {
+  const match = String(templateId || '').toUpperCase().match(/CC(\d+)/);
+  if (match) {
+    const ccNumber = parseInt(match[1], 10);
+    return ccNumber >= 1 && ccNumber <= 7;
+  }
+  return [
+    'TERM_LOAN_CC',
+    'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK',
+    'TERM_LOAN_SERVICE_WITHOUT_STOCK'
+  ].includes(String(templateId).trim().toUpperCase());
+};
+
+const getFrcc1StampEnabled = (report) => report?.report_metadata?.frcc1PlbsStampEnabled === true;
+
+const showCaStampSlot = (validationStatus) =>
+  validationStatus === 'approved' || validationStatus === 'under_review';
 
 const VALIDATION_STATUSES = [
   { value: '', label: 'All Reports', icon: FileText, color: 'gray' },
@@ -115,6 +135,7 @@ const AdminReportsPage = () => {
   // Bulk selection
   const [selectedReports, setSelectedReports] = useState([]);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [stampTogglingId, setStampTogglingId] = useState(null);
 
   const displayStats = useMemo(() => {
     const pending = (stats.pending ?? 0) + STATS_OFFSETS.pending;
@@ -221,6 +242,68 @@ const AdminReportsPage = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     fetchReports(1);
+  };
+
+  const handleFrcc1StampToggle = async (report, enabled) => {
+    if (!report?._id) return;
+    const previousEnabled = getFrcc1StampEnabled(report);
+
+    setReports((prev) =>
+      prev.map((item) =>
+        item._id === report._id
+          ? {
+              ...item,
+              report_metadata: {
+                ...(item.report_metadata || {}),
+                frcc1PlbsStampEnabled: enabled,
+              },
+            }
+          : item
+      )
+    );
+
+    try {
+      setStampTogglingId(report._id);
+      const response = await api.patch(`/admin-reports/${report._id}/frcc1-stamp`, { enabled });
+      const nextEnabled = response.data?.data?.frcc1PlbsStampEnabled === true;
+      setReports((prev) =>
+        prev.map((item) =>
+          item._id === report._id
+            ? {
+                ...item,
+                report_metadata: {
+                  ...(item.report_metadata || {}),
+                  frcc1PlbsStampEnabled: nextEnabled,
+                },
+                pdf_file_url: response.data?.data?.pdf_file_url || item.pdf_file_url,
+              }
+            : item
+        )
+      );
+      toast.success(
+        enabled
+          ? 'CA stamp applied to report PDF'
+          : 'CA stamp removed from PDF'
+      );
+    } catch (error) {
+      const apiError = error.response?.data?.error || error.response?.data?.message;
+      setReports((prev) =>
+        prev.map((item) =>
+          item._id === report._id
+            ? {
+                ...item,
+                report_metadata: {
+                  ...(item.report_metadata || {}),
+                  frcc1PlbsStampEnabled: previousEnabled,
+                },
+              }
+            : item
+        )
+      );
+      toast.error(apiError || 'Failed to update CA stamp');
+    } finally {
+      setStampTogglingId(null);
+    }
   };
 
   const handleApprove = async () => {
@@ -497,7 +580,7 @@ const AdminReportsPage = () => {
     };
     const config = statusConfig[status] || statusConfig.draft;
     return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-full ${config.bg} ${config.text}`}>
+      <span className={`inline-block max-w-full truncate px-2 py-1 text-xs font-medium rounded-full ${config.bg} ${config.text}`} title={config.label}>
         {config.label}
       </span>
     );
@@ -780,9 +863,9 @@ const AdminReportsPage = () => {
                 )}
                 <div className={activeTab === 'pending_validation' ? 'col-span-3' : 'col-span-4'}>Report</div>
                 <div className="col-span-2">User</div>
-                <div className="col-span-2">Date</div>
+                <div className="col-span-1">Date</div>
                 <div className="col-span-2">Status</div>
-                <div className="col-span-2 text-right">Actions</div>
+                <div className="col-span-3 text-right">Actions</div>
               </div>
 
               {/* Report Rows */}
@@ -821,6 +904,11 @@ const AdminReportsPage = () => {
                         <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full truncate" title={report.templateId || report.report_type}>
                           {report.templateId || report.report_type}
                         </span>
+                        {reportRequiresCaStamp(report) && (
+                          <span className="text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+                            Required CA Stamp
+                          </span>
+                        )}
                         {report.client_name && (
                           <span className="text-xs text-gray-500 truncate" title={report.client_name}>• {report.client_name}</span>
                         )}
@@ -848,55 +936,81 @@ const AdminReportsPage = () => {
                     </div>
 
                     {/* Date */}
-                    <div className="col-span-2">
-                      <p className="text-sm text-gray-600">
-                        {new Date(report.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
+                    <div className="col-span-1 min-w-0 flex flex-col justify-center">
+                      <p className="text-sm text-gray-600 truncate">
+                        {new Date(report.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
                       </p>
-                      <p className="text-xs text-gray-400">
-                        {new Date(report.createdAt).toLocaleTimeString('en-IN', { timeStyle: 'short' })}
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">
+                        {new Date(report.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
                       </p>
                     </div>
 
                     {/* Status */}
-                    <div className="col-span-2">
+                    <div className="col-span-2 min-w-0 pr-2">
                       {getStatusBadge(report.validation_status)}
                     </div>
 
-                    {/* Actions */}
-                    <div className="col-span-2 flex items-center justify-end gap-2">
-                      {/* View PDF */}
+                    {/* Actions — fixed stamp slot keeps buttons aligned across rows */}
+                    <div className="col-span-3 flex items-center justify-end gap-1.5 min-w-0">
+                      {showCaStampSlot(report.validation_status) && (
+                        <div className="w-10 h-9 shrink-0 flex items-center justify-center">
+                          {isFrccReport(report.templateId) ? (
+                            <button
+                              type="button"
+                              title="CA Stamp"
+                              aria-pressed={getFrcc1StampEnabled(report)}
+                              disabled={stampTogglingId === report._id}
+                              onClick={() =>
+                                handleFrcc1StampToggle(report, !getFrcc1StampEnabled(report))
+                              }
+                              className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:cursor-wait"
+                            >
+                              {stampTogglingId === report._id ? (
+                                <Loader2 size={14} className="animate-spin text-purple-600" />
+                              ) : (
+                                <img
+                                  src={caIndiaStamp}
+                                  alt="CA India stamp"
+                                  className={`h-7 w-auto object-contain transition-opacity duration-200 ${
+                                    getFrcc1StampEnabled(report) ? 'opacity-100' : 'opacity-20'
+                                  }`}
+                                />
+                              )}
+                            </button>
+                          ) : null}
+                        </div>
+                      )}
+
                       {report.pdf_file_url && (
                         <button
                           onClick={() => handleViewPdf(report)}
-                          className="p-2 text-[#7e22ce] hover:bg-purple-50 rounded-lg transition-colors"
+                          className="p-2 text-[#7e22ce] hover:bg-purple-50 rounded-lg transition-colors shrink-0"
                           title="View PDF"
                         >
                           <Eye size={18} />
                         </button>
                       )}
 
-                      {/* Download Excel */}
                       <button
                         onClick={() => handleDownloadExcel(report)}
-                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors shrink-0"
                         title="Download Excel"
                       >
                         <FileSpreadsheet size={18} />
                       </button>
 
-                      {/* Approve/Reject buttons - only for under_review status (must start review first) */}
                       {report.validation_status === 'under_review' && (
                         <>
                           <button
                             onClick={() => { setSelectedReport(report); setShowApproveModal(true); }}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors shrink-0"
                             title="Approve"
                           >
                             <Check size={18} />
                           </button>
                           <button
                             onClick={() => { setSelectedReport(report); setShowRejectModal(true); }}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0"
                             title="Reject"
                           >
                             <X size={18} />
@@ -904,11 +1018,10 @@ const AdminReportsPage = () => {
                         </>
                       )}
 
-                      {/* Mark as Under Review - Start Review button */}
                       {report.validation_status === 'pending_validation' && (
                         <button
                           onClick={() => handleMarkUnderReview(report)}
-                          className="flex items-center gap-1 px-3 py-1.5 text-sm text-[#7e22ce] bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200"
+                          className="flex items-center gap-1 px-3 py-1.5 text-sm text-[#7e22ce] bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200 shrink-0"
                           title="Start Review"
                         >
                           <AlertCircle size={16} />
@@ -916,21 +1029,19 @@ const AdminReportsPage = () => {
                         </button>
                       )}
 
-                      {/* Upload Revised Excel - only for under_review status */}
-                      {report.validation_status === 'under_review' && (
+                      {(report.validation_status === 'under_review' || report.validation_status === 'approved') && (
                         <button
                           onClick={() => handleOpenUploadModal(report)}
-                          className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                          className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors shrink-0"
                           title="Upload Revised Excel"
                         >
                           <Upload size={18} />
                         </button>
                       )}
 
-                      {/* Expand */}
                       <button
                         onClick={() => setExpandedReport(expandedReport === report._id ? null : report._id)}
-                        className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
                       >
                         {expandedReport === report._id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                       </button>
@@ -940,7 +1051,7 @@ const AdminReportsPage = () => {
                   {/* Expanded Details */}
                   {expandedReport === report._id && (
                     <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                      <div className={`grid grid-cols-1 gap-6 ${report.user_comment ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
+                      <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
                         {/* User Details */}
                         <div>
                           <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
@@ -978,8 +1089,8 @@ const AdminReportsPage = () => {
 
                         {/* Validation Info */}
                         <div>
-                          <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                            <CheckCircle size={16} className="mr-2" />
+                          <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center flex-wrap gap-2">
+                            <CheckCircle size={16} className="mr-1" />
                             Validation Info
                           </h4>
                           <div className="space-y-1 text-sm">
@@ -997,21 +1108,23 @@ const AdminReportsPage = () => {
                         </div>
 
                         {/* User Comment */}
-                        {report.user_comment && (
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                              <MessageSquare size={16} className="mr-2" />
-                              User Comment
-                            </h4>
-                            <div className="space-y-1 text-sm bg-white p-3 rounded-lg border border-gray-200 min-h-[80px]">
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                            <MessageSquare size={16} className="mr-2" />
+                            User Comment
+                          </h4>
+                          <div className="space-y-1 text-sm bg-white p-3 rounded-lg border border-gray-200 min-h-[80px]">
+                            {report.user_comment ? (
                               <p className="text-gray-700 whitespace-pre-wrap">{report.user_comment}</p>
-                            </div>
+                            ) : (
+                              <p className="text-gray-400 italic">No notes entered by user during generation</p>
+                            )}
                           </div>
-                        )}
+                        </div>
 
                         {/* Term Loan Analysis Options */}
                         {(report.requested_sheets?.length > 0 || report.analysis_options) && (
-                          <div className={`col-span-1 mt-4 pt-4 border-t border-gray-200 ${report.user_comment ? 'md:col-span-4' : 'md:col-span-3'}`}>
+                          <div className="col-span-1 mt-4 pt-4 border-t border-gray-200 md:col-span-4">
                             <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
                               <Settings size={16} className="mr-2" />
                               Requested Analysis & Parameters

@@ -25,3 +25,5 @@ export const MSME_DPR_RURAL_URBAN_OPTIONS = [
   'Rural(Panchayat)',
   'Urban(Other than Panchayat)',
 ];
+
+export const MSME_DPR_NEED_CA_STAMP_OPTIONS = ['Yes', 'No'];

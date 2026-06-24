@@ -16,6 +16,10 @@ import {
 } from '@heroicons/react/24/outline';
 
 import SaveDraftButton from '../common/SaveDraftButton';
+import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_CIBIL_FIELD, isFrccPreparedByValid } from '../../utils/frccFormUi';
+import { toFrccExcelMonthDate, toMonthInputValue } from '../../utils/monthFieldFormat';
+
+const parseNumberInput = (val) => val === '' ? '' : (val.endsWith('.') || val.endsWith('.0') ? val : (isNaN(parseFloat(val)) ? val : parseFloat(val)));
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -82,7 +86,8 @@ const FRCC7Form = ({
       i161: 'vijayawada',
       i162: '9014221011',
       bank_name: '',
-      branch_name: ''
+      branch_name: '',
+      required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
     }
   });
 
@@ -107,7 +112,7 @@ const FRCC7Form = ({
         { id: 'i3',          label: 'Name of Firm',                   type: 'text',     required: true },
         { id: 'i4',          label: 'Status of Concern',              type: 'select',   options: ['Soleproprietorship', 'Partnership', 'LLP', 'Company'], required: true },
         { id: 'i5',          label: 'Name of Authorised Person',      type: 'text',     required: true },
-        { id: 'i6',          label: 'Firm Address',                   type: 'textarea', required: true },
+        { id: 'i6',          label: 'Business Address',               type: 'textarea', required: true },
         { id: 'i7',          label: 'Contact No. of Authorised Person', type: 'text',   required: true },
         { id: 'i8',          label: 'Sector',                         type: 'select',   options: ['Manufacturing sector', 'Service sector (with stock)', 'Trading sector'], required: true },
         { id: 'i9',          label: 'Nature of Business',             type: 'text',     required: true },
@@ -124,8 +129,8 @@ const FRCC7Form = ({
         { id: 'i12', label: 'Are you going for Working Capital limit Top-up from present limit?', type: 'select', options: ['Yes', 'No'],      required: true, disabled: true },
         { id: 'i13', label: 'Present Working Capital Loan Limit (Lakhs)',                 type: 'number', min: 0,                              required: true },
         { id: 'i14', label: 'Working Capital Loan Requirement (Lakhs)',                   type: 'number', min: 0,                              required: true },
-        { id: 'h15', label: 'Working Capital Loan Interest (% per annum)',                type: 'number', min: 0, max: 100, step: 0.01,        required: true },
-        { id: 'h16', label: 'Processing Fees (Including GST) (%)',                        type: 'number', min: 0,          step: 0.01,         required: true },
+        { id: 'h15', label: 'Working Capital Loan Interest %',                            type: 'number', min: 0, max: 100, step: 0.01,        required: true },
+        { id: 'h16', label: 'Processing Fees (%)',                                        type: 'number', min: 0,          step: 0.01,         required: true },
         { id: 'h17', label: 'Working Capital (% on Turnover)',                            type: 'number', min: 15, max: 100, step: 0.01,       required: true },
         { id: 'i18', label: 'Are you going for Fresh Term Loan in the Present Financial Year?', type: 'select', options: ['Yes', 'No'],        required: true, disabled: true },
       ]
@@ -159,11 +164,11 @@ const FRCC7Form = ({
         { id: 'i35', label: 'Direct Material & Expenses',                                  type: 'number', min: 0,  required: true },
         { id: 'i36', label: 'Closing Stock',                                               type: 'number', min: 0,  required: true },
         { id: 'i37', label: 'Non Operating Income',                                        type: 'number', min: 0,  required: true },
-        { id: 'i38', label: 'Electricity',                                                 type: 'number', min: 0,  required: true },
+        { id: 'i38', label: 'Electricity/Power Expense',                                   type: 'number', min: 0,  required: true },
         { id: 'i39', label: 'Depreciation',                                                type: 'number', min: 0,  required: true },
-        { id: 'i40', label: 'Rent',                                                        type: 'number', min: 0,  required: true },
+        { id: 'i40', label: 'Rent/Lease Expenses',                                         type: 'number', min: 0,  required: true },
         { id: 'i41', label: 'Salaries & Wages',                                            type: 'number', min: 0,  required: true },
-        { id: 'i42', label: 'Processing Fees (Including GST)',                             type: 'number', min: 0,  required: true },
+        { id: 'i42', label: 'Processing fees',                                             type: 'number', min: 0,  required: true },
         { id: 'i43', label: 'Interest on CC / OD Loan',                                   type: 'number', min: 0,  required: true },
         { id: 'i44', label: 'Interest on Other Loans',                                    type: 'number', min: 0,  required: true },
         { id: 'i45', label: 'Net Profit Before Tax',                                      type: 'number',          required: true },
@@ -198,7 +203,7 @@ const FRCC7Form = ({
         { id: 'i75', label: 'Term Loan Tenure (Years)',                           type: 'number', min: 0,             required: true },
         { id: 'i76', label: 'Repayment Type',                                    type: 'select', options: ['Fixed EMI', 'Fixed Principal'], required: true },
         { id: 'i77', label: 'Moratorium Period, if any (Months)',                type: 'number', min: 0,             required: true },
-        { id: 'h78', label: 'Processing Fees Rate (Including GST) (%)',          type: 'number', min: 0, step: 0.01, required: true },
+        { id: 'h78', label: 'Processing Fees Rate (%)',                          type: 'number', min: 0, step: 0.01, required: true },
         { id: 'i79', label: 'Interest Period',                                   type: 'select', options: ['Monthly ', 'Quarterly', 'Half yearly'], required: true },
         { id: 'i80', label: 'Loan Start Month (Month immediately after sanction)', type: 'month',                   required: true, note: 'Select month and year (displays as Apr-27)' },
       ]
@@ -208,12 +213,15 @@ const FRCC7Form = ({
       title: 'Prepared By',
       icon: UserIcon,
       fields: [
-        { id: 'i159',        label: 'Name 1 (Prepared By)',        type: 'text', required: true  },
-        { id: 'i160',        label: 'Name 2 (Prepared By)',        type: 'text', required: false },
-        { id: 'i161',        label: 'Address (Prepared By)',       type: 'text', required: true  },
-        { id: 'i162',        label: 'Mobile Number (Prepared By)', type: 'text', required: true  },
-        { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text', required: true  },
-        { id: 'branch_name', label: 'Branch Name',                 type: 'text', required: true  },
+        { id: 'i159', label: 'Name 1 (Prepared By)', type: 'text', required: false },
+        { id: 'i160', label: 'Name 2 (Prepared By)', type: 'text', required: false },
+        { id: 'i161', label: 'Address (Prepared By)', type: 'text', required: true },
+        { id: 'i162', label: 'Mobile Number (Prepared By)', type: 'text', required: true },
+        { id: 'bank_name', label: 'Bank Name / Department Name', type: 'text', required: true },
+        { id: 'branch_name', label: 'Branch Name', type: 'text', required: true },
+        PREPARED_BY_BANKER_MAIL_FIELD,
+        PREPARED_BY_CIBIL_FIELD,
+        FRCC_REQUIRED_STAMP_FIELD,
       ]
     },
   ];
@@ -371,7 +379,8 @@ const FRCC7Form = ({
       'Prepared By': {
         i159: 'PARVEZ AND NARAYANA', i160: 'Chartered Accountants',
         i161: 'Hyderabad', i162: '9014221011',
-        bank_name: 'ICICI Bank', branch_name: 'Industrial Branch'
+        bank_name: 'ICICI Bank', branch_name: 'Industrial Branch',
+        required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
       }
     });
   }, []);
@@ -390,9 +399,8 @@ const FRCC7Form = ({
     });
 
     // i80: convert YYYY-MM → 01-MM-YYYY so Excel interprets as a date
-    if (excelData['i80'] && /^\d{4}-\d{2}$/.test(String(excelData['i80']))) {
-      const [year, month] = String(excelData['i80']).split('-');
-      excelData['i80'] = `01-${month}-${year}`;
+    if (excelData['i80']) {
+      excelData['i80'] = toFrccExcelMonthDate(excelData['i80']);
     }
 
     // Prepared By cell refs (i159-i162)
@@ -430,6 +438,10 @@ const FRCC7Form = ({
   };
 
   const handleSubmit = useCallback(async () => {
+    if (!validateCurrentSection()) {
+      alert('Please fill all required fields before submitting.');
+      return;
+    }
     try {
       const excelData = convertToExcelData(formData);
       const payload = {
@@ -472,6 +484,9 @@ const FRCC7Form = ({
       return true;
     }
     if (key === 'gross_assets') return true;
+    if (key === 'prepared_by') {
+      return isFrccPreparedByValid(section.fields, formData[section.title] || {});
+    }
     const fields = section.fields || [];
     const sectionData = formData[section.title] || {};
     for (const field of fields) {
@@ -530,7 +545,7 @@ const FRCC7Form = ({
         ) : field.type === 'month' ? (
           <input
             type="month"
-            value={value || ''}
+            value={toMonthInputValue(value)}
             onChange={(e) => handleFieldChange(sectionTitle, field.id, e.target.value)}
             required={field.required}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
@@ -538,8 +553,8 @@ const FRCC7Form = ({
         ) : (
           <input
             type={field.type}
-            value={(field.type === 'number') && value === '' ? '' : value}
-            onChange={(e) => handleFieldChange(sectionTitle, field.id, field.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value)}
+            value={(value === '' || value === null || value === undefined) ? '' : value}
+            onChange={(e) => handleFieldChange(sectionTitle, field.id, field.type === 'number' ? parseNumberInput(e.target.value) : e.target.value)}
             required={field.required}
             min={field.min}
             max={field.max}
@@ -558,10 +573,15 @@ const FRCC7Form = ({
   const renderAssetSection = (section, activeTab, setActiveTab) => {
     const sectionTitle = section.title;
     const isNewAsset = sectionTitle === 'New Asset Schedule';
+    const isGrossAsset = sectionTitle === 'Gross Assets Opening Balance';
     const categories = section.categories || [];
     const currentCategory = categories[activeTab];
     if (!currentCategory) return null;
     const categoryData = formData[sectionTitle]?.[currentCategory.title] || { items: [], total: 0, loanPct: 0 };
+    const grossTotal = isGrossAsset ? Object.values(formData["Gross Assets Opening Balance"] || {}).reduce((sum, cat) => sum + (Number(cat.total) || 0), 0) : 0;
+    const firstYear = formData['Financial Years']?.['i20'] || '';
+    const secondYear = formData['Financial Years']?.['i21'] || '';
+    const netTotal = formData['Financial Statements']?.['i54'] || 0;
 
     return (
       <div className="space-y-4">
@@ -620,8 +640,8 @@ const FRCC7Form = ({
                   placeholder="Amount"
                   min="0"
                   step="0.01"
-                  value={item.amount || ''}
-                  onChange={(e) => updateAssetItem(sectionTitle, currentCategory.title, idx, 'amount', parseFloat(e.target.value) || 0)}
+                  value={item.amount ?? ''}
+                  onChange={(e) => updateAssetItem(sectionTitle, currentCategory.title, idx, 'amount', parseNumberInput(e.target.value))}
                   className="col-span-5 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
                 />
                 <button
@@ -649,6 +669,34 @@ const FRCC7Form = ({
             Add Asset ({categoryData.items?.length || 0}/{currentCategory.maxItems})
           </button>
 
+          {/* Summary Box for Gross Assets Opening Balance */}
+          {isGrossAsset && (
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <div className="space-y-1.5">
+                <label style={{ fontFamily: 'Manrope, sans-serif' }} className="block text-xs font-semibold text-gray-700">
+                  Gross Total Asset( Opening Balance: {secondYear || '—'} )
+                </label>
+                <input
+                  type="text"
+                  value={`${grossTotal.toLocaleString('en-IN')} Lakhs`}
+                  disabled
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-100 text-gray-800 font-bold font-mono"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label style={{ fontFamily: 'Manrope, sans-serif' }} className="block text-xs font-semibold text-gray-700">
+                  Net Total Asset( Closing Balance: {firstYear || '—'} )
+                </label>
+                <input
+                  type="text"
+                  value={`${(netTotal / 100000).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Lakhs`}
+                  disabled
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-100 text-gray-800 font-bold font-mono"
+                />
+              </div>
+            </div>
+          )}
+
           {isNewAsset && categoryData.total > 0 && (
             <div className="mt-6 pt-4 border-t-2 border-purple-200">
               <div className="bg-purple-50 p-4 rounded-lg">
@@ -666,8 +714,8 @@ const FRCC7Form = ({
                         min="0"
                         max="100"
                         step="0.01"
-                        value={categoryData.loanPct || ''}
-                        onChange={(e) => updateAssetLoanPct(currentCategory.title, parseFloat(e.target.value) || 0, categoryData.total)}
+                        value={categoryData.loanPct ?? ''}
+                        onChange={(e) => updateAssetLoanPct(currentCategory.title, parseNumberInput(e.target.value), categoryData.total)}
                         placeholder="Enter loan %"
                         className="w-full px-3 py-2 text-sm border-2 border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white"
                       />
@@ -785,7 +833,7 @@ const FRCC7Form = ({
                   disabled={index > currentStep}
                 >
                   <IconComponent className="w-4 h-4" />
-                  <span className="hidden sm:inline">{section.title}</span>
+                  <span className="hidden sm:inline">{getAuditedSectionDisplayTitle(section.title)}</span>
                   {index < currentStep && <CheckCircleIcon className="w-3.5 h-3.5 text-green-600" />}
                 </button>
               );
@@ -797,7 +845,7 @@ const FRCC7Form = ({
           <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
             {React.createElement(currentSection.icon, { className: "w-6 h-6 text-gray-900" })}
             <h2 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-xl font-bold text-gray-900">
-              {currentSection.title}
+              {getAuditedSectionDisplayTitle(currentSection.title)}
             </h2>
           </div>
 
@@ -837,7 +885,7 @@ const FRCC7Form = ({
                 type="button"
                 className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                 onClick={handleSubmit}
-                disabled={isProcessing}
+                disabled={isProcessing || !canProceed}
               >
                 {isProcessing ? (
                   <>
@@ -868,7 +916,7 @@ const FRCC7Form = ({
           </div>
         </div>
 
-        {!canProceed && !isLastStep && (
+        {!canProceed && (
           <div className="mt-3 text-xs text-red-600 text-center">
             {currentSection.key === 'new_assets'
               ? 'Please fill Loan Percentage or Loan Amount for all asset categories with items entered'

@@ -33,6 +33,7 @@ import { AdminLayout } from '../../components/layouts';
 import { useAuth } from '../../hooks';
 import api from '../../api/apiClient';
 import toast from 'react-hot-toast';
+import { reportRequiresCaStamp } from '../../utils/frccFormUi';
 
 const CompanyAdminReportsPage = () => {
   const { user } = useAuth();
@@ -496,7 +497,7 @@ const CompanyAdminReportsPage = () => {
                   {/* Expanded Details */}
                   {expandedReport === report._id && (
                     <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                      <div className={`grid grid-cols-1 gap-6 ${report.user_comment ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
+                      <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
                         <div>
                           <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
                             <User size={16} className="mr-2" />
@@ -529,9 +530,14 @@ const CompanyAdminReportsPage = () => {
                         </div>
 
                         <div>
-                          <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                            <CheckCircle size={16} className="mr-2" />
+                          <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center flex-wrap gap-2">
+                            <CheckCircle size={16} className="mr-1" />
                             Validation Info
+                            {reportRequiresCaStamp(report) && (
+                              <span className="text-xs font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                                Required CA Stamp
+                              </span>
+                            )}
                           </h4>
                           <div className="space-y-1 text-sm">
                             <p><span className="text-gray-500">Status:</span> {report.validation_status}</p>
@@ -556,20 +562,22 @@ const CompanyAdminReportsPage = () => {
                         </div>
 
                         {/* User Comment */}
-                        {report.user_comment && (
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                              <MessageSquare size={16} className="mr-2" />
-                              User Comment
-                            </h4>
-                            <div className="space-y-1 text-sm bg-white p-3 rounded-lg border border-gray-200 min-h-[80px]">
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                            <MessageSquare size={16} className="mr-2" />
+                            User Comment
+                          </h4>
+                          <div className="space-y-1 text-sm bg-white p-3 rounded-lg border border-gray-200 min-h-[80px]">
+                            {report.user_comment ? (
                               <p className="text-gray-700 whitespace-pre-wrap">{report.user_comment}</p>
-                            </div>
+                            ) : (
+                              <p className="text-gray-400 italic">No notes entered by user during generation</p>
+                            )}
                           </div>
-                        )}
+                        </div>
 
                         {(report.requested_sheets?.length > 0 || report.analysis_options) && (
-                          <div className={`col-span-1 mt-4 pt-4 border-t border-gray-200 ${report.user_comment ? 'md:col-span-4' : 'md:col-span-3'}`}>
+                          <div className="col-span-1 mt-4 pt-4 border-t border-gray-200 md:col-span-4">
                             <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
                               <Settings size={16} className="mr-2" />
                               Requested Analysis &amp; Parameters

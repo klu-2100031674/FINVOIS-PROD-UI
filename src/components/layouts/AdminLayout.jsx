@@ -4,8 +4,8 @@
  * Matching main dashboard UI theme
  */
 
-import React, { useMemo, useState } from 'react';
-import { NavLink, useNavigate, Link } from 'react-router-dom';
+import React, { useMemo, useState, useRef, useLayoutEffect, useCallback } from 'react';
+import { NavLink, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks';
 import NotificationBell from '../common/NotificationBell';
 import finvoisLogo from '../../assets/finvois.png';
@@ -37,17 +37,48 @@ import {
   Inbox,
   Store,
   Layers,
+  TrendingUp,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { normalizeUserRole } from '../../utils/normalizeUserRole';
 import { getReportHelpNavLabel } from '../../utils/reportHelpNav';
 import { companyAPI } from '../../api/endpoints';
 
+const ADMIN_SIDEBAR_SCROLL_KEY = 'finvois-admin-sidebar-scroll';
+
 const AdminLayout = ({ children, hideSidebar = false }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const sidebarNavRef = useRef(null);
+  const mobileSidebarRef = useRef(null);
+
+  // Each admin page mounts its own AdminLayout, so restore sidebar scroll after remount.
+  useLayoutEffect(() => {
+    const saved = sessionStorage.getItem(ADMIN_SIDEBAR_SCROLL_KEY);
+    if (saved == null) return;
+    const scrollTop = Number(saved);
+    if (sidebarNavRef.current) sidebarNavRef.current.scrollTop = scrollTop;
+    if (mobileSidebarRef.current) mobileSidebarRef.current.scrollTop = scrollTop;
+  }, [location.pathname]);
+
+  // Main content should always open at the top when switching sidebar pages.
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  const persistSidebarScroll = useCallback((event) => {
+    sessionStorage.setItem(ADMIN_SIDEBAR_SCROLL_KEY, String(event.currentTarget.scrollTop));
+  }, []);
+
+  const saveSidebarScrollBeforeNavigate = useCallback(() => {
+    const nav = sidebarNavRef.current || mobileSidebarRef.current;
+    if (nav) {
+      sessionStorage.setItem(ADMIN_SIDEBAR_SCROLL_KEY, String(nav.scrollTop));
+    }
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -183,7 +214,7 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
         { to: '/admin/templates', icon: FileStack, label: 'Template Config' },
         { to: '/admin/withdrawals', icon: Wallet, label: 'Withdrawals' },
         { to: '/admin/payments', icon: CreditCard, label: 'Transactions' },
-        { to: '/admin/free-credits', icon: Gift, label: 'Free Credits' },
+        { to: '/admin/free-credits', icon: Gift, label: 'Free Reports' },
         { to: '/admin/promotional-emails', icon: Mail, label: 'Promo Emails' },
       );
     }
@@ -195,6 +226,12 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
         { to: '/admin/services', icon: Briefcase, label: 'Services' },
         { to: '/admin/leads', icon: UserCheck, label: 'Service Providers' },
         { to: '/admin/banks', icon: Landmark, label: 'Banks' },
+        { type: 'section', key: 'sales-crm-section', label: 'Sales CRM' },
+        { to: '/admin/sales/dashboard', icon: BarChart3,  label: 'CRM Dashboard', indent: true },
+        { to: '/admin/sales/managers',  icon: Users,      label: 'Managers',       indent: true },
+        { to: '/admin/sales/upload',    icon: Zap,        label: 'Upload Clients', indent: true },
+        { to: '/admin/sales/clients',   icon: DollarSign, label: 'All Clients',    indent: true },
+        { to: '/admin/sales/reports',   icon: FileText,   label: 'CRM Reports',    indent: true }
       );
     }
 
@@ -284,7 +321,11 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
             )}
           </div>
 
-          <nav className="flex-1 py-4 overflow-y-auto">
+          <nav
+            ref={sidebarNavRef}
+            className="flex-1 py-4 overflow-y-auto"
+            onScroll={persistSidebarScroll}
+          >
             <ul className="space-y-1 px-3">
               {navItems.map((item) =>
                 item.type === 'section' ? (
@@ -300,16 +341,23 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
                     <NavLink
                       to={item.to}
                       title={item.title}
+                      onClick={saveSidebarScrollBeforeNavigate}
                       className={({ isActive }) =>
-                        `flex items-center px-3 py-2.5 rounded-lg transition-colors ${
+                        `flex items-center rounded-lg transition-colors ${
+                          item.indent ? 'px-2 py-2 ml-2' : 'px-3 py-2.5'
+                        } ${
                           isActive
                             ? 'bg-purple-50 text-purple-700 font-medium'
                             : 'text-gray-700 hover:bg-gray-100'
                         }`
                       }
                     >
-                      <item.icon size={20} className="flex-shrink-0" />
-                      {sidebarOpen && <span className="ml-3">{item.label}</span>}
+                      <item.icon size={item.indent ? 16 : 20} className="flex-shrink-0" />
+                      {sidebarOpen && (
+                        <span className={`ml-3 ${item.indent ? 'text-sm' : ''}`}>
+                          {item.label}
+                        </span>
+                      )}
                     </NavLink>
                   </li>
                 )
@@ -336,7 +384,11 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
         {!hideSidebar && mobileMenuOpen && (
           <div className="lg:hidden fixed inset-0 z-40">
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setMobileMenuOpen(false)} />
-            <aside className="fixed left-0 top-16 bottom-0 w-64 bg-white border-r border-gray-200 z-50 overflow-y-auto">
+            <aside
+              ref={mobileSidebarRef}
+              onScroll={persistSidebarScroll}
+              className="fixed left-0 top-16 bottom-0 w-64 bg-white border-r border-gray-200 z-50 overflow-y-auto"
+            >
               {/* User Profile Section - Mobile */}
               <div className="p-4 border-b border-gray-200">
                 <div className="flex items-center gap-3">
@@ -369,17 +421,22 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
                         <NavLink
                           to={item.to}
                           title={item.title}
-                          onClick={() => setMobileMenuOpen(false)}
+                          onClick={() => {
+                            saveSidebarScrollBeforeNavigate();
+                            setMobileMenuOpen(false);
+                          }}
                           className={({ isActive }) =>
-                            `flex items-center px-3 py-2.5 rounded-lg transition-colors ${
+                            `flex items-center rounded-lg transition-colors ${
+                              item.indent ? 'px-2 py-2 ml-2' : 'px-3 py-2.5'
+                            } ${
                               isActive
                                 ? 'bg-purple-50 text-purple-700 font-medium'
                                 : 'text-gray-700 hover:bg-gray-100'
                             }`
                           }
                         >
-                          <item.icon size={20} />
-                          <span className="ml-3">{item.label}</span>
+                          <item.icon size={item.indent ? 16 : 20} />
+                          <span className={`ml-3 ${item.indent ? 'text-sm' : ''}`}>{item.label}</span>
                         </NavLink>
                       </li>
                     )

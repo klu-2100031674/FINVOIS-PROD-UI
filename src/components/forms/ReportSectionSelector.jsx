@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   CheckCircleIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   InformationCircleIcon
 } from '@heroicons/react/24/outline';
+import toast from 'react-hot-toast';
 import { Button } from '../common';
+import { normalizeStage2Snapshot } from '../../utils/draftPayload';
 
 const SECTION_CONFIG = [
   {
@@ -161,21 +163,21 @@ const SECTION_CONFIG = [
         type: "statutory_list",
         label: "Licenses, Clearances, Approvals, Consents and NOCs",
         items: [
-           "GST",
-           "Udyam (UAM/MSME) RC",
-           "Labour License",
-           "Trade License",
-           "Food License (FSSAI)",
-           "Drug License",
-           "Factories running license",
-           "Pollution Approval / NOC",
-           "Fire Approval / NOC (White/Orange/Red category)",
-           "Building / Site permit Approval / NOC",
-           "Power Supply Connection",
-           "Water Supply Connection",
-           "Prohibition and Excise",
-           "Legal Metrology",
-           "Any other (not Included above)"
+          "GST",
+          "Udyam (UAM/MSME) RC",
+          "Labour License",
+          "Trade License",
+          "Food License (FSSAI)",
+          "Drug License",
+          "Factories running license",
+          "Pollution Approval / NOC",
+          "Fire Approval / NOC (White/Orange/Red category)",
+          "Building / Site permit Approval / NOC",
+          "Power Supply Connection",
+          "Water Supply Connection",
+          "Prohibition and Excise",
+          "Legal Metrology",
+          "Any other (not Included above)"
         ]
       }
     ]
@@ -340,7 +342,16 @@ const SKIP_VALIDATION_SECTIONS = new Set([
   'conclusion'                        // 23
 ]);
 
-const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
+const ReportSectionSelector = ({
+  onBack,
+  onSubmit,
+  initialData = {},
+  onStage2Change,
+  onSaveDraft,
+  savingDraft = false,
+  isVisible = true,
+  onRegisterSnapshotGetter,
+}) => {
   const [selectedSections, setSelectedSections] = useState({});
   const [sectionData, setSectionData] = useState({});
   const [expandedSection, setExpandedSection] = useState(null);
@@ -349,6 +360,9 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
   const [relatedDocuments, setRelatedDocuments] = useState([]);
 
   const [hiddenFields, setHiddenFields] = useState({});
+  const docsRestoreToastShown = useRef(false);
+  const stage2InitializedRef = useRef(false);
+  const initAppliedRef = useRef(false);
 
   const fillTestData = () => {
     const testSelected = {};
@@ -444,35 +458,35 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
           } else if (field.type === 'checkbox') {
             testData[section.id][field.name] = true;
           } else if (field.type === 'select') {
-               // Prefer "Owned" or "Indigenous" or "Yes" if available
-               const preferred = ["Owned", "Indigenous", "Yes", "Industrial"];
-               const match = field.options.find(o => preferred.includes(o));
-               testData[section.id][field.name] = match || field.options[0];
+            // Prefer "Owned" or "Indigenous" or "Yes" if available
+            const preferred = ["Owned", "Indigenous", "Yes", "Industrial"];
+            const match = field.options.find(o => preferred.includes(o));
+            testData[section.id][field.name] = match || field.options[0];
           } else if (field.type === 'radio') {
             testData[section.id][field.name] = field.options[0];
-           } else if (field.type === 'textarea') {
-             if (field.name === 'key_attributes') testData[section.id][field.name] = "The promoter possesses strong leadership qualities, technical proficiency in production management, and an extensive network within the local construction industry. Recognized for commitment to quality and timely delivery.";
-             else if (field.name === 'raw_materials') testData[section.id][field.name] = "Key materials include Eco-friendly Fly Ash (sourced from Thermal Power Plants), Cement (53 Grade OPC/PPC), Quarry Dust/Sand, and specialized hardening chemicals.";
-             else if (field.name === 'machinery_list') testData[section.id][field.name] = "Fully Automatic Hydraulic Brick Making Machine (100 Tons), Heavy Duty Pan Mixer (500kg), Pallet Conveyor System, and Industrial Grade Air Compressor.";
-             else if (field.name === 'processing_steps') testData[section.id][field.name] = "1. Raw Material Batching -> 2. Pan Mixing with Water -> 3. Automated Molding under high pressure -> 4. Stacking on Pallets -> 5. Water Curing (14-21 days) -> 6. Quality Testing and Dispatch.";
-             else if (field.name === 'experience_details') testData[section.id][field.name] = "The proprietor has over 10 years of hands-on experience in the civil construction sector, previously managing several small-scale subcontracting projects.";
-             else if (field.name === 'experience') testData[section.id][field.name] = "Extensive experience in production planning and supply chain management.";
-             else if (field.name === 'swot_user_description') testData[section.id][field.name] = "Strengths include consistent local demand and quality production; weaknesses include limited initial capacity; opportunities include government infrastructure projects; threats include price fluctuations of cement and fly ash.";
-             else if (field.name === 'competitor_notes') testData[section.id][field.name] = "Local competitors are small and medium units focused on nearby construction projects; differentiation through consistent quality and timely delivery.";
-             else if (field.name === 'market_trend_notes') testData[section.id][field.name] = "Demand is rising due to housing and infrastructure expansion; buyers prefer eco-friendly materials with consistent supply.";
-             else testData[section.id][field.name] = `Detailed sample content for ${field.label} providing a professional narrative for the project report.`;
+          } else if (field.type === 'textarea') {
+            if (field.name === 'key_attributes') testData[section.id][field.name] = "The promoter possesses strong leadership qualities, technical proficiency in production management, and an extensive network within the local construction industry. Recognized for commitment to quality and timely delivery.";
+            else if (field.name === 'raw_materials') testData[section.id][field.name] = "Key materials include Eco-friendly Fly Ash (sourced from Thermal Power Plants), Cement (53 Grade OPC/PPC), Quarry Dust/Sand, and specialized hardening chemicals.";
+            else if (field.name === 'machinery_list') testData[section.id][field.name] = "Fully Automatic Hydraulic Brick Making Machine (100 Tons), Heavy Duty Pan Mixer (500kg), Pallet Conveyor System, and Industrial Grade Air Compressor.";
+            else if (field.name === 'processing_steps') testData[section.id][field.name] = "1. Raw Material Batching -> 2. Pan Mixing with Water -> 3. Automated Molding under high pressure -> 4. Stacking on Pallets -> 5. Water Curing (14-21 days) -> 6. Quality Testing and Dispatch.";
+            else if (field.name === 'experience_details') testData[section.id][field.name] = "The proprietor has over 10 years of hands-on experience in the civil construction sector, previously managing several small-scale subcontracting projects.";
+            else if (field.name === 'experience') testData[section.id][field.name] = "Extensive experience in production planning and supply chain management.";
+            else if (field.name === 'swot_user_description') testData[section.id][field.name] = "Strengths include consistent local demand and quality production; weaknesses include limited initial capacity; opportunities include government infrastructure projects; threats include price fluctuations of cement and fly ash.";
+            else if (field.name === 'competitor_notes') testData[section.id][field.name] = "Local competitors are small and medium units focused on nearby construction projects; differentiation through consistent quality and timely delivery.";
+            else if (field.name === 'market_trend_notes') testData[section.id][field.name] = "Demand is rising due to housing and infrastructure expansion; buyers prefer eco-friendly materials with consistent supply.";
+            else testData[section.id][field.name] = `Detailed sample content for ${field.label} providing a professional narrative for the project report.`;
           } else {
-             if (field.name.includes('area_')) testData[section.id][field.name] = "500";
-             else if (field.name === 'machinery_supplier') testData[section.id][field.name] = "Reva Engineering Pvt Ltd, Ahmedabad";
-             else if (field.name === 'total_machinery_cost') testData[section.id][field.name] = "28,50,000";
-             else if (field.name === 'nature_of_business') testData[section.id][field.name] = "Fly Ash Brick Manufacturing";
-             else if (field.name === 'power_load_required') testData[section.id][field.name] = "45 HP";
-             else if (field.name === 'manufacturing_capacity') testData[section.id][field.name] = "60,00,000 Bricks per Annum";
-             else if (field.name === 'main_product') testData[section.id][field.name] = "Fly Ash Bricks";
-             else if (field.name === 'sub_product') testData[section.id][field.name] = "Solid Concrete Blocks";
-             else if (field.name === 'inward_transport') testData[section.id][field.name] = "Own Tractor/Trailers and external hired trucks for raw materials.";
-             else if (field.name === 'outward_transport') testData[section.id][field.name] = "Dedicated delivery trucks for customer site supply.";
-             else testData[section.id][field.name] = `Test ${field.label}`;
+            if (field.name.includes('area_')) testData[section.id][field.name] = "500";
+            else if (field.name === 'machinery_supplier') testData[section.id][field.name] = "Reva Engineering Pvt Ltd, Ahmedabad";
+            else if (field.name === 'total_machinery_cost') testData[section.id][field.name] = "28,50,000";
+            else if (field.name === 'nature_of_business') testData[section.id][field.name] = "Fly Ash Brick Manufacturing";
+            else if (field.name === 'power_load_required') testData[section.id][field.name] = "45 HP";
+            else if (field.name === 'manufacturing_capacity') testData[section.id][field.name] = "60,00,000 Bricks per Annum";
+            else if (field.name === 'main_product') testData[section.id][field.name] = "Fly Ash Bricks";
+            else if (field.name === 'sub_product') testData[section.id][field.name] = "Solid Concrete Blocks";
+            else if (field.name === 'inward_transport') testData[section.id][field.name] = "Own Tractor/Trailers and external hired trucks for raw materials.";
+            else if (field.name === 'outward_transport') testData[section.id][field.name] = "Dedicated delivery trucks for customer site supply.";
+            else testData[section.id][field.name] = `Test ${field.label}`;
           }
 
         }
@@ -545,11 +559,11 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
 
     // Specific pre-fills for statutory_approvals
     if (testData.statutory_approvals) {
-       testData.statutory_approvals.approvals = [
-         { name: "GST", checked: true, description: "Applied date: 15/05/2025, Status: Pending" },
-         { name: "Udyam (UAM/MSME) RC", checked: true, description: "RC No: UDYAM-AP-01-0001234" },
-         { name: "Pollution Approval / NOC", checked: true, description: "Applied for CFE on 10/06/2025" }
-       ];
+      testData.statutory_approvals.approvals = [
+        { name: "GST", checked: true, description: "Applied date: 15/05/2025, Status: Pending" },
+        { name: "Udyam (UAM/MSME) RC", checked: true, description: "RC No: UDYAM-AP-01-0001234" },
+        { name: "Pollution Approval / NOC", checked: true, description: "Applied for CFE on 10/06/2025" }
+      ];
     }
 
     // Specific Land Breakdown overrides if empty
@@ -567,6 +581,9 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
   };
 
   useEffect(() => {
+    if (initAppliedRef.current) return;
+    initAppliedRef.current = true;
+
     const initialSelected = {};
     SECTION_CONFIG.forEach(section => {
       initialSelected[section.id] = initialData.selected_sections?.[section.id] === true;
@@ -642,7 +659,7 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
         if (!value) return;
         if (!autoMapped[sectionId]) autoMapped[sectionId] = {};
         autoMapped[sectionId][fieldName] = value;
-        
+
         if (!newHiddenFields[sectionId]) newHiddenFields[sectionId] = [];
         newHiddenFields[sectionId].push(fieldName);
       };
@@ -663,36 +680,36 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
           setMapped('firm_constitution', 'residential_address', address);
         } else if (section.id === 'promoter_details') {
           // Flatten previous mappings into the list if available
-           const name = getS1('General Information', 'i8') || stage1.proprietorName || '';
-           if (name) {
-              const caste = getS1('General Information', 'i21') || stage1.caste || '';
-              const pan = getS1('General Information', 'i11') || stage1.panNo || '';
-              const aadhar = getS1('General Information', 'i10') || stage1.aadharNo || '';
-              const address = getS1('General Information', 'i16') || stage1.address || '';
-              const edu = getS1('General Information', 'i19') || stage1.education || '';
-              const ageRaw = getS1('General Information', 'i12') ?? stage1.age ?? '';
-              const age =
-                ageRaw !== undefined && ageRaw !== null && String(ageRaw).trim() !== ''
-                  ? String(ageRaw).trim()
-                  : '';
+          const name = getS1('General Information', 'i8') || stage1.proprietorName || '';
+          if (name) {
+            const caste = getS1('General Information', 'i21') || stage1.caste || '';
+            const pan = getS1('General Information', 'i11') || stage1.panNo || '';
+            const aadhar = getS1('General Information', 'i10') || stage1.aadharNo || '';
+            const address = getS1('General Information', 'i16') || stage1.address || '';
+            const edu = getS1('General Information', 'i19') || stage1.education || '';
+            const ageRaw = getS1('General Information', 'i12') ?? stage1.age ?? '';
+            const age =
+              ageRaw !== undefined && ageRaw !== null && String(ageRaw).trim() !== ''
+                ? String(ageRaw).trim()
+                : '';
 
-              if (!autoMapped[section.id]) autoMapped[section.id] = {};
-              autoMapped[section.id]['promoters'] = [{
-                 name, caste, pan_number: pan, aadhar_number: aadhar, address, education: edu,
-                 designation: "Proprietor", share_ratio: "100%", age, experience: ""
-              }];
-              // We do not hide lists usually, but if desired:
-              // setMapped(section.id, 'promoters', 'filled'); 
-           }
+            if (!autoMapped[section.id]) autoMapped[section.id] = {};
+            autoMapped[section.id]['promoters'] = [{
+              name, caste, pan_number: pan, aadhar_number: aadhar, address, education: edu,
+              designation: "Proprietor", share_ratio: "100%", age, experience: ""
+            }];
+            // We do not hide lists usually, but if desired:
+            // setMapped(section.id, 'promoters', 'filled'); 
+          }
         } else if (section.id === 'partner_education') {
-           const name = getS1('General Information', 'i8') || stage1.proprietorName || '';
-           const edu = getS1('General Information', 'i19') || stage1.education || '';
-           if (name) {
-              if (!autoMapped[section.id]) autoMapped[section.id] = {};
-              autoMapped[section.id]['partner_education_list'] = [{
-                 name, qualification: edu, experience: ""
-              }];
-           }
+          const name = getS1('General Information', 'i8') || stage1.proprietorName || '';
+          const edu = getS1('General Information', 'i19') || stage1.education || '';
+          if (name) {
+            if (!autoMapped[section.id]) autoMapped[section.id] = {};
+            autoMapped[section.id]['partner_education_list'] = [{
+              name, qualification: edu, experience: ""
+            }];
+          }
         } else if (section.id === 'product_details') {
           setMapped('product_details', 'main_product', getS1('General Information', 'i15'));
           setMapped('product_details', 'product_category', getS1('General Information', 'i14'));
@@ -726,7 +743,7 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
           const semi = parseInt(getS1('Expected Employment Generation', 'i25')) || 0;
           const unskilled = parseInt(getS1('Expected Employment Generation', 'i26')) || 0;
           if (skilled || semi || unskilled) {
-             setMapped('manpower', 'direct_staff_count', (skilled + semi + unskilled).toString());
+            setMapped('manpower', 'direct_staff_count', (skilled + semi + unskilled).toString());
           }
         }
       });
@@ -734,7 +751,7 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
       setHiddenFields(newHiddenFields);
       setSectionData(prev => {
         const next = JSON.parse(JSON.stringify(prev));
-        
+
         // Ensure fixed milestones are initialized if not present
         if (!next.implementation_timeline) next.implementation_timeline = {};
         if (!next.implementation_timeline.milestones || next.implementation_timeline.milestones.length === 0) {
@@ -757,10 +774,76 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
           if (!next[sId]) next[sId] = {};
           Object.assign(next[sId], autoMapped[sId]);
         });
+
+        // Overlay saved draft section data (user edits take precedence over auto-map)
+        SECTION_CONFIG.forEach((section) => {
+          const saved = stage1[section.id];
+          if (saved && typeof saved === 'object' && Object.keys(saved).length > 0) {
+            if (!next[section.id]) next[section.id] = {};
+            Object.assign(next[section.id], saved);
+          }
+        });
+
         return next;
       });
     }
+
+    const relatedMeta = initialData.related_documents_meta;
+    if (Array.isArray(relatedMeta) && relatedMeta.length > 0) {
+      setRelatedDocuments(
+        relatedMeta.map((d) => ({
+          title: d?.title || '',
+          file: null,
+          fileName: d?.fileName || '',
+        }))
+      );
+      if (!docsRestoreToastShown.current && relatedMeta.some((d) => d?.fileName)) {
+        docsRestoreToastShown.current = true;
+        toast('Draft loaded — please re-attach PDF documents if needed.', { icon: '📄' });
+      }
+    }
+
+    stage2InitializedRef.current = true;
   }, [initialData]);
+
+  const getStage2Snapshot = useCallback(
+    () => normalizeStage2Snapshot(selectedSections, sectionData, relatedDocuments),
+    [selectedSections, sectionData, relatedDocuments]
+  );
+
+  useEffect(() => {
+    if (!onStage2Change || !stage2InitializedRef.current) return undefined;
+    const timer = setTimeout(() => {
+      onStage2Change(getStage2Snapshot());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [selectedSections, sectionData, relatedDocuments, onStage2Change, getStage2Snapshot]);
+
+  useEffect(() => {
+    if (isVisible || !stage2InitializedRef.current || !onStage2Change) return;
+    onStage2Change(getStage2Snapshot());
+  }, [isVisible, onStage2Change, getStage2Snapshot]);
+
+  const handleBack = () => {
+    if (onStage2Change) {
+      onStage2Change(getStage2Snapshot());
+    }
+    onBack?.();
+  };
+
+  const handleSaveDraftClick = () => {
+    const snapshot = getStage2Snapshot();
+    if (onStage2Change) {
+      onStage2Change(snapshot);
+    }
+    onSaveDraft?.(snapshot);
+  };
+
+  useEffect(() => {
+    if (!onRegisterSnapshotGetter) return undefined;
+    onRegisterSnapshotGetter(() => getStage2Snapshot());
+    return () => onRegisterSnapshotGetter(null);
+  }, [onRegisterSnapshotGetter, getStage2Snapshot]);
 
   const toggleSection = (id) => {
     const newValue = !selectedSections[id];
@@ -955,7 +1038,7 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
     list[index][subField] = value;
     // "Commercial Run start date" has no end_date UI — mirror start_date so validation passes
     if (sectionId === 'implementation_timeline' && fieldName === 'milestones' &&
-        list[index].description === 'Commercial Run start date' && subField === 'start_date') {
+      list[index].description === 'Commercial Run start date' && subField === 'start_date') {
       list[index].end_date = value;
     }
     handleFieldChange(sectionId, fieldName, list);
@@ -997,31 +1080,31 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
     // REMOVED: if (isHidden) return null; -> Now we default to displaying them as disabled
 
     if (field.readOnly || isHidden) {
-       // Render as disabled input or text
-       return (
+      // Render as disabled input or text
+      return (
         <div key={field.name} className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">{field.label}</label>
-            {field.type === 'textarea' ? (
-                <textarea
-                readOnly
-                rows={3}
-                className="w-full px-3 py-2 text-sm border border-gray-200 bg-gray-100 text-gray-500 rounded-md focus:outline-none cursor-not-allowed resize-none"
-                value={currentSectionData[field.name] || ''}
-                />
-            ) : (
-                <input
-                type="text"
-                readOnly
-                className="w-full px-3 py-2 text-sm border border-gray-200 bg-gray-100 text-gray-500 rounded-md focus:outline-none cursor-not-allowed"
-                value={currentSectionData[field.name] || ''}
-                />
-            )}
-             <p className="text-xs text-[#7e22ce] flex items-center gap-1">
-                <InformationCircleIcon className="w-3 h-3"/>
-                Pre-filled from previous forms
-             </p>
+          <label className="block text-sm font-medium text-gray-700">{field.label}</label>
+          {field.type === 'textarea' ? (
+            <textarea
+              readOnly
+              rows={3}
+              className="w-full px-3 py-2 text-sm border border-gray-200 bg-gray-100 text-gray-500 rounded-md focus:outline-none cursor-not-allowed resize-none"
+              value={currentSectionData[field.name] || ''}
+            />
+          ) : (
+            <input
+              type="text"
+              readOnly
+              className="w-full px-3 py-2 text-sm border border-gray-200 bg-gray-100 text-gray-500 rounded-md focus:outline-none cursor-not-allowed"
+              value={currentSectionData[field.name] || ''}
+            />
+          )}
+          <p className="text-xs text-[#7e22ce] flex items-center gap-1">
+            <InformationCircleIcon className="w-3 h-3" />
+            Pre-filled from previous forms
+          </p>
         </div>
-       )
+      )
     }
 
     if (field.type === 'statutory_list') {
@@ -1029,7 +1112,7 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
       return (
         <div key={field.name} className="space-y-4">
           <div className="bg-emerald-600 text-white px-4 py-3 rounded-t-md font-semibold text-sm shadow-sm">
-             Licenses, Clearances, Approvals, Consents and NOCs (Pre Establishment and Operation) :
+            Licenses, Clearances, Approvals, Consents and NOCs (Pre Establishment and Operation) :
           </div>
           <div className="border border-emerald-100 rounded-b-md p-4 space-y-3 bg-white shadow-sm">
             {field.items.map((itemLabel, idx) => {
@@ -1218,14 +1301,14 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
                         {sub.label}
                       </label>
                       {sub.type === 'select' ? (
-                          <select
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 bg-white"
-                            value={item[sub.name] || ''}
-                            onChange={(e) => handleGroupListChange(sectionId, field.name, idx, sub.name, e.target.value)}
-                          >
-                             <option value="">Select</option>
-                             {sub.options.map(o => <option key={o} value={o}>{o}</option>)}
-                          </select>
+                        <select
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 bg-white"
+                          value={item[sub.name] || ''}
+                          onChange={(e) => handleGroupListChange(sectionId, field.name, idx, sub.name, e.target.value)}
+                        >
+                          <option value="">Select</option>
+                          {sub.options.map(o => <option key={o} value={o}>{o}</option>)}
+                        </select>
                       ) : sub.type === 'textarea' ? (
                         <textarea
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 resize-none"
@@ -1428,8 +1511,8 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
                   className={`border rounded-lg transition-all ${validationErrors[section.id]
                     ? 'border-red-300 bg-red-50/20'
                     : selectedSections[section.id]
-                    ? 'border-purple-200 bg-purple-50/30'
-                    : 'border-gray-200 bg-white'
+                      ? 'border-purple-200 bg-purple-50/30'
+                      : 'border-gray-200 bg-white'
                     }`}
                 >
                   {/* Section Header */}
@@ -1565,18 +1648,30 @@ const ReportSectionSelector = ({ onBack, onSubmit, initialData = {} }) => {
             <div className="flex items-center justify-between">
               <Button
                 variant="secondary"
-                onClick={onBack}
+                onClick={handleBack}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
               >
                 Previous
               </Button>
 
-              <Button
-                onClick={handleSubmit}
-                className="px-6 py-2 text-sm font-medium text-white bg-purple-600 border border-transparent rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-              >
-                Next
-              </Button>
+              <div className="flex items-center gap-3">
+                {onSaveDraft && (
+                  <button
+                    type="button"
+                    onClick={handleSaveDraftClick}
+                    disabled={savingDraft}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {savingDraft ? 'Saving…' : 'Save & draft'}
+                  </button>
+                )}
+                <Button
+                  onClick={handleSubmit}
+                  className="px-6 py-2 text-sm font-medium text-white bg-purple-600 border border-transparent rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           </div>
         </div>
