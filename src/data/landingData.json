@@ -1,6 +1,14 @@
 {
   "navigation": {
     "logo": "DPR Platform",
+    "_commentedOut_navSchemes": {
+      "label": "Schemes",
+      "dropdown": [
+        { "label": "PMEGP", "href": "/schemes/pmegp" },
+        { "label": "AP IDP", "href": "/schemes/ap-idp" },
+        { "label": "CMEP", "href": "/schemes/cmep" }
+      ]
+    },
     "links": [
       {
         "label": "Features",
@@ -17,23 +25,6 @@
       {
         "label": "Franchise",
         "href": "/franchises"
-      },
-      {
-        "label": "Schemes",
-        "dropdown": [
-          {
-            "label": "PMEGP",
-            "href": "/schemes/pmegp"
-          },
-          {
-            "label": "AP IDP",
-            "href": "/schemes/ap-idp"
-          },
-          {
-            "label": "CMEP",
-            "href": "/schemes/cmep"
-          }
-        ]
       },
       {
         "label": "Calculators",
