@@ -27,8 +27,6 @@ export const FORM_COPY = {
     villageCity: 'Village / City',
     mandal: 'Mandal',
     district: 'District',
-    needCaStamp: 'Need CA Stamp?',
-    selectNeedCaStamp: 'Select option',
     description: 'Description',
     submit: 'Submit',
     submitting: 'Submitting...',
@@ -65,8 +63,6 @@ export const FORM_COPY = {
     villageCity: 'గ్రామం / నగరం',
     mandal: 'మండలం',
     district: 'జిల్లా',
-    needCaStamp: 'CA స్టాంప్ అవసరమా?',
-    selectNeedCaStamp: 'ఎంపికను ఎంచుకోండి',
     description: 'వివరణ',
     submit: 'సమర్పించండి',
     submitting: 'సమర్పిస్తోంది...',
@@ -117,22 +113,16 @@ const RURAL_URBAN_LABELS_TE = {
   'Urban(Other than Panchayat)': 'నగర (పంచాయతీ కాకుండా)',
 };
 
-const YES_NO_LABELS_TE = {
-  Yes: 'అవును',
-  No: 'కాదు',
-};
-
 const LABEL_MAPS = {
   gender: GENDER_LABELS_TE,
   scheme: SCHEME_LABELS_TE,
   loanType: LOAN_TYPE_LABELS_TE,
   ruralUrban: RURAL_URBAN_LABELS_TE,
-  needCaStamp: YES_NO_LABELS_TE,
 };
 
 /**
  * @param {'en'|'te'} lang
- * @param {'gender'|'scheme'|'loanType'|'ruralUrban'|'needCaStamp'} group
+ * @param {'gender'|'scheme'|'loanType'|'ruralUrban'} group
  * @param {string} value — English enum value stored in form state
  */
 export function getOptionLabel(lang, group, value) {
@@ -152,6 +142,5 @@ export const MSME_DPR_TEST_FORM = {
   villageCity: 'Vijayawada',
   mandal: 'Penamaluru',
   district: 'Krishna',
-  needCaStamp: 'No',
   description: 'Test MSME DPR lead submission.',
 };
