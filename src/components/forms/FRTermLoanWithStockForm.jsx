@@ -2112,7 +2112,7 @@ const FRTermLoanWithStockForm = ({
           <p className="text-gray-600 text-sm">Manufacturing & Service Sector (With Stock)</p>
         </div>
 
-        <div className="mb-4 flex justify-end">
+        {/* <div className="mb-4 flex justify-end">
           <button
             className="px-4 py-2 border-2 border-gray-800 text-gray-800 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-300 text-xs font-medium"
             onClick={fillTestData}
@@ -2120,7 +2120,7 @@ const FRTermLoanWithStockForm = ({
           >
             Fill Test Data
           </button>
-        </div>
+        </div> */}
 
         <div className="mb-6">
           <div className="flex justify-between items-center mb-2">

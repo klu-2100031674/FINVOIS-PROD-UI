@@ -778,7 +778,7 @@ const FRCC7Form = ({
           <p className="text-gray-600 text-sm">Complete each section to generate your financial report</p>
         </div>
 
-        <div className="mb-4 flex justify-center">
+        {/* <div className="mb-4 flex justify-center">
           <button
             className="px-4 py-2 border-2 border-gray-800 text-gray-800 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-300 text-xs font-medium"
             onClick={fillTestData}
@@ -786,7 +786,7 @@ const FRCC7Form = ({
           >
             Fill Test Data
           </button>
-        </div>
+        </div> */}
 
         <div className="mb-6">
           <div className="flex justify-between items-center mb-2">

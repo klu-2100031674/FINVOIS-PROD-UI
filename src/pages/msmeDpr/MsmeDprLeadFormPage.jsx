@@ -6,7 +6,6 @@ import {
   MSME_DPR_GENDER_OPTIONS,
   MSME_DPR_LOAN_TYPE_OPTIONS,
   MSME_DPR_RURAL_URBAN_OPTIONS,
-  MSME_DPR_NEED_CA_STAMP_OPTIONS,
 } from '@/constants/msmeDprSchemes';
 import {
   LANGUAGES,
@@ -27,7 +26,6 @@ const INITIAL_FORM = {
   villageCity: '',
   mandal: '',
   district: '',
-  needCaStamp: '',
   description: '',
 };
 
@@ -109,7 +107,7 @@ const MsmeDprLeadFormPage = () => {
               ))}
             </select>
           </div>
-          {!success && (
+          {/* {!success && (
             <button
               type="button"
               onClick={handleFillTestData}
@@ -117,7 +115,7 @@ const MsmeDprLeadFormPage = () => {
             >
               {copy.fillTestData}
             </button>
-          )}
+          )} */}
         </div>
 
         <p className="text-xs font-semibold uppercase tracking-wider text-orange-600 mb-1">
@@ -295,23 +293,6 @@ const MsmeDprLeadFormPage = () => {
                 placeholder={copy.placeholderDistrict}
                 className={inputClass}
               />
-            </FormField>
-
-            <FormField label={copy.needCaStamp} required>
-              <select
-                name="needCaStamp"
-                value={form.needCaStamp}
-                onChange={handleChange}
-                required
-                className={selectClass}
-              >
-                <option value="">{copy.selectNeedCaStamp}</option>
-                {MSME_DPR_NEED_CA_STAMP_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {getOptionLabel(language, 'needCaStamp', opt)}
-                  </option>
-                ))}
-              </select>
             </FormField>
 
             <FormField label={copy.description} required>

@@ -2196,13 +2196,13 @@ const FRTermLoanCCForm = ({
                 <p className="text-gray-600 text-sm">Term Loan + CC Loan</p>
               </div>
           */}
-          <button
+          {/* <button
             type="button"
             onClick={handleFillTestData}
             className="ml-auto px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
           >
             Fill Test Data
-          </button>
+          </button> */}
         </div>
 
         <div className="mb-6">
