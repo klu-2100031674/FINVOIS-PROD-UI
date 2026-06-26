@@ -16,8 +16,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 import SaveDraftButton from '../common/SaveDraftButton';
-import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_CIBIL_FIELD, isFrccPreparedByValid } from '../../utils/frccFormUi';
-import { toFrccExcelMonthDate, toMonthInputValue } from '../../utils/monthFieldFormat';
+import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD } from '../../utils/frccFormUi';
 
 const parseNumberInput = (val) => val === '' ? '' : (val.endsWith('.') || val.endsWith('.0') ? val : (isNaN(parseFloat(val)) ? val : parseFloat(val)));
 
@@ -213,14 +212,12 @@ const FRCC7Form = ({
       title: 'Prepared By',
       icon: UserIcon,
       fields: [
-        { id: 'i159', label: 'Name 1 (Prepared By)', type: 'text', required: false },
-        { id: 'i160', label: 'Name 2 (Prepared By)', type: 'text', required: false },
-        { id: 'i161', label: 'Address (Prepared By)', type: 'text', required: true },
-        { id: 'i162', label: 'Mobile Number (Prepared By)', type: 'text', required: true },
-        { id: 'bank_name', label: 'Bank Name / Department Name', type: 'text', required: true },
-        { id: 'branch_name', label: 'Branch Name', type: 'text', required: true },
-        PREPARED_BY_BANKER_MAIL_FIELD,
-        PREPARED_BY_CIBIL_FIELD,
+        { id: 'i159',        label: 'Name 1 (Prepared By)',        type: 'text', required: true  },
+        { id: 'i160',        label: 'Name 2 (Prepared By)',        type: 'text', required: false },
+        { id: 'i161',        label: 'Address (Prepared By)',       type: 'text', required: true  },
+        { id: 'i162',        label: 'Mobile Number (Prepared By)', type: 'text', required: true  },
+        { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text', required: true  },
+        { id: 'branch_name', label: 'Branch Name',                 type: 'text', required: true  },
         FRCC_REQUIRED_STAMP_FIELD,
       ]
     },
@@ -399,8 +396,9 @@ const FRCC7Form = ({
     });
 
     // i80: convert YYYY-MM → 01-MM-YYYY so Excel interprets as a date
-    if (excelData['i80']) {
-      excelData['i80'] = toFrccExcelMonthDate(excelData['i80']);
+    if (excelData['i80'] && /^\d{4}-\d{2}$/.test(String(excelData['i80']))) {
+      const [year, month] = String(excelData['i80']).split('-');
+      excelData['i80'] = `01-${month}-${year}`;
     }
 
     // Prepared By cell refs (i159-i162)
@@ -438,10 +436,6 @@ const FRCC7Form = ({
   };
 
   const handleSubmit = useCallback(async () => {
-    if (!validateCurrentSection()) {
-      alert('Please fill all required fields before submitting.');
-      return;
-    }
     try {
       const excelData = convertToExcelData(formData);
       const payload = {
@@ -484,9 +478,6 @@ const FRCC7Form = ({
       return true;
     }
     if (key === 'gross_assets') return true;
-    if (key === 'prepared_by') {
-      return isFrccPreparedByValid(section.fields, formData[section.title] || {});
-    }
     const fields = section.fields || [];
     const sectionData = formData[section.title] || {};
     for (const field of fields) {
@@ -545,7 +536,7 @@ const FRCC7Form = ({
         ) : field.type === 'month' ? (
           <input
             type="month"
-            value={toMonthInputValue(value)}
+            value={value || ''}
             onChange={(e) => handleFieldChange(sectionTitle, field.id, e.target.value)}
             required={field.required}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
@@ -885,7 +876,7 @@ const FRCC7Form = ({
                 type="button"
                 className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                 onClick={handleSubmit}
-                disabled={isProcessing || !canProceed}
+                disabled={isProcessing}
               >
                 {isProcessing ? (
                   <>
@@ -916,7 +907,7 @@ const FRCC7Form = ({
           </div>
         </div>
 
-        {!canProceed && (
+        {!canProceed && !isLastStep && (
           <div className="mt-3 text-xs text-red-600 text-center">
             {currentSection.key === 'new_assets'
               ? 'Please fill Loan Percentage or Loan Amount for all asset categories with items entered'

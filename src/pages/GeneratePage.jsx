@@ -3,7 +3,7 @@
  * Form submission and Excel generation
  */
 
-import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector, useStore } from 'react-redux';
 import { useAuth } from '../hooks';
@@ -48,9 +48,7 @@ import {
   mergeStage1Preserving,
   extractStage2FromDraft,
 } from '../utils/draftPayload';
-import { resolveTemplateSector } from '../utils/templateSectorConfig';
 import { useGeneratePageDraft } from '../hooks/useGeneratePageDraft';
-import { withSyncedRawFormData } from '../utils/draftSourceData';
 
 const AI_TERM_LOAN_TEMPLATES = [
   'TERM_LOAN_SERVICE_WITHOUT_STOCK',
@@ -146,11 +144,10 @@ const GeneratePage = () => {
   console.log('🎯 GeneratePage - user info:', user);
 
   const templateId = searchParams.get('templateId');
-  const urlPresetSector = searchParams.get('presetSector');
-  const urlLockSector =
+  const presetSector = searchParams.get('presetSector');
+  const lockSector =
     searchParams.get('lockSector') === '1' ||
     String(searchParams.get('lockSector') || '').toLowerCase() === 'true';
-
   // Resume-from-draft: Drafts page navigates here with ?draftId=... so we can
   // hydrate the form from the saved snapshot. When absent we start fresh.
   const draftId = searchParams.get('draftId');
@@ -175,22 +172,6 @@ const GeneratePage = () => {
   const generationRequestedRef = useRef(false);
   const brandingRef = useRef(null); // cache resolved company branding
   const profileSnapshotGetterRef = useRef(null);
-  const stage1SnapshotGetterRef = useRef(null);
-
-  const draftPresetSector = tempFormData?.presetSector;
-  const draftLockSector = tempFormData?.lockSector;
-  const savedFormSector =
-    tempFormData?.['General Information']?.i14 ||
-    tempFormData?.rawFormData?.['General Information']?.i14 ||
-    null;
-
-  const { presetSector, lockSector } = resolveTemplateSector(templateId, {
-    urlPresetSector,
-    urlLockSector,
-    draftPresetSector,
-    draftLockSector,
-    savedFormSector,
-  });
 
   const handleBackFromProfile = () => {
     const snapshot = profileSnapshotGetterRef.current?.();
@@ -215,8 +196,6 @@ const GeneratePage = () => {
     forceNewDraft,
     setTempFormData,
     dispatchSetFormData: (data) => dispatch(setFormData(data)),
-    presetSector,
-    lockSector,
   });
 
   const handleSaveDraftFromForm = (stage1Payload) => {
@@ -224,30 +203,12 @@ const GeneratePage = () => {
   };
 
   const handleSaveDraftFromProfile = (stage2Snapshot) => {
-    const stage1Payload =
-      stage1SnapshotGetterRef.current?.() ??
-      stripStage2FromDraft(tempFormData) ??
-      {};
     saveDraft({
-      stage1Payload,
+      stage1Payload: stripStage2FromDraft(tempFormData) || {},
       stage2Override: stage2Snapshot,
       activeStep: 'section_selector',
     });
   };
-
-  const stage1InitialData = useMemo(
-    () => (tempFormData ? stripStage2FromDraft(tempFormData) : null),
-    [tempFormData]
-  );
-
-  // Freeze stage-1 snapshot for form hydration so live draft sync does not re-trigger
-  // initialData-driven effects (which caused maximum update depth loops).
-  const formHydrationKey = `${templateId}|${draftId || 'new'}`;
-  const frozenStage1Ref = useRef({ key: null, data: null });
-  if (draftCheckComplete && frozenStage1Ref.current.key !== formHydrationKey) {
-    frozenStage1Ref.current = { key: formHydrationKey, data: stage1InitialData };
-  }
-  const formInitialData = frozenStage1Ref.current.data;
 
   const normalizeCompanyId = (companyId) => {
     if (!companyId) return '';
@@ -462,23 +423,28 @@ const GeneratePage = () => {
   const isAdminMode = searchParams.get('admin') === 'true' && normalizeUserRole(user?.role) === 'admin';
 
   const handleFormSubmit = async (formData) => {
-    // Stage 1: Capture Excel Form Data (include loan %, asset schedules, etc.)
+    // Stage 1: Capture Excel Form Data
     console.log('📝 [GeneratePage] Stage 1 Form Submit, saving to Redux:', formData);
-    const { rawFormData, excelData, ...submittedFormData } = formData || {};
-    const stage1Snapshot = withSyncedRawFormData(
-      mergeStage1Preserving(
-        stripStage2FromDraft(submittedFormData),
-        stripStage2FromDraft(rawFormData || {})
-      )
-    );
+    const { rawFormData: rawFromSubmit, ...submittedFormData } = formData || {};
+    const hasRawFromSubmit =
+      rawFromSubmit && typeof rawFromSubmit === 'object' && Object.keys(rawFromSubmit).length > 0;
+    const latestRedux = store.getState().report.formData;
+    const hasLatestRedux =
+      latestRedux && typeof latestRedux === 'object' && Object.keys(latestRedux).length > 0;
+    const rawFormData = hasRawFromSubmit
+      ? rawFromSubmit
+      : hasLatestRedux
+        ? latestRedux
+        : submittedFormData;
 
+    // Keep raw form values for "Back to Form" and section prefill
     setTempFormData((prev) =>
       mergeStage1AndStage2(
-        mergeStage1Preserving(stripStage2FromDraft(prev || {}), stage1Snapshot),
+        mergeStage1Preserving(stripStage2FromDraft(prev || {}), rawFormData),
         stage2Draft
       )
     );
-    dispatch(setFormData(stage1Snapshot));
+    dispatch(setFormData(rawFormData));
 
     // Keep submitted/transformed payload for backend generation
     setTempSubmittedData(submittedFormData);
@@ -535,12 +501,13 @@ const GeneratePage = () => {
     }
   };
 
-  const handleFormDataChange = useCallback((rawFormData) => {
+  const handleFormDataChange = (rawFormData) => {
+    console.log('💾 [GeneratePage] Saving raw form data to Redux:', rawFormData);
     dispatch(setFormData(rawFormData));
     if (isAiTermLoanTemplate) {
       mergeStage1IntoTemp(rawFormData);
     }
-  }, [dispatch, isAiTermLoanTemplate, mergeStage1IntoTemp]);
+  };
 
   const handleBackToDashboard = () => {
     if (isAdminMode) {
@@ -571,6 +538,8 @@ const GeneratePage = () => {
       </GenerateStandaloneLayout>
     );
   }
+
+  const stage1InitialData = tempFormData ? stripStage2FromDraft(tempFormData) : null;
 
   if (!draftCheckComplete) {
     return (
@@ -621,31 +590,30 @@ const GeneratePage = () => {
           </div>
         )}
 
-        {(isAiTermLoanTemplate || !showSectionSelector) && (
-          <div className={isAiTermLoanTemplate && showSectionSelector ? 'hidden' : undefined}>
-            <>
+        {!showSectionSelector && (
+          <>
 
-              {isAssistedGeneration && (
-                <div className="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-xl text-sm text-purple-900">
-                  <p className="font-semibold">Generating for your referred client</p>
-                  <p className="mt-1 text-purple-800">
-                    This report will be submitted under the client&apos;s account for CA validation after you complete generation and payment.
-                  </p>
-                </div>
-              )}
-
-              {/* Page Title */}
-              <div className="mb-6">
-                <h1 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-3xl font-bold text-gray-900 mb-2">
-                  Generate Report
-                </h1>
-                <p className="text-gray-600 text-sm">
-                  Kindly provide the required details below to facilitate Report preparation
+            {isAssistedGeneration && (
+              <div className="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-xl text-sm text-purple-900">
+                <p className="font-semibold">Generating for your referred client</p>
+                <p className="mt-1 text-purple-800">
+                  This report will be submitted under the client&apos;s account for CA validation after you complete generation and payment.
                 </p>
               </div>
+            )}
 
-              {/* Template Information */}
-              {/* {template && (
+            {/* Page Title */}
+            <div className="mb-6">
+              <h1 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-3xl font-bold text-gray-900 mb-2">
+                Generate Report
+              </h1>
+              <p className="text-gray-600 text-sm">
+                Kindly provide the required details below to facilitate Report preparation
+              </p>
+            </div>
+
+            {/* Template Information */}
+            {/* {template && (
           <Card className="mb-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -689,159 +657,149 @@ const GeneratePage = () => {
           </Card>
         )} */}
 
-              {/* Template Forms */}
-              {(templateId === 'frcc1' || templateId === 'Format CC1') && (
-                <FRCC1Form
-                  onSubmit={handleFormSubmit}
-                  templateId={templateId}
-                  onFormDataChange={handleFormDataChange}
-                  isProcessing={isProcessing}
-                  initialData={formInitialData}
-                />
-              )}
-              {(templateId === 'frcc2' || templateId === 'Format CC2') && (
-                <FRCC2Form
-                  onSubmit={handleFormSubmit}
-                  templateId={templateId}
-                  onFormDataChange={handleFormDataChange}
-                  isProcessing={isProcessing}
-                  initialData={formInitialData}
-                />
-              )}
-              {(templateId === 'frcc3' || templateId === 'Format CC3') && (
-                <FRCC3Form
-                  onSubmit={handleFormSubmit}
-                  templateId={templateId}
-                  onFormDataChange={handleFormDataChange}
-                  isProcessing={isProcessing}
-                  initialData={formInitialData}
-                />
-              )}
-              {(templateId === 'frcc4' || templateId === 'Format CC4') && (
-                <FRCC4Form
-                  onSubmit={handleFormSubmit}
-                  templateId={templateId}
-                  onFormDataChange={handleFormDataChange}
-                  isProcessing={isProcessing}
-                  initialData={formInitialData}
-                />
-              )}
-              {(templateId === 'frcc5' || templateId === 'Format CC5') && (
-                <FRCC5Form
-                  onSubmit={handleFormSubmit}
-                  templateId={templateId}
-                  onFormDataChange={handleFormDataChange}
-                  isProcessing={isProcessing}
-                  initialData={formInitialData}
-                />
-              )}
-              {(templateId === 'frcc6' || templateId === 'Format CC6') && (
-                <FRCC6Form
-                  onSubmit={handleFormSubmit}
-                  templateId={templateId}
-                  onFormDataChange={handleFormDataChange}
-                  isProcessing={isProcessing}
-                  initialData={formInitialData}
-                />
-              )}
-              {(templateId === 'frcc7' || templateId === 'Format CC7') && (
-                <FRCC7Form
-                  onSubmit={handleFormSubmit}
-                  templateId={templateId}
-                  onFormDataChange={handleFormDataChange}
-                  isProcessing={isProcessing}
-                  initialData={formInitialData}
-                />
-              )}
-              {(templateId === 'TERM_LOAN_SERVICE_WITHOUT_STOCK') && (
-                <FRTermLoanForm
-                  onSubmit={handleFormSubmit}
-                  templateId={templateId}
-                  onFormDataChange={handleFormDataChange}
-                  isProcessing={isProcessing}
-                  initialData={formInitialData}
-                  presetSector={presetSector}
-                  lockSector={lockSector}
-                  onSaveDraft={handleSaveDraftFromForm}
-                  savingDraft={savingDraft}
-                  onRegisterStage1SnapshotGetter={(getter) => {
-                    stage1SnapshotGetterRef.current = getter;
-                  }}
-                />
-              )}
-              {(templateId === 'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK') && (
-                <FRTermLoanWithStockForm
-                  onSubmit={handleFormSubmit}
-                  templateId={templateId}
-                  onFormDataChange={handleFormDataChange}
-                  isProcessing={isProcessing}
-                  initialData={formInitialData}
-                  presetSector={presetSector}
-                  lockSector={lockSector}
-                  onSaveDraft={handleSaveDraftFromForm}
-                  savingDraft={savingDraft}
-                  onRegisterStage1SnapshotGetter={(getter) => {
-                    stage1SnapshotGetterRef.current = getter;
-                  }}
-                />
-              )}
-              {(templateId === 'TERM_LOAN_CC') && (
-                <FRTermLoanCCForm
-                  onSubmit={handleFormSubmit}
-                  templateId={templateId}
-                  onFormDataChange={handleFormDataChange}
-                  isProcessing={isProcessing}
-                  initialData={formInitialData}
-                  presetSector={presetSector}
-                  lockSector={lockSector}
-                  onSaveDraft={handleSaveDraftFromForm}
-                  savingDraft={savingDraft}
-                  onRegisterStage1SnapshotGetter={(getter) => {
-                    stage1SnapshotGetterRef.current = getter;
-                  }}
-                />
-              )}
-              {templateId &&
-                templateId !== 'frcc1' && templateId !== 'Format CC1' &&
-                templateId !== 'frcc2' && templateId !== 'Format CC2' &&
-                templateId !== 'frcc3' && templateId !== 'Format CC3' &&
-                templateId !== 'frcc4' && templateId !== 'Format CC4' &&
-                templateId !== 'frcc5' && templateId !== 'Format CC5' &&
-                templateId !== 'frcc6' && templateId !== 'Format CC6' &&
-                templateId !== 'frcc7' && templateId !== 'Format CC7' &&
-                templateId !== 'TERM_LOAN_SERVICE_WITHOUT_STOCK' &&
-                templateId !== 'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK' &&
-                templateId !== 'TERM_LOAN_CC' && (
-                  <Card className="mb-6">
-                    <div className="text-center py-12">
-                      <div className="text-6xl mb-4">🚧</div>
-                      <h3 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-xl font-bold text-gray-800 mb-2">
-                        Form Under Development
-                      </h3>
-                      <p className="text-gray-600 mb-1">Form for {templateId} is under development.</p>
-                      <p className="text-sm text-gray-500">Please select Format CC1 through CC7.</p>
-                    </div>
-                  </Card>
-                )}
-              {!templateId && (
+            {/* Template Forms */}
+            {(templateId === 'frcc1' || templateId === 'Format CC1') && (
+              <FRCC1Form
+                onSubmit={handleFormSubmit}
+                templateId={templateId}
+                onFormDataChange={handleFormDataChange}
+                isProcessing={isProcessing}
+                initialData={stage1InitialData}
+              />
+            )}
+            {(templateId === 'frcc2' || templateId === 'Format CC2') && (
+              <FRCC2Form
+                onSubmit={handleFormSubmit}
+                templateId={templateId}
+                onFormDataChange={handleFormDataChange}
+                isProcessing={isProcessing}
+                initialData={stage1InitialData}
+              />
+            )}
+            {(templateId === 'frcc3' || templateId === 'Format CC3') && (
+              <FRCC3Form
+                onSubmit={handleFormSubmit}
+                templateId={templateId}
+                onFormDataChange={handleFormDataChange}
+                isProcessing={isProcessing}
+                initialData={stage1InitialData}
+              />
+            )}
+            {(templateId === 'frcc4' || templateId === 'Format CC4') && (
+              <FRCC4Form
+                onSubmit={handleFormSubmit}
+                templateId={templateId}
+                onFormDataChange={handleFormDataChange}
+                isProcessing={isProcessing}
+                initialData={stage1InitialData}
+              />
+            )}
+            {(templateId === 'frcc5' || templateId === 'Format CC5') && (
+              <FRCC5Form
+                onSubmit={handleFormSubmit}
+                templateId={templateId}
+                onFormDataChange={handleFormDataChange}
+                isProcessing={isProcessing}
+                initialData={stage1InitialData}
+              />
+            )}
+            {(templateId === 'frcc6' || templateId === 'Format CC6') && (
+              <FRCC6Form
+                onSubmit={handleFormSubmit}
+                templateId={templateId}
+                onFormDataChange={handleFormDataChange}
+                isProcessing={isProcessing}
+                initialData={stage1InitialData}
+              />
+            )}
+            {(templateId === 'frcc7' || templateId === 'Format CC7') && (
+              <FRCC7Form
+                onSubmit={handleFormSubmit}
+                templateId={templateId}
+                onFormDataChange={handleFormDataChange}
+                isProcessing={isProcessing}
+                initialData={stage1InitialData}
+              />
+            )}
+            {(templateId === 'TERM_LOAN_SERVICE_WITHOUT_STOCK') && (
+              <FRTermLoanForm
+                onSubmit={handleFormSubmit}
+                templateId={templateId}
+                onFormDataChange={handleFormDataChange}
+                isProcessing={isProcessing}
+                initialData={stage1InitialData}
+                presetSector={presetSector}
+                lockSector={lockSector}
+                onSaveDraft={handleSaveDraftFromForm}
+                savingDraft={savingDraft}
+              />
+            )}
+            {(templateId === 'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK') && (
+              <FRTermLoanWithStockForm
+                onSubmit={handleFormSubmit}
+                templateId={templateId}
+                onFormDataChange={handleFormDataChange}
+                isProcessing={isProcessing}
+                initialData={stage1InitialData}
+                presetSector={presetSector}
+                lockSector={lockSector}
+                onSaveDraft={handleSaveDraftFromForm}
+                savingDraft={savingDraft}
+              />
+            )}
+            {(templateId === 'TERM_LOAN_CC') && (
+              <FRTermLoanCCForm
+                onSubmit={handleFormSubmit}
+                templateId={templateId}
+                onFormDataChange={handleFormDataChange}
+                isProcessing={isProcessing}
+                initialData={stage1InitialData}
+                presetSector={presetSector}
+                lockSector={lockSector}
+                onSaveDraft={handleSaveDraftFromForm}
+                savingDraft={savingDraft}
+              />
+            )}
+            {templateId &&
+              templateId !== 'frcc1' && templateId !== 'Format CC1' &&
+              templateId !== 'frcc2' && templateId !== 'Format CC2' &&
+              templateId !== 'frcc3' && templateId !== 'Format CC3' &&
+              templateId !== 'frcc4' && templateId !== 'Format CC4' &&
+              templateId !== 'frcc5' && templateId !== 'Format CC5' &&
+              templateId !== 'frcc6' && templateId !== 'Format CC6' &&
+              templateId !== 'frcc7' && templateId !== 'Format CC7' &&
+              templateId !== 'TERM_LOAN_SERVICE_WITHOUT_STOCK' &&
+              templateId !== 'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK' &&
+              templateId !== 'TERM_LOAN_CC' && (
                 <Card className="mb-6">
                   <div className="text-center py-12">
-                    <div className="text-6xl mb-4">⚠️</div>
+                    <div className="text-6xl mb-4">🚧</div>
                     <h3 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-xl font-bold text-gray-800 mb-2">
-                      No Template Selected
+                      Form Under Development
                     </h3>
-                    <p className="text-gray-600 mb-4">
-                      Please select a template from the dashboard first.
-                    </p>
-                    <Button onClick={() => navigate(generateHubLandingPath(user))} variant="primary">
-                      <ArrowLeftIcon className="w-4 h-4 inline mr-2" />
-                      Back to Dashboard
-                    </Button>
+                    <p className="text-gray-600 mb-1">Form for {templateId} is under development.</p>
+                    <p className="text-sm text-gray-500">Please select Format CC1 through CC7.</p>
                   </div>
                 </Card>
               )}
-            </>
-          </div>
+            {!templateId && (
+              <Card className="mb-6">
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">⚠️</div>
+                  <h3 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-xl font-bold text-gray-800 mb-2">
+                    No Template Selected
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    Please select a template from the dashboard first.
+                  </p>
+                  <Button onClick={() => navigate(generateHubLandingPath(user))} variant="primary">
+                    <ArrowLeftIcon className="w-4 h-4 inline mr-2" />
+                    Back to Dashboard
+                  </Button>
+                </div>
+              </Card>
+            )}
+          </>
         )}
       </div>
     </GenerateStandaloneLayout>

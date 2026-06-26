@@ -15,9 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 import SaveDraftButton from '../common/SaveDraftButton';
-import { FRCC_REQUIRED_STAMP_DEFAULT, getTermLoanPreparedByErrors } from '../../utils/frccFormUi';
-import { resolveDraftSourceData, withSyncedRawFormData } from '../../utils/draftSourceData';
-import { toExcelLoanStartMonth, toExcelFirstSaleBillMonth, toMonthInputValue } from '../../utils/monthFieldFormat';
+import { FRCC_REQUIRED_STAMP_DEFAULT } from '../../utils/frccFormUi';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -258,9 +256,7 @@ const FRTermLoanForm = ({
   lockSector = false,
   onSaveDraft = null,
   savingDraft = false,
-  onRegisterStage1SnapshotGetter = null,
 }) => {
-  const sourceData = resolveDraftSourceData(initialData);
   const defaultFormData = {
     'General Information': {},
     'Expected Employment Generation': {},
@@ -326,8 +322,8 @@ const FRTermLoanForm = ({
         'd275': 'Customer discounts / rebates', 'e275': 0,
         'd276': 'Warranty & after-sales service expenses', 'e276': 0,
         'd277': 'Bad debts written off', 'e277': 0,
-        'd278': 'Business entertainment expenses', 'e278': 0,
-        'd279': 'Other Selling and Distribution Expenses', 'e279': 0
+        'd278': 'Business entertainment expenses', 'e278': 0.08,
+        'd279': 'Other Selling and Distribution Expenses', 'e279': 8000
       },
       'General Overheads': {
         'd280': 'Insurance (office, employee, general liability)', 'e280': 0,
@@ -337,7 +333,7 @@ const FRTermLoanForm = ({
         'd284': 'Fuel & maintenance for delivery vehicles', 'e284': 0,
         'd285': 'Rent, rates, and taxes (non-factory premises)', 'e285': 0,
         'd286': 'AMC (Annual Maintenance Contracts)', 'e286': 0,
-        'd287': 'Other General Overhead expenses', 'e287': 0
+        'd287': 'Other General Overhead expenses', 'e287': 0.1
       },
       'Miscellaneous Expenses': {
         'd288': 'Donation & charity (if not CSR)', 'e288': 0,
@@ -362,15 +358,15 @@ const FRTermLoanForm = ({
       return next;
     };
 
-    if (sourceData && Object.keys(sourceData).length > 0) {
-      // Merge sourceData with default structure
+    if (initialData && Object.keys(initialData).length > 0) {
+      // Merge initialData with default structure
       const merged = { ...defaultFormData };
-      for (const key in sourceData) {
-        if (Object.hasOwn(sourceData, key)) {
-          if (typeof sourceData[key] === 'object' && sourceData[key] !== null && typeof merged[key] === 'object' && merged[key] !== null) {
-            merged[key] = { ...merged[key], ...sourceData[key] };
+      for (const key in initialData) {
+        if (Object.hasOwn(initialData, key)) {
+          if (typeof initialData[key] === 'object' && initialData[key] !== null && typeof merged[key] === 'object' && merged[key] !== null) {
+            merged[key] = { ...merged[key], ...initialData[key] };
           } else {
-            merged[key] = sourceData[key];
+            merged[key] = initialData[key];
           }
         }
       }
@@ -402,8 +398,8 @@ const FRTermLoanForm = ({
   const [expenseValidationErrors, setExpenseValidationErrors] = useState({});
 
   // Initialize tenure from initial data (i46 field in Term Loan Details)
-  const initialTenure = sourceData?.['Term Loan Details']?.i46 !== undefined
-    ? parseInt(sourceData['Term Loan Details'].i46, 10)
+  const initialTenure = initialData?.['Term Loan Details']?.i46 !== undefined
+    ? parseInt(initialData['Term Loan Details'].i46, 10)
     : null;
 
   // Live tenure state - tracks real-time tenure value from form input
@@ -420,8 +416,8 @@ const FRTermLoanForm = ({
 
   // Loan percentage state for each asset category (maps to K28-K39)
   const [loanPercentages, setLoanPercentages] = useState(() => {
-    if (sourceData && sourceData['Asset Loan Percentages']) {
-      return sourceData['Asset Loan Percentages'];
+    if (initialData && initialData['Asset Loan Percentages']) {
+      return initialData['Asset Loan Percentages'];
     }
     // Default all categories to 0%
     const defaults = {};
@@ -433,8 +429,8 @@ const FRTermLoanForm = ({
 
   // Loan amount state for each asset category (direct entry)
   const [loanAmounts, setLoanAmounts] = useState(() => {
-    if (sourceData && sourceData['Asset Loan Amounts']) {
-      return sourceData['Asset Loan Amounts'];
+    if (initialData && initialData['Asset Loan Amounts']) {
+      return initialData['Asset Loan Amounts'];
     }
     // Default all categories to empty
     const defaults = {};
@@ -454,7 +450,6 @@ const FRTermLoanForm = ({
 
   // Error states for validation
   const [assetValidationErrors, setAssetValidationErrors] = useState({});
-  const [preparedByErrors, setPreparedByErrors] = useState({});
 
   const sections = [
     { key: 'general', title: 'General Information', icon: DocumentTextIcon },
@@ -466,18 +461,17 @@ const FRTermLoanForm = ({
   ];
 
   useEffect(() => {
-    const editSource = resolveDraftSourceData(initialData);
-    if (editSource && isEditMode) {
+    if (initialData && isEditMode) {
       setFormData(prevFormData => {
         const merged = { ...prevFormData };
-        for (const sectionKey in editSource) {
-          if (Object.hasOwn(editSource, sectionKey)) {
-            if (typeof editSource[sectionKey] === 'object' && editSource[sectionKey] !== null &&
+        for (const sectionKey in initialData) {
+          if (Object.hasOwn(initialData, sectionKey)) {
+            if (typeof initialData[sectionKey] === 'object' && initialData[sectionKey] !== null &&
               typeof merged[sectionKey] === 'object' && merged[sectionKey] !== null &&
-              !Array.isArray(editSource[sectionKey])) {
-              merged[sectionKey] = { ...merged[sectionKey], ...editSource[sectionKey] };
+              !Array.isArray(initialData[sectionKey])) {
+              merged[sectionKey] = { ...merged[sectionKey], ...initialData[sectionKey] };
             } else {
-              merged[sectionKey] = editSource[sectionKey];
+              merged[sectionKey] = initialData[sectionKey];
             }
           }
         }
@@ -487,19 +481,19 @@ const FRTermLoanForm = ({
   }, [initialData, isEditMode]);
 
   useEffect(() => {
-    const source = resolveDraftSourceData(initialData);
-    if (source['Asset Loan Percentages']) {
-      setLoanPercentages(source['Asset Loan Percentages']);
+    if (initialData?.['Asset Loan Percentages']) {
+      setLoanPercentages(initialData['Asset Loan Percentages']);
     }
-    if (source['Asset Loan Amounts']) {
-      setLoanAmounts(source['Asset Loan Amounts']);
+    if (initialData?.['Asset Loan Amounts']) {
+      setLoanAmounts(initialData['Asset Loan Amounts']);
     }
   }, [initialData]);
 
-  const onFormDataChangeRef = useRef(onFormDataChange);
   useEffect(() => {
-    onFormDataChangeRef.current = onFormDataChange;
-  });
+    if (onFormDataChange) {
+      onFormDataChange(formData);
+    }
+  }, [formData, onFormDataChange]);
 
   useEffect(() => {
     setAssetVisibleRowsByCategory(prev => {
@@ -611,10 +605,6 @@ const FRTermLoanForm = ({
     // Special validation for Schedule for Assets
     if (sectionKey === 'assets') {
       return true;
-    }
-
-    if (sectionKey === 'prepared_by') {
-      return Object.keys(getTermLoanPreparedByErrors(formData)).length === 0;
     }
 
     if (sectionKey === 'term') {
@@ -1654,7 +1644,7 @@ const FRTermLoanForm = ({
           </label>
           <input
             type="month"
-            value={toMonthInputValue(formData['Term Loan Details']?.['i52'])}
+            value={(formData['Term Loan Details'] && formData['Term Loan Details']['i52']) || ''}
             onChange={(e) => handleFieldChange('Term Loan Details', 'i52', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
           />
@@ -1665,7 +1655,7 @@ const FRTermLoanForm = ({
           </label>
           <input
             type="month"
-            value={toMonthInputValue(formData['Term Loan Details']?.['i53'])}
+            value={(formData['Term Loan Details'] && formData['Term Loan Details']['i53']) || ''}
             onChange={(e) => handleFieldChange('Term Loan Details', 'i53', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
           />
@@ -2172,132 +2162,98 @@ const FRTermLoanForm = ({
     );
   };
 
-  const renderPreparedBy = () => {
-    const errors = getTermLoanPreparedByErrors(formData);
-    const fieldBorder = (key) => (errors[key] ? 'border-red-400' : 'border-gray-300');
-
-    return (
+  const renderPreparedBy = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Name 1 (Prepared By)
+            Partner Name 1 (Prepared By)
           </label>
           <input
             type="text"
             value={(formData['Prepared By'] && formData['Prepared By']['j136']) || ''}
             onChange={(e) => handleFieldChange('Prepared By', 'j136', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-            placeholder="Enter name 1"
+            placeholder="Enter partner name 1"
           />
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Name 2 (Prepared By)
+            Partner Name 2 (Prepared By)
           </label>
           <input
             type="text"
             value={(formData['Prepared By'] && formData['Prepared By']['j137']) || ''}
             onChange={(e) => handleFieldChange('Prepared By', 'j137', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-            placeholder="Enter name 2"
+            placeholder="Enter partner name 2"
           />
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Address (Prepared By) <span className="text-red-500">*</span>
+            Address (Prepared By)
           </label>
           <input
             type="text"
             value={(formData['Prepared By'] && formData['Prepared By']['j138']) || ''}
             onChange={(e) => handleFieldChange('Prepared By', 'j138', e.target.value)}
-            className={`w-full px-3 py-2 text-sm border ${fieldBorder('j138')} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
             placeholder="Enter address"
           />
-          {errors.j138 && <p className="text-xs text-red-600">{errors.j138}</p>}
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Mobile Number (Prepared By) <span className="text-red-500">*</span>
+            Mobile Number (Prepared By)
           </label>
           <input
             type="text"
             value={(formData['Prepared By'] && formData['Prepared By']['j139']) || ''}
             onChange={(e) => handleFieldChange('Prepared By', 'j139', e.target.value)}
-            className={`w-full px-3 py-2 text-sm border ${fieldBorder('j139')} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
             placeholder="Enter mobile number"
           />
-          {errors.j139 && <p className="text-xs text-red-600">{errors.j139}</p>}
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Bank Name / Department Name <span className="text-red-500">*</span>
+            Required Stamp
+          </label>
+          <select
+            value={(formData['Prepared By'] && formData['Prepared By']['required_stamp']) || 'No'}
+            onChange={(e) => handleFieldChange('Prepared By', 'required_stamp', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+          >
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+          <span className="text-xs text-gray-500 block">Select whether CA stamp is required on the report</span>
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            Bank Name / Department Name
           </label>
           <input
             type="text"
             value={(formData['General Information'] && formData['General Information']['bank_name']) || ''}
             onChange={(e) => handleFieldChange('General Information', 'bank_name', e.target.value)}
-            className={`w-full px-3 py-2 text-sm border ${fieldBorder('bank_name')} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
             placeholder="Enter bank or department name"
           />
-          {errors.bank_name && <p className="text-xs text-red-600">{errors.bank_name}</p>}
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Branch Name <span className="text-red-500">*</span>
+            Branch Name
           </label>
           <input
             type="text"
             value={(formData['General Information'] && formData['General Information']['branch_name']) || ''}
             onChange={(e) => handleFieldChange('General Information', 'branch_name', e.target.value)}
-            className={`w-full px-3 py-2 text-sm border ${fieldBorder('branch_name')} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
             placeholder="Enter branch name"
           />
-          {errors.branch_name && <p className="text-xs text-red-600">{errors.branch_name}</p>}
-        </div>
-        <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-gray-800">
-            Banker Mail ID
-          </label>
-          <input
-            type="email"
-            value={(formData['Prepared By'] && formData['Prepared By']['banker_mail_id']) || ''}
-            onChange={(e) => handleFieldChange('Prepared By', 'banker_mail_id', e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-            placeholder="Enter banker email"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-gray-800">
-            CIBIL Score
-          </label>
-          <input
-            type="text"
-            value={(formData['Prepared By'] && formData['Prepared By']['cibil_score']) || ''}
-            onChange={(e) => handleFieldChange('Prepared By', 'cibil_score', e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-            placeholder="Enter CIBIL score"
-          />
-        </div>
-        <div className="space-y-1.5 md:col-span-2">
-          <label className="block text-xs font-semibold text-gray-800">
-            Required Stamp <span className="text-red-500">*</span>
-          </label>
-          <select
-            value={(formData['Prepared By'] && formData['Prepared By']['required_stamp']) || 'No'}
-            onChange={(e) => handleFieldChange('Prepared By', 'required_stamp', e.target.value)}
-            className={`w-full md:w-1/2 px-3 py-2 text-sm border ${fieldBorder('required_stamp')} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
-          >
-            <option value="Yes">Yes</option>
-            <option value="No">No</option>
-          </select>
-          {errors.required_stamp && <p className="text-xs text-red-600">{errors.required_stamp}</p>}
-          <span className="text-xs text-gray-500 block">Select whether CA stamp is required on the report</span>
         </div>
       </div>
     </div>
-    );
-  };
+  );
 
   const renderCurrentStep = () => {
     const currentSectionKey = sections[currentStep].key;
@@ -2418,12 +2374,6 @@ const FRTermLoanForm = ({
     }
 
     const skipCanProceedGate = currentSection.key === 'general' || currentSection.key === 'term';
-    if (currentSection.key === 'prepared_by') {
-      const errors = getTermLoanPreparedByErrors(formData);
-      setPreparedByErrors(errors);
-      if (Object.keys(errors).length > 0) return;
-    }
-
     if ((skipCanProceedGate || canProceed) && currentStep < sections.length - 1) {
       setCurrentStep(currentStep + 1);
     }
@@ -2434,26 +2384,6 @@ const FRTermLoanForm = ({
       setCurrentStep(currentStep - 1);
     }
   };
-
-  const buildLoanPercentageCells = () => {
-    const cells = {};
-    Object.entries(CURRENT_ASSET_SECTIONS).forEach(([categoryName, config]) => {
-      if (config.loanCell) {
-        cells[config.loanCell] = loanPercentages[categoryName] || 0;
-      }
-    });
-    return cells;
-  };
-
-  const buildDraftSnapshot = () => ({
-    ...formData,
-    bank_name: formData['General Information']?.bank_name,
-    branch_name: formData['General Information']?.branch_name,
-    'Schedule for Assets': { ...(formData['Schedule for Assets'] || {}) },
-    'Asset Loan Percentages': loanPercentages,
-    'Asset Loan Amounts': loanAmounts,
-    'Loan Percentage Cells': buildLoanPercentageCells(),
-  });
 
   const buildSubmitPayload = () => {
     const extractCellData = (obj, result = {}) => {
@@ -2468,52 +2398,49 @@ const FRTermLoanForm = ({
     };
 
     const updatedFormData = {
-      ...buildDraftSnapshot(),
+      ...formData,
       'Term Loan Details': {
         ...formData['Term Loan Details']
       }
     };
 
-    const loanStartMonth = updatedFormData['Term Loan Details']?.['i52'];
-    if (loanStartMonth) {
-      updatedFormData['Term Loan Details']['i52'] = toExcelLoanStartMonth(loanStartMonth);
+    if (updatedFormData['Term Loan Details']?.['i52'] && updatedFormData['Term Loan Details']['i52'].includes('-')) {
+      const [year, month] = updatedFormData['Term Loan Details']['i52'].split('-');
+      if (year && month) {
+        updatedFormData['Term Loan Details']['i52'] = `${month.padStart(2, '0')}-01-${year}`;
+      }
     }
-    const firstSaleMonth = updatedFormData['Term Loan Details']?.['i53'];
-    if (firstSaleMonth) {
-      updatedFormData['Term Loan Details']['i53'] = toExcelFirstSaleBillMonth(firstSaleMonth);
+    if (updatedFormData['Term Loan Details']?.['i53'] && updatedFormData['Term Loan Details']['i53'].includes('-')) {
+      const [year, month] = updatedFormData['Term Loan Details']['i53'].split('-');
+      const date = new Date(year, month - 1, 1);
+      const monthName = date.toLocaleString('en-US', { month: 'short' });
+      updatedFormData['Term Loan Details']['i53'] = `${monthName}-${year.slice(-2)}`;
     }
 
     const excelData = extractCellData(updatedFormData);
+
+    const loanPercentageCells = {};
+    Object.entries(CURRENT_ASSET_SECTIONS).forEach(([categoryName, config]) => {
+      if (config.loanCell) {
+        loanPercentageCells[config.loanCell] = loanPercentages[categoryName] || 0;
+      }
+    });
 
     return {
       ...updatedFormData,
       rawFormData: JSON.parse(JSON.stringify(formData)),
       excelData,
+      bank_name: formData['General Information']['bank_name'],
+      branch_name: formData['General Information']['branch_name'],
+      'Asset Loan Percentages': loanPercentages,
+      'Asset Loan Amounts': loanAmounts,
+      'Loan Percentage Cells': loanPercentageCells
     };
   };
 
-  const getDraftSnapshot = () => withSyncedRawFormData(buildDraftSnapshot());
-
-  const lastSyncedSnapshotRef = useRef('');
-  useEffect(() => {
-    if (!onFormDataChangeRef.current) return;
-    const snapshot = getDraftSnapshot();
-    const signature = JSON.stringify(snapshot);
-    if (lastSyncedSnapshotRef.current === signature) return;
-    lastSyncedSnapshotRef.current = signature;
-    onFormDataChangeRef.current(snapshot);
-  }, [formData, loanPercentages, loanAmounts]);
-
-  useEffect(() => {
-    if (!onRegisterStage1SnapshotGetter) return;
-    onRegisterStage1SnapshotGetter(getDraftSnapshot);
-    return () => onRegisterStage1SnapshotGetter(null);
-  }, [onRegisterStage1SnapshotGetter]);
+  const getDraftSnapshot = () => buildSubmitPayload();
 
   const handleSubmit = () => {
-    const errors = getTermLoanPreparedByErrors(formData);
-    setPreparedByErrors(errors);
-    if (Object.keys(errors).length > 0) return;
     onSubmit(buildSubmitPayload());
   };
 
@@ -2649,7 +2576,7 @@ const FRTermLoanForm = ({
               <SaveDraftButton
                 templateId={templateId}
                 currentStep={`/stage1?templateId=${templateId}`}
-                currentFormData={getDraftSnapshot()}
+                currentFormData={formData}
               />
             )}
             {currentStep === sections.length - 1 ? (
@@ -2657,7 +2584,7 @@ const FRTermLoanForm = ({
                 type="button"
                 className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                 onClick={handleSubmit}
-                disabled={isProcessing || !canProceed}
+                disabled={isProcessing}
               >
                 {isProcessing ? (
                   <>
@@ -2688,7 +2615,7 @@ const FRTermLoanForm = ({
           </div>
         </div>
 
-        {!canProceed && (
+        {!canProceed && currentStep < sections.length - 1 && (
           <div className="mt-3 text-xs text-red-600 text-center">
             Please fill all required fields to proceed
           </div>

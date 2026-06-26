@@ -34,10 +34,7 @@ export const STAGE2_DRAFT_KEYS = [
 
 /** Stage-1 fields stored outside nested form sections (assets, loan %, etc.). */
 export const STAGE1_META_KEYS = [
-  'Schedule for Assets',
   'Fixed Assets Schedule',
-  'New Asset Schedule',
-  'Gross Assets Opening Balance',
   'Asset Loan Percentages',
   'Asset Loan Amounts',
   'Loan Percentage Cells',
@@ -45,8 +42,6 @@ export const STAGE1_META_KEYS = [
   'excelData',
   'bank_name',
   'branch_name',
-  'presetSector',
-  'lockSector',
 ];
 
 function isNonEmptyValue(value) {

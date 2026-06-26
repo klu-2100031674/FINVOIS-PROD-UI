@@ -15,9 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 import SaveDraftButton from '../common/SaveDraftButton';
-import { FRCC_REQUIRED_STAMP_DEFAULT, getTermLoanPreparedByErrors } from '../../utils/frccFormUi';
-import { resolveDraftSourceData, withSyncedRawFormData } from '../../utils/draftSourceData';
-import { toExcelLoanStartMonth, toExcelFirstSaleBillMonth, toMonthInputValue } from '../../utils/monthFieldFormat';
+import { FRCC_REQUIRED_STAMP_DEFAULT } from '../../utils/frccFormUi';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -272,13 +270,10 @@ const FRTermLoanCCForm = ({
   lockSector = false,
   onSaveDraft = null,
   savingDraft = false,
-  onRegisterStage1SnapshotGetter = null,
 }) => {
-  const sourceData = resolveDraftSourceData(initialData);
-
   // Extract initial tenure from initialData if available (for initial render)
-  const initialTenure = sourceData?.['Means of Finance details']?.i47 !== undefined
-    ? parseInt(sourceData['Means of Finance details'].i47, 10)
+  const initialTenure = initialData?.['Means of Finance details']?.i47 !== undefined
+    ? parseInt(initialData['Means of Finance details'].i47, 10)
     : null;
 
   // Track live tenure value from form state
@@ -331,13 +326,13 @@ const FRTermLoanCCForm = ({
     const mergedData = {
       ...defaultFormData,
       'Schedule for Indirect Expenses': initialIndirect,
-      ...sourceData
+      ...initialData
     };
 
-    if (sourceData && sourceData['Schedule for Indirect Expenses']) {
+    if (initialData && initialData['Schedule for Indirect Expenses']) {
       mergedData['Schedule for Indirect Expenses'] = {
         ...initialIndirect,
-        ...sourceData['Schedule for Indirect Expenses']
+        ...initialData['Schedule for Indirect Expenses']
       };
     }
     mergedData['General Information'] = normalizeSectorValue(mergedData['General Information']);
@@ -358,8 +353,8 @@ const FRTermLoanCCForm = ({
 
   // Loan percentage state for each asset category (maps to K28-K39)
   const [loanPercentages, setLoanPercentages] = useState(() => {
-    if (sourceData && sourceData['Asset Loan Percentages']) {
-      return sourceData['Asset Loan Percentages'];
+    if (initialData && initialData['Asset Loan Percentages']) {
+      return initialData['Asset Loan Percentages'];
     }
     const initialPercentages = {};
     Object.keys(CURRENT_ASSET_SECTIONS).forEach(key => {
@@ -370,8 +365,8 @@ const FRTermLoanCCForm = ({
 
   // Loan amount state for each asset category (direct entry)
   const [loanAmounts, setLoanAmounts] = useState(() => {
-    if (sourceData && sourceData['Asset Loan Amounts']) {
-      return sourceData['Asset Loan Amounts'];
+    if (initialData && initialData['Asset Loan Amounts']) {
+      return initialData['Asset Loan Amounts'];
     }
     // Default all categories to empty
     const defaults = {};
@@ -391,11 +386,15 @@ const FRTermLoanCCForm = ({
   const [assetValidationErrors, setAssetValidationErrors] = useState({});
   const [generalInfoErrors, setGeneralInfoErrors] = useState({});
   const [meansOfFinanceErrors, setMeansOfFinanceErrors] = useState({});
-  const [preparedByErrors, setPreparedByErrors] = useState({});
+  // UI-only (not sent to API / Excel) — Prepared By section extras for TERM_LOAN_CC
+  const [preparedByUiOnly, setPreparedByUiOnly] = useState({
+    bankerMailId: '',
+    cibilScore: '',
+  });
 
   const [assetItems, setAssetItems] = useState(() => {
-    if (sourceData && sourceData['Fixed Assets Schedule']) {
-      return sourceData['Fixed Assets Schedule'];
+    if (initialData && initialData['Fixed Assets Schedule']) {
+      return initialData['Fixed Assets Schedule'];
     }
     const initialAssets = {};
     Object.keys(CURRENT_ASSET_SECTIONS).forEach(key => {
@@ -408,14 +407,10 @@ const FRTermLoanCCForm = ({
     return initialAssets;
   });
 
-  // Hydrate from draft once on mount (initialData is frozen by GeneratePage).
-  const didHydrateFromDraftRef = useRef(false);
+  // Update state if initialData changes (e.g. loaded from API)
   useEffect(() => {
-    if (didHydrateFromDraftRef.current) return;
-    const sourceData = resolveDraftSourceData(initialData);
-    if (!sourceData || Object.keys(sourceData).length === 0) return;
-    didHydrateFromDraftRef.current = true;
-      if (sourceData['Fixed Assets Schedule']) {
+    if (initialData && Object.keys(initialData).length > 0) {
+      if (initialData['Fixed Assets Schedule']) {
         // Convert and filter assets to match current tenure-based ranges
         const convertedAssets = {};
         Object.keys(CURRENT_ASSET_SECTIONS).forEach(key => {
@@ -427,9 +422,9 @@ const FRTermLoanCCForm = ({
         });
 
         // Load and validate assets against current tenure-based ranges
-        if (sourceData['Fixed Assets Schedule'] && typeof sourceData['Fixed Assets Schedule'] === 'object') {
-          Object.keys(sourceData['Fixed Assets Schedule']).forEach(category => {
-            const categoryData = sourceData['Fixed Assets Schedule'][category];
+        if (initialData['Fixed Assets Schedule'] && typeof initialData['Fixed Assets Schedule'] === 'object') {
+          Object.keys(initialData['Fixed Assets Schedule']).forEach(category => {
+            const categoryData = initialData['Fixed Assets Schedule'][category];
             const section = CURRENT_ASSET_SECTIONS[category];
 
             if (!section) return; // Skip unknown categories
@@ -460,9 +455,9 @@ const FRTermLoanCCForm = ({
       }
 
       setFormData(prev => {
-        const newData = { ...prev, ...sourceData };
-        if (sourceData['Schedule for Indirect Expenses']) {
-          newData['Schedule for Indirect Expenses'] = sourceData['Schedule for Indirect Expenses'];
+        const newData = { ...prev, ...initialData };
+        if (initialData['Schedule for Indirect Expenses']) {
+          newData['Schedule for Indirect Expenses'] = initialData['Schedule for Indirect Expenses'];
         }
         newData['General Information'] = normalizeSectorValue(newData['General Information']);
         if (presetSector && lockSector) {
@@ -475,12 +470,13 @@ const FRTermLoanCCForm = ({
       });
 
       // Load loan percentages if available
-      if (sourceData['Asset Loan Percentages']) {
-        setLoanPercentages(sourceData['Asset Loan Percentages']);
+      if (initialData['Asset Loan Percentages']) {
+        setLoanPercentages(initialData['Asset Loan Percentages']);
       }
-      if (sourceData['Asset Loan Amounts']) {
-        setLoanAmounts(sourceData['Asset Loan Amounts']);
+      if (initialData['Asset Loan Amounts']) {
+        setLoanAmounts(initialData['Asset Loan Amounts']);
       }
+    }
   }, [initialData, presetSector, lockSector]);
 
   // Track previous tenure to detect when it crosses the threshold
@@ -583,6 +579,10 @@ const FRTermLoanCCForm = ({
 
       if (Object.keys(meansOfFinanceErrors).length > 0 && section === 'Means of Finance details') {
         setMeansOfFinanceErrors(validateMeansOfFinance(updatedData));
+      }
+
+      if (onFormDataChange) {
+        onFormDataChange(updatedData);
       }
 
       return updatedData;
@@ -861,25 +861,6 @@ const FRTermLoanCCForm = ({
     });
   };
 
-  const buildLoanPercentageCells = () => {
-    const cells = {};
-    Object.keys(CURRENT_ASSET_SECTIONS).forEach((category) => {
-      const section = CURRENT_ASSET_SECTIONS[category];
-      cells[section.loanCell] = loanPercentages[category] || 0;
-    });
-    return cells;
-  };
-
-  const buildDraftSnapshot = () => ({
-    ...formData,
-    bank_name: formData['General Information']?.bank_name,
-    branch_name: formData['General Information']?.branch_name,
-    'Fixed Assets Schedule': assetItems,
-    'Asset Loan Percentages': loanPercentages,
-    'Asset Loan Amounts': loanAmounts,
-    'Loan Percentage Cells': buildLoanPercentageCells(),
-  });
-
   const buildSubmitPayload = () => {
     // Extract tenure for conditional row mapping
     const tenure = parseInt(formData['Means of Finance details']?.['i47'] || 0);
@@ -946,22 +927,33 @@ const FRTermLoanCCForm = ({
     });
 
     const updatedFormData = {
-      ...buildDraftSnapshot(),
+      ...formData,
       'Means of Finance details': {
         ...formData['Means of Finance details']
       },
       'Schedule for Indirect Expenses': filteredIndirectExpenses
     };
-    const loanStartMonth = updatedFormData['Means of Finance details']?.['i59'];
-    if (loanStartMonth) {
-      updatedFormData['Means of Finance details']['i59'] = toExcelLoanStartMonth(loanStartMonth);
+    if (updatedFormData['Means of Finance details']?.['i59']) {
+      const [year, month] = updatedFormData['Means of Finance details']['i59'].split('-');
+      if (year && month) {
+        updatedFormData['Means of Finance details']['i59'] = `${month.padStart(2, '0')}-01-${year}`;
+      }
     }
-    const firstSaleMonth = updatedFormData['Means of Finance details']?.['i60'];
-    if (firstSaleMonth) {
-      updatedFormData['Means of Finance details']['i60'] = toExcelFirstSaleBillMonth(firstSaleMonth);
+    if (updatedFormData['Means of Finance details']?.['i60']) {
+      const [year, month] = updatedFormData['Means of Finance details']['i60'].split('-');
+      if (year && month) {
+        const date = new Date(year, month - 1, 1);
+        const monthName = date.toLocaleString('en-US', { month: 'short' });
+        updatedFormData['Means of Finance details']['i60'] = `${monthName}-${year.slice(-2)}`;
+      }
     }
 
-    const loanPercentageCells = buildLoanPercentageCells();
+    const loanPercentageCells = {};
+    Object.keys(CURRENT_ASSET_SECTIONS).forEach(category => {
+      const section = CURRENT_ASSET_SECTIONS[category];
+      const percentage = loanPercentages[category] || 0;
+      loanPercentageCells[section.loanCell] = percentage;
+    });
 
     return {
       ...updatedFormData,
@@ -975,39 +967,13 @@ const FRTermLoanCCForm = ({
     };
   };
 
-  const getDraftSnapshot = () => withSyncedRawFormData(buildDraftSnapshot());
-
-  const onFormDataChangeRef = useRef(onFormDataChange);
-  useEffect(() => {
-    onFormDataChangeRef.current = onFormDataChange;
-  });
-
-  const lastSyncedSnapshotRef = useRef('');
-  useEffect(() => {
-    if (!onFormDataChangeRef.current) return;
-    const snapshot = getDraftSnapshot();
-    const signature = JSON.stringify(snapshot);
-    if (lastSyncedSnapshotRef.current === signature) return;
-    lastSyncedSnapshotRef.current = signature;
-    onFormDataChangeRef.current(snapshot);
-  }, [formData, loanPercentages, loanAmounts]);
-
-  useEffect(() => {
-    if (!onRegisterStage1SnapshotGetter) return;
-    onRegisterStage1SnapshotGetter(getDraftSnapshot);
-    return () => onRegisterStage1SnapshotGetter(null);
-  }, [onRegisterStage1SnapshotGetter]);
+  const getDraftSnapshot = () => buildSubmitPayload();
 
   const handleSubmit = () => {
-    const errors = getTermLoanPreparedByErrors(formData);
-    setPreparedByErrors(errors);
-    if (Object.keys(errors).length > 0) return;
     onSubmit(buildSubmitPayload());
   };
 
   const renderInput = (section, field, label, type = 'text', options = null, suffix = null, infoTooltip = null, includeSelectOption = true, disabled = false) => {
-    const rawValue = formData[section]?.[field] || '';
-    const displayValue = type === 'month' ? toMonthInputValue(rawValue) : rawValue;
     const fieldError = section === 'General Information'
       ? generalInfoErrors[field]
       : section === 'Means of Finance details'
@@ -1045,7 +1011,7 @@ const FRTermLoanCCForm = ({
           <div className="relative">
             <input
               type={type}
-              value={displayValue}
+              value={formData[section]?.[field] || ''}
               onChange={(e) => handleInputChange(section, field, e.target.value)}
               onWheel={(e) => e.target.type === 'number' && e.target.blur()}
               disabled={disabled}
@@ -1294,10 +1260,6 @@ const FRTermLoanCCForm = ({
       return true;
     }
 
-    if (sectionKey === 'prepared_by') {
-      return Object.keys(getTermLoanPreparedByErrors(formData)).length === 0;
-    }
-
     if (required.length === 0) return true; // No required fields for this section
 
     const sectionData = formData[dataKey] || {};
@@ -1426,12 +1388,6 @@ const FRTermLoanCCForm = ({
     }
 
     const skipCanProceedGate = currentSection.key === 'general' || currentSection.key === 'term';
-    if (currentSection.key === 'prepared_by') {
-      const errors = getTermLoanPreparedByErrors(formData);
-      setPreparedByErrors(errors);
-      if (Object.keys(errors).length > 0) return;
-    }
-
     if ((skipCanProceedGate || canProceed) && currentStep < sections.length - 1) {
       setCurrentStep(prev => prev + 1);
     }
@@ -1954,88 +1910,95 @@ const FRTermLoanCCForm = ({
         );
       }
 
-      case 'prepared_by': {
-        const preparedByErrors = getTermLoanPreparedByErrors(formData);
-        const fieldBorder = (key) => (preparedByErrors[key] ? 'border-red-400' : 'border-gray-300');
-
+      case 'prepared_by':
         return (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-gray-800">
-                  Name 1 (Prepared By)
+                  Partner Name 1 (Prepared By)
                 </label>
                 <input
                   type="text"
                   value={(formData['Prepared By'] && formData['Prepared By']['j136']) || ''}
                   onChange={(e) => handleInputChange('Prepared By', 'j136', e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-                  placeholder="Enter name 1"
+                  placeholder="Enter partner name 1"
                 />
               </div>
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-gray-800">
-                  Name 2 (Prepared By)
+                  Partner Name 2 (Prepared By)
                 </label>
                 <input
                   type="text"
                   value={(formData['Prepared By'] && formData['Prepared By']['j137']) || ''}
                   onChange={(e) => handleInputChange('Prepared By', 'j137', e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-                  placeholder="Enter name 2"
+                  placeholder="Enter partner name 2"
                 />
               </div>
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-gray-800">
-                  Address (Prepared By) <span className="text-red-500">*</span>
+                  Address (Prepared By)
                 </label>
                 <input
                   type="text"
                   value={(formData['Prepared By'] && formData['Prepared By']['j138']) || ''}
                   onChange={(e) => handleInputChange('Prepared By', 'j138', e.target.value)}
-                  className={`w-full px-3 py-2 text-sm border ${fieldBorder('j138')} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
                   placeholder="Enter address"
                 />
-                {preparedByErrors.j138 && <p className="text-xs text-red-600">{preparedByErrors.j138}</p>}
               </div>
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-gray-800">
-                  Mobile Number (Prepared By) <span className="text-red-500">*</span>
+                  Mobile Number (Prepared By)
                 </label>
                 <input
                   type="text"
                   value={(formData['Prepared By'] && formData['Prepared By']['j139']) || ''}
                   onChange={(e) => handleInputChange('Prepared By', 'j139', e.target.value)}
-                  className={`w-full px-3 py-2 text-sm border ${fieldBorder('j139')} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
                   placeholder="Enter mobile number"
                 />
-                {preparedByErrors.j139 && <p className="text-xs text-red-600">{preparedByErrors.j139}</p>}
               </div>
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-gray-800">
-                  Bank Name / Department Name <span className="text-red-500">*</span>
+                  Required Stamp
+                </label>
+                <select
+                  value={(formData['Prepared By'] && formData['Prepared By']['required_stamp']) || 'No'}
+                  onChange={(e) => handleInputChange('Prepared By', 'required_stamp', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+                >
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+                <span className="text-xs text-gray-500 block">Select whether CA stamp is required on the report</span>
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-gray-800">
+                  Bank Name / Department Name
                 </label>
                 <input
                   type="text"
                   value={formData['General Information']?.['bank_name'] || ''}
                   onChange={(e) => handleInputChange('General Information', 'bank_name', e.target.value)}
-                  className={`w-full px-3 py-2 text-sm border ${fieldBorder('bank_name')} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
                   placeholder="Enter bank or department name"
                 />
-                {preparedByErrors.bank_name && <p className="text-xs text-red-600">{preparedByErrors.bank_name}</p>}
               </div>
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-gray-800">
-                  Branch Name <span className="text-red-500">*</span>
+                  Branch Name
                 </label>
                 <input
                   type="text"
                   value={formData['General Information']?.['branch_name'] || ''}
                   onChange={(e) => handleInputChange('General Information', 'branch_name', e.target.value)}
-                  className={`w-full px-3 py-2 text-sm border ${fieldBorder('branch_name')} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
                   placeholder="Enter branch name"
                 />
-                {preparedByErrors.branch_name && <p className="text-xs text-red-600">{preparedByErrors.branch_name}</p>}
               </div>
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-gray-800">
@@ -2043,8 +2006,10 @@ const FRTermLoanCCForm = ({
                 </label>
                 <input
                   type="email"
-                  value={(formData['Prepared By'] && formData['Prepared By']['banker_mail_id']) || ''}
-                  onChange={(e) => handleInputChange('Prepared By', 'banker_mail_id', e.target.value)}
+                  value={preparedByUiOnly.bankerMailId}
+                  onChange={(e) =>
+                    setPreparedByUiOnly((prev) => ({ ...prev, bankerMailId: e.target.value }))
+                  }
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
                   placeholder="Enter banker email"
                   autoComplete="off"
@@ -2057,32 +2022,18 @@ const FRTermLoanCCForm = ({
                 <input
                   type="text"
                   inputMode="numeric"
-                  value={(formData['Prepared By'] && formData['Prepared By']['cibil_score']) || ''}
-                  onChange={(e) => handleInputChange('Prepared By', 'cibil_score', e.target.value)}
+                  value={preparedByUiOnly.cibilScore}
+                  onChange={(e) =>
+                    setPreparedByUiOnly((prev) => ({ ...prev, cibilScore: e.target.value }))
+                  }
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
                   placeholder="e.g. 750"
                   autoComplete="off"
                 />
               </div>
-              <div className="space-y-1.5 md:col-span-2">
-                <label className="block text-xs font-semibold text-gray-800">
-                  Required Stamp <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={(formData['Prepared By'] && formData['Prepared By']['required_stamp']) || 'No'}
-                  onChange={(e) => handleInputChange('Prepared By', 'required_stamp', e.target.value)}
-                  className={`w-full md:w-1/2 px-3 py-2 text-sm border ${fieldBorder('required_stamp')} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white`}
-                >
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
-                </select>
-                {preparedByErrors.required_stamp && <p className="text-xs text-red-600">{preparedByErrors.required_stamp}</p>}
-                <span className="text-xs text-gray-500 block">Select whether CA stamp is required on the report</span>
-              </div>
             </div>
           </div>
         );
-      }
 
       case 'expenses': {
         const expenseCategories = Object.keys(CURRENT_INDIRECT_EXPENSES_DATA);
@@ -2335,7 +2286,7 @@ const FRTermLoanCCForm = ({
               <SaveDraftButton
                 templateId={templateId}
                 currentStep={`/stage1?templateId=${templateId}`}
-                currentFormData={getDraftSnapshot()}
+                currentFormData={formData}
               />
             )}
             {currentStep === sections.length - 1 ? (
@@ -2343,7 +2294,7 @@ const FRTermLoanCCForm = ({
                 type="button"
                 className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                 onClick={handleSubmit}
-                disabled={isProcessing || !canProceed}
+                disabled={isProcessing}
               >
                 {isProcessing ? (
                   <>
@@ -2374,7 +2325,7 @@ const FRTermLoanCCForm = ({
           </div>
         </div>
 
-        {!canProceed && (
+        {!canProceed && currentStep < sections.length - 1 && (
           <div className="mt-3 text-xs text-red-600 text-center">
             Please fill all required fields to proceed
           </div>

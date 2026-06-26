@@ -3,8 +3,6 @@ import { useDispatch } from 'react-redux';
 import { useSearchParams } from 'react-router-dom';
 import { saveDraftV2 } from '../../store/slices/draftSlice';
 import toast from 'react-hot-toast';
-import { withSyncedRawFormData } from '../../utils/draftSourceData';
-import { resolveTemplateSector } from '../../utils/templateSectorConfig';
 
 /**
  * Save Draft button.
@@ -44,26 +42,9 @@ const SaveDraftButton = ({ templateId, currentStep, currentFormData, onSavedSucc
 
       const targetDraftId = sessionDraftIdRef.current || undefined;
 
-      const urlPresetSector = searchParams.get('presetSector');
-      const urlLockSector =
-        searchParams.get('lockSector') === '1' ||
-        String(searchParams.get('lockSector') || '').toLowerCase() === 'true';
-      const flatFormData = currentFormData || {};
-      const { presetSector, lockSector } = resolveTemplateSector(templateId, {
-        urlPresetSector,
-        urlLockSector,
-        draftPresetSector: flatFormData.presetSector,
-        draftLockSector: flatFormData.lockSector,
-        savedFormSector: flatFormData?.['General Information']?.i14,
-      });
-
-      let formData = withSyncedRawFormData(flatFormData);
-      if (presetSector) formData.presetSector = presetSector;
-      if (lockSector) formData.lockSector = lockSector;
-
       const payload = {
         formType: templateId,
-        formData,
+        formData: currentFormData || {},
         draftId: targetDraftId,
       };
       if (currentStep) payload.currentStep = currentStep;

@@ -13,7 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 import SaveDraftButton from '../common/SaveDraftButton';
-import { getAuditedSectionDisplayTitle, isOpeningStockField, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_CIBIL_FIELD, isFrccPreparedByValid } from '../../utils/frccFormUi';
+import { getAuditedSectionDisplayTitle, isOpeningStockField, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD } from '../../utils/frccFormUi';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -173,14 +173,12 @@ const FRCC4Form = ({
       title: 'Prepared By',
       icon: BuildingOfficeIcon,
       fields: [
-        { id: 'j100', label: 'Name 1 (Prepared By)', type: 'text', required: false, note: 'Prepared by — Name 1' },
-        { id: 'j101', label: 'Name 2 (Prepared By)', type: 'text', required: false, note: 'Prepared by — Name 2 (optional)' },
-        { id: 'j102', label: 'Address (Prepared By)', type: 'textarea', required: true, note: 'Prepared by — Address' },
-        { id: 'j103', label: 'Mobile Number (Prepared By)', type: 'text', required: true, note: 'Prepared by — Mobile number' },
-        { id: 'bank_name', label: 'Bank Name / Department Name', type: 'text', required: true, note: 'Enter bank or department name' },
-        { id: 'branch_name', label: 'Branch Name', type: 'text', required: true, note: 'Enter branch name' },
-        PREPARED_BY_BANKER_MAIL_FIELD,
-        PREPARED_BY_CIBIL_FIELD,
+        { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text',     required: true,  note: 'Enter bank or department name' },
+        { id: 'branch_name', label: 'Branch Name',                 type: 'text',     required: true,  note: 'Enter branch name' },
+        { id: 'j100', label: 'Name 1',    type: 'text',     required: true,  note: 'Prepared by — Name 1' },
+        { id: 'j101', label: 'Name 2',    type: 'text',     required: false, note: 'Prepared by — Name 2 (optional)' },
+        { id: 'j102', label: 'Address',   type: 'textarea', required: false, note: 'Prepared by — Address' },
+        { id: 'j103', label: 'Contact',   type: 'text',     required: false, note: 'Prepared by — Contact number' },
         FRCC_REQUIRED_STAMP_FIELD,
       ]
     }
@@ -391,10 +389,6 @@ const FRCC4Form = ({
   };
 
   const handleSubmit = useCallback(async () => {
-    if (!validateCurrentSection()) {
-      alert('Please fill all required fields before submitting.');
-      return;
-    }
     try {
       const excelData = convertToExcelData(formData);
 
@@ -422,10 +416,6 @@ const FRCC4Form = ({
 
     if (currentSection.key === 'fixed') {
       return true;
-    }
-
-    if (currentSection.key === 'prepared_by') {
-      return isFrccPreparedByValid(currentSection.fields, formData[currentSection.title] || {});
     }
 
     const sectionData = formData[currentSection.title];
@@ -810,7 +800,7 @@ const FRCC4Form = ({
                 type="button"
                 className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                 onClick={handleSubmit}
-                disabled={isProcessing || !canProceed}
+                disabled={isProcessing}
               >
                 {isProcessing ? (
                   <>
@@ -841,7 +831,7 @@ const FRCC4Form = ({
           </div>
         </div>
 
-        {!canProceed && (
+        {!canProceed && !isLastStep && (
           <div className="mt-3 text-xs text-red-600 text-center">
             Please fill all required fields to proceed
           </div>

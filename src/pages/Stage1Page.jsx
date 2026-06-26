@@ -675,18 +675,13 @@ const Stage1Page = () => {
     if (isTermLoan) {
       setShowAnalysisModal(true);
     } else {
-      if (isAdminMode) {
-        // Direct call to generateReport since admin gets free generation and bypasses payment modal
-        await generateReport(null, null, null);
-      } else {
-        // Show payment modal for regular users
-        setReportTitle(resolvedTitle);
-        setShowPaymentModal(true);
-      }
+      // Show payment modal for regular users
+      setReportTitle(resolvedTitle);
+      setShowPaymentModal(true);
     }
   };
 
-  const handleAnalysisConfirm = async (data) => {
+  const handleAnalysisConfirm = (data) => {
     setAnalysisData(data);
     setShowAnalysisModal(false);
 
@@ -697,14 +692,10 @@ const Stage1Page = () => {
     });
     setReportTitle(resolvedTitle);
     
-    if (isAdminMode) {
-      // Directly call generateReport for admin, bypassing payment modal
-      await generateReport(null, data, data.selectedSheets);
-    } else {
-      // Pass analysis selections to payment modal
-      setInitialSheetSelections(data.allSelections || {});
-      setShowPaymentModal(true);
-    }
+    // Pass analysis selections to payment modal
+    setInitialSheetSelections(data.allSelections || {});
+    
+    setShowPaymentModal(true);
   };
 
   const uploadRelatedDocumentsForReport = useCallback(async (targetReportId) => {

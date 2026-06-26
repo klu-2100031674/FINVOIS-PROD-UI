@@ -38,9 +38,6 @@ const AUTHORISED_PERSON_FIELD_BY_FORM = {
   frcc5: 'i5',
   frcc6: 'i5',
   frcc7: 'i5',
-  term_loan_service_without_stock: 'i8',
-  term_loan_manufacturing_service_with_stock: 'i8',
-  term_loan_cc: 'i8',
 };
 
 function layoutForDraftsRole(userObj) {
@@ -106,7 +103,6 @@ const DraftsPage = () => {
 
     const candidates = [
       primaryField ? general?.[primaryField] : null,
-      general?.i8,
       general?.i5,
       general?.i6,
       general?.['Name of Authorised Person'],

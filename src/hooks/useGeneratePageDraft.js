@@ -8,7 +8,6 @@ import {
   mergeStage1Preserving,
   stripStage2FromDraft,
 } from '../utils/draftPayload';
-import { withSyncedRawFormData } from '../utils/draftSourceData';
 
 const EMPTY_STAGE2 = {
   selected_sections: {},
@@ -26,8 +25,6 @@ export function useGeneratePageDraft({
   forceNewDraft,
   setTempFormData,
   dispatchSetFormData,
-  presetSector,
-  lockSector,
 }) {
   const dispatch = useDispatch();
   const sessionDraftIdRef = useRef(forceNewDraft ? null : draftIdFromUrl);
@@ -55,24 +52,14 @@ export function useGeneratePageDraft({
 
   const mergeStage1IntoTemp = useCallback(
     (stage1Payload) => {
-      setTempFormData((prev) => {
-        const merged = mergeStage1AndStage2(
-          mergeStage1Preserving(
-            stripStage2FromDraft(prev || {}),
-            withSyncedRawFormData(stage1Payload)
-          ),
+      setTempFormData((prev) =>
+        mergeStage1AndStage2(
+          mergeStage1Preserving(stripStage2FromDraft(prev || {}), stage1Payload),
           stage2Draft
-        );
-        if (presetSector !== undefined && presetSector !== null) {
-          merged.presetSector = presetSector;
-        }
-        if (lockSector !== undefined && lockSector !== null) {
-          merged.lockSector = lockSector;
-        }
-        return merged;
-      });
+        )
+      );
     },
-    [setTempFormData, stage2Draft, presetSector, lockSector]
+    [setTempFormData, stage2Draft]
   );
 
   const saveDraft = useCallback(
@@ -84,30 +71,13 @@ export function useGeneratePageDraft({
 
       const stage2 = stage2Override ?? stage2Draft;
       let mergedStage1 = stage1Payload;
-      
-      const injectSectorInfo = (obj) => {
-        const result = { ...obj };
-        if (presetSector !== undefined && presetSector !== null) {
-          result.presetSector = presetSector;
-        }
-        if (lockSector !== undefined && lockSector !== null) {
-          result.lockSector = lockSector;
-        }
-        return result;
-      };
-
       setTempFormData((prev) => {
-        mergedStage1 = mergeStage1Preserving(
-          stripStage2FromDraft(prev || {}),
-          withSyncedRawFormData(stage1Payload)
-        );
+        mergedStage1 = mergeStage1Preserving(stripStage2FromDraft(prev || {}), stage1Payload);
         const merged = mergeStage1AndStage2(mergedStage1, stage2);
-        return injectSectorInfo(merged);
+        return merged;
       });
 
-      const merged = injectSectorInfo(
-        mergeStage1AndStage2(withSyncedRawFormData(mergedStage1), stage2)
-      );
+      const merged = mergeStage1AndStage2(mergedStage1, stage2);
       const targetDraftId = sessionDraftIdRef.current || undefined;
 
       setSavingDraft(true);
@@ -143,7 +113,7 @@ export function useGeneratePageDraft({
         setSavingDraft(false);
       }
     },
-    [templateId, stage2Draft, dispatch, setTempFormData, dispatchSetFormData, presetSector, lockSector]
+    [templateId, stage2Draft, dispatch, setTempFormData, dispatchSetFormData]
   );
 
   return {

@@ -14,7 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 import SaveDraftButton from '../common/SaveDraftButton';
-import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_CIBIL_FIELD, isFrccPreparedByValid } from '../../utils/frccFormUi';
+import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD } from '../../utils/frccFormUi';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -115,14 +115,12 @@ const sections = [
     title: 'Prepared By',
     icon: UsersIcon,
     fields: [
-      { id: 'j96', label: 'Name 1 (Prepared By)', type: 'text', required: false },
-      { id: 'j97', label: 'Name 2 (Prepared By)', type: 'text', required: false },
-      { id: 'j98', label: 'Address (Prepared By)', type: 'text', required: true },
-      { id: 'j99', label: 'Mobile Number (Prepared By)', type: 'text', required: true },
-      { id: 'bank_name', label: 'Bank Name / Department Name', type: 'text', required: true },
-      { id: 'branch_name', label: 'Branch Name', type: 'text', required: true },
-      PREPARED_BY_BANKER_MAIL_FIELD,
-      PREPARED_BY_CIBIL_FIELD,
+      { id: 'j96',        label: 'Name 1',                    type: 'text', required: true },
+      { id: 'j97',        label: 'Name 2',                    type: 'text', required: true },
+      { id: 'j98',        label: 'Address',                   type: 'text', required: true },
+      { id: 'j99',        label: 'Contact',                   type: 'text', required: true },
+      { id: 'bank_name',  label: 'Bank Name / Department Name', type: 'text', required: true },
+      { id: 'branch_name', label: 'Branch Name',              type: 'text', required: true },
       FRCC_REQUIRED_STAMP_FIELD,
     ]
   }
@@ -342,9 +340,6 @@ const FRCC3Form = ({
   const validateCurrentSection = useCallback(() => {
     const currentSection = sections[currentStep];
     if (currentSection.key === 'fixed') return true;
-    if (currentSection.key === 'prepared_by') {
-      return isFrccPreparedByValid(currentSection.fields, formData[currentSection.title] || {});
-    }
     const sectionData = formData[currentSection.title];
     for (const field of currentSection.fields || []) {
       if (field.required) {
@@ -760,7 +755,7 @@ const FRCC3Form = ({
                 type="button"
                 className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                 onClick={handleSubmit}
-                disabled={isProcessing || !canProceed}
+                disabled={isProcessing}
               >
                 {isProcessing ? (
                   <>
@@ -780,9 +775,8 @@ const FRCC3Form = ({
             ) : (
               <button
                 type="button"
-                className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-sm flex items-center gap-1"
+                className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-medium text-sm flex items-center gap-1"
                 onClick={goToNextStep}
-                disabled={!canProceed}
               >
                 Next
                 <ChevronRightIcon className="w-4 h-4" />
@@ -791,7 +785,7 @@ const FRCC3Form = ({
           </div>
         </div>
 
-        {!canProceed && (
+        {!canProceed && !isLastStep && (
           <div className="mt-3 text-xs text-red-600 text-center">
             Please fill all required fields to proceed
           </div>

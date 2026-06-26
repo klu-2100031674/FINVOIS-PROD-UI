@@ -15,7 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 import SaveDraftButton from '../common/SaveDraftButton';
-import { FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_CIBIL_FIELD, isFrccPreparedByValid } from '../../utils/frccFormUi';
+import { FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD } from '../../utils/frccFormUi';
 
 // Generate financial year options in 2024-25 format, current year to +20 years
 const generateFinancialYearOptions = () => {
@@ -108,14 +108,12 @@ const sections = [
     title: 'Prepared By',
     icon: UsersIcon,
     fields: [
-      { id: 'j94', label: 'Name 1 (Prepared By)', type: 'text', required: false, note: 'Enter name 1' },
-      { id: 'j95', label: 'Name 2 (Prepared By)', type: 'text', required: false, note: 'Enter name 2' },
-      { id: 'j96', label: 'Address (Prepared By)', type: 'text', required: true, note: 'Enter address' },
-      { id: 'j97', label: 'Mobile Number (Prepared By)', type: 'text', required: true, note: 'Enter mobile number' },
-      { id: 'bank_name', label: 'Bank Name / Department Name', type: 'text', required: true, note: 'Enter bank or department name' },
-      { id: 'branch_name', label: 'Branch Name', type: 'text', required: true, note: 'Enter branch name' },
-      PREPARED_BY_BANKER_MAIL_FIELD,
-      PREPARED_BY_CIBIL_FIELD,
+      { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text', required: true, note: 'Enter bank or department name' },
+      { id: 'branch_name', label: 'Branch Name',                 type: 'text', required: true, note: 'Enter branch name' },
+      { id: 'j94', label: 'Name 1',    type: 'text', required: true, note: 'Enter name 1' },
+      { id: 'j95', label: 'Name 2',    type: 'text', required: true, note: 'Enter name 2' },
+      { id: 'j96', label: 'Address',   type: 'text', required: true, note: 'Enter address' },
+      { id: 'j97', label: 'Contact',   type: 'text', required: true, note: 'Enter contact number' },
       FRCC_REQUIRED_STAMP_FIELD,
     ]
   }
@@ -186,7 +184,7 @@ const FRCC1Form = ({
   const [showResult, setShowResult] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
 
-  // Initialize form with initialData if provided (edit mode only)
+  // Initialize form with initialData if provided
   useEffect(() => {
     if (initialData && isEditMode) {
       console.log('📝 [FRCC1Form] Loading initial data for edit mode:', initialData);
@@ -225,10 +223,6 @@ const FRCC1Form = ({
 
     if (currentSection.key === 'fixed') {
       return true;
-    }
-
-    if (currentSection.key === 'prepared_by') {
-      return isFrccPreparedByValid(currentSection.fields, formData[currentSection.title] || {});
     }
 
     const sectionData = formData[currentSection.title];
@@ -453,8 +447,6 @@ const FRCC1Form = ({
       i29: { label: "Months Interest paid in First Financial Year",     value: ie["i29"] || 0 },
       i30: { label: "Months Turnover done in First Financial Year",     value: ie["i30"] || 0 },
 
-      bank_name:   { label: "Bank Name / Department Name", value: pb["bank_name"]   || "" },
-      branch_name: { label: "Branch Name",                 value: pb["branch_name"] || "" },
       j94: { label: "Name 1",   value: pb["j94"] || "" },
       j95: { label: "Name 2",   value: pb["j95"] || "" },
       j96: { label: "Address",  value: pb["j96"] || "" },
@@ -767,7 +759,7 @@ const FRCC1Form = ({
               <button
                 className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                 onClick={handleSubmit}
-                disabled={isProcessing || !canProceed}
+                disabled={isProcessing}
               >
                 {isProcessing ? (
                   <>
@@ -786,9 +778,8 @@ const FRCC1Form = ({
               </button>
             ) : (
               <button
-                className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-sm flex items-center gap-1"
+                className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-medium text-sm flex items-center gap-1"
                 onClick={goToNextStep}
-                disabled={!canProceed}
               >
                 Next
                 <ChevronRightIcon className="w-4 h-4" />
@@ -797,7 +788,7 @@ const FRCC1Form = ({
           </div>
         </div>
 
-        {!canProceed && (
+        {!canProceed && !isLastStep && (
           <div className="mt-3 text-xs text-red-600 text-center">
             Please fill all required fields to proceed
           </div>
