@@ -151,7 +151,7 @@ import TemplatesPage from "./components/LandingPage/pages/TemplatesPage";
 import DocumentationPage from "./components/LandingPage/pages/DocumentationPage";
 import BlogPage from "./components/LandingPage/pages/BlogPage";
 import { AboutPage, CareersPage, PartnersPage, ContactPage, HelpCenterPage, APIPage } from "./components/LandingPage/pages/CompanyPages";
-import { PrivacyPolicyPage, TermsOfServicePage, CookiesPage } from "./components/LandingPage/pages/LegalPages";
+import { PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, CookiesPage } from "./components/LandingPage/pages/LegalPages";
 import { effectiveUserRole } from "./utils/normalizeUserRole";
 import { dashboardHomePath } from "./utils/routePaths";
 import { canAccessApplication } from "./utils/signupApproval";

@@ -171,3 +171,72 @@ export const CookiesPage = () => (
         </div>
     </GenericPage>
 );
+
+export const RefundPolicyPage = () => (
+    <GenericPage title="Cancellation & Refund Policy">
+        <div className="max-w-4xl mx-auto text-left">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 md:p-12">
+                <p className="text-lg text-gray-600 mb-8 leading-relaxed">
+                    Thank you for choosing Finvois. We strive to provide the highest quality AI-powered Detailed Project Reports (DPRs). Please read our refund policy carefully.
+                </p>
+
+                <div className="space-y-8">
+                    <section>
+                        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <span className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-sm">1</span>
+                            Eligibility for Refund
+                        </h3>
+                        <p className="text-gray-600 mb-4 leading-relaxed">
+                            Refunds will be issued <strong>only</strong> under the following circumstances:
+                        </p>
+                        <ul className="space-y-3">
+                            <li className="flex items-start gap-3 text-gray-600">
+                                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#7e22ce] flex-shrink-0"></span>
+                                <span className="leading-relaxed">The generated report has incorrect or wrong data due to system-level calculation errors or template rendering issues.</span>
+                            </li>
+                            <li className="flex items-start gap-3 text-gray-600">
+                                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#7e22ce] flex-shrink-0"></span>
+                                <span className="leading-relaxed">There was a technical failure on our platform that prevented the report from being successfully generated and downloaded despite successful payment.</span>
+                            </li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <span className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-sm">2</span>
+                            Non-Refundable Cases
+                        </h3>
+                        <p className="text-gray-600 mb-4 leading-relaxed">
+                            No refunds will be provided in the following cases:
+                        </p>
+                        <ul className="space-y-3">
+                            <li className="flex items-start gap-3 text-gray-600">
+                                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0"></span>
+                                <span className="leading-relaxed">Your loan or scheme application is rejected by the bank or financial institution due to credit-related factors (e.g., low CIBIL score).</span>
+                            </li>
+                            <li className="flex items-start gap-3 text-gray-600">
+                                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0"></span>
+                                <span className="leading-relaxed">Your application is rejected due to lack of eligibility, incorrect personal documentation, or any other bank-side verification criteria.</span>
+                            </li>
+                            <li className="flex items-start gap-3 text-gray-600">
+                                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0"></span>
+                                <span className="leading-relaxed">You change your mind after the report has been successfully generated and delivered.</span>
+                            </li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <span className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-sm">3</span>
+                            How to Request a Refund
+                        </h3>
+                        <p className="text-gray-600 leading-relaxed bg-purple-50 p-6 rounded-xl border border-purple-100">
+                            If you believe your report qualifies for a refund, please contact our support team at <a href="mailto:support@finvois.com" className="text-[#7e22ce] hover:text-purple-700 font-medium">support@finvois.com</a> within 7 days of purchase. Please include your Transaction ID, Registered Email, and the specific details/evidence of the incorrect/wrong report content.
+                        </p>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </GenericPage>
+);
+
