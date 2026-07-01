@@ -145,6 +145,7 @@ const MsmeDprDashboard = ({
   const [emailOverlayOpen, setEmailOverlayOpen] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showTrendChart, setShowTrendChart] = useState(false);
+  const [timeframe, setTimeframe] = useState('1month');
   const [filters, setFilters] = useState(initialFilters);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   const [page, setPage] = useState(1);
@@ -156,13 +157,14 @@ const MsmeDprDashboard = ({
   });
 
   const loadData = useCallback(
-    async (filterParams, pageNum = 1) => {
+    async (filterParams, pageNum = 1, currentTimeframe = '1month') => {
       setLoading(true);
       try {
         const data = await fetchMsmeDprLeads({
           ...buildApiFilters(filterParams, showServiceAvailed),
           page: pageNum,
           limit: PAGE_SIZE,
+          timeframe: currentTimeframe,
         });
         setStats(data.stats || { totalRequests: 0, totalServiceAvailed: 0 });
         setChartSeries(
@@ -187,8 +189,8 @@ const MsmeDprDashboard = ({
   );
 
   useEffect(() => {
-    loadData(appliedFilters, page);
-  }, [appliedFilters, page, loadData]);
+    loadData(appliedFilters, page, timeframe);
+  }, [appliedFilters, page, timeframe, loadData]);
 
   const handleApplyFilters = (e) => {
     e?.preventDefault();
@@ -215,14 +217,106 @@ const MsmeDprDashboard = ({
     }
   };
 
-  const trendChartData = useMemo(() => {
-    if (!chartSeries.labels?.length) return null;
+  const formatLabel = useCallback((label) => {
+    try {
+      if (!label) return '';
+      // Hourly: YYYY-MM-DD HH:00
+      if (label.includes(' ')) {
+        const [datePart, timePart] = label.split(' ');
+        const date = new Date(datePart);
+        const day = date.getDate().toString().padStart(2, '0');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = months[date.getMonth()];
+        return `${day} ${month}, ${timePart}`;
+      }
+      // Daily: YYYY-MM-DD
+      if (label.split('-').length === 3) {
+        const date = new Date(label);
+        const day = date.getDate().toString().padStart(2, '0');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = months[date.getMonth()];
+        return `${day} ${month}`;
+      }
+      // Monthly: YYYY-MM
+      if (label.split('-').length === 2) {
+        const [year, monthNum] = label.split('-');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = months[parseInt(monthNum, 10) - 1];
+        return `${month} ${year}`;
+      }
+      return label;
+    } catch (e) {
+      return label;
+    }
+  }, []);
+
+  const generateEmptyChartData = useCallback((timeframe) => {
+    const labels = [];
+    const now = new Date();
+    
+    if (timeframe === '1d') {
+      // Last 24 hours
+      for (let i = 23; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * 60 * 60 * 1000);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const hh = String(d.getHours()).padStart(2, '0');
+        labels.push(`${yyyy}-${mm}-${dd} ${hh}:00`);
+      }
+    } else if (timeframe === '1w') {
+      // Last 7 days
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        labels.push(`${yyyy}-${mm}-${dd}`);
+      }
+    } else if (timeframe === '1month') {
+      // Last 30 days
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        labels.push(`${yyyy}-${mm}-${dd}`);
+      }
+    } else { // '1year'
+      // Last 12 months
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        labels.push(`${yyyy}-${mm}`);
+      }
+    }
+
     return {
-      labels: chartSeries.labels,
+      labels,
+      requests: new Array(labels.length).fill(0),
+      serviceAvailed: new Array(labels.length).fill(0),
+    };
+  }, []);
+
+  const trendChartData = useMemo(() => {
+    let labels = chartSeries.labels || [];
+    let requests = chartSeries.requests || [];
+    let serviceAvailed = chartSeries.serviceAvailed || [];
+
+    if (labels.length === 0) {
+      const emptyData = generateEmptyChartData(timeframe);
+      labels = emptyData.labels;
+      requests = emptyData.requests;
+      serviceAvailed = emptyData.serviceAvailed;
+    }
+
+    return {
+      labels: labels.map(formatLabel),
       datasets: [
         {
           label: 'Requests received',
-          data: chartSeries.requests,
+          data: requests,
           borderColor: 'rgb(249, 115, 22)',
           backgroundColor: 'rgba(249, 115, 22, 0.12)',
           fill: true,
@@ -233,7 +327,7 @@ const MsmeDprDashboard = ({
         },
         {
           label: 'Service availed',
-          data: chartSeries.serviceAvailed,
+          data: serviceAvailed,
           borderColor: 'rgb(20, 184, 166)',
           backgroundColor: 'rgba(20, 184, 166, 0.12)',
           fill: true,
@@ -244,13 +338,13 @@ const MsmeDprDashboard = ({
         },
       ],
     };
-  }, [chartSeries]);
+  }, [chartSeries, timeframe, formatLabel, generateEmptyChartData]);
 
   const emptyMessage = hasActiveFilters(appliedFilters)
     ? 'No submissions match the selected filters.'
     : 'No submissions yet.';
 
-  const tableColSpan = showServiceAvailed ? 12 : 11;
+  const tableColSpan = showServiceAvailed ? 14 : 13;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
@@ -321,7 +415,7 @@ const MsmeDprDashboard = ({
         >
           <div className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-orange-500" />
-            <h2 className="font-semibold text-gray-900">Monthly trend</h2>
+            <h2 className="font-semibold text-gray-900">Trend Analysis</h2>
           </div>
           <span className="inline-flex items-center gap-1.5 text-sm text-gray-600 shrink-0">
             {showTrendChart ? 'Hide graph' : 'Show graph'}
@@ -330,6 +424,30 @@ const MsmeDprDashboard = ({
         </button>
         {showTrendChart && (
           <div className="px-5 pb-5 border-t border-gray-100 pt-4">
+            <div className="flex justify-end gap-1.5 mb-4">
+              {[
+                { val: '1d', label: '1D' },
+                { val: '1w', label: '1W' },
+                { val: '1month', label: '1M' },
+                { val: '1year', label: '1Y' }
+              ].map((opt) => (
+                <button
+                  key={opt.val}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setTimeframe(opt.val);
+                  }}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md border transition-all ${
+                    timeframe === opt.val
+                      ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
             {trendChartData ? (
               <div className="h-72">
                 <Line data={trendChartData} options={LINE_OPTS} />
@@ -542,6 +660,7 @@ const MsmeDprDashboard = ({
                 <thead>
                   <tr className="bg-gray-50 border-b text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     <th className="px-3 py-3 w-8" />
+                    <th className="px-3 py-3">Date</th>
                     <th className="px-3 py-3">Name of Applicant</th>
                     <th className="px-3 py-3">Gender</th>
                     <th className="px-3 py-3">Mobile Number</th>
@@ -552,6 +671,7 @@ const MsmeDprDashboard = ({
                     <th className="px-3 py-3">Village / City</th>
                     <th className="px-3 py-3">Mandal</th>
                     <th className="px-3 py-3">District</th>
+                    <th className="px-3 py-3">Need CA Stamp</th>
                     {showServiceAvailed && <th className="px-3 py-3">Service Availed</th>}
                   </tr>
                 </thead>
@@ -574,6 +694,15 @@ const MsmeDprDashboard = ({
                               )}
                             </button>
                           </td>
+                          <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
+                            {s.createdAt
+                              ? new Date(s.createdAt).toLocaleDateString('en-IN', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                })
+                              : '—'}
+                          </td>
                           <td className="px-3 py-3 font-medium text-gray-900">
                             {s.applicantName}
                           </td>
@@ -590,6 +719,7 @@ const MsmeDprDashboard = ({
                           <td className="px-3 py-3 text-gray-600">{s.villageCity}</td>
                           <td className="px-3 py-3 text-gray-600">{s.mandal}</td>
                           <td className="px-3 py-3 text-gray-600">{s.district}</td>
+                          <td className="px-3 py-3 text-gray-600">{s.needCaStamp || 'No'}</td>
                           {showServiceAvailed && (
                             <td className="px-3 py-3">
                               <ServiceAvailedToggle
@@ -631,7 +761,18 @@ const MsmeDprDashboard = ({
                       <ChevronRight className="h-5 w-5 text-gray-400 shrink-0 mt-0.5" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900">{s.applicantName}</h3>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[11px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded font-normal shrink-0">
+                          {s.createdAt
+                            ? new Date(s.createdAt).toLocaleDateString('en-IN', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                              })
+                            : '—'}
+                        </span>
+                        <h3 className="font-semibold text-gray-900 truncate">{s.applicantName}</h3>
+                      </div>
                       <p className="text-sm text-gray-500">{s.mobileNumber}</p>
                       <p className="text-xs text-gray-400 mt-1">{s.natureOfBusiness}</p>
                     </div>
@@ -661,6 +802,9 @@ const MsmeDprDashboard = ({
                       </p>
                       <p>
                         <span className="font-medium text-gray-700">District:</span> {s.district}
+                      </p>
+                      <p>
+                        <span className="font-medium text-gray-700">Need CA Stamp:</span> {s.needCaStamp || 'No'}
                       </p>
                       {s.description && (
                         <p>

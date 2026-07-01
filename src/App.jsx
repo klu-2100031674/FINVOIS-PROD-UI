@@ -1377,6 +1377,7 @@ function App() {
         {/* Legal Pages */}
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/terms" element={<TermsOfServicePage />} />
+        <Route path="/refund" element={<RefundPolicyPage />} />
         <Route path="/cookies" element={<CookiesPage />} />
 
         {/* Lead & Service Management Routes */}
