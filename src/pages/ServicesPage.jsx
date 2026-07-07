@@ -30,9 +30,9 @@ const ServicesPage = () => {
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-[#7e22ce] to-[#6b21a8] text-white py-16">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Our Services</h1>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">FIN CONNECT</h1>
           <p className="text-xl text-purple-100 max-w-2xl mx-auto mb-8">
-            Discover comprehensive financial solutions designed to help your business thrive
+            FIN Connect is an AI-powered business networking platform that connects MSME's with verified suppliers, manufacturers, and financial partners. Discover the right business connections, receive qualified opportunities. and accelerate your business growth through a trusted ecosystem.
           </p>
           {/* Search bar inside hero */}
           <div className="relative max-w-xl mx-auto">

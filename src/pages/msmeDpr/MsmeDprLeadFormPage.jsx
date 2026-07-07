@@ -28,7 +28,7 @@ const INITIAL_FORM = {
   villageCity: '',
   mandal: '',
   district: '',
-  needCaStamp: '',
+  needCaStamp: 'No',
   description: '',
 };
 
@@ -354,22 +354,7 @@ const MsmeDprLeadFormPage = () => {
                 />
               </FormField>
 
-              <FormField label={copy.needCaStamp} required>
-                <select
-                  name="needCaStamp"
-                  value={form.needCaStamp}
-                  onChange={handleChange}
-                  required
-                  className={selectClass}
-                >
-                  <option value="">{copy.selectNeedCaStamp}</option>
-                  {MSME_DPR_NEED_CA_STAMP_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {getOptionLabel(language, 'needCaStamp', opt)}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
+
 
               <FormField label={copy.description}>
                 <textarea
@@ -402,7 +387,7 @@ const MsmeDprLeadFormPage = () => {
             Frequently Asked Questions (FAQs)
           </h3>
           <div className="space-y-3">
-            {faqData.faqs.slice(0, 20).map((faq, idx) => (
+            {faqData.faqs.slice(2).map((faq, idx) => (
               <div
                 key={idx}
                 className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300"
