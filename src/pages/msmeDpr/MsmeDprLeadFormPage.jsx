@@ -101,7 +101,7 @@ const MsmeDprLeadFormPage = () => {
         <div className="lg:col-span-3 bg-gray-50 border border-gray-200 rounded-2xl p-6 sm:p-8 space-y-6">
           <div>
             <h3 className="text-xl font-bold text-gray-900 font-['Manrope'] mb-3">
-              What is a Detailed Project Report (DPR)?
+              What is a Detailed Project Report (DPR)
             </h3>
             <p className="text-sm text-gray-600 font-['Inter'] leading-relaxed">
               A Detailed Project Report (DPR) is a professional document that evaluates the technical, financial, and commercial feasibility of a business or project. It acts as a roadmap for implementation and funding.
@@ -110,7 +110,7 @@ const MsmeDprLeadFormPage = () => {
 
           <div>
             <h3 className="text-base font-bold text-gray-900 font-['Manrope'] mb-2">
-              Who Needs a DPR?
+              Who Needs a DPR
             </h3>
             <ul className="list-disc pl-5 text-sm text-gray-600 font-['Inter'] space-y-1">
               <li>Entrepreneurs and Startups</li>
@@ -123,7 +123,7 @@ const MsmeDprLeadFormPage = () => {
 
           <div>
             <h3 className="text-base font-bold text-gray-900 font-['Manrope'] mb-2">
-              Why is it Required?
+              Why is it Required
             </h3>
             <ul className="list-disc pl-5 text-sm text-gray-600 font-['Inter'] space-y-1">
               <li>To obtain business loans</li>
@@ -135,7 +135,7 @@ const MsmeDprLeadFormPage = () => {
 
           <div>
             <h3 className="text-base font-bold text-gray-900 font-['Manrope'] mb-2">
-              How Does it Help?
+              How Does it Help
             </h3>
             <ul className="list-disc pl-5 text-sm text-gray-600 font-['Inter'] space-y-1">
               <li>Improves loan approval prospects</li>
@@ -387,7 +387,7 @@ const MsmeDprLeadFormPage = () => {
             Frequently Asked Questions (FAQs)
           </h3>
           <div className="space-y-3">
-            {faqData.faqs.slice(2).map((faq, idx) => (
+            {faqData.faqs.slice(2, 22).map((faq, idx) => (
               <div
                 key={idx}
                 className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300"
