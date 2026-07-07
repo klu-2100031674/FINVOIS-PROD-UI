@@ -186,12 +186,11 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
     }
 
     if (role === 'admin') {
-      // SCHEME_FORMS_DISABLED — re-enable when scheme forms return
-      // items.push({
-      //   to: '/admin/schemes',
-      //   icon: Landmark,
-      //   label: 'Schemes',
-      // });
+      items.push({
+        to: '/admin/schemes',
+        icon: Landmark,
+        label: 'Schemes',
+      });
       items.push({
         to: '/admin/client-screening/emails',
         icon: UserCheck,
@@ -205,7 +204,7 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
       items.push({
         to: '/admin/msme-dpr-dashboard',
         icon: FileText,
-        label: 'MSME DPR',
+        label: 'AP MSME DC',
       });
     }
 

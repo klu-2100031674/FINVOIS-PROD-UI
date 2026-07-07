@@ -14,7 +14,7 @@ const TUNNEL_ALLOWED_HOST_SUFFIXES = [
   '.trycloudflare.com',
 ]
 
-const API_PROXY_TARGET = process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:5000'
+const API_PROXY_TARGET = process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:3000'
 
 function createApiProxy() {
   return {

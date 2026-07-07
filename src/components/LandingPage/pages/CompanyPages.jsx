@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import GenericPage from './GenericPage';
 import { Mail, MapPin, Phone, Send, Clock, CheckCircle } from 'lucide-react';
+import apiClient from '@/api/apiClient';
 
 export const HelpCenterPage = () => (
     <GenericPage title="Help Center" subtitle="Find answers to your questions and get support.">
@@ -87,15 +88,23 @@ export const ContactPage = () => {
     const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
     const [submitted, setSubmitted] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
     const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!form.name || !form.email || !form.message) return;
         setLoading(true);
-        // Simulate send — replace with real API call
-        setTimeout(() => { setLoading(false); setSubmitted(true); }, 1000);
+        setError('');
+        try {
+            await apiClient.post('/support/general-contact', form);
+            setSubmitted(true);
+        } catch (err) {
+            setError(err?.response?.data?.message || err?.message || 'Failed to send message');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const contacts = [
@@ -113,8 +122,8 @@ export const ContactPage = () => {
         {
             icon: <Phone className="w-5 h-5" />,
             label: 'Call Us',
-            value: '+91 90142 21011',
-            href: 'tel:+919014221011',
+            value: '+91 96182 21011',
+            href: 'tel:+919618221011',
         },
         {
             icon: <Clock className="w-5 h-5" />,
@@ -167,6 +176,12 @@ export const ContactPage = () => {
                                 <h3 className="text-xl font-bold text-gray-900 mb-1">Send us a message</h3>
                                 <p className="text-sm text-gray-500">Fill in the details and we'll respond shortly.</p>
                             </div>
+
+                            {error && (
+                                <div className="p-3.5 bg-red-50 border border-red-100 rounded-xl text-xs text-red-600 font-medium">
+                                    {error}
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>

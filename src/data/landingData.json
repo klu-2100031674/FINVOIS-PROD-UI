@@ -4,9 +4,18 @@
     "_commentedOut_navSchemes": {
       "label": "Schemes",
       "dropdown": [
-        { "label": "PMEGP", "href": "/schemes/pmegp" },
-        { "label": "AP IDP", "href": "/schemes/ap-idp" },
-        { "label": "CMEP", "href": "/schemes/cmep" }
+        {
+          "label": "PMEGP",
+          "href": "/schemes/pmegp"
+        },
+        {
+          "label": "AP IDP",
+          "href": "/schemes/ap-idp"
+        },
+        {
+          "label": "CMEP",
+          "href": "/schemes/cmep"
+        }
       ]
     },
     "links": [
@@ -23,16 +32,16 @@
         "href": "/services"
       },
       {
-        "label": "Franchise",
-        "href": "/franchises"
-      },
-      {
-        "label": "Calculators",
+        "label": "EMI Calculator",
         "href": "/calculators/emi-calculator"
       },
       {
         "label": "FAQ",
         "href": "/faq"
+      },
+      {
+        "label": "Contact",
+        "href": "/contact"
       }
     ],
     "loginText": {
@@ -98,17 +107,17 @@
       {
         "icon": "BarChart3",
         "title": "Financial Projections",
-        "description": "Auto-calculated with Excel export and visual charts"
+        "description": "Auto-calculated with Proprietory Financial models and visual charts"
       },
       {
         "icon": "Search",
-        "title": "Template Library",
-        "description": "Bank-aligned DPR formats for common loan products"
+        "title": "Professionally Validated",
+        "description": "DPR's prepared are validated by CA's"
       },
       {
         "icon": "FileCheck",
-        "title": "Professional PDFs",
-        "description": "Bank-approved formats with embedded Excel sheets"
+        "title": "Bank Acceptable Formats",
+        "description": "Accepted by all Nationalised Banks"
       },
       {
         "icon": "Wallet",
@@ -117,8 +126,8 @@
       },
       {
         "icon": "Users",
-        "title": "Partner Program",
-        "description": "Earn commissions with our channel partner system"
+        "title": "Govt Empanelled",
+        "description": "Empanelled as MSME and DPR consultant to Govt Departments"
       }
     ]
   },
@@ -133,26 +142,16 @@
       },
       {
         "step": "2",
-        "title": "Pick Your Template",
-        "desc": "Choose the report type that fits your loan"
-      },
-      {
-        "step": "3",
-        "title": "Fill Template",
-        "desc": "Guided 30-35 field smart form"
-      },
-      {
-        "step": "4",
         "title": "AI Generates Content",
         "desc": "SWOT, intro, and market analysis"
       },
       {
-        "step": "5",
+        "step": "3",
         "title": "Review & Pay",
         "desc": "Confirm projections and choose payment"
       },
       {
-        "step": "6",
+        "step": "4",
         "title": "Download PDF",
         "desc": "Get your professional DPR instantly"
       }
@@ -176,14 +175,14 @@
       {
         "icon": "BarChart3",
         "title": "Financial Projections",
-        "desc": "5-year revenue forecasts"
+        "desc": "10-year revenue forecasts"
       }
     ]
   },
   "financialProjections": {
     "badge": "Auto-Calculated",
     "title": "Financial projections made simple",
-    "subtitle": "No Excel knowledge needed. Our system auto-calculates projections with interactive visualizations and detailed breakdowns.",
+    "subtitle": "Our Proprietor Financial Model system auto-calculates projections with interactive visualizations and detailed breakdowns.",
     "data": [
       {
         "year": 1,
@@ -213,7 +212,7 @@
     ],
     "breakEven": "18 Months",
     "benefits": [
-      "5-year revenue and profit forecasts",
+      "10-year revenue and profit forecasts",
       "Break-even analysis with timelines",
       "Cost distribution and cash flow",
       "Interactive charts and graphs",
@@ -223,13 +222,13 @@
   "whyChooseUs": [
     {
       "badge": "CA Verified",
-      "title": "Every Template Is Reviewed And Approved By Experienced Chartered Accountants",
+      "title": "Every DPR Is Reviewed And Approved By Experienced Chartered Accountants",
       "color": "purple",
       "illustration": "ca-verified"
     },
     {
-      "badge": "Payments",
-      "title": "Real-Time Payments Process And Fund Transfers",
+      "badge": "Bank Acceptable Format",
+      "title": "OUR DPR's Accepted By All Banks",
       "color": "blue",
       "illustration": "payments"
     },
@@ -241,7 +240,7 @@
     }
   ],
   "reportTypes": {
-    "title": "COMPREHENSIVE DPR SOLUTIONS FOR COMMON LOAN PRODUCTS",
+    "title": "COMPREHENSIVE DPR SOLUTIONS FOR ALL LOAN PRODUCTS",
     "subtitle": "OUR REPORTS",
     "reports": [
       {
@@ -255,7 +254,7 @@
         "image": "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80&w=1200"
       },
       {
-        "title": "CGTMSE Reports",
+        "title": "CGTMS Loan",
         "description": "Collateral-free loan project reports meeting CGTMSE guidelines and bank requirements.",
         "image": "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=1200"
       },
@@ -272,7 +271,7 @@
     ]
   },
   "appDownload": {
-    "title": "DOWNLOAD DPR BANKING APP",
+    "title": "DOWNLOAD FINVOIS DPR APP",
     "subtitle": "Experience banking at your fingertips—download the DPR banking App today! Manage your finances easily and securely, anytime, anywhere.",
     "appStoreText": "App Store",
     "googlePlayText": "Google Play"
@@ -302,15 +301,15 @@
   ],
   "cta": {
     "title": "Ready to create your professional DPR?",
-    "subtitle": "Join thousands of entrepreneurs who have successfully generated DPRs with AI",
-    "primaryCTA": "Client Screening",
-    "primaryLink": "/client-screening",
+    "subtitle": "Join thousands of entrepreneurs who have successfully generated DPRs with Finvois",
+    "primaryCTA": "Generate DPR's",
+    "primaryLink": "/msme-dpr-lead-data",
     "secondaryCTA": "Contact Sales",
     "secondaryLink": "/contact",
     "benefits": [
       "No credit card required",
       "Setup in minutes",
-      "Cancel anytime"
+      "Revise Any Time"
     ]
   },
   "footer": {

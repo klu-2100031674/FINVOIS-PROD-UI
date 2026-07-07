@@ -1,30 +1,122 @@
 {
-  "title": "Frequently asked questions",
-  "subtitle": "Everything you need to know about the platform",
+  "title": "Frequently Asked Questions (FAQs)",
+  "subtitle": "Everything you need to know about Detailed Project Reports (DPRs)",
   "faqs": [
     {
-      "question": "What is a DPR?",
-      "answer": "A Detailed Project Report (DPR) is a comprehensive document outlining your business plan, financial projections, and funding requirements. It's essential for securing loans and government subsidies."
+      "question": "What is a Detailed Project Report (DPR)?",
+      "answer": "A DPR is a professionally prepared report that explains the technical, financial, and commercial viability of your proposed business. It is commonly required by banks, financial institutions, investors, and government departments for loan and subsidy applications."
     },
     {
-      "question": "How accurate are the financial projections?",
-      "answer": "Our AI uses industry-standard formulas and benchmarks. You can review and edit all projections before finalizing."
+      "question": "Who should apply for a DPR?",
+      "answer": "Any aspiring entrepreneur, startup, MSME, existing business owner, or individual planning to start, expand, diversify, or modernize a business can apply for a DPR."
     },
     {
-      "question": "Do banks accept AI-generated DPRs?",
-      "answer": "Yes! Our templates follow standard banking formats and include all required sections."
+      "question": "Why do I need to select the Scheme Applied Under?",
+      "answer": "This helps us prepare the DPR in accordance with the specific requirements of the selected government scheme or financing program."
     },
     {
-      "question": "How is pricing calculated?",
-      "answer": "Base price varies by template complexity. You can add optional sections, and the final price updates in real-time."
+      "question": "How do I choose the correct Loan Type?",
+      "answer": "• Pure Term Loan: For purchasing fixed assets such as land, building, machinery, or equipment.\n• Term Loan + Working Capital Loan: If you require funds for both fixed assets and day-to-day business operations.\n• Pure Working Capital Loan: If you only need funds for operational expenses such as inventory, raw materials, salaries, or receivables."
     },
     {
-      "question": "Is my data secure?",
-      "answer": "We use bank-level encryption. Your information is never shared, and you can delete your data anytime."
+      "question": "What should I mention in the \"Nature of Business\" field?",
+      "answer": "Mention the proposed business activity or industry, such as Dairy Farming, Paper Plate Manufacturing, Retail Grocery Store, Mobile Repair Shop, Rice Mill, Boutique, Food Processing Unit, etc."
     },
     {
-      "question": "Can I get a refund if I'm not satisfied?",
-      "answer": "Yes, we offer a 7-day money-back guarantee if the DPR doesn't meet your expectations."
+      "question": "What can I include in the \"Any Description you want to send\" field?",
+      "answer": "You may provide additional details such as your business idea, investment plan, existing business information, special requirements, machinery details, or any information that will help us prepare a more accurate DPR."
+    },
+    {
+      "question": "How long does it take to prepare the DPR?",
+      "answer": "The preparation time depends on the completeness of the information provided. In most cases, the DPR can be prepared within a short period after receiving all the required details."
+    },
+    {
+      "question": "Is the information I submit kept confidential?",
+      "answer": "Yes. All information provided by you is treated as confidential and is used solely for preparing your DPR and providing related services."
+    },
+    {
+      "question": "Will the DPR be accepted by banks?",
+      "answer": "The DPR is prepared in a professional, bankable format based on the information provided by the applicant. However, the acceptance of any DPR and the sanction of a loan are entirely at the discretion of the concerned bank or financial institution."
+    },
+    {
+      "question": "Can I request changes after receiving the DPR?",
+      "answer": "Yes. If any corrections or additional information need to be incorporated, you may request revisions as per the applicable service policy."
+    },
+    {
+      "question": "What if I am not sure about some of the details?",
+      "answer": "You may submit the information you have. Our team may contact you if any clarification or additional information is required to prepare your DPR."
+    },
+    {
+      "question": "How will you contact me if additional information is required?",
+      "answer": "Our team will contact you using the mobile number provided in the application form."
+    },
+    {
+      "question": "Can I apply if I have not yet registered my business?",
+      "answer": "Yes. Individuals planning to start a new business can also apply for a DPR."
+    },
+    {
+      "question": "Can existing businesses obtain a DPR?",
+      "answer": "Yes. Existing businesses can obtain a DPR for expansion, diversification, modernization, capacity enhancement, or additional financing."
+    },
+    {
+      "question": "Can the DPR be used for government subsidy schemes?",
+      "answer": "Yes. The DPR is prepared in a professional format that can support applications under various Central and State Government schemes, subject to the specific requirements of the concerned authority."
+    },
+    {
+      "question": "Will the DPR include financial projections?",
+      "answer": "Yes. The DPR includes financial estimates such as project cost, means of finance, sales projections, profitability, cash flow, funds flow, ratio analysis, break-even analysis, and loan repayment projections, wherever applicable."
+    },
+    {
+      "question": "What if I do not know the project cost?",
+      "answer": "No problem. Based on your proposed business activity and available information, reasonable estimates can be prepared and discussed with you before finalizing the DPR."
+    },
+    {
+      "question": "Can I apply for more than one business project?",
+      "answer": "Yes. A separate DPR should be prepared for each business project."
+    },
+    {
+      "question": "What documents may be required later?",
+      "answer": "Depending on your project, you may be asked to provide documents such as identity proof, address proof, quotations for machinery, land/building details, business registration documents, or any other relevant information."
+    },
+    {
+      "question": "Will I receive the DPR in digital format?",
+      "answer": "Yes. The DPR will generally be provided in a digital (PDF) format."
+    },
+    {
+      "question": "Can I use the DPR for multiple banks?",
+      "answer": "Yes. In most cases, the same DPR can be submitted to different banks or financial institutions, subject to their individual documentation requirements."
+    },
+    {
+      "question": "What happens if my loan amount changes?",
+      "answer": "The DPR can be revised to reflect the updated project cost and loan requirement, if requested."
+    },
+    {
+      "question": "Can the DPR be customized for a specific bank?",
+      "answer": "Yes. If a particular bank or financial institution has a preferred format or additional requirements, the DPR shall be customized accordingly."
+    },
+    {
+      "question": "Do I need business experience to apply?",
+      "answer": "No. Both first-time entrepreneurs and experienced business owners can apply for a DPR."
+    },
+    {
+      "question": "Can I submit the form in advance and provide additional information later?",
+      "answer": "Yes. You may submit the basic details first. Additional information can be shared later to complete the DPR."
+    },
+    {
+      "question": "What information helps prepare a more accurate DPR?",
+      "answer": "Providing details such as the proposed business activity, estimated investment, location, production capacity, machinery requirements, expected sales, and target customers helps us prepare a more realistic and accurate DPR."
+    },
+    {
+      "question": "Does submitting this form guarantee loan approval?",
+      "answer": "No. Submission of the form or preparation of a DPR does not guarantee loan approval. The sanction of a loan is solely at the discretion of the concerned bank or financial institution based on its appraisal process."
+    },
+    {
+      "question": "Can I modify the information after submitting the form?",
+      "answer": "Yes. If you notice any errors or wish to update your information, you can inform our team before the DPR is finalized."
+    },
+    {
+      "question": "Who can I contact for assistance while filling out the form?",
+      "answer": "If you need help understanding any field or choosing the appropriate loan type or scheme, you may send mail to us to details provided on the portal."
     }
   ]
 }

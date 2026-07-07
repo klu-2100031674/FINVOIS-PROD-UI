@@ -72,12 +72,12 @@ const FAQ = () => {
                 
                 <div 
                   className={`transition-all duration-300 ease-in-out ${
-                    activeFAQ === idx ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                    activeFAQ === idx ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
                   }`}
                   style={{ overflow: 'hidden' }}
                 >
                   <div className="px-6 pb-5">
-                    <p className="text-gray-600 font-['Inter'] leading-relaxed">
+                    <p className="text-gray-600 font-['Inter'] leading-relaxed whitespace-pre-line">
                       {faq.answer}
                     </p>
                   </div>

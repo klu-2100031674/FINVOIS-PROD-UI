@@ -76,11 +76,6 @@ const FinancialProjections = () => {
               viewport={{ once: true }}
               transition={{ duration: 0.8 }}
             >
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 rounded-full mb-6 text-purple-700 font-medium text-sm font-inter">
-                <PieChart className="w-4 h-4" />
-                {financialProjections.badge}
-              </div>
-
               <h2 className="text-4xl md:text-5xl font-bold text-gray-900 font-manrope mb-6 leading-tight">
                 {financialProjections.title}
               </h2>

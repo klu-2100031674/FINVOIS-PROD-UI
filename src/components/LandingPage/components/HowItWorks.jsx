@@ -5,8 +5,6 @@ import landingData from '../../../data/landingData.json';
 
 const iconMap = [
   UserPlus,
-  Search,
-  FileEdit,
   Cpu,
   CreditCard,
   Download

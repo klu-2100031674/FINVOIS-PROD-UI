@@ -41,7 +41,7 @@ const WhyChooseUs = () => {
             transition={{ duration: 0.8 }}
           >
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 font-manrope mb-6 leading-tight">
-              Why leading audit firms chose <span className="text-purple-600">Finvois</span>?
+              Why MSME's chose <span className="text-purple-600">Finvois</span>?
             </h2>
             <p className="text-xl text-gray-600 font-inter mb-10 leading-relaxed">
               We combine AI efficiency with professional accuracy to deliver bank-ready reports that get approved faster.

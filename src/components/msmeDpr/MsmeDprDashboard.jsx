@@ -95,6 +95,42 @@ function hasActiveFilters(filters) {
   return Object.values(filters).some((v) => String(v).trim() !== '');
 }
 
+function parseServiceAvailed(value) {
+  return value === true || value === 'true';
+}
+
+function formatServiceAvailed(value) {
+  return parseServiceAvailed(value) ? 'Yes' : 'No';
+}
+
+function normalizeSubmission(submission = {}) {
+  return {
+    ...submission,
+    serviceAvailed: parseServiceAvailed(submission.serviceAvailed),
+  };
+}
+
+function ServiceAvailedCell({ checked, editable, disabled, onChange }) {
+  const isAvailed = parseServiceAvailed(checked);
+  const label = formatServiceAvailed(checked);
+  const labelClass = isAvailed ? 'text-teal-700 font-medium' : 'text-gray-600';
+
+  if (!editable) {
+    return <span className={labelClass}>{label}</span>;
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className={`text-sm ${labelClass}`}>{label}</span>
+      <ServiceAvailedToggle
+        checked={isAvailed}
+        disabled={disabled}
+        onChange={onChange}
+      />
+    </div>
+  );
+}
+
 function ServiceAvailedToggle({ checked, disabled, onChange }) {
   return (
     <button
@@ -170,7 +206,7 @@ const MsmeDprDashboard = ({
         setChartSeries(
           data.chartSeries || { labels: [], requests: [], serviceAvailed: [] }
         );
-        setSubmissions(data.submissions || []);
+        setSubmissions((data.submissions || []).map(normalizeSubmission));
         setPagination(
           data.pagination || {
             page: pageNum,
@@ -208,7 +244,12 @@ const MsmeDprDashboard = ({
     setTogglingId(id);
     try {
       await updateMsmeDprServiceAvailed(id, nextValue);
-      await loadData(appliedFilters, page);
+      setSubmissions((prev) =>
+        prev.map((item) =>
+          item._id === id ? { ...item, serviceAvailed: Boolean(nextValue) } : item
+        )
+      );
+      await loadData(appliedFilters, page, timeframe);
       toast.success(nextValue ? 'Marked as service availed' : 'Service availed removed');
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to update status');
@@ -344,7 +385,7 @@ const MsmeDprDashboard = ({
     ? 'No submissions match the selected filters.'
     : 'No submissions yet.';
 
-  const tableColSpan = showServiceAvailed ? 14 : 13;
+  const tableColSpan = 14;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
@@ -672,7 +713,7 @@ const MsmeDprDashboard = ({
                     <th className="px-3 py-3">Mandal</th>
                     <th className="px-3 py-3">District</th>
                     <th className="px-3 py-3">Need CA Stamp</th>
-                    {showServiceAvailed && <th className="px-3 py-3">Service Availed</th>}
+                    <th className="px-3 py-3">Service Availed</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -720,15 +761,14 @@ const MsmeDprDashboard = ({
                           <td className="px-3 py-3 text-gray-600">{s.mandal}</td>
                           <td className="px-3 py-3 text-gray-600">{s.district}</td>
                           <td className="px-3 py-3 text-gray-600">{s.needCaStamp || 'No'}</td>
-                          {showServiceAvailed && (
-                            <td className="px-3 py-3">
-                              <ServiceAvailedToggle
-                                checked={Boolean(s.serviceAvailed)}
-                                disabled={togglingId === s._id}
-                                onChange={(val) => handleToggleServiceAvailed(s._id, val)}
-                              />
-                            </td>
-                          )}
+                          <td className="px-3 py-3">
+                            <ServiceAvailedCell
+                              checked={s.serviceAvailed}
+                              editable={showServiceAvailed}
+                              disabled={togglingId === s._id}
+                              onChange={(val) => handleToggleServiceAvailed(s._id, val)}
+                            />
+                          </td>
                         </tr>
                         {expanded && (
                           <tr>
@@ -806,6 +846,10 @@ const MsmeDprDashboard = ({
                       <p>
                         <span className="font-medium text-gray-700">Need CA Stamp:</span> {s.needCaStamp || 'No'}
                       </p>
+                      <p>
+                        <span className="font-medium text-gray-700">Service Availed:</span>{' '}
+                        {formatServiceAvailed(s.serviceAvailed)}
+                      </p>
                       {s.description && (
                         <p>
                           <span className="font-medium text-gray-700">Description:</span>{' '}
@@ -814,9 +858,9 @@ const MsmeDprDashboard = ({
                       )}
                       {showServiceAvailed && (
                         <div className="flex items-center justify-between pt-2">
-                          <span className="font-medium text-gray-700">Service Availed</span>
+                          <span className="font-medium text-gray-700">Update service availed</span>
                           <ServiceAvailedToggle
-                            checked={Boolean(s.serviceAvailed)}
+                            checked={parseServiceAvailed(s.serviceAvailed)}
                             disabled={togglingId === s._id}
                             onChange={(val) => handleToggleServiceAvailed(s._id, val)}
                           />
