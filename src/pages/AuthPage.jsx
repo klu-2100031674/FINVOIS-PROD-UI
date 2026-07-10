@@ -136,55 +136,53 @@ const AuthPage = () => {
     }
   };
 
-  // Google Sign-In Initialization
-  useEffect(() => {
-    const initializeGoogleSignIn = () => {
-      /* global google */
-      if (window.google) {
-        window.google.accounts.id.initialize({
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-          callback: handleGoogleCredentialResponse,
-        });
-
-        if (activeTab === 'login') {
-          const btn = document.getElementById('googleSignInButtonLogin');
-          if (btn) {
-            window.google.accounts.id.renderButton(btn, {
-              theme: 'outline',
-              size: 'large',
-              width: '100%',
-              text: 'signin_with',
-            });
-          }
-        } else if (activeTab === 'register' && registerStep === 1) {
-          const btn = document.getElementById('googleSignInButtonRegister');
-          if (btn) {
-            window.google.accounts.id.renderButton(btn, {
-              theme: 'outline',
-              size: 'large',
-              width: '100%',
-              text: 'signup_with',
-            });
-          }
-        }
-      }
-    };
-
-    // Initialize immediately if script is loaded
-    initializeGoogleSignIn();
-
-    // Re-initialize when the GIS script finishes loading (if it loaded late)
-    const script = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
-    if (script) {
-      script.addEventListener('load', initializeGoogleSignIn);
-    }
-
-    return () => {
-      if (script) {
-        script.removeEventListener('load', initializeGoogleSignIn);
-      }
-    };
-  }, [activeTab, registerStep]);
+  // Google Sign-In Initialization — temporarily disabled (restore with UI below)
+  // useEffect(() => {
+  //   const initializeGoogleSignIn = () => {
+  //     /* global google */
+  //     if (window.google) {
+  //       window.google.accounts.id.initialize({
+  //         client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+  //         callback: handleGoogleCredentialResponse,
+  //       });
+  //
+  //       if (activeTab === 'login') {
+  //         const btn = document.getElementById('googleSignInButtonLogin');
+  //         if (btn) {
+  //           window.google.accounts.id.renderButton(btn, {
+  //             theme: 'outline',
+  //             size: 'large',
+  //             width: '100%',
+  //             text: 'signin_with',
+  //           });
+  //         }
+  //       } else if (activeTab === 'register' && registerStep === 1) {
+  //         const btn = document.getElementById('googleSignInButtonRegister');
+  //         if (btn) {
+  //           window.google.accounts.id.renderButton(btn, {
+  //             theme: 'outline',
+  //             size: 'large',
+  //             width: '100%',
+  //             text: 'signup_with',
+  //           });
+  //         }
+  //       }
+  //     }
+  //   };
+  //
+  //   initializeGoogleSignIn();
+  //
+  //   const script = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+  //   if (script) {
+  //     script.addEventListener('load', initializeGoogleSignIn);
+  //   }
+  //
+  //   return () => {
+  //     if (script) {
+  //       script.removeEventListener('load', initializeGoogleSignIn);
+  //     }
+  //   };
+  // }, [activeTab, registerStep]);
 
   const handleLoginChange = (e) => {
     setLoginData({ ...loginData, [e.target.name]: e.target.value });
@@ -583,6 +581,7 @@ const ensureVmReady = async () => {
                   ) : 'Log In'}
                 </button>
 
+                {/* Temporarily hidden — restore when needed
                 <p className="text-center text-sm text-gray-500 mt-4 font-['Inter']">
                   Sales team?{' '}
                   <Link to="/crm/login" className="text-violet-600 hover:text-violet-700 font-medium">
@@ -600,6 +599,7 @@ const ensureVmReady = async () => {
                 </div>
 
                 <div id="googleSignInButtonLogin" className="w-full flex justify-center"></div>
+                */}
               </form>
             )}
 
@@ -708,6 +708,7 @@ const ensureVmReady = async () => {
                       />
                     </div>
 
+                    {/* Temporarily hidden — restore when needed
                     <div className="relative my-6">
                       <div className="absolute inset-0 flex items-center">
                         <div className="w-full border-t border-gray-200"></div>
@@ -718,6 +719,7 @@ const ensureVmReady = async () => {
                     </div>
 
                     <div id="googleSignInButtonRegister" className="w-full flex justify-center"></div>
+                    */}
                   </>
                 )}
 
