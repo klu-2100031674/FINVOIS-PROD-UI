@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, MoreVertical, Edit2, Eye, UserPlus } from 'lucide-react';
+import { Search, Filter, MoreVertical, Edit2, Eye, UserPlus, ChevronRight, ChevronDown } from 'lucide-react';
 import { AdminLayout } from '../../components/layouts';
 import api from '../../api/apiClient';
 import toast from 'react-hot-toast';
@@ -32,6 +32,21 @@ const getUserStatusBadgeClass = (user) => {
   return isUserActive(user) ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
 };
 
+const getReferredAgent = (user) => {
+  const agent = user?.agent_id;
+  if (!agent) return null;
+  if (typeof agent === 'object' && (agent.name || agent.email)) {
+    return {
+      name: agent.name || '—',
+      email: agent.email || '—',
+      referral_code: agent.referral_code || null,
+    };
+  }
+  return { name: '—', email: '—', referral_code: null };
+};
+
+const userHasReferral = (user) => Boolean(user?.agent_id);
+
 const AdminUsersPage = () => {
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
@@ -39,6 +54,8 @@ const AdminUsersPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [referralFilter, setReferralFilter] = useState('all');
+  const [expandedRowId, setExpandedRowId] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [actionMenu, setActionMenu] = useState(null);
@@ -57,7 +74,7 @@ const AdminUsersPage = () => {
 
   useEffect(() => {
     filterUsers();
-  }, [users, searchTerm, roleFilter, statusFilter]);
+  }, [users, searchTerm, roleFilter, statusFilter, referralFilter]);
 
   const fetchUsers = async () => {
     try {
@@ -80,11 +97,16 @@ const AdminUsersPage = () => {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter((user) => {
         const companyName = resolveCompanyDisplayName(user) || '';
+        const agent = getReferredAgent(user);
+        const agentSearch = agent
+          ? `${agent.name} ${agent.email}`.toLowerCase()
+          : '';
         return (
           user.name?.toLowerCase().includes(term) ||
           user.email?.toLowerCase().includes(term) ||
           user.mobile?.includes(searchTerm) ||
-          companyName.toLowerCase().includes(term)
+          companyName.toLowerCase().includes(term) ||
+          agentSearch.includes(term)
         );
       });
     }
@@ -109,6 +131,12 @@ const AdminUsersPage = () => {
       );
     }
 
+    if (referralFilter === 'referred') {
+      filtered = filtered.filter((user) => userHasReferral(user));
+    } else if (referralFilter === 'not_referred') {
+      filtered = filtered.filter((user) => !userHasReferral(user));
+    }
+
     setFilteredUsers(filtered);
   };
 
@@ -130,6 +158,17 @@ const AdminUsersPage = () => {
       fetchUsers();
     } catch (error) {
       toast.error('Failed to update user role');
+    }
+    setActionMenu(null);
+  };
+
+  const handleTableAccessChange = async (userId, tableAccess) => {
+    try {
+      await api.patch(`/users/${userId}`, { table_access: tableAccess });
+      toast.success(tableAccess ? 'Table access granted' : 'Table access revoked');
+      fetchUsers();
+    } catch (error) {
+      toast.error(error?.response?.data?.error || error?.error || 'Failed to update table access');
     }
     setActionMenu(null);
   };
@@ -199,6 +238,13 @@ const AdminUsersPage = () => {
     }
   };
 
+  const referredCount = users.filter((u) => userHasReferral(u)).length;
+  const agentCount = users.filter((u) => u.role === 'agent').length;
+
+  const toggleRowExpand = (userId) => {
+    setExpandedRowId((prev) => (prev === userId ? null : userId));
+  };
+
   if (loading) {
     return (
       <AdminLayout>
@@ -225,30 +271,50 @@ const AdminUsersPage = () => {
         </button>
       </div>
 
+      {/* Summary */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total users</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{users.length}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Referred</p>
+          <p className="text-2xl font-bold text-[#7e22ce] mt-1">{referredCount}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Channel partners</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{agentCount}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Showing</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{filteredUsers.length}</p>
+        </div>
+      </div>
+
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+          <div className="relative lg:col-span-2">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <input
               type="text"
-              placeholder="Search users..."
+              placeholder="Search name, email, company..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent"
+              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent"
             />
           </div>
 
           {/* Role Filter */}
           <div className="relative">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent appearance-none"
+              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent appearance-none bg-white"
             >
-              <option value="all">All Roles</option>
+              <option value="all">All roles</option>
               <option value="admin">Super Admin</option>
               <option value="lead_manager">Service Manager</option>
               <option value="company_admin">Company Admin</option>
@@ -260,13 +326,12 @@ const AdminUsersPage = () => {
 
           {/* Status Filter */}
           <div className="relative">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent appearance-none"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent appearance-none bg-white"
             >
-              <option value="all">All Status</option>
+              <option value="all">All status</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
               <option value="review">Review</option>
@@ -274,188 +339,254 @@ const AdminUsersPage = () => {
             </select>
           </div>
 
-          {/* Results Count */}
-          <div className="flex items-center justify-end">
-            <span className="text-gray-500 text-sm">
-              Showing {filteredUsers.length} of {users.length} users
-            </span>
+          {/* Referral Filter */}
+          <div className="relative">
+            <select
+              value={referralFilter}
+              onChange={(e) => setReferralFilter(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent appearance-none bg-white"
+            >
+              <option value="all">All referrals</option>
+              <option value="referred">Referred by agent</option>
+              <option value="not_referred">Not referred</option>
+            </select>
           </div>
         </div>
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          <table className="w-full table-fixed divide-y divide-gray-100">
+            <thead>
+              <tr className="bg-gray-50/80">
+                <th className="w-10 px-2 py-3" aria-label="Expand" />
+                <th className="w-[28%] px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   User
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="w-[18%] px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">
                   Company
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="w-[14%] px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   Role
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="w-[12%] px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Referral Code
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="w-[12%] px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:table-cell">
                   Joined
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="w-12 px-2 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-100">
               {filteredUsers.map((user) => {
                 const companyName = resolveCompanyDisplayName(user);
                 const inCompany = userBelongsToCompany(user);
                 const signupRestricted = isSignupRestricted(user);
+                const referred = userHasReferral(user);
+                const referredAgent = getReferredAgent(user);
+                const isExpanded = expandedRowId === user._id;
+
                 return (
-                <tr key={user._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{user.name || 'N/A'}</div>
-                      <div className="text-sm text-gray-500">{user.email}</div>
-                      {user.phone || user.mobile ? (
-                        <div className="text-xs text-gray-400">{user.phone || user.mobile}</div>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    {inCompany ? (
-                      <span className="font-medium text-gray-900">{companyName || '—'}</span>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleBadgeColor(user.role)}`}>
-                      {formatRoleForDisplay(user.role, user).toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getUserStatusBadgeClass(user)}`}>
-                      {getUserStatusLabel(user)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.referral_code || '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
-                    {signupRestricted ? (
-                      <button
-                        type="button"
-                        onClick={() => handleViewUser(user)}
-                        className="p-2 text-[#7e22ce] hover:bg-purple-50 rounded-full transition-colors"
-                        title="View details (manage in User Approvals)"
-                      >
-                        <Eye size={18} />
-                      </button>
-                    ) : (
-                      <>
-                    <button
-                      type="button"
-                      onClick={() => setActionMenu(actionMenu === user._id ? null : user._id)}
-                      className="text-gray-400 hover:text-gray-600"
+                  <React.Fragment key={user._id}>
+                    <tr
+                      className={`transition-colors ${isExpanded ? 'bg-purple-50/40' : 'hover:bg-gray-50/80'}`}
                     >
-                      <MoreVertical size={18} />
-                    </button>
-                    
-                    {actionMenu === user._id && (
-                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
-                        <div className="py-1">
+                      <td className="px-2 py-3 align-middle">
+                        {referred ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleRowExpand(user._id)}
+                            className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 hover:bg-purple-100 hover:text-[#7e22ce] transition-colors"
+                            title={isExpanded ? 'Hide referral details' : 'Show referral details'}
+                            aria-expanded={isExpanded}
+                          >
+                            {isExpanded ? (
+                              <ChevronDown size={16} strokeWidth={2.5} />
+                            ) : (
+                              <ChevronRight size={16} strokeWidth={2.5} />
+                            )}
+                          </button>
+                        ) : (
+                          <span className="inline-block w-7" />
+                        )}
+                      </td>
+                      <td className="px-3 py-3 align-middle min-w-0">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{user.name || 'N/A'}</p>
+                            {referred && (
+                              <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-purple-100 text-purple-700 uppercase tracking-wide">
+                                Referred
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 truncate mt-0.5">{user.email}</p>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 align-middle hidden md:table-cell min-w-0">
+                        {inCompany ? (
+                          <span className="text-sm text-gray-800 truncate block">{companyName || '—'}</span>
+                        ) : (
+                          <span className="text-sm text-gray-300">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 align-middle">
+                        <div className="flex flex-col gap-1 items-start min-w-0">
+                          <span className={`inline-block max-w-full truncate px-2 py-0.5 text-[11px] font-semibold rounded-full ${getRoleBadgeColor(user.role)}`}>
+                            {formatRoleForDisplay(user.role, user)}
+                          </span>
+                          {user.role === 'user' && user.table_access && (
+                            <span className="inline-block px-2 py-0.5 text-[10px] font-semibold rounded-full bg-indigo-100 text-indigo-800">
+                              Table
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 align-middle">
+                        <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded-full ${getUserStatusBadgeClass(user)}`}>
+                          {getUserStatusLabel(user)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 align-middle hidden sm:table-cell">
+                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                          {user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                        </span>
+                      </td>
+                      <td className="px-2 py-3 align-middle text-right relative">
+                        {signupRestricted ? (
                           <button
                             type="button"
                             onClick={() => handleViewUser(user)}
-                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            className="p-1.5 text-[#7e22ce] hover:bg-purple-50 rounded-lg transition-colors"
+                            title="View details"
                           >
-                            <Eye size={16} className="mr-2" /> View Details
+                            <Eye size={16} />
                           </button>
-                          {user.role === 'agent' && (
+                        ) : (
+                          <>
                             <button
-                              onClick={() => handleEditCommission(user)}
-                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              type="button"
+                              onClick={() => setActionMenu(actionMenu === user._id ? null : user._id)}
+                              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                             >
-                              <Edit2 size={16} className="mr-2" /> Edit Commission
+                              <MoreVertical size={16} />
                             </button>
-                          )}
-                          {user.role === 'user' && (
-                            <>
-                              <button
-                                onClick={() => handleRoleChange(user._id, 'agent')}
-                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              >
-                                <Edit2 size={16} className="mr-2" />
-                                Promote to channel partner
-                              </button>
-                              <button
-                                onClick={() => handleRoleChange(user._id, 'executive')}
-                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              >
-                                <Edit2 size={16} className="mr-2" />
-                                Promote to Executive
-                              </button>
-                            </>
-                          )}
-                          {user.role === 'agent' && (
-                            <button
-                              onClick={() => handleRoleChange(user._id, 'user')}
-                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                              <Edit2 size={16} className="mr-2" />
-                              Demote to User
-                            </button>
-                          )}
-                          {user.role === 'executive' && (
-                            <button
-                              onClick={() => handleRoleChange(user._id, 'user')}
-                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                              <Edit2 size={16} className="mr-2" />
-                              Demote to User
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleStatusChange(user._id, !isUserActive(user))}
-                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          >
-                            <Edit2 size={16} className="mr-2" /> 
-                            {isUserActive(user) ? 'Deactivate User' : 'Activate User'}
-                          </button>
-                          {/* Delete action intentionally disabled.
-                          <button
-                            onClick={() => handleDeleteUser(user._id)}
-                            className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                          >
-                            Delete User
-                          </button>
-                          */}
-                        </div>
-                      </div>
+
+                            {actionMenu === user._id && (
+                              <div className="absolute right-0 mt-1 w-52 bg-white rounded-lg shadow-lg z-20 border border-gray-100 py-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleViewUser(user)}
+                                  className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                >
+                                  <Eye size={15} className="mr-2 shrink-0" /> View details
+                                </button>
+                                {user.role === 'agent' && (
+                                  <button
+                                    onClick={() => handleEditCommission(user)}
+                                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                  >
+                                    <Edit2 size={15} className="mr-2 shrink-0" /> Edit commission
+                                  </button>
+                                )}
+                                {user.role === 'user' && (
+                                  <>
+                                    <button
+                                      onClick={() => handleTableAccessChange(user._id, !user.table_access)}
+                                      className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                    >
+                                      <Edit2 size={15} className="mr-2 shrink-0" />
+                                      {user.table_access ? 'Revoke Table access' : 'Grant Table access'}
+                                    </button>
+                                    <button
+                                      onClick={() => handleRoleChange(user._id, 'agent')}
+                                      className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                    >
+                                      <Edit2 size={15} className="mr-2 shrink-0" />
+                                      Promote to channel partner
+                                    </button>
+                                    <button
+                                      onClick={() => handleRoleChange(user._id, 'executive')}
+                                      className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                    >
+                                      <Edit2 size={15} className="mr-2 shrink-0" />
+                                      Promote to executive
+                                    </button>
+                                  </>
+                                )}
+                                {user.role === 'agent' && (
+                                  <button
+                                    onClick={() => handleRoleChange(user._id, 'user')}
+                                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                  >
+                                    <Edit2 size={15} className="mr-2 shrink-0" />
+                                    Demote to user
+                                  </button>
+                                )}
+                                {user.role === 'executive' && (
+                                  <button
+                                    onClick={() => handleRoleChange(user._id, 'user')}
+                                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                  >
+                                    <Edit2 size={15} className="mr-2 shrink-0" />
+                                    Demote to user
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleStatusChange(user._id, !isUserActive(user))}
+                                  className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                >
+                                  <Edit2 size={15} className="mr-2 shrink-0" />
+                                  {isUserActive(user) ? 'Deactivate' : 'Activate'}
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </td>
+                    </tr>
+
+                    {referred && isExpanded && referredAgent && (
+                      <tr className="bg-purple-50/30">
+                        <td colSpan={7} className="px-3 py-0">
+                          <div className="ml-9 my-2 pl-4 border-l-2 border-[#7e22ce]/30 py-3 pr-3">
+                            <p className="text-[11px] font-semibold text-purple-800 uppercase tracking-wide mb-2">
+                              Referral details
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                              <div>
+                                <p className="text-xs text-gray-500 mb-0.5">Agent name</p>
+                                <p className="font-medium text-gray-900">{referredAgent.name}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500 mb-0.5">Agent email</p>
+                                <p className="font-medium text-gray-900 truncate">{referredAgent.email}</p>
+                              </div>
+                              {referredAgent.referral_code && (
+                                <div>
+                                  <p className="text-xs text-gray-500 mb-0.5">Agent referral code</p>
+                                  <p className="font-mono text-xs font-medium text-purple-700">{referredAgent.referral_code}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
                     )}
-                      </>
-                    )}
-                  </td>
-                </tr>
-              );
+                  </React.Fragment>
+                );
               })}
             </tbody>
           </table>
         </div>
 
         {filteredUsers.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No users found matching your criteria</p>
+          <div className="text-center py-14">
+            <p className="text-gray-500 text-sm">No users match your filters</p>
           </div>
         )}
       </div>
@@ -494,6 +625,12 @@ const AdminUsersPage = () => {
                     <p className="text-sm text-gray-500">Role</p>
                     <p className="font-medium">{formatRoleForDisplay(selectedUser.role, selectedUser).toUpperCase()}</p>
                   </div>
+                  {selectedUser.role === 'user' && (
+                    <div>
+                      <p className="text-sm text-gray-500">Table access</p>
+                      <p className="font-medium">{selectedUser.table_access ? 'Granted' : 'Not granted'}</p>
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm text-gray-500">Status</p>
                     <p className="font-medium">{getUserStatusLabel(selectedUser)}</p>
@@ -506,6 +643,18 @@ const AdminUsersPage = () => {
                     <p className="text-sm text-gray-500">Referral Code</p>
                     <p className="font-medium">{selectedUser.referral_code || 'N/A'}</p>
                   </div>
+                  {userHasReferral(selectedUser) && (
+                    <>
+                      <div>
+                        <p className="text-sm text-gray-500">Referred by (agent)</p>
+                        <p className="font-medium">{getReferredAgent(selectedUser)?.name || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Agent email</p>
+                        <p className="font-medium break-all">{getReferredAgent(selectedUser)?.email || 'N/A'}</p>
+                      </div>
+                    </>
+                  )}
                   <div>
                     <p className="text-sm text-gray-500">Commission Rate</p>
                     <p className="font-medium">{selectedUser.commission_rate || 0}%</p>

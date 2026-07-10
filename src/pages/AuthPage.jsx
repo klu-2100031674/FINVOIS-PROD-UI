@@ -19,7 +19,7 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
-  const { login, register, logout, loading: authLoading, error, clearError } = useAuth();
+  const { login, googleLogin, register, logout, loading: authLoading, error, clearError } = useAuth();
   const [activeTab, setActiveTab] = useState('login');
   const [isVmLoading, setIsVmLoading] = useState(false);
   const [apiError, setApiError] = useState(null);
@@ -59,6 +59,132 @@ const AuthPage = () => {
       setActiveTab('register'); // Switch to register tab
     }
   }, [searchParams]);
+
+  const handleGoogleCredentialResponse = async (response) => {
+    const idToken = response.credential;
+    if (isVmLoading || authLoading) return;
+
+    try {
+      setApiError(null);
+      setRegisterErrors(null);
+      setIsVmLoading(true);
+
+      if (!shouldSkipVmOnLogin()) {
+        const vmReady = await ensureVmReady();
+        if (!vmReady) {
+          toast.error('Server is taking too long to start. Please try again in 1 minute.');
+          return;
+        }
+      }
+
+      const result = await googleLogin(idToken);
+      
+      const loggedInUser = result?.data?.user;
+      const userRole = loggedInUser
+        ? normalizeRoleFromUser(loggedInUser)
+        : 'user';
+      const emailVerified = loggedInUser?.email_verified;
+      const isActive = loggedInUser?.is_active;
+      const approvalStatus = resolveSignupApprovalStatus(loggedInUser);
+
+      if (emailVerified === false) {
+        toast.error('Please verify your email address before logging in.');
+        logout();
+        return;
+      }
+
+      if (approvalStatus === 'pending') {
+        toast.error('Your account is pending admin approval.');
+        logout();
+        return;
+      }
+
+      if (approvalStatus === 'rejected') {
+        toast.error('Your registration was not approved. Please contact support.');
+        logout();
+        return;
+      }
+
+      if (isActive === false) {
+        toast.error('Your account is disabled. Please contact support.');
+        logout();
+        return;
+      }
+
+      toast.success('Login successful!');
+
+      if (userRole === 'company_user') {
+        navigate('/company/user/dashboard', { replace: true });
+      } else if (userRole === 'company_admin') {
+        navigate('/company/dashboard', { replace: true });
+      } else if (userRole === 'admin') {
+        navigate('/admin/dashboard', { replace: true });
+      } else if (userRole === 'agent') {
+        navigate('/agent/dashboard', { replace: true });
+      } else if (userRole === 'msme_dpr_viewer') {
+        navigate('/msme-dpr-dashboard', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    } catch (err) {
+      console.error('Google login error:', err);
+      const errorMessage = typeof err === 'string' ? err : (err?.message || 'Google login failed');
+      setApiError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsVmLoading(false);
+    }
+  };
+
+  // Google Sign-In Initialization
+  useEffect(() => {
+    const initializeGoogleSignIn = () => {
+      /* global google */
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+          callback: handleGoogleCredentialResponse,
+        });
+
+        if (activeTab === 'login') {
+          const btn = document.getElementById('googleSignInButtonLogin');
+          if (btn) {
+            window.google.accounts.id.renderButton(btn, {
+              theme: 'outline',
+              size: 'large',
+              width: '100%',
+              text: 'signin_with',
+            });
+          }
+        } else if (activeTab === 'register' && registerStep === 1) {
+          const btn = document.getElementById('googleSignInButtonRegister');
+          if (btn) {
+            window.google.accounts.id.renderButton(btn, {
+              theme: 'outline',
+              size: 'large',
+              width: '100%',
+              text: 'signup_with',
+            });
+          }
+        }
+      }
+    };
+
+    // Initialize immediately if script is loaded
+    initializeGoogleSignIn();
+
+    // Re-initialize when the GIS script finishes loading (if it loaded late)
+    const script = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+    if (script) {
+      script.addEventListener('load', initializeGoogleSignIn);
+    }
+
+    return () => {
+      if (script) {
+        script.removeEventListener('load', initializeGoogleSignIn);
+      }
+    };
+  }, [activeTab, registerStep]);
 
   const handleLoginChange = (e) => {
     setLoginData({ ...loginData, [e.target.name]: e.target.value });
@@ -463,6 +589,17 @@ const ensureVmReady = async () => {
                     CRM Portal →
                   </Link>
                 </p>
+
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-3 bg-white text-gray-500 font-['Inter']">Or continue with</span>
+                  </div>
+                </div>
+
+                <div id="googleSignInButtonLogin" className="w-full flex justify-center"></div>
               </form>
             )}
 
@@ -570,6 +707,17 @@ const ensureVmReady = async () => {
                         className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all font-['Inter']"
                       />
                     </div>
+
+                    <div className="relative my-6">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-200"></div>
+                      </div>
+                      <div className="relative flex justify-center text-sm">
+                        <span className="px-3 bg-white text-gray-500 font-['Inter']">Or sign up with</span>
+                      </div>
+                    </div>
+
+                    <div id="googleSignInButtonRegister" className="w-full flex justify-center"></div>
                   </>
                 )}
 

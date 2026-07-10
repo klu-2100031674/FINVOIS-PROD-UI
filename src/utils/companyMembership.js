@@ -2,7 +2,7 @@ import { normalizeRoleFromUser } from './normalizeUserRole';
 
 export const isChannelPartner = (user) => {
   if (!user) return false;
-  if (normalizeRoleFromUser(user.role) === 'agent') return true;
+  if (normalizeRoleFromUser(user) === 'agent') return true;
   if (user.userCategory === 'FAGT') return true;
   if (user.referral_code) return true;
   return false;
@@ -10,7 +10,7 @@ export const isChannelPartner = (user) => {
 
 export const isExecutive = (user) => {
   if (!user) return false;
-  if (normalizeRoleFromUser(user.role) === 'executive') return true;
+  if (normalizeRoleFromUser(user) === 'executive') return true;
   if (user.userCategory === 'FEXEC') return true;
   return false;
 };

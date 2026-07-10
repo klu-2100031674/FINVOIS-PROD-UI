@@ -123,6 +123,39 @@ export const login = createAsyncThunk(
   }
 );
 
+export const googleLogin = createAsyncThunk(
+  'auth/googleLogin',
+  async (idToken, { rejectWithValue }) => {
+    try {
+      const response = await api.auth.googleAuth(idToken);
+      const userKey = import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data';
+      const user = response?.data?.user;
+
+      if (user) {
+        const normalizedUser = normalizeStoredRole(user);
+        const approvalStatus = resolveSignupApprovalStatus(normalizedUser);
+        if (approvalStatus !== 'approved') {
+          setAuthToken(null);
+          localStorage.removeItem(userKey);
+          if (approvalStatus === 'rejected') {
+            return rejectWithValue(
+              'Your registration was not approved. Please contact support.'
+            );
+          }
+          return rejectWithValue('Your account is pending admin approval.');
+        }
+        response.data.user = normalizedUser;
+        localStorage.setItem(userKey, JSON.stringify(normalizedUser));
+      }
+
+      return response;
+    } catch (error) {
+      const message = extractErrorMessage(error) || 'Google login failed';
+      return rejectWithValue(message);
+    }
+  }
+);
+
 export const getProfile = createAsyncThunk(
   'auth/getProfile',
   async (_, { rejectWithValue }) => {
@@ -243,6 +276,65 @@ const authSlice = createSlice({
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || 'Login failed';
+        state.isAuthenticated = false;
+      });
+
+    // Google Login
+    builder
+      .addCase(googleLogin.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(googleLogin.fulfilled, (state, action) => {
+        console.log('🔑 Google Login fulfilled - payload:', action.payload);
+        state.loading = false;
+        if (action.payload.success && action.payload.data) {
+          const userData = normalizeStoredRole({
+            ...action.payload.data.user,
+            mobile: action.payload.data.user.phone || action.payload.data.user.mobile
+          });
+
+          const approvalStatus = resolveSignupApprovalStatus(userData);
+
+          if (userData.email_verified === false) {
+            state.user = null;
+            state.token = null;
+            state.isAuthenticated = false;
+            state.error = 'Please verify your email address before logging in.';
+            localStorage.removeItem(import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data');
+            localStorage.removeItem('ca_auth_token');
+          } else if (approvalStatus === 'pending') {
+            state.user = null;
+            state.token = null;
+            state.isAuthenticated = false;
+            state.error = 'Your account is pending admin approval.';
+            localStorage.removeItem(import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data');
+            localStorage.removeItem('ca_auth_token');
+          } else if (approvalStatus === 'rejected') {
+            state.user = null;
+            state.token = null;
+            state.isAuthenticated = false;
+            state.error = 'Your registration was not approved. Please contact support.';
+            localStorage.removeItem(import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data');
+            localStorage.removeItem('ca_auth_token');
+          } else if (userData.is_active === false) {
+            state.user = null;
+            state.token = null;
+            state.isAuthenticated = false;
+            state.error = 'Your account is disabled. Please contact support.';
+            localStorage.removeItem(import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data');
+            localStorage.removeItem('ca_auth_token');
+          } else {
+            state.user = userData;
+            state.token = action.payload.data.token;
+            state.isAuthenticated = true;
+            state.error = null;
+          }
+        }
+      })
+      .addCase(googleLogin.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || 'Google login failed';
         state.isAuthenticated = false;
       });
 

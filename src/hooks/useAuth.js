@@ -5,6 +5,7 @@ import {
   selectUser,
   selectIsAuthenticated,
   login,
+  googleLogin,
   register,
   logout,
   getProfile,
@@ -25,6 +26,10 @@ const useAuth = () => {
   // Actions
   const handleLogin = async (credentials) => {
     return dispatch(login(credentials)).unwrap();
+  };
+
+  const handleGoogleLogin = async (idToken) => {
+    return dispatch(googleLogin(idToken)).unwrap();
   };
 
   const handleRegister = async (userData) => {
@@ -53,6 +58,7 @@ const useAuth = () => {
     loading: auth.loading,
     error: auth.error,
     login: handleLogin,
+    googleLogin: handleGoogleLogin,
     register: handleRegister,
     logout: handleLogout,
     getProfile: handleGetProfile,

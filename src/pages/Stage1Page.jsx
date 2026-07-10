@@ -17,6 +17,8 @@ import toast from "react-hot-toast";
 import ClientLayout from "../components/layouts/ClientLayout";
 import AdminLayout from "../components/layouts/AdminLayout";
 import { effectiveUserRole } from "../utils/normalizeUserRole";
+import { hasTableAccess } from "../utils/tableAccess";
+import { generateHubLandingPath } from "../utils/routePaths";
 
 const Stage1Page = () => {
   const navigate = useNavigate();
@@ -35,6 +37,18 @@ const Stage1Page = () => {
   const reportHelpId = searchParams.get("reportHelpId") || "";
   const hideSidebar = true;
   const isAdminMode = searchParams.get("admin") === "true";
+
+  useEffect(() => {
+    if (!user) return;
+    if (hasTableAccess(user)) return;
+    const params = new URLSearchParams();
+    if (templateId) params.set("templateId", templateId);
+    if (assistedUserId) params.set("assistedUserId", assistedUserId);
+    if (reportHelpId) params.set("reportHelpId", reportHelpId);
+    if (isAdminMode) params.set("admin", "true");
+    const qs = params.toString();
+    navigate(qs ? `/generate?${qs}` : generateHubLandingPath(user), { replace: true });
+  }, [user, templateId, assistedUserId, reportHelpId, isAdminMode, navigate]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingFullReport, setIsGeneratingFullReport] = useState(false);
   const [fileName, setFileName] = useState(null);

@@ -133,6 +133,19 @@ export const authAPI = {
     }
   },
 
+  // Google Authentication (Login/Register)
+  googleAuth: async (idToken) => {
+    try {
+      const response = await apiClient.post('/users/google-auth', { idToken });
+      if (response.data.success && response.data.data?.token) {
+        setAuthToken(response.data.data.token);
+      }
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
   // Login
   login: async (credentials) => {
     try {

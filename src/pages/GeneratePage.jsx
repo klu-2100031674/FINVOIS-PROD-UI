@@ -3,7 +3,7 @@
  * Form submission and Excel generation
  */
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector, useStore } from 'react-redux';
 import { useAuth } from '../hooks';
@@ -17,9 +17,10 @@ import {
   clearFormData,
   clearRelatedDocuments,
   selectFormData,
+  selectRelatedDocuments,
 } from '../store/slices/reportSlice';
 import { fetchDraftByIdV2 } from '../store/slices/draftSlice';
-import { Button, Card, Loading } from '../components/common';
+import { Button, Card, Loading, PaymentModal, AnalysisSheetsModal, ReportGenerationModal } from '../components/common';
 import FRCC1Form from '../components/forms/FRCC1Form';
 import FRCC2Form from '../components/forms/FRCC2Form';
 import FRCC3Form from '../components/forms/FRCC3Form';
@@ -39,6 +40,9 @@ import { ShieldCheck } from 'lucide-react';
 import NotificationBell from '../components/common/NotificationBell';
 import finvoisLogo from '../assets/finvois.png';
 import { normalizeUserRole, effectiveUserRole } from '../utils/normalizeUserRole';
+import { hasTableAccess } from '../utils/tableAccess';
+import { resolveReportTitle } from '../utils/reportTitle';
+import { deductAICredits } from '../store/slices/walletSlice';
 import { dashboardHomePath, generateHubLandingPath, myReportsPathForRole } from '../utils/routePaths';
 import {
   hasStage2DraftData,
@@ -160,6 +164,7 @@ const GeneratePage = () => {
   const template = useSelector(selectSelectedTemplate);
   const generatedExcel = useSelector(selectGeneratedExcel);
   const reduxFormData = useSelector(selectFormData);
+  const relatedDocuments = useSelector(selectRelatedDocuments);
   const generateInitKey = useRef('');
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -168,6 +173,12 @@ const GeneratePage = () => {
   const [tempFormData, setTempFormData] = useState(null);
   const [tempSubmittedData, setTempSubmittedData] = useState(null);
   const [draftCheckComplete, setDraftCheckComplete] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const [analysisData, setAnalysisData] = useState(null);
+  const [reportTitle, setReportTitle] = useState('');
+  const [initialSheetSelections, setInitialSheetSelections] = useState(null);
+  const [isGeneratingFullReport, setIsGeneratingFullReport] = useState(false);
   const hasMounted = useRef(false);
   const generationRequestedRef = useRef(false);
   const brandingRef = useRef(null); // cache resolved company branding
@@ -421,6 +432,116 @@ const GeneratePage = () => {
 
   // Check if admin mode (no credits required)
   const isAdminMode = searchParams.get('admin') === 'true' && normalizeUserRole(user?.role) === 'admin';
+  const userCanSeeTable = hasTableAccess(user);
+
+  const startDirectPaymentFlow = useCallback((formPayload) => {
+    const resolvedTitle = resolveReportTitle({
+      formData: formPayload,
+      reportTitle: '',
+      templateId,
+    });
+    setReportTitle(resolvedTitle);
+    const isTermLoan = (templateId || '').toUpperCase().includes('TERM_LOAN');
+    if (isTermLoan) {
+      setShowAnalysisModal(true);
+    } else {
+      setShowPaymentModal(true);
+    }
+  }, [templateId]);
+
+  const handleAnalysisConfirm = (data) => {
+    setAnalysisData(data);
+    setShowAnalysisModal(false);
+    const resolvedTitle = resolveReportTitle({
+      formData: reduxFormData || tempSubmittedData || tempFormData,
+      reportTitle,
+      templateId,
+    });
+    setReportTitle(resolvedTitle);
+    setInitialSheetSelections(data.allSelections || {});
+    setShowPaymentModal(true);
+  };
+
+  const uploadRelatedDocumentsForReport = useCallback(async (targetReportId) => {
+    if (!targetReportId || !relatedDocuments || relatedDocuments.length === 0) {
+      return true;
+    }
+
+    const uploadFormData = new FormData();
+    let filesAttached = false;
+
+    relatedDocuments.forEach((doc) => {
+      if (doc?.file) {
+        uploadFormData.append('files', doc.file);
+        uploadFormData.append('titles', doc.title || doc.file.name);
+        filesAttached = true;
+      }
+    });
+
+    if (!filesAttached) {
+      return true;
+    }
+
+    try {
+      await reportAPI.uploadRelatedDocuments(targetReportId, uploadFormData);
+      dispatch(clearRelatedDocuments());
+      return true;
+    } catch (error) {
+      console.error('Error uploading related documents:', error);
+      toast.error('Failed to upload related documents');
+      return false;
+    }
+  }, [relatedDocuments, dispatch]);
+
+  const generateReport = async (paidReportId = null, analysisOptions = null, sheets = null) => {
+    try {
+      setIsGeneratingFullReport(true);
+      const formPayload = reduxFormData || tempSubmittedData || tempFormData;
+      const result = await reportAPI.generateFullReport(templateId, formPayload, {
+        isAdmin: isAdminMode,
+        paidReportId,
+        analysisOptions,
+        sheets,
+      });
+
+      if (result.success) {
+        toast.success('Report generated successfully!');
+        navigate('/report-ready', {
+          state: {
+            report_id: result.data.report_id,
+            validation_status: result.data.validation_status,
+            message: result.data.message,
+          },
+        });
+        if (!isAdminMode) {
+          dispatch(deductAICredits());
+        }
+        return result?.data?.report_id;
+      }
+      throw new Error('Full report generation failed');
+    } catch (error) {
+      console.error('Error generating full report:', error);
+      toast.error(error.message || 'Failed to generate full AI report');
+      return null;
+    } finally {
+      setIsGeneratingFullReport(false);
+    }
+  };
+
+  const handlePaymentSuccess = async (paymentData) => {
+    if (paymentData?.report_id) {
+      const uploadOk = await uploadRelatedDocumentsForReport(paymentData.report_id);
+      if (!uploadOk) {
+        return;
+      }
+    }
+
+    const selectedSheetNames = Array.isArray(paymentData?.selected_sheets)
+      ? paymentData.selected_sheets.map((s) => s.sheet_name).filter(Boolean)
+      : null;
+
+    await generateReport(paymentData.report_id, analysisData, selectedSheetNames);
+  };
 
   const handleFormSubmit = async (formData) => {
     // Stage 1: Capture Excel Form Data
@@ -450,6 +571,16 @@ const GeneratePage = () => {
     setTempSubmittedData(submittedFormData);
 
     if (NON_AI_TEMPLATES.includes(templateId)) {
+      if (!userCanSeeTable) {
+        try {
+          const finalWithLogos = await withTemplateLogos(submittedFormData);
+          dispatch(setFormData(finalWithLogos));
+          startDirectPaymentFlow(finalWithLogos);
+        } catch (error) {
+          toast.error(formatApiErrorMessage(error, 'Failed to prepare payment.'));
+        }
+        return;
+      }
       // Non-AI templates (CC4, CC5, CC6): skip section selector, directly generate Excel
       console.log('⚡ [GeneratePage] Non-AI template detected, skipping ReportSectionSelector');
       setIsProcessing(true);
@@ -472,11 +603,6 @@ const GeneratePage = () => {
 
   const handleSectionSelectionSubmit = async (sectionData) => {
     // Stage 2: Combine all data and trigger generation
-    setIsProcessing(true);
-    generationRequestedRef.current = true;
-
-    // Merge original form data with selected sections and prompts data
-    // sectionData contains { selected_sections, prompts_data }
     const { related_documents, ...sectionDataWithoutDocs } = sectionData || {};
     const baseSubmissionData = tempSubmittedData || tempFormData || {};
     const finalFormData = {
@@ -488,8 +614,22 @@ const GeneratePage = () => {
       dispatch(setRelatedDocuments(related_documents));
     }
 
-    // Save final merged data to Redux so it's available in Stage 1
+    // Save final merged data to Redux so it's available in Stage 1 / payment
     dispatch(setFormData(finalFormData));
+
+    if (!userCanSeeTable) {
+      try {
+        const finalWithLogos = await withTemplateLogos(finalFormData);
+        dispatch(setFormData(finalWithLogos));
+        startDirectPaymentFlow(finalWithLogos);
+      } catch (error) {
+        toast.error(formatApiErrorMessage(error, 'Failed to prepare payment.'));
+      }
+      return;
+    }
+
+    setIsProcessing(true);
+    generationRequestedRef.current = true;
 
     try {
       const finalWithLogos = await withTemplateLogos(finalFormData);
@@ -802,6 +942,27 @@ const GeneratePage = () => {
           </>
         )}
       </div>
+
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        templateId={templateId}
+        reportTitle={reportTitle}
+        initialSelections={initialSheetSelections}
+        onPaymentSuccess={handlePaymentSuccess}
+        analysisOptions={analysisData}
+        assistedUserId={assistedUserId || undefined}
+        reportHelpRequestId={reportHelpId || undefined}
+      />
+
+      <AnalysisSheetsModal
+        isOpen={showAnalysisModal}
+        onClose={() => setShowAnalysisModal(false)}
+        templateId={templateId}
+        onConfirm={handleAnalysisConfirm}
+      />
+
+      <ReportGenerationModal isOpen={isGeneratingFullReport} />
     </GenerateStandaloneLayout>
   );
 };

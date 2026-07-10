@@ -6,6 +6,7 @@ export function isPublicAnonymousApiPath(url) {
   const isClientScreeningSubmit =
     u.includes('/client-screening') && !u.includes('/client-screening/mail-routing');
   return (
+    u.includes('/users/google-auth') ||
     // SCHEME_FORMS_DISABLED — re-enable when scheme forms return
     // u.includes('/pmegp-ai/chat') ||
     // u.includes('/pmegp-ai/chat/stream') ||
