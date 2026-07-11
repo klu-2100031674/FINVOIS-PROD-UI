@@ -2,10 +2,11 @@ import { normalizeUserRole } from './normalizeUserRole';
 
 /**
  * Whether the user may view Stage1 financials sheet.
- * Non-user roles always have access. role=user requires table_access === true.
+ * Temporarily: all users have Table access. Restore gate below when needed.
  */
 export function hasTableAccess(user) {
-  const role = normalizeUserRole(user?.role);
-  if (role !== 'user') return true;
-  return user?.table_access === true;
+  return true;
+  // const role = normalizeUserRole(user?.role);
+  // if (role !== 'user') return true;
+  // return user?.table_access === true;
 }

@@ -162,16 +162,17 @@ const AdminUsersPage = () => {
     setActionMenu(null);
   };
 
-  const handleTableAccessChange = async (userId, tableAccess) => {
-    try {
-      await api.patch(`/users/${userId}`, { table_access: tableAccess });
-      toast.success(tableAccess ? 'Table access granted' : 'Table access revoked');
-      fetchUsers();
-    } catch (error) {
-      toast.error(error?.response?.data?.error || error?.error || 'Failed to update table access');
-    }
-    setActionMenu(null);
-  };
+  // Temporarily disabled — all users have Table access. Restore when needed.
+  // const handleTableAccessChange = async (userId, tableAccess) => {
+  //   try {
+  //     await api.patch(`/users/${userId}`, { table_access: tableAccess });
+  //     toast.success(tableAccess ? 'Table access granted' : 'Table access revoked');
+  //     fetchUsers();
+  //   } catch (error) {
+  //     toast.error(error?.response?.data?.error || error?.error || 'Failed to update table access');
+  //   }
+  //   setActionMenu(null);
+  // };
 
   const handleEditCommission = (user) => {
     setSelectedUser(user);
@@ -439,11 +440,13 @@ const AdminUsersPage = () => {
                           <span className={`inline-block max-w-full truncate px-2 py-0.5 text-[11px] font-semibold rounded-full ${getRoleBadgeColor(user.role)}`}>
                             {formatRoleForDisplay(user.role, user)}
                           </span>
+                          {/* Temporarily disabled — all users have Table access. Restore when needed.
                           {user.role === 'user' && user.table_access && (
                             <span className="inline-block px-2 py-0.5 text-[10px] font-semibold rounded-full bg-indigo-100 text-indigo-800">
                               Table
                             </span>
                           )}
+                          */}
                         </div>
                       </td>
                       <td className="px-3 py-3 align-middle">
@@ -495,6 +498,7 @@ const AdminUsersPage = () => {
                                 )}
                                 {user.role === 'user' && (
                                   <>
+                                    {/* Temporarily disabled — all users have Table access. Restore when needed.
                                     <button
                                       onClick={() => handleTableAccessChange(user._id, !user.table_access)}
                                       className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -502,6 +506,7 @@ const AdminUsersPage = () => {
                                       <Edit2 size={15} className="mr-2 shrink-0" />
                                       {user.table_access ? 'Revoke Table access' : 'Grant Table access'}
                                     </button>
+                                    */}
                                     <button
                                       onClick={() => handleRoleChange(user._id, 'agent')}
                                       className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -625,12 +630,14 @@ const AdminUsersPage = () => {
                     <p className="text-sm text-gray-500">Role</p>
                     <p className="font-medium">{formatRoleForDisplay(selectedUser.role, selectedUser).toUpperCase()}</p>
                   </div>
+                  {/* Temporarily disabled — all users have Table access. Restore when needed.
                   {selectedUser.role === 'user' && (
                     <div>
                       <p className="text-sm text-gray-500">Table access</p>
                       <p className="font-medium">{selectedUser.table_access ? 'Granted' : 'Not granted'}</p>
                     </div>
                   )}
+                  */}
                   <div>
                     <p className="text-sm text-gray-500">Status</p>
                     <p className="font-medium">{getUserStatusLabel(selectedUser)}</p>
