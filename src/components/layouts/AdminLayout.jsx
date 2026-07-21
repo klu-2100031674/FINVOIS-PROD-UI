@@ -38,6 +38,7 @@ import {
   Store,
   Layers,
   TrendingUp,
+  ClipboardList,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { normalizeUserRole } from '../../utils/normalizeUserRole';
@@ -205,6 +206,16 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
         to: '/admin/msme-dpr-dashboard',
         icon: FileText,
         label: 'AP MSME DC',
+      });
+      items.push({
+        to: '/admin/govt-forms',
+        icon: Layers,
+        label: 'Govt Forms',
+      });
+      items.push({
+        to: '/admin/department-name',
+        icon: ClipboardList,
+        label: 'Dept Dashboard',
       });
     }
 

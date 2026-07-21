@@ -8,8 +8,11 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { useAuth } from '../hooks';
 import { setLeadAuth } from '../store/slices/leadAuthSlice';
+import { setAuthData } from '../store/slices/authSlice';
+import api from '../api/apiClient';
 import finvoisLogo from '../assets/finvois.png';
 import toast from 'react-hot-toast';
+import { Mail, Phone, Send, ShieldCheck, Key } from 'lucide-react';
 import { normalizeRoleFromUser, normalizeUserRole } from '../utils/normalizeUserRole';
 import { resolveSignupApprovalStatus } from '../utils/signupApproval';
 import { getVmStartUrl } from '../utils/env';
@@ -20,6 +23,8 @@ const AuthPage = () => {
   const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
   const { login, googleLogin, register, logout, loading: authLoading, error, clearError } = useAuth();
+  // Portal: 'staff' (credentials + register) | 'customer-otp'
+  const [portalMode, setPortalMode] = useState('staff');
   const [activeTab, setActiveTab] = useState('login');
   const [isVmLoading, setIsVmLoading] = useState(false);
   const [apiError, setApiError] = useState(null);
@@ -28,6 +33,15 @@ const AuthPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
+
+  // Customer OTP portal state
+  const [otpType, setOtpType] = useState('email'); // 'email' | 'phone'
+  const [otpValue, setOtpValue] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [loadingOtp, setLoadingOtp] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [loadingGoogleCustomer, setLoadingGoogleCustomer] = useState(false);
 
   const [loginData, setLoginData] = useState({
     email: '',
@@ -51,14 +65,109 @@ const AuthPage = () => {
     organization_name: '',
   });
 
-  // Check for referral code in URL parameters
+  // Check for referral code / portal mode in URL parameters
   useEffect(() => {
     const refCode = searchParams.get('ref');
     if (refCode) {
       setRegisterData(prev => ({ ...prev, referral_code: refCode }));
+      setPortalMode('staff');
       setActiveTab('register'); // Switch to register tab
     }
+    const portal = searchParams.get('portal');
+    if (portal === 'customer' || portal === 'customer-otp') {
+      setPortalMode('customer-otp');
+    }
   }, [searchParams]);
+
+  const startOtpTimer = () => {
+    setCountdown(60);
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleCustomerGoogleCredentialResponse = async (response) => {
+    const idToken = response.credential;
+    setLoadingGoogleCustomer(true);
+    try {
+      const res = await api.post('/customer/google-auth', { idToken });
+      if (res.data?.success && res.data?.data) {
+        const { token, user } = res.data.data;
+        dispatch(setAuthData({ token, user }));
+        toast.success('Login successful! Welcome back.');
+        navigate('/customer/dashboard', { replace: true });
+      } else {
+        toast.error(res.data?.error || 'Authentication failed. Please try again.');
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || err.message || 'Google authentication failed';
+      toast.error(errorMsg);
+    } finally {
+      setLoadingGoogleCustomer(false);
+    }
+  };
+
+  const handleSendOtp = async (e) => {
+    e.preventDefault();
+    if (!otpValue) {
+      toast.error(`${otpType === 'email' ? 'Email' : 'Phone number'} is required`);
+      return;
+    }
+    setLoadingOtp(true);
+    try {
+      const res = await api.post('/customer/login-send-otp', {
+        type: otpType,
+        value: otpValue.trim(),
+      });
+      if (res.data.success) {
+        setOtpSent(true);
+        startOtpTimer();
+        toast.success(`Verification OTP code sent to your ${otpType}`);
+      } else {
+        toast.error(res.data.error || 'Failed to send OTP');
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || err.message || 'Error sending OTP';
+      toast.error(errorMsg);
+    } finally {
+      setLoadingOtp(false);
+    }
+  };
+
+  const handleVerifyOtpLogin = async (e) => {
+    e.preventDefault();
+    if (!otpCode) {
+      toast.error('Please enter the 6-digit verification code');
+      return;
+    }
+    setLoadingOtp(true);
+    try {
+      const res = await api.post('/customer/login-verify-otp', {
+        type: otpType,
+        value: otpValue.trim(),
+        otp: otpCode.trim(),
+      });
+      if (res.data.success && res.data.data) {
+        const { token, user } = res.data.data;
+        dispatch(setAuthData({ token, user }));
+        toast.success('Login successful! Welcome back.');
+        navigate('/customer/dashboard', { replace: true });
+      } else {
+        toast.error(res.data.error || 'Invalid verification code');
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || err.message || 'Verification failed';
+      toast.error(errorMsg);
+    } finally {
+      setLoadingOtp(false);
+    }
+  };
 
   const handleGoogleCredentialResponse = async (response) => {
     const idToken = response.credential;
@@ -136,53 +245,84 @@ const AuthPage = () => {
     }
   };
 
-  // Google Sign-In Initialization — temporarily disabled (restore with UI below)
-  // useEffect(() => {
-  //   const initializeGoogleSignIn = () => {
-  //     /* global google */
-  //     if (window.google) {
-  //       window.google.accounts.id.initialize({
-  //         client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-  //         callback: handleGoogleCredentialResponse,
-  //       });
-  //
-  //       if (activeTab === 'login') {
-  //         const btn = document.getElementById('googleSignInButtonLogin');
-  //         if (btn) {
-  //           window.google.accounts.id.renderButton(btn, {
-  //             theme: 'outline',
-  //             size: 'large',
-  //             width: '100%',
-  //             text: 'signin_with',
-  //           });
-  //         }
-  //       } else if (activeTab === 'register' && registerStep === 1) {
-  //         const btn = document.getElementById('googleSignInButtonRegister');
-  //         if (btn) {
-  //           window.google.accounts.id.renderButton(btn, {
-  //             theme: 'outline',
-  //             size: 'large',
-  //             width: '100%',
-  //             text: 'signup_with',
-  //           });
-  //         }
-  //       }
-  //     }
-  //   };
-  //
-  //   initializeGoogleSignIn();
-  //
-  //   const script = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
-  //   if (script) {
-  //     script.addEventListener('load', initializeGoogleSignIn);
-  //   }
-  //
-  //   return () => {
-  //     if (script) {
-  //       script.removeEventListener('load', initializeGoogleSignIn);
-  //     }
-  //   };
-  // }, [activeTab, registerStep]);
+  // Google Sign-In Initialization
+  useEffect(() => {
+    const initializeGoogleSignIn = () => {
+      /* global google */
+      const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+      if (!googleClientId || String(googleClientId).includes('your-google-client-id')) {
+        console.error(
+          '[Google Sign-In] VITE_GOOGLE_CLIENT_ID is missing or still a placeholder. ' +
+            'Set it in Render (or your host) env and rebuild the UI. ' +
+            'It must match GOOGLE_CLIENT_ID on FINVOIS-DEV-API.'
+        );
+        return;
+      }
+      if (window.google) {
+        if (portalMode === 'customer-otp') {
+          window.google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: handleCustomerGoogleCredentialResponse,
+          });
+          const btn = document.getElementById('googleSignInButtonLoginCustomer');
+          if (btn) {
+            btn.innerHTML = '';
+            window.google.accounts.id.renderButton(btn, {
+              theme: 'outline',
+              size: 'large',
+              width: '100%',
+              text: 'continue_with',
+            });
+          }
+          return;
+        }
+
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: handleGoogleCredentialResponse,
+        });
+
+        if (activeTab === 'login') {
+          const btn = document.getElementById('googleSignInButtonLogin');
+          if (btn) {
+            btn.innerHTML = '';
+            window.google.accounts.id.renderButton(btn, {
+              theme: 'outline',
+              size: 'large',
+              width: '100%',
+              text: 'signin_with',
+            });
+          }
+        } else if (activeTab === 'register' && registerStep === 1) {
+          const btn = document.getElementById('googleSignInButtonRegister');
+          if (btn) {
+            btn.innerHTML = '';
+            window.google.accounts.id.renderButton(btn, {
+              theme: 'outline',
+              size: 'large',
+              width: '100%',
+              text: 'signup_with',
+            });
+          }
+        }
+      }
+    };
+
+    // Initialize immediately if script is loaded
+    initializeGoogleSignIn();
+
+    // Re-initialize when the GIS script finishes loading (if it loaded late)
+    const script = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+    if (script) {
+      script.addEventListener('load', initializeGoogleSignIn);
+    }
+
+    return () => {
+      if (script) {
+        script.removeEventListener('load', initializeGoogleSignIn);
+      }
+    };
+  }, [activeTab, registerStep, portalMode, otpSent]);
 
   const handleLoginChange = (e) => {
     setLoginData({ ...loginData, [e.target.name]: e.target.value });
@@ -350,6 +490,8 @@ const ensureVmReady = async () => {
         navigate('/agent/dashboard', { replace: true });
       } else if (userRole === 'msme_dpr_viewer') {
         navigate('/msme-dpr-dashboard', { replace: true });
+      } else if (userRole === 'department') {
+        navigate('/department/dashboard', { replace: true });
       } else {
         navigate('/dashboard', { replace: true });
       }
@@ -460,27 +602,29 @@ const ensureVmReady = async () => {
           </div>
 
           <div className="text-gray-700 text-sm font-['Inter']">
-            {activeTab === 'login' ? (
-              <>
-                Don't have an account?{' '}
-                <button
-                  onClick={() => { setActiveTab('register'); setRegisterStep(1); }}
-                  className="text-purple-600 font-semibold hover:text-purple-700"
-                >
-                  Sign up
-                </button>
-              </>
-            ) : (
-              <>
-                Already have an account?{' '}
-                <button
-                  onClick={() => setActiveTab('login')}
-                  className="text-purple-600 font-semibold hover:text-purple-700"
-                >
-                  Log
-                  in
-                </button>
-              </>
+            {portalMode === 'staff' && (
+              activeTab === 'login' ? (
+                <>
+                  Don't have an account?{' '}
+                  <button
+                    onClick={() => { setActiveTab('register'); setRegisterStep(1); }}
+                    className="text-purple-600 font-semibold hover:text-purple-700"
+                  >
+                    Sign up
+                  </button>
+                </>
+              ) : (
+                <>
+                  Already have an account?{' '}
+                  <button
+                    onClick={() => setActiveTab('login')}
+                    className="text-purple-600 font-semibold hover:text-purple-700"
+                  >
+                    Log
+                    in
+                  </button>
+                </>
+              )
             )}
           </div>
         </div>
@@ -493,24 +637,63 @@ const ensureVmReady = async () => {
 
       <div className="flex-1 flex items-center justify-center px-4 pt-24 pb-8">
         {/* Changed max-w-md to max-w-2xl for register form */}
-        <div className={`w-full ${activeTab === 'register' ? 'max-w-3xl' : 'max-w-md'} items-center relative z-10 transition-all duration-300`}>
-          {/* Mobile Logo */}
-
-
+        <div className={`w-full ${portalMode === 'staff' && activeTab === 'register' ? 'max-w-3xl' : 'max-w-md'} items-center relative z-10 transition-all duration-300`}>
           <div className="bg-white rounded-3xl shadow-2xl p-8 backdrop-blur-lg bg-opacity-90">
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 font-['Manrope']">
-                {activeTab === 'login' ? 'Log in to your account' : 'Create your account'}
-              </h2>
-              <p className="text-gray-600 font-['Inter'] mt-2">
-                {activeTab === 'login'
-                  ? 'Welcome back! Please enter your details.'
-                  : 'Get started with your free account today.'}
-              </p>
+            {/* Brand + portal selector */}
+            <div className="flex flex-col items-center mb-6">
+              <img src={finvoisLogo} alt="Finvois Logo" className="h-12 mb-3 object-contain" />
+              <h1 className="text-xl font-bold text-gray-900 tracking-tight font-['Manrope']">Finvois Portal</h1>
+              <p className="text-gray-500 text-sm mt-1 font-['Inter']">Select your access portal below</p>
             </div>
 
+            <div className="flex bg-gray-100 p-1.5 rounded-xl mb-6 border border-gray-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setPortalMode('staff');
+                  setOtpSent(false);
+                  setOtpValue('');
+                  setOtpCode('');
+                }}
+                className={`flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all font-['Inter'] ${
+                  portalMode === 'staff'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Staff Login
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPortalMode('customer-otp');
+                  setActiveTab('login');
+                }}
+                className={`flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all font-['Inter'] ${
+                  portalMode === 'customer-otp'
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Customer OTP Portal
+              </button>
+            </div>
+
+            {portalMode === 'staff' && (
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 font-['Manrope']">
+                  {activeTab === 'login' ? 'Log in to your account' : 'Create your account'}
+                </h2>
+                <p className="text-gray-600 font-['Inter'] mt-2">
+                  {activeTab === 'login'
+                    ? 'Welcome back! Please enter your details.'
+                    : 'Get started with your free account today.'}
+                </p>
+              </div>
+            )}
+
             {/* Login Form */}
-            {activeTab === 'login' && (
+            {portalMode === 'staff' && activeTab === 'login' && (
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2 font-['Inter']">
@@ -581,7 +764,6 @@ const ensureVmReady = async () => {
                   ) : 'Log In'}
                 </button>
 
-                {/* Temporarily hidden — restore when needed
                 <p className="text-center text-sm text-gray-500 mt-4 font-['Inter']">
                   Sales team?{' '}
                   <Link to="/crm/login" className="text-violet-600 hover:text-violet-700 font-medium">
@@ -599,12 +781,11 @@ const ensureVmReady = async () => {
                 </div>
 
                 <div id="googleSignInButtonLogin" className="w-full flex justify-center"></div>
-                */}
               </form>
             )}
 
             {/* Register Form - Two Step */}
-            {activeTab === 'register' && (
+            {portalMode === 'staff' && activeTab === 'register' && (
               <form onSubmit={registerStep === 1 ? handleNextStep : handleRegister} className="space-y-4">
 
                 {/* Step Indicator */}
@@ -708,7 +889,6 @@ const ensureVmReady = async () => {
                       />
                     </div>
 
-                    {/* Temporarily hidden — restore when needed
                     <div className="relative my-6">
                       <div className="absolute inset-0 flex items-center">
                         <div className="w-full border-t border-gray-200"></div>
@@ -719,7 +899,6 @@ const ensureVmReady = async () => {
                     </div>
 
                     <div id="googleSignInButtonRegister" className="w-full flex justify-center"></div>
-                    */}
                   </>
                 )}
 
@@ -921,6 +1100,162 @@ const ensureVmReady = async () => {
                   </div>
                 )}
               </form>
+            )}
+
+            {/* Customer OTP Portal */}
+            {portalMode === 'customer-otp' && (
+              <div className="space-y-4">
+                <div className="text-center mb-2">
+                  <h2 className="text-xl font-bold text-gray-900 font-['Manrope']">Customer OTP Login</h2>
+                  <p className="text-gray-600 text-sm font-['Inter'] mt-1">
+                    Sign in with email or WhatsApp OTP
+                  </p>
+                </div>
+
+                {loadingGoogleCustomer && (
+                  <div className="flex flex-col items-center justify-center py-4 space-y-3">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+                    <p className="text-xs text-gray-500">Authenticating with Google...</p>
+                  </div>
+                )}
+
+                <div className={loadingGoogleCustomer ? 'opacity-40 pointer-events-none' : ''}>
+                  {!otpSent ? (
+                    <form onSubmit={handleSendOtp} className="space-y-4">
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => { setOtpType('email'); setOtpValue(''); }}
+                          className={`flex-1 py-2.5 px-3 border rounded-xl flex items-center justify-center gap-1.5 text-xs font-medium transition-all font-['Inter'] ${
+                            otpType === 'email'
+                              ? 'border-purple-500 bg-purple-50 text-purple-700'
+                              : 'border-gray-200 bg-white text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          <Mail size={14} /> Email OTP
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setOtpType('phone'); setOtpValue(''); }}
+                          className={`flex-1 py-2.5 px-3 border rounded-xl flex items-center justify-center gap-1.5 text-xs font-medium transition-all font-['Inter'] ${
+                            otpType === 'phone'
+                              ? 'border-purple-500 bg-purple-50 text-purple-700'
+                              : 'border-gray-200 bg-white text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          <Phone size={14} /> WhatsApp OTP
+                        </button>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2 font-['Inter']">
+                          {otpType === 'email' ? 'Registered Email Address' : 'WhatsApp Phone Number'}
+                        </label>
+                        <div className="relative">
+                          <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                            {otpType === 'email' ? <Mail size={16} /> : <Phone size={16} />}
+                          </span>
+                          <input
+                            type={otpType === 'email' ? 'email' : 'tel'}
+                            value={otpValue}
+                            onChange={(e) => setOtpValue(e.target.value)}
+                            placeholder={otpType === 'email' ? 'yourname@example.com' : 'e.g. +919999999999'}
+                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all font-['Inter']"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={loadingOtp}
+                        className="w-full py-3 bg-purple-600 text-white font-semibold rounded-xl text-sm hover:bg-purple-700 transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-2 font-['Manrope']"
+                      >
+                        <Send size={14} />
+                        {loadingOtp ? 'Sending...' : 'Send Verification OTP'}
+                      </button>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleVerifyOtpLogin} className="space-y-4">
+                      <div className="bg-purple-50 border border-purple-100 p-4 rounded-xl text-center">
+                        <p className="text-sm text-gray-700 font-['Inter']">
+                          We sent a verification code to <span className="text-purple-700 font-semibold">{otpValue}</span>.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => { setOtpSent(false); setOtpCode(''); }}
+                          className="text-xs text-purple-600 hover:text-purple-700 underline mt-2 font-medium"
+                        >
+                          Change email/phone number
+                        </button>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2 font-['Inter']">
+                          Enter 6-Digit OTP Code
+                        </label>
+                        <div className="relative">
+                          <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                            <Key size={16} />
+                          </span>
+                          <input
+                            type="text"
+                            maxLength={6}
+                            value={otpCode}
+                            onChange={(e) => setOtpCode(e.target.value)}
+                            placeholder="e.g. 123456"
+                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-center tracking-widest font-bold focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all font-['Inter']"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={loadingOtp}
+                        className="w-full py-3 bg-purple-600 text-white font-semibold rounded-xl text-sm hover:bg-purple-700 transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-2 font-['Manrope']"
+                      >
+                        <ShieldCheck size={16} />
+                        {loadingOtp ? 'Verifying...' : 'Verify & Log In'}
+                      </button>
+
+                      <div className="text-center pt-1">
+                        {countdown > 0 ? (
+                          <span className="text-xs text-gray-500">Resend code in {countdown}s</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleSendOtp}
+                            className="text-xs text-purple-600 hover:text-purple-700 font-semibold"
+                          >
+                            Resend Verification OTP
+                          </button>
+                        )}
+                      </div>
+                    </form>
+                  )}
+
+                  {!otpSent && (
+                    <>
+                      <div className="relative my-5">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-gray-200"></div>
+                        </div>
+                        <div className="relative flex justify-center text-sm">
+                          <span className="px-3 bg-white text-gray-500 font-['Inter']">Or continue with</span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-center justify-center space-y-2 min-h-[56px]">
+                        <div id="googleSignInButtonLoginCustomer" className="w-full flex justify-center"></div>
+                        <p className="text-[11px] text-gray-500 text-center font-['Inter']">
+                          Sign up or sign in securely with your Google Account.
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             )}
           </div>
 

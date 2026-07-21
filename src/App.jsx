@@ -43,6 +43,7 @@ import {
   AdminPage,
   AdminPaymentsPage,
   PublicClientScreeningPage,
+  PublicFormPage,
 } from "./pages";
 import {
   AdminDashboardPage,
@@ -79,7 +80,19 @@ import {
   AdminFranchiseApplicationsPage,
   ClientScreeningMailPage,
   AdminMsmeDprDashboardPage,
+  AdminGovtFormsPage,
+  AdminDepartmentDashboardPage,
 } from "./pages/admin";
+import DepartmentDashboardPage from "./pages/department/DepartmentDashboardPage";
+import OpenRequestsPage from "./pages/customerService/OpenRequestsPage";
+import AssignedRequestsPage from "./pages/customerService/AssignedRequestsPage";
+import DepartmentRequestsPage from "./pages/customerService/DepartmentRequestsPage";
+import RequestHistoryPage from "./pages/customerService/RequestHistoryPage";
+import CustomerServiceRequestScreen from "./pages/customerService/CustomerServiceRequestScreen";
+import CustomerLoginPage from "./customer/CustomerLoginPage";
+import CustomerDashboardPage from "./customer/CustomerDashboardPage";
+import CustomerProfilePage from "./customer/CustomerProfilePage";
+import CustomerDepartmentRequestsPage from "./customer/CustomerDepartmentRequestsPage";
 import {
   AgentDashboardPage,
   AgentReferralsPage,
@@ -279,7 +292,7 @@ const RetailUserRoute = ({ children }) => {
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
   }
-  if (r !== 'user') {
+  if (r !== 'user' && r !== 'customer_service') {
     return <Navigate to={dashboardHomePath(user)} replace />;
   }
   return children;
@@ -292,6 +305,42 @@ const ExecutiveRoute = ({ children }) => {
     return <Navigate to="/auth" replace />;
   }
   if (r !== 'executive') {
+    return <Navigate to={dashboardHomePath(user)} replace />;
+  }
+  return children;
+};
+
+const DepartmentRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const r = effectiveUserRole(user);
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  if (r !== 'department') {
+    return <Navigate to={dashboardHomePath(user)} replace />;
+  }
+  return children;
+};
+
+const CustomerServiceRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const r = effectiveUserRole(user);
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  if (r !== 'customer_service') {
+    return <Navigate to={dashboardHomePath(user)} replace />;
+  }
+  return children;
+};
+
+const CustomerRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const r = effectiveUserRole(user);
+  if (!isAuthenticated) {
+    return <Navigate to="/auth?portal=customer" replace />;
+  }
+  if (r !== 'customer') {
     return <Navigate to={dashboardHomePath(user)} replace />;
   }
   return children;
@@ -324,7 +373,7 @@ const GenerateWizardRoute = ({ children }) => {
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
   }
-  if (!['user', 'company_user', 'company_admin', 'admin', 'agent'].includes(r)) {
+  if (!['user', 'company_user', 'company_admin', 'admin', 'agent', 'customer_service'].includes(r)) {
     return <Navigate to={dashboardHomePath(user)} replace />;
   }
   return children;
@@ -431,6 +480,10 @@ const PublicRoute = ({ children }) => {
     return <Navigate to="/agent/dashboard" replace />;
   } else if (normalizedRole === 'msme_dpr_viewer') {
     return <Navigate to="/msme-dpr-dashboard" replace />;
+  } else if (normalizedRole === 'customer') {
+    return <Navigate to="/customer/dashboard" replace />;
+  } else if (normalizedRole === 'department') {
+    return <Navigate to="/department/dashboard" replace />;
   }
   return <Navigate to="/dashboard" replace />;
 };
@@ -474,6 +527,14 @@ function App() {
             </PublicRoute>
           }
         />
+        <Route
+          path="/login/page"
+          element={
+            <PublicRoute>
+              <CustomerLoginPage />
+            </PublicRoute>
+          }
+        />
 
         {/* API Test Route (for development) */}
         <Route path="/api-test" element={<APITestPage />} />
@@ -496,6 +557,38 @@ function App() {
             <RetailUserRoute>
               <DashboardPage />
             </RetailUserRoute>
+          }
+        />
+        <Route
+          path="/customer/dashboard"
+          element={
+            <CustomerRoute>
+              <CustomerDashboardPage />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/customer/profile"
+          element={
+            <CustomerRoute>
+              <CustomerProfilePage />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/customer/reports"
+          element={
+            <CustomerRoute>
+              <ReportsPage />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/customer/department-requests"
+          element={
+            <CustomerRoute>
+              <CustomerDepartmentRequestsPage />
+            </CustomerRoute>
           }
         />
         <Route
@@ -1129,11 +1222,95 @@ function App() {
           }
         />
         <Route
+          path="/admin/govt-forms"
+          element={
+            <AdminOnlyRoute>
+              <AdminGovtFormsPage />
+            </AdminOnlyRoute>
+          }
+        />
+        <Route
+          path="/admin/department-name"
+          element={
+            <AdminOnlyRoute>
+              <AdminDepartmentDashboardPage />
+            </AdminOnlyRoute>
+          }
+        />
+        <Route
           path="/msme-dpr-dashboard"
           element={
             <MsmeDprViewerRoute>
               <MsmeDprDashboardPage />
             </MsmeDprViewerRoute>
+          }
+        />
+
+        {/* Department Dashboard */}
+        <Route
+          path="/department/dashboard"
+          element={
+            <DepartmentRoute>
+              <DepartmentDashboardPage />
+            </DepartmentRoute>
+          }
+        />
+
+        {/* Public Form submissions */}
+        <Route
+          path="/report-requests/:customRoute"
+          element={
+            <ServiceLayout>
+              <PublicFormPage />
+            </ServiceLayout>
+          }
+        />
+
+        {/* Customer Service pages */}
+        <Route
+          path="/customer-service/open"
+          element={
+            <CustomerServiceRoute>
+              <OpenRequestsPage />
+            </CustomerServiceRoute>
+          }
+        />
+        <Route
+          path="/customer-service/claimed"
+          element={
+            <Navigate to="/customer-service/assigned" replace />
+          }
+        />
+        <Route
+          path="/customer-service/assigned"
+          element={
+            <CustomerServiceRoute>
+              <AssignedRequestsPage />
+            </CustomerServiceRoute>
+          }
+        />
+        <Route
+          path="/customer-service/department-requests"
+          element={
+            <CustomerServiceRoute>
+              <DepartmentRequestsPage />
+            </CustomerServiceRoute>
+          }
+        />
+        <Route
+          path="/customer-service/history"
+          element={
+            <CustomerServiceRoute>
+              <RequestHistoryPage />
+            </CustomerServiceRoute>
+          }
+        />
+        <Route
+          path="/customer-service/requests/:id"
+          element={
+            <CustomerServiceRoute>
+              <CustomerServiceRequestScreen />
+            </CustomerServiceRoute>
           }
         />
         <Route

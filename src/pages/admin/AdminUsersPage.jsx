@@ -234,6 +234,10 @@ const AdminUsersPage = () => {
         return 'bg-orange-100 text-orange-800';
       case 'agent':
         return 'bg-purple-100 text-purple-800';
+      case 'customer_service':
+        return 'bg-blue-100 text-blue-800';
+      case 'department':
+        return 'bg-green-100 text-green-800';
       default:
         return 'bg-purple-100 text-purple-800';
     }
@@ -521,7 +525,23 @@ const AdminUsersPage = () => {
                                       <Edit2 size={15} className="mr-2 shrink-0" />
                                       Promote to executive
                                     </button>
+                                    <button
+                                      onClick={() => handleRoleChange(user._id, 'customer_service')}
+                                      className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                    >
+                                      <Edit2 size={15} className="mr-2 shrink-0" />
+                                      Promote to Customer Service
+                                    </button>
                                   </>
+                                )}
+                                {user.role === 'customer_service' && (
+                                  <button
+                                    onClick={() => handleRoleChange(user._id, 'user')}
+                                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                  >
+                                    <Edit2 size={15} className="mr-2 shrink-0" />
+                                    Demote to user
+                                  </button>
                                 )}
                                 {user.role === 'agent' && (
                                   <button

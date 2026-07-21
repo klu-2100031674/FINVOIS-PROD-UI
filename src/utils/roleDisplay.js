@@ -28,6 +28,8 @@ export function formatRoleForDisplay(role, userContext = null) {
   // Display label kept as "Super admin" even though the code-level role is `admin`.
   if (r === 'admin') return 'Super admin';
   if (r === 'company_user') return 'Company user';
+  if (r === 'customer_service') return 'Customer Service';
+  if (r === 'department') return 'Department';
   if (r === 'user') {
     if (hasCompanyContext(userContext)) return 'Company user';
     return 'User';

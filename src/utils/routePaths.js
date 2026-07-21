@@ -20,6 +20,9 @@ export function dashboardHomePath(roleOrUser) {
   if (r === 'msme_dpr_viewer') return '/msme-dpr-dashboard';
   if (r === 'agent') return '/agent/dashboard';
   if (r === 'executive') return '/executive/dashboard';
+  if (r === 'department') return '/department/dashboard';
+  if (r === 'customer_service') return '/dashboard';
+  if (r === 'customer') return '/customer/dashboard';
   return '/dashboard';
 }
 
@@ -32,6 +35,7 @@ export function profilePathForRole(roleOrUser) {
   if (r === 'lead_manager') return '/admin/profile';
   if (r === 'agent') return '/agent/profile';
   if (r === 'executive') return '/executive/profile';
+  if (r === 'customer') return '/customer/profile';
   return '/profile';
 }
 
@@ -42,6 +46,7 @@ export function myReportsPathForRole(roleOrUser) {
   if (r === 'admin') return '/admin/reports';
   if (r === 'agent') return '/agent/reports';
   if (r === 'executive') return '/executive/reports';
+  if (r === 'customer') return '/customer/reports';
   return '/reports';
 }
 

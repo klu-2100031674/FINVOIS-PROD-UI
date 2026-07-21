@@ -7,6 +7,13 @@ export function isPublicAnonymousApiPath(url) {
     u.includes('/client-screening') && !u.includes('/client-screening/mail-routing');
   return (
     u.includes('/users/google-auth') ||
+    u.includes('/customer/google-auth') ||
+    u.includes('/customer/send-otp') ||
+    u.includes('/customer/verify-otp-register') ||
+    u.includes('/customer/check-exists') ||
+    u.includes('/customer/login-send-otp') ||
+    u.includes('/customer/login-verify-otp') ||
+    u.includes('/govt-forms/public/') ||
     // SCHEME_FORMS_DISABLED — re-enable when scheme forms return
     // u.includes('/pmegp-ai/chat') ||
     // u.includes('/pmegp-ai/chat/stream') ||

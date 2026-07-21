@@ -24,6 +24,8 @@ import {
 import toast from 'react-hot-toast';
 import { effectiveUserRole } from '../../utils/normalizeUserRole';
 import { getReportHelpNavLabel } from '../../utils/reportHelpNav';
+import CustomerSidebar from '../../customer/CustomerSidebar';
+import CustomerServiceSidebar from '../../pages/customerService/CustomerServiceSidebar';
 
 const linkClass = ({ isActive }) =>
   `flex items-center px-3 py-2.5 rounded-lg transition-colors ${
@@ -38,6 +40,8 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const role = effectiveUserRole(user);
+
   const handleLogout = () => {
     logout();
     navigate('/auth');
@@ -45,7 +49,6 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
   };
 
   const { dashboardPath, profilePath, myReportsPath, generatePath, roleBadge, isAdminRole } = useMemo(() => {
-    const role = effectiveUserRole(user);
     const isAgent = role === 'agent';
     const isExecutive = role === 'executive';
     const isSuperAdmin = role === 'admin';
@@ -53,39 +56,45 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
     const isCompanyUser = role === 'company_user';
     const isAdmin = isSuperAdmin || isCompanyAdmin;
 
-    const dash = isCompanyUser
-      ? '/company/user/dashboard'
-      : isCompanyAdmin
-        ? '/company/dashboard'
-        : isSuperAdmin
-          ? '/admin/dashboard'
-          : isAgent
-            ? '/agent/dashboard'
-            : isExecutive
-              ? '/executive/dashboard'
-              : '/dashboard';
-    const prof = isCompanyUser
-      ? '/company/user/profile'
-      : isCompanyAdmin
-        ? '/company/profile'
-        : isSuperAdmin
-          ? '/admin/profile'
-          : isAgent
-            ? '/agent/profile'
-            : isExecutive
-              ? '/executive/profile'
-              : '/profile';
-    const reports = isExecutive
-      ? '/executive/reports'
+    const dash = role === 'customer'
+      ? '/customer/dashboard'
       : isCompanyUser
-        ? '/company/user/reports'
+        ? '/company/user/dashboard'
         : isCompanyAdmin
-          ? '/company/reports'
+          ? '/company/dashboard'
           : isSuperAdmin
-            ? '/admin/reports'
+            ? '/admin/dashboard'
             : isAgent
-              ? '/agent/reports'
-              : '/reports';
+              ? '/agent/dashboard'
+              : isExecutive
+                ? '/executive/dashboard'
+                : '/dashboard';
+    const prof = role === 'customer'
+      ? '/customer/profile'
+      : isCompanyUser
+        ? '/company/user/profile'
+        : isCompanyAdmin
+          ? '/company/profile'
+          : isSuperAdmin
+            ? '/admin/profile'
+            : isAgent
+              ? '/agent/profile'
+              : isExecutive
+                ? '/executive/profile'
+                : '/profile';
+    const reports = role === 'customer'
+      ? '/customer/reports'
+      : isExecutive
+        ? '/executive/reports'
+        : isCompanyUser
+          ? '/company/user/reports'
+          : isCompanyAdmin
+            ? '/company/reports'
+            : isSuperAdmin
+              ? '/admin/reports'
+              : isAgent
+                ? '/agent/reports'
+                : '/reports';
     const gen = isCompanyUser
       ? '/company/user/dashboard'
       : isAdmin
@@ -102,6 +111,8 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
     else if (isCompanyUser) badge = 'Company user';
     else if (isAgent) badge = 'Channel partner';
     else if (isExecutive) badge = 'Executive';
+    else if (role === 'customer') badge = 'Customer';
+    else if (role === 'customer_service') badge = 'Customer Service';
 
     return {
       dashboardPath: dash,
@@ -111,10 +122,9 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
       roleBadge: badge,
       isAdminRole: isAdmin,
     };
-  }, [user]);
+  }, [role, user]);
 
   const navItems = useMemo(() => {
-    const role = effectiveUserRole(user);
     if (role === 'executive') {
       return [
         { to: dashboardPath, icon: LayoutDashboard, label: 'Dashboard' },
@@ -142,7 +152,31 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
       { to: profilePath, icon: User, label: 'Profile' }
     );
     return items;
-  }, [dashboardPath, generatePath, myReportsPath, profilePath, isAdminRole, user]);
+  }, [dashboardPath, generatePath, myReportsPath, profilePath, isAdminRole, role, user]);
+
+  const roleSidebar = (() => {
+    if (role === 'customer') {
+      return (
+        <CustomerSidebar
+          sidebarOpen={sidebarOpen}
+          mobileMenuOpen={mobileMenuOpen}
+          setMobileMenuOpen={setMobileMenuOpen}
+          hideSidebar={hideSidebar}
+        />
+      );
+    }
+    if (role === 'customer_service') {
+      return (
+        <CustomerServiceSidebar
+          sidebarOpen={sidebarOpen}
+          mobileMenuOpen={mobileMenuOpen}
+          setMobileMenuOpen={setMobileMenuOpen}
+          hideSidebar={hideSidebar}
+        />
+      );
+    }
+    return null;
+  })();
 
   const shell = `min-h-screen bg-gray-50 font-['Inter'] ${shellClassName}`.trim();
 
@@ -198,7 +232,9 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
       </header>
 
       <div className="flex">
-        {!hideSidebar && (
+        {roleSidebar ? (
+          roleSidebar
+        ) : !hideSidebar ? (
           <aside
             className={`hidden lg:flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ${
               sidebarOpen ? 'w-64' : 'w-20'
@@ -260,9 +296,9 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
             </button>
           </div>
           </aside>
-        )}
+        ) : null}
 
-        {!hideSidebar && mobileMenuOpen && (
+        {!roleSidebar && !hideSidebar && mobileMenuOpen && (
           <div className="lg:hidden fixed inset-0 z-40">
             <div
               className="fixed inset-0 bg-black bg-opacity-50"

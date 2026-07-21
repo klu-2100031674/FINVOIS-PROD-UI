@@ -58,3 +58,4 @@ export { default as PublicApIdpSchemeMailPage } from './scheme/apIdp/PublicApIdp
 
 // Client screening (standalone — not a scheme form)
 export { default as PublicClientScreeningPage } from './clientScreening/PublicClientScreeningPage';
+export { default as PublicFormPage } from './PublicFormPage';

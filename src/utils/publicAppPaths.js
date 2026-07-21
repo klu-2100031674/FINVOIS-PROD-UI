@@ -21,6 +21,9 @@ const PUBLIC_CALCULATOR_PREFIXES = ['/calculators'];
 /** Public franchise listing and applications (no login). */
 const PUBLIC_FRANCHISE_PREFIXES = ['/franchises'];
 
+/** Public department / govt form intake (OTP or Google verification). */
+const PUBLIC_DEPARTMENT_FORM_PREFIXES = ['/report-requests'];
+
 /**
  * @param {string} [pathname] — defaults to current location
  */
@@ -46,6 +49,9 @@ export function isPublicAppPath(pathname) {
     return true;
   }
   if (PUBLIC_MSME_DPR_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`))) {
+    return true;
+  }
+  if (PUBLIC_DEPARTMENT_FORM_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`))) {
     return true;
   }
   return PUBLIC_SCHEME_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`));
