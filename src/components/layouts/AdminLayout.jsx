@@ -236,12 +236,13 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
         { to: '/admin/services', icon: Briefcase, label: 'Services' },
         { to: '/admin/leads', icon: UserCheck, label: 'Service Providers' },
         { to: '/admin/banks', icon: Landmark, label: 'Banks' },
-        { type: 'section', key: 'sales-crm-section', label: 'Sales CRM' },
-        { to: '/admin/sales/dashboard', icon: BarChart3,  label: 'CRM Dashboard', indent: true },
-        { to: '/admin/sales/managers',  icon: Users,      label: 'Managers',       indent: true },
-        { to: '/admin/sales/upload',    icon: Zap,        label: 'Upload Clients', indent: true },
-        { to: '/admin/sales/clients',   icon: DollarSign, label: 'All Clients',    indent: true },
-        { to: '/admin/sales/reports',   icon: FileText,   label: 'CRM Reports',    indent: true }
+        // Sales CRM — temporarily hidden from admin sidebar
+        // { type: 'section', key: 'sales-crm-section', label: 'Sales CRM' },
+        // { to: '/admin/sales/dashboard', icon: BarChart3,  label: 'CRM Dashboard', indent: true },
+        // { to: '/admin/sales/managers',  icon: Users,      label: 'Managers',       indent: true },
+        // { to: '/admin/sales/upload',    icon: Zap,        label: 'Upload Clients', indent: true },
+        // { to: '/admin/sales/clients',   icon: DollarSign, label: 'All Clients',    indent: true },
+        // { to: '/admin/sales/reports',   icon: FileText,   label: 'CRM Reports',    indent: true }
       );
     }
 
