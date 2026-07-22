@@ -28,6 +28,7 @@ export { default as AdminLeadsPage } from './AdminLeadsPage';
 export { default as AdminLeadRegisterPage } from './AdminLeadRegisterPage';
 export { default as AdminLeadEditPage } from './AdminLeadEditPage';
 export { default as AdminSchemesPage } from './AdminSchemesPage';
+export { default as AdminSchemePdfPage } from './AdminSchemePdfPage';
 export { default as SchemeMailManagePage } from './SchemeMailManagePage';
 export { default as AdminFranchisesPage } from './AdminFranchisesPage';
 export { default as AdminFranchiseNewPage } from './AdminFranchiseNewPage';

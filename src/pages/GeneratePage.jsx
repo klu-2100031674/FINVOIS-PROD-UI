@@ -31,6 +31,10 @@ import FRCC7Form from '../components/forms/FRCC7Form';
 import FRTermLoanForm from '../components/forms/FRTermLoanForm';
 import FRTermLoanWithStockForm from '../components/forms/FRTermLoanWithStockForm';
 import FRTermLoanCCForm from '../components/forms/FRTermLoanCCForm';
+import FRTermLoanEVVehicleForm from '../components/forms/FRTermLoanEVVehicleForm';
+import FRTermLoanOtherThanEVVehicleForm from '../components/forms/FRTermLoanOtherThanEVVehicleForm';
+import FRTermLoanJCBVehicleForm from '../components/forms/FRTermLoanJCBVehicleForm';
+import FRTermLoanDroneVehicleForm from '../components/forms/FRTermLoanDroneVehicleForm';
 import ReportSectionSelector from '../components/forms/ReportSectionSelector';
 import { companyAPI, reportAPI } from '../api/endpoints';
 import { downloadFile, formatApiErrorMessage } from '../utils';
@@ -58,6 +62,10 @@ const AI_TERM_LOAN_TEMPLATES = [
   'TERM_LOAN_SERVICE_WITHOUT_STOCK',
   'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK',
   'TERM_LOAN_CC',
+  'TERM_LOAN_EV_VEHICLE',
+  'TERM_LOAN_OTHER_THAN_EV_VEHICLE',
+  'TERM_LOAN_JCB_VEHICLE',
+  'TERM_LOAN_DRONE_VEHICLE',
 ];
 
 /** Full-width shell for /generate — top bar only, no client sidebar */
@@ -900,6 +908,58 @@ const GeneratePage = () => {
                 savingDraft={savingDraft}
               />
             )}
+            {(templateId === 'TERM_LOAN_EV_VEHICLE') && (
+              <FRTermLoanEVVehicleForm
+                onSubmit={handleFormSubmit}
+                templateId={templateId}
+                onFormDataChange={handleFormDataChange}
+                isProcessing={isProcessing}
+                initialData={stage1InitialData}
+                presetSector={presetSector}
+                lockSector={lockSector}
+                onSaveDraft={handleSaveDraftFromForm}
+                savingDraft={savingDraft}
+              />
+            )}
+            {(templateId === 'TERM_LOAN_OTHER_THAN_EV_VEHICLE') && (
+              <FRTermLoanOtherThanEVVehicleForm
+                onSubmit={handleFormSubmit}
+                templateId={templateId}
+                onFormDataChange={handleFormDataChange}
+                isProcessing={isProcessing}
+                initialData={stage1InitialData}
+                presetSector={presetSector}
+                lockSector={lockSector}
+                onSaveDraft={handleSaveDraftFromForm}
+                savingDraft={savingDraft}
+              />
+            )}
+            {(templateId === 'TERM_LOAN_JCB_VEHICLE') && (
+              <FRTermLoanJCBVehicleForm
+                onSubmit={handleFormSubmit}
+                templateId={templateId}
+                onFormDataChange={handleFormDataChange}
+                isProcessing={isProcessing}
+                initialData={stage1InitialData}
+                presetSector={presetSector}
+                lockSector={lockSector}
+                onSaveDraft={handleSaveDraftFromForm}
+                savingDraft={savingDraft}
+              />
+            )}
+            {(templateId === 'TERM_LOAN_DRONE_VEHICLE') && (
+              <FRTermLoanDroneVehicleForm
+                onSubmit={handleFormSubmit}
+                templateId={templateId}
+                onFormDataChange={handleFormDataChange}
+                isProcessing={isProcessing}
+                initialData={stage1InitialData}
+                presetSector={presetSector}
+                lockSector={lockSector}
+                onSaveDraft={handleSaveDraftFromForm}
+                savingDraft={savingDraft}
+              />
+            )}
             {templateId &&
               templateId !== 'frcc1' && templateId !== 'Format CC1' &&
               templateId !== 'frcc2' && templateId !== 'Format CC2' &&
@@ -910,7 +970,11 @@ const GeneratePage = () => {
               templateId !== 'frcc7' && templateId !== 'Format CC7' &&
               templateId !== 'TERM_LOAN_SERVICE_WITHOUT_STOCK' &&
               templateId !== 'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK' &&
-              templateId !== 'TERM_LOAN_CC' && (
+              templateId !== 'TERM_LOAN_CC' &&
+              templateId !== 'TERM_LOAN_EV_VEHICLE' &&
+              templateId !== 'TERM_LOAN_OTHER_THAN_EV_VEHICLE' &&
+              templateId !== 'TERM_LOAN_JCB_VEHICLE' &&
+              templateId !== 'TERM_LOAN_DRONE_VEHICLE' && (
                 <Card className="mb-6">
                   <div className="text-center py-12">
                     <div className="text-6xl mb-4">🚧</div>

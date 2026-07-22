@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux';
 import { reportAPI, pricingAPI } from '../../api/endpoints';
 import apiClient from '../../api/apiClient';
 import { resolveReportTitle } from '../../utils/reportTitle';
+import { isVehicleTemplateId } from '../../utils/templateSectorConfig';
 import toast from 'react-hot-toast';
 
 const RAZORPAY_CHECKOUT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
@@ -80,6 +81,7 @@ const PaymentModal = ({
   const [loadingFreeCredits, setLoadingFreeCredits] = useState(false);
   const isBetaMode = import.meta.env.VITE_BETA_MODE === 'true';
   const savedFormData = useSelector((state) => state.report.formData);
+  const isVehicleTemplate = isVehicleTemplateId(templateId);
 
   const extractBankDetails = () => {
     if (!savedFormData) {
@@ -132,7 +134,12 @@ const PaymentModal = ({
       const initialSelection = {};
 
       if (pricingData.analysis_sheets) {
-        pricingData.analysis_sheets.forEach(sheet => {
+        const analysisList = isVehicleTemplate
+          ? pricingData.analysis_sheets.filter(
+              (s) => String(s.sheet_name || '').toUpperCase() === 'IRR'
+            )
+          : pricingData.analysis_sheets;
+        analysisList.forEach(sheet => {
           initialSelection[sheet.sheet_name] = initialSelections?.[sheet.sheet_name] ?? (sheet.required || false);
         });
       }
@@ -145,6 +152,10 @@ const PaymentModal = ({
             initialSelection[sheet.sheet_name] = sheet.is_included;
           }
         });
+      }
+
+      if (isVehicleTemplate) {
+        initialSelection.IRR = true;
       }
 
       setSelectedSheets(initialSelection);
@@ -399,7 +410,13 @@ const PaymentModal = ({
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 ml-1">Customize Your Report</h3>
                       <div className="space-y-2">
                         {/* Analysis Sheets */}
-                        {pricing?.analysis_sheets?.filter(s => s.is_visible !== false).map((sheet, idx) => (
+                        {pricing?.analysis_sheets?.filter(s => {
+                          if (s.is_visible === false) return false;
+                          if (isVehicleTemplate) {
+                            return String(s.sheet_name || '').toUpperCase() === 'IRR';
+                          }
+                          return true;
+                        }).map((sheet, idx) => (
                           <label
                             key={`as-${idx}`}
                             className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${selectedSheets[sheet.sheet_name]

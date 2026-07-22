@@ -12,6 +12,7 @@ import {
     ArrowLeftIcon,
     UserIcon,
     UserGroupIcon,
+    TruckIcon,
 } from '@heroicons/react/24/outline';
 const STEPS = {
     GENERATION_MODE: 100,
@@ -28,6 +29,7 @@ const STEPS = {
     CMA_AUDITED_LAST_YEAR: 9,
     CMA_PROVISIONAL_AUDITED_YES: 10,
     CMA_PROVISIONAL_AUDITED_NO: 11,
+    COMMERCIAL_VEHICLE_TYPE: 13,
 };
 
 const AIAssistant = ({ onSelectTemplate, showGenerationModeStep = false, showHeader = true }) => {
@@ -163,6 +165,66 @@ const AIAssistant = ({ onSelectTemplate, showGenerationModeStep = false, showHea
                     title="Trading Sector"
                     description="Buying and selling of goods"
                     onClick={() => handleNext(STEPS.LOAN_TYPE_TRADING)}
+                />
+                <SelectionCard
+                    icon={TruckIcon}
+                    title="Commercial Vehicle"
+                    description="EV and other commercial vehicles"
+                    onClick={() => handleNext(STEPS.COMMERCIAL_VEHICLE_TYPE)}
+                />
+                <SelectionCard
+                    icon={TruckIcon}
+                    title="JCB Vehicle"
+                    description="JCB and construction equipment vehicles"
+                    onClick={() =>
+                        onSelectTemplate('TERM_LOAN_JCB_VEHICLE', {
+                            presetSector: 'JCB Vehicle',
+                            lockSector: true,
+                        })
+                    }
+                />
+                <SelectionCard
+                    icon={TruckIcon}
+                    title="Drone Vehicle"
+                    description="Agricultural and commercial drones"
+                    onClick={() =>
+                        onSelectTemplate('TERM_LOAN_DRONE_VEHICLE', {
+                            presetSector: 'Drone Vehicle',
+                            lockSector: true,
+                        })
+                    }
+                />
+            </div>
+        </div>
+    );
+
+    const renderCommercialVehicleType = () => (
+        <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+                What type of commercial vehicle?
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <SelectionCard
+                    icon={TruckIcon}
+                    title="EV Vehicle"
+                    description="Electric commercial vehicles"
+                    onClick={() =>
+                        onSelectTemplate('TERM_LOAN_EV_VEHICLE', {
+                            presetSector: 'Commercial Vehicle - EV',
+                            lockSector: true,
+                        })
+                    }
+                />
+                <SelectionCard
+                    icon={TruckIcon}
+                    title="Other Than EV Vehicle"
+                    description="Non-electric commercial vehicles"
+                    onClick={() =>
+                        onSelectTemplate('TERM_LOAN_OTHER_THAN_EV_VEHICLE', {
+                            presetSector: 'Commercial Vehicle - Other Than EV',
+                            lockSector: true,
+                        })
+                    }
                 />
             </div>
         </div>
@@ -487,6 +549,7 @@ const AIAssistant = ({ onSelectTemplate, showGenerationModeStep = false, showHea
                             {currentStep === STEPS.LOAN_TYPE_TRADING && renderLoanTypeTrading()}
                             {currentStep === STEPS.STOCK_CHECK && renderStockCheck()}
                             {currentStep === STEPS.LOAN_TYPE_SERVICE_STOCK && renderLoanTypeServiceStock()}
+                            {currentStep === STEPS.COMMERCIAL_VEHICLE_TYPE && renderCommercialVehicleType()}
                             {currentStep === STEPS.CMA_WC_LIMIT && renderCMAWCLimit()}
                             {currentStep === STEPS.CMA_NEW_TERM_LOAN && renderCMANewTermLoan()}
                             {currentStep === STEPS.CMA_TOPUP_WITH_TERM_LOAN && renderCMATopupWithTermLoan()}
@@ -502,19 +565,21 @@ const AIAssistant = ({ onSelectTemplate, showGenerationModeStep = false, showHea
     );
 };
 
-const SelectionCard = ({ icon: Icon, title, description, onClick, badge, compact = false }) => (
+const SelectionCard = ({ icon: Icon, title, description, onClick, badge, compact = false, disabled = false }) => (
     <button
         type="button"
-        onClick={onClick}
+        onClick={disabled ? undefined : onClick}
+        disabled={disabled}
         className={`
       flex flex-col items-start p-6 rounded-xl border-2 border-transparent 
       bg-gray-50 hover:bg-purple-50 hover:border-purple-200 
       transition-all duration-200 group text-left w-full
       ${compact ? 'p-4' : 'p-6'}
+      ${disabled ? 'opacity-60 cursor-not-allowed hover:bg-gray-50 hover:border-transparent' : ''}
     `}
     >
         <div className="flex items-center justify-between w-full mb-3">
-            <div className={`p-3 rounded-lg bg-white shadow-sm group-hover:bg-purple-100 transition-colors ${compact ? 'p-2' : ''}`}>
+            <div className={`p-3 rounded-lg bg-white shadow-sm group-hover:bg-purple-100 transition-colors ${compact ? 'p-2' : ''} ${disabled ? 'group-hover:bg-white' : ''}`}>
                 <Icon className={`text-purple-600 ${compact ? 'w-5 h-5' : 'w-8 h-8'}`} />
             </div>
             {badge && (
@@ -522,9 +587,11 @@ const SelectionCard = ({ icon: Icon, title, description, onClick, badge, compact
                     {badge}
                 </span>
             )}
-            <ArrowRightIcon className="w-5 h-5 text-gray-300 group-hover:text-purple-500 transition-colors opacity-0 group-hover:opacity-100" />
+            {!disabled && (
+                <ArrowRightIcon className="w-5 h-5 text-gray-300 group-hover:text-purple-500 transition-colors opacity-0 group-hover:opacity-100" />
+            )}
         </div>
-        <h3 className={`font-bold text-gray-900 mb-1 group-hover:text-purple-700 ${compact ? 'text-base' : 'text-lg'}`}>
+        <h3 className={`font-bold text-gray-900 mb-1 group-hover:text-purple-700 ${compact ? 'text-base' : 'text-lg'} ${disabled ? 'group-hover:text-gray-900' : ''}`}>
             {title}
         </h3>
         <p className="text-gray-500 text-sm leading-relaxed group-hover:text-gray-600">

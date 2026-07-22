@@ -4,10 +4,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { pricingAPI } from '../../api/endpoints';
 import { Button, Loading } from '../common';
 import toast from 'react-hot-toast';
+import { isVehicleTemplateId } from '../../utils/templateSectorConfig';
+
+const VEHICLE_IRR_SHEET = {
+  sheet_name: 'IRR',
+  display_name: 'IRR for the Project',
+  required: true,
+  is_visible: true,
+  price: 0,
+  amount_display: 'Included',
+};
 
 /**
  * Analysis Sheets Modal for Term Loans
  * Collects user preferences for optional analysis sheets and extra data
+ * Vehicle templates (EV / Other-than-EV / JCB / Drone): IRR only.
  */
 const AnalysisSheetsModal = ({
   isOpen,
@@ -41,13 +52,34 @@ const AnalysisSheetsModal = ({
     try {
       setLoading(true);
       const response = await pricingAPI.getTemplatePricing(templateId);
-      const sheets = response.data.analysis_sheets || [];
+      let sheets = response.data.analysis_sheets || [];
+
+      // Vehicles: only show IRR in Additional Financial Evaluation
+      if (isVehicleTemplateId(templateId)) {
+        const irrFromApi = sheets.find(
+          (s) => String(s.sheet_name || '').toUpperCase() === 'IRR'
+        );
+        sheets = [
+          {
+            ...VEHICLE_IRR_SHEET,
+            ...(irrFromApi || {}),
+            sheet_name: 'IRR',
+            display_name: irrFromApi?.display_name || VEHICLE_IRR_SHEET.display_name,
+            required: true,
+            is_visible: true,
+          },
+        ];
+      }
+
       setAnalysisSheets(sheets);
 
       const initialSelections = {};
       sheets.forEach(sheet => {
         initialSelections[sheet.sheet_name] = sheet.required || false;
       });
+      if (isVehicleTemplateId(templateId)) {
+        initialSelections.IRR = true;
+      }
       setSelections(initialSelections);
     } catch (error) {
       console.error('Failed to fetch analysis config:', error);
@@ -87,10 +119,18 @@ const AnalysisSheetsModal = ({
       }
     }
 
+    let selectedSheets = Object.keys(selections).filter(name => selections[name]);
+    if (isVehicleTemplateId(templateId) && !selectedSheets.includes('IRR')) {
+      selectedSheets = [...selectedSheets, 'IRR'];
+    }
+
     onConfirm({
-      selectedSheets: Object.keys(selections).filter(name => selections[name]),
-      allSelections: selections,
-      extraData
+      selectedSheets,
+      allSelections: {
+        ...selections,
+        ...(isVehicleTemplateId(templateId) ? { IRR: true } : {}),
+      },
+      extraData: isVehicleTemplateId(templateId) ? null : extraData,
     });
   };
 

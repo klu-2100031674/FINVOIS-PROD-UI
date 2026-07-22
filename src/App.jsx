@@ -13,20 +13,21 @@ import {
   DashboardPage,
   DraftsPage,
   GeneratePage,
-  // SCHEME_FORMS_DISABLED — re-enable when scheme forms return
-  // PmegpGeneratePage,
-  // PmegpSchemeMailPage,
-  // PublicPmegpSchemeMailPage,
-  // PublicPmegpFormPage,
-  // CmepGeneratePage,
-  // CmepSchemeMailPage,
-  // PublicCmepSchemeMailPage,
-  // PublicCmepFormPage,
-  // ApIdpGeneratePage,
-  // ApIdpSchemeMailPage,
-  // PublicApIdpFormPage,
-  // PublicApIdpSchemeMailPage,
-  // PublicApIdpSchemeMailPage,
+  PmegpGeneratePage,
+  PmegpSchemeMailPage,
+  PublicPmegpSchemeMailPage,
+  PublicPmegpFormPage,
+  PublicPmegpAiChatPage,
+  CmepGeneratePage,
+  CmepSchemeMailPage,
+  PublicCmepSchemeMailPage,
+  PublicCmepFormPage,
+  PublicCmepAiChatPage,
+  ApIdpGeneratePage,
+  ApIdpSchemeMailPage,
+  PublicApIdpFormPage,
+  PublicApIdpSchemeMailPage,
+  PublicApIdpAiChatPage,
   ReportsPage,
   Stage1Page,
   Stage2Page,
@@ -71,9 +72,9 @@ import {
   AdminLeadsPage,
   AdminLeadRegisterPage,
   AdminLeadEditPage,
-  // SCHEME_FORMS_DISABLED — re-enable when scheme forms return
-  // AdminSchemesPage,
-  // SchemeMailManagePage,
+  AdminSchemesPage,
+  AdminSchemePdfPage,
+  SchemeMailManagePage,
   AdminFranchisesPage,
   AdminFranchiseNewPage,
   AdminFranchiseEditPage,
@@ -156,9 +157,8 @@ import OrderHistoryPage from "./pages/OrderHistoryPage";
 import Landing from "./components/LandingPage/Landing";
 import EmiCalculatorPage from "./components/calculators/EmiCalculatorPage";
 import Pricing from "./components/Pricing/Pricing";
-// SCHEME_FORMS_DISABLED — re-enable when scheme forms return
-// import SchemeFinder from "./components/schemeFinder/SchemeFinder";
-// import EligibilityResult from "./components/schemeFinder/EligibilityResult";
+import SchemeFinder from "./components/schemeFinder/SchemeFinder";
+import EligibilityResult from "./components/schemeFinder/EligibilityResult";
 import FAQ from "./components/FAQ/FQA";
 import TemplatesPage from "./components/LandingPage/pages/TemplatesPage";
 import DocumentationPage from "./components/LandingPage/pages/DocumentationPage";
@@ -733,7 +733,6 @@ function App() {
             </ReportHelpUserRoute>
           }
         />
-        {/* SCHEME_FORMS_DISABLED — re-enable when scheme forms return
         <Route
           path="/generate/pmegp"
           element={
@@ -782,7 +781,6 @@ function App() {
             </GenerateWizardRoute>
           }
         />
-        */}
         <Route
           path="/reports"
           element={
@@ -1067,7 +1065,6 @@ function App() {
             </AdminOnlyRoute>
           }
         />
-        {/* SCHEME_FORMS_DISABLED — re-enable when scheme forms return
         <Route
           path="/admin/schemes"
           element={
@@ -1076,7 +1073,14 @@ function App() {
             </AdminOnlyRoute>
           }
         />
-        */}
+        <Route
+          path="/admin/schemes/:schemeKey"
+          element={
+            <AdminOnlyRoute>
+              <AdminSchemePdfPage />
+            </AdminOnlyRoute>
+          }
+        />
         <Route
           path="/company/reports"
           element={
@@ -1519,10 +1523,10 @@ function App() {
             </AdminOnlyRoute>
           }
         />
-        {/* SCHEME_FORMS_DISABLED — re-enable when scheme forms return
         <Route path="/schemes" element={<SchemeFinder />} />
         <Route path="/schemes/pmegp/support" element={<PublicPmegpSchemeMailPage />} />
         <Route path="/schemes/pmegp" element={<PublicPmegpFormPage />} />
+        <Route path="/schemes/pmegp/ai-chat" element={<PublicPmegpAiChatPage />} />
         <Route
           path="/schemes/mail"
           element={
@@ -1533,10 +1537,11 @@ function App() {
         />
         <Route path="/schemes/ap-idp/support" element={<PublicApIdpSchemeMailPage />} />
         <Route path="/schemes/ap-idp" element={<PublicApIdpFormPage />} />
+        <Route path="/schemes/ap-idp/ai-chat" element={<PublicApIdpAiChatPage />} />
         <Route path="/schemes/cmep/support" element={<PublicCmepSchemeMailPage />} />
         <Route path="/schemes/cmep" element={<PublicCmepFormPage />} />
+        <Route path="/schemes/cmep/ai-chat" element={<PublicCmepAiChatPage />} />
         <Route path="/eligibility-result" element={<EligibilityResult />} />
-        */}
         <Route path="/faq" element={<FAQ />} />
         <Route path="/calculators/emi-calculator" element={<EmiCalculatorPage />} />
 

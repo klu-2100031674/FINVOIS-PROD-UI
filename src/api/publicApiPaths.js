@@ -6,6 +6,9 @@ export function isPublicAnonymousApiPath(url) {
   const isClientScreeningSubmit =
     u.includes('/client-screening') && !u.includes('/client-screening/mail-routing');
   return (
+    u.includes('/schemes/mail') ||
+    u.includes('/cmep-ai/chat') ||
+    u.includes('/cmep-ai/chat/stream') ||
     u.includes('/users/google-auth') ||
     u.includes('/customer/google-auth') ||
     u.includes('/customer/send-otp') ||
@@ -14,19 +17,16 @@ export function isPublicAnonymousApiPath(url) {
     u.includes('/customer/login-send-otp') ||
     u.includes('/customer/login-verify-otp') ||
     u.includes('/govt-forms/public/') ||
-    // SCHEME_FORMS_DISABLED — re-enable when scheme forms return
-    // u.includes('/pmegp-ai/chat') ||
-    // u.includes('/pmegp-ai/chat/stream') ||
+    u.includes('/pmegp-ai/chat') ||
+    u.includes('/pmegp-ai/chat/stream') ||
     u.includes('/support/pmegp') ||
-    // u.includes('/ap-idp-ai/chat') ||
-    // u.includes('/ap-idp-ai/chat/stream') ||
+    u.includes('/ap-idp-ai/chat') ||
+    u.includes('/ap-idp-ai/chat/stream') ||
     u.includes('/support/ap-idp') ||
-    // u.includes('/cmep-ai/chat') ||
-    // u.includes('/cmep-ai/chat/stream') ||
     u.includes('/support/cmep') ||
     isClientScreeningSubmit ||
     u.includes('/form-submissions/emi-calculator/submit') ||
-    u.includes('/msme-dpr-leads/submit')
-    // u.includes('/scheme-forms/')
+    u.includes('/msme-dpr-leads/submit') ||
+    u.includes('/scheme-forms/')
   );
 }

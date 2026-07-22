@@ -43,18 +43,21 @@ export { default as PmegpGeneratePage } from './scheme/pmegp/PmegpGeneratePage';
 export { default as PmegpSchemeMailPage } from './scheme/pmegp/PmegpSchemeMailPage';
 export { default as PublicPmegpSchemeMailPage } from './scheme/pmegp/PublicPmegpSchemeMailPage';
 export { default as PublicPmegpFormPage } from './scheme/pmegp/PublicPmegpFormPage';
+export { default as PublicPmegpAiChatPage } from './scheme/pmegp/PublicPmegpAiChatPage';
 
 // CMEP Pages
 export { default as CmepGeneratePage } from './scheme/cmep/CmepGeneratePage';
 export { default as CmepSchemeMailPage } from './scheme/cmep/CmepSchemeMailPage';
 export { default as PublicCmepSchemeMailPage } from './scheme/cmep/PublicCmepSchemeMailPage';
 export { default as PublicCmepFormPage } from './scheme/cmep/PublicCmepFormPage';
+export { default as PublicCmepAiChatPage } from './scheme/cmep/PublicCmepAiChatPage';
 
 // AP IDP Pages
 export { default as ApIdpGeneratePage } from './scheme/apIdp/ApIdpGeneratePage';
 export { default as ApIdpSchemeMailPage } from './scheme/apIdp/ApIdpSchemeMailPage';
 export { default as PublicApIdpFormPage } from './scheme/apIdp/PublicApIdpFormPage';
 export { default as PublicApIdpSchemeMailPage } from './scheme/apIdp/PublicApIdpSchemeMailPage';
+export { default as PublicApIdpAiChatPage } from './scheme/apIdp/PublicApIdpAiChatPage';
 
 // Client screening (standalone — not a scheme form)
 export { default as PublicClientScreeningPage } from './clientScreening/PublicClientScreeningPage';

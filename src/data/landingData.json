@@ -32,6 +32,23 @@
         "href": "/services"
       },
       {
+        "label": "Schemes",
+        "dropdown": [
+          {
+            "label": "PMEGP",
+            "href": "/schemes/pmegp"
+          },
+          {
+            "label": "AP IDP",
+            "href": "/schemes/ap-idp"
+          },
+          {
+            "label": "CMEP",
+            "href": "/schemes/cmep"
+          }
+        ]
+      },
+      {
         "label": "EMI Calculator",
         "href": "/calculators/emi-calculator"
       },

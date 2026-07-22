@@ -732,13 +732,12 @@ export const promotionalEmailsAPI = {
   },
 };
 
-// SCHEME_FORMS_DISABLED — re-enable when scheme forms return
-// export const schemeEligibilityAPI = {
-//   checkEligibility: async (formData) => {
-//     const response = await apiClient.post('/scheme-eligibility/check-eligibility', formData);
-//     return response.data;
-//   },
-// };
+export const schemeEligibilityAPI = {
+  checkEligibility: async (formData) => {
+    const response = await apiClient.post('/scheme-eligibility/check-eligibility', formData);
+    return response.data;
+  },
+};
 
 // ============================================================================
 // Report Help (structured channel partner requests)

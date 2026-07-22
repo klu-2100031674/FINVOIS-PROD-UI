@@ -56,7 +56,11 @@ export function isFrccTemplateId(templateId) {
   return [
     'TERM_LOAN_CC',
     'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK',
-    'TERM_LOAN_SERVICE_WITHOUT_STOCK'
+    'TERM_LOAN_SERVICE_WITHOUT_STOCK',
+    'TERM_LOAN_EV_VEHICLE',
+    'TERM_LOAN_OTHER_THAN_EV_VEHICLE',
+    'TERM_LOAN_JCB_VEHICLE',
+    'TERM_LOAN_DRONE_VEHICLE'
   ].includes(String(templateId).trim().toUpperCase());
 }
 
