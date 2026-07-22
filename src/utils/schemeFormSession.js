@@ -43,3 +43,16 @@ export function clearSchemeFormSession(formStateKey) {
     /* ignore */
   }
 }
+
+/** Prefer sessionStorage; fall back to router state and persist when found. */
+export function resolveSchemeFormData(formSessionKey, routerState = null) {
+  if (!formSessionKey) return null;
+  const fromSession = loadSchemeFormSession(formSessionKey);
+  if (fromSession) return fromSession;
+  const fromRouter = routerState?.[formSessionKey];
+  if (fromRouter && typeof fromRouter === 'object') {
+    saveSchemeFormSession(formSessionKey, fromRouter);
+    return fromRouter;
+  }
+  return null;
+}
