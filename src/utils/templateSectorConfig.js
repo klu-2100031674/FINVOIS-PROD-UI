@@ -48,6 +48,18 @@ export const TEMPLATE_SECTOR_DEFAULTS = {
   },
 };
 
+/** Canonical Excel sector values that Assumptions!I14 accepts for term-loan / vehicle sheets. */
+export const CANONICAL_EXCEL_SECTORS = new Set([
+  'service sector without stock',
+  'service sector with stock',
+  'manufacturing sector',
+  'trading sector',
+]);
+
+export function isCanonicalExcelSector(value) {
+  return CANONICAL_EXCEL_SECTORS.has(String(value || '').trim().toLowerCase());
+}
+
 export function isTermLoanTemplateId(templateId) {
   return TERM_LOAN_TEMPLATE_IDS.has(String(templateId || '').trim());
 }
@@ -107,13 +119,30 @@ export function resolveTemplateSector(templateId, options = {}) {
     savedFormSector = null,
   } = options;
 
-  const defaults = TEMPLATE_SECTOR_DEFAULTS[templateId] || null;
-  const presetSector =
-    urlPresetSector ||
-    draftPresetSector ||
-    savedFormSector ||
-    defaults?.presetSector ||
-    null;
+  const tid = String(templateId || '').trim();
+  const defaults = TEMPLATE_SECTOR_DEFAULTS[tid] || null;
+
+  // Vehicle templates always use the locked Excel sector. Ignore URL labels like
+  // "Commercial Vehicle - EV" / "JCB Vehicle" that were historically passed by AIAssistant.
+  if (isVehicleTemplateId(tid) && defaults?.presetSector) {
+    return {
+      presetSector: defaults.presetSector,
+      lockSector: true,
+    };
+  }
+
+  const candidates = [urlPresetSector, draftPresetSector, savedFormSector, defaults?.presetSector];
+  let presetSector = null;
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    // Prefer canonical Excel sectors; skip marketing labels that break Assumptions!I14.
+    if (defaults?.presetSector && !isCanonicalExcelSector(candidate)) continue;
+    presetSector = String(candidate).trim();
+    break;
+  }
+  if (!presetSector && defaults?.presetSector) {
+    presetSector = defaults.presetSector;
+  }
 
   // If lock is explicitly provided in URL or draft, use it. Otherwise fall back to defaults.
   let lockSector = false;
@@ -122,7 +151,7 @@ export function resolveTemplateSector(templateId, options = {}) {
   } else if (draftLockSector !== null && draftLockSector !== undefined) {
     lockSector = parseTruthyLock(draftLockSector);
   } else {
-    lockSector = (isTermLoanTemplateId(templateId) && Boolean(presetSector)) ||
+    lockSector = (isTermLoanTemplateId(tid) && Boolean(presetSector)) ||
                  Boolean(defaults?.lockSector && presetSector);
   }
 

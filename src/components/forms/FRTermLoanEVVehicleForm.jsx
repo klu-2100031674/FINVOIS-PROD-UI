@@ -156,7 +156,7 @@ const FRTermLoanEVVehicleForm = ({
   const [formData, setFormData] = useState(() => {
     const ensureEvSector = (gi) => {
       if (!gi || typeof gi !== 'object') return gi;
-      return { ...gi, i14: presetSector || EV_SECTOR_LABEL };
+      return { ...gi, i14: EV_SECTOR_LABEL };
     };
 
     if (initialData && Object.keys(initialData).length > 0) {
@@ -178,7 +178,7 @@ const FRTermLoanEVVehicleForm = ({
       ...defaultFormData,
       'General Information': { ...(defaultFormData['General Information'] || {}) },
     };
-    base['General Information'].i14 = presetSector || EV_SECTOR_LABEL;
+    base['General Information'].i14 = EV_SECTOR_LABEL;
     return base;
   });
 
@@ -862,7 +862,7 @@ const FRTermLoanEVVehicleForm = ({
         'i11': 'DEF789012',
         'i12': 35,
         'i13': 'Male',
-        'i14': presetSector || EV_SECTOR_LABEL,
+        'i14': EV_SECTOR_LABEL,
         'i15': 'Goods Transport Service',
         'i16': '17-3-47,thadepalli center, Vijayawada',
         'residential_address': '12-5-30, Brodipet, Guntur',

@@ -60,6 +60,7 @@ import {
   extractStage2FromDraft,
 } from '../utils/draftPayload';
 import { useGeneratePageDraft } from '../hooks/useGeneratePageDraft';
+import { resolveTemplateSector } from '../utils/templateSectorConfig';
 
 const AI_TERM_LOAN_TEMPLATES = [
   'TERM_LOAN_SERVICE_WITHOUT_STOCK',
@@ -159,10 +160,10 @@ const GeneratePage = () => {
   console.log('🎯 GeneratePage - user info:', user);
 
   const templateId = searchParams.get('templateId');
-  const presetSector = searchParams.get('presetSector');
-  const lockSector =
-    searchParams.get('lockSector') === '1' ||
-    String(searchParams.get('lockSector') || '').toLowerCase() === 'true';
+  const { presetSector, lockSector } = resolveTemplateSector(templateId, {
+    urlPresetSector: searchParams.get('presetSector'),
+    urlLockSector: searchParams.get('lockSector'),
+  });
   // Resume-from-draft: Drafts page navigates here with ?draftId=... so we can
   // hydrate the form from the saved snapshot. When absent we start fresh.
   const draftId = searchParams.get('draftId');

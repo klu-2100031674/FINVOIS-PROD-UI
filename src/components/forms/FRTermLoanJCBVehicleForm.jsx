@@ -151,7 +151,7 @@ const FRTermLoanJCBVehicleForm = ({
   const [formData, setFormData] = useState(() => {
     const ensureSector = (gi) => {
       if (!gi || typeof gi !== 'object') return gi;
-      return { ...gi, i14: presetSector || JCB_SECTOR_LABEL };
+      return { ...gi, i14: JCB_SECTOR_LABEL };
     };
 
     if (initialData && Object.keys(initialData).length > 0) {
@@ -173,7 +173,7 @@ const FRTermLoanJCBVehicleForm = ({
       ...defaultFormData,
       'General Information': { ...(defaultFormData['General Information'] || {}) },
     };
-    base['General Information'].i14 = presetSector || JCB_SECTOR_LABEL;
+    base['General Information'].i14 = JCB_SECTOR_LABEL;
     return base;
   });
 
@@ -856,7 +856,7 @@ const FRTermLoanJCBVehicleForm = ({
         'i11': 'DEF789012',
         'i12': 35,
         'i13': 'Male',
-        'i14': presetSector || JCB_SECTOR_LABEL,
+        'i14': JCB_SECTOR_LABEL,
         'i15': 'JCB Vehicle Operations',
         'i16': '17-3-47,thadepalli center, Vijayawada',
         'residential_address': '12-5-30, Brodipet, Guntur',
@@ -2028,7 +2028,7 @@ const FRTermLoanJCBVehicleForm = ({
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Gross Revenue per KM *
+            Gross Revenue charged from Customer per Hour *
           </label>
           <input
             type="number"
@@ -2041,7 +2041,7 @@ const FRTermLoanJCBVehicleForm = ({
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Milage per Liter *
+            Fuel/Gas Consumption per hour in Litres/KGs *
           </label>
           <input
             type="number"

@@ -178,7 +178,7 @@ const AIAssistant = ({ onSelectTemplate, showGenerationModeStep = false, showHea
                     description="JCB and construction equipment vehicles"
                     onClick={() =>
                         onSelectTemplate('TERM_LOAN_JCB_VEHICLE', {
-                            presetSector: 'JCB Vehicle',
+                            presetSector: 'service sector without stock',
                             lockSector: true,
                         })
                     }
@@ -189,7 +189,7 @@ const AIAssistant = ({ onSelectTemplate, showGenerationModeStep = false, showHea
                     description="Agricultural and commercial drones"
                     onClick={() =>
                         onSelectTemplate('TERM_LOAN_DRONE_VEHICLE', {
-                            presetSector: 'Drone Vehicle',
+                            presetSector: 'service sector without stock',
                             lockSector: true,
                         })
                     }
@@ -210,7 +210,7 @@ const AIAssistant = ({ onSelectTemplate, showGenerationModeStep = false, showHea
                     description="Electric commercial vehicles"
                     onClick={() =>
                         onSelectTemplate('TERM_LOAN_EV_VEHICLE', {
-                            presetSector: 'Commercial Vehicle - EV',
+                            presetSector: 'service sector without stock',
                             lockSector: true,
                         })
                     }
@@ -221,7 +221,7 @@ const AIAssistant = ({ onSelectTemplate, showGenerationModeStep = false, showHea
                     description="Non-electric commercial vehicles"
                     onClick={() =>
                         onSelectTemplate('TERM_LOAN_OTHER_THAN_EV_VEHICLE', {
-                            presetSector: 'Commercial Vehicle - Other Than EV',
+                            presetSector: 'service sector without stock',
                             lockSector: true,
                         })
                     }

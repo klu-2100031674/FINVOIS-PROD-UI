@@ -13,63 +13,51 @@ const FORM_TYPE_OPTIONS = [
 ];
 
 // Scheme tab hidden — re-enable when master-data scheme listing is needed again
-// const SCHEME_OPTIONS = [
-//   { value: '', label: 'All schemes' },
-//   { value: 'pmegp', label: 'PMEGP' },
-//   { value: 'mudra', label: 'Mudra Loan' },
-//   { value: 'startup_india', label: 'Startup India' },
-//   { value: 'standup_india', label: 'Stand-Up India' },
-//   { value: 'cgtmse', label: 'CGTMSE' },
-//   { value: 'msme', label: 'MSME' },
-//   { value: 'sidbi', label: 'SIDBI' },
-//   { value: 'ap_idp_4_0', label: 'AP IDP 4.0' },
-//   { value: 'cmep', label: 'CMEP' }
-// ];
+// const SCHEME_OPTIONS = [{ value: 'cmep', label: 'CMEP' }];
 
 const TABS = [
+  { id: 'reports', label: 'Lead DPR' },
   { id: 'executive', label: 'SBI Executive' },
   { id: 'emi', label: 'Calculator' },
   // { id: 'scheme', label: 'Scheme' },
   { id: 'client-screening', label: 'Client Screening' },
   { id: 'franchise', label: 'Franchise' },
-  { id: 'lead-request', label: 'Lead Request' },
-  { id: 'lead-dpr', label: 'Lead DPR' }
+  { id: 'lead-request', label: 'Lead Request' }
 ];
 
-const LEAD_TABS = new Set(['lead-request', 'lead-dpr']);
+const LEAD_TABS = new Set(['lead-request']);
 const CLIENT_SCREENING_TAB = 'client-screening';
+const REPORTS_TAB = 'reports';
 
 const getMasterDataColumnCount = (tab) => {
   if (tab === 'emi') return 3;
   if (tab === CLIENT_SCREENING_TAB) return 4;
+  if (tab === REPORTS_TAB) return 6;
   return 5;
 };
 
 const getSearchPlaceholder = (tab) => {
+  if (tab === REPORTS_TAB) return 'Search name, business name, phone, email…';
   if (tab === 'executive') return 'Search applicant, form type, file name…';
   if (tab === 'emi') return 'Search name, phone number…';
-  // if (tab === 'scheme') return 'Search name, phone number, scheme, business name…';
   if (tab === 'client-screening') return 'Search name, phone number, topics…';
   if (tab === 'franchise') return 'Search applicant name, phone, email, city, franchise…';
   if (tab === 'lead-request') return 'Search name, phone, email, service, partner…';
-  if (tab === 'lead-dpr') return 'Search name, phone, business type, loan amount…';
   return 'Search…';
 };
 
 const getFormTypeColumnLabel = (tab) => {
   if (tab === 'executive') return 'Form Type';
-  // if (tab === 'scheme') return 'Scheme';
-  if (tab === 'client-screening') return 'Form Type';
+  if (tab === CLIENT_SCREENING_TAB) return 'Date & Time';
   if (tab === 'franchise') return 'Franchise';
   if (tab === 'lead-request') return 'Service';
-  if (tab === 'lead-dpr') return 'Business Type';
   return 'Form Type';
 };
 
 const showCell = (v) => (v && String(v).trim() ? String(v) : '—');
 
 const AdminMasterDataPage = () => {
-  const [activeTab, setActiveTab] = useState('executive');
+  const [activeTab, setActiveTab] = useState(REPORTS_TAB);
   const [rows, setRows] = useState([]);
   const [pagination, setPagination] = useState({ current_page: 1, total_pages: 1, total_count: 0 });
   const [loading, setLoading] = useState(true);
@@ -103,7 +91,7 @@ const AdminMasterDataPage = () => {
         setPagination(response.data?.data?.pagination || { current_page: 1, total_pages: 1 });
       } catch (error) {
         console.error('Error fetching master data:', error);
-        toast.error('Failed to load master data');
+        toast.error(error?.response?.data?.error || 'Failed to load master data');
       } finally {
         setLoading(false);
       }
@@ -155,7 +143,7 @@ const AdminMasterDataPage = () => {
               <h1 className="text-3xl font-bold">Master Data</h1>
             </div>
             <p className="text-gray-500 mt-1">
-              View all user-submitted and calculator data in a flat, exportable format.
+              Lead DPR master data (same source as Admin Reports), plus other form submissions for export.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -214,11 +202,6 @@ const AdminMasterDataPage = () => {
                   ))}
                 </select>
               )}
-              {/* Scheme filter hidden with scheme tab
-              {activeTab === 'scheme' && (
-                <select ...>{SCHEME_OPTIONS.map(...)}</select>
-              )}
-              */}
               <div className="relative flex-1 min-w-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
@@ -307,6 +290,22 @@ const AdminMasterDataPage = () => {
                         <th className="px-4 py-3 text-left font-semibold">Phone no</th>
                         <th className="px-4 py-3 text-left font-semibold">Date & Time</th>
                       </>
+                    ) : activeTab === CLIENT_SCREENING_TAB ? (
+                      <>
+                        <th className="px-4 py-3 text-left font-semibold">Date & Time</th>
+                        <th className="px-4 py-3 text-left font-semibold">Name</th>
+                        <th className="px-4 py-3 text-left font-semibold">Phone no</th>
+                        <th className="px-4 py-3 text-left font-semibold">Business/Job</th>
+                      </>
+                    ) : activeTab === REPORTS_TAB ? (
+                      <>
+                        <th className="px-4 py-3 text-left font-semibold">Template ID</th>
+                        <th className="px-4 py-3 text-left font-semibold">Name</th>
+                        <th className="px-4 py-3 text-left font-semibold">Business name</th>
+                        <th className="px-4 py-3 text-left font-semibold">Ph no</th>
+                        <th className="px-4 py-3 text-left font-semibold">Loan Amount</th>
+                        <th className="px-4 py-3 text-left font-semibold">Sector</th>
+                      </>
                     ) : (
                       <>
                         <th className="px-4 py-3 text-left font-semibold">
@@ -318,10 +317,8 @@ const AdminMasterDataPage = () => {
                           {activeTab === 'franchise'
                             ? 'Occupation / Budget'
                             : activeTab === 'lead-request'
-                            ? 'Other details'
-                            : activeTab === 'lead-dpr'
-                            ? 'Loan / Business'
-                            : 'Business/Job'}
+                              ? 'Other details'
+                              : 'Business/Job'}
                         </th>
                         {activeTab !== CLIENT_SCREENING_TAB && (
                           <th className="px-4 py-3 text-left font-semibold">
@@ -347,6 +344,22 @@ const AdminMasterDataPage = () => {
                             <td className="px-4 py-3 font-medium text-gray-900">{showCell(r.name)}</td>
                             <td className="px-4 py-3 whitespace-nowrap">{showCell(r.phone)}</td>
                             <td className="px-4 py-3 whitespace-nowrap text-gray-500">{showCell(r.address)}</td>
+                          </>
+                        ) : activeTab === CLIENT_SCREENING_TAB ? (
+                          <>
+                            <td className="px-4 py-3 whitespace-nowrap text-gray-500">{showCell(r.date_time)}</td>
+                            <td className="px-4 py-3 font-medium text-gray-900">{showCell(r.name)}</td>
+                            <td className="px-4 py-3 whitespace-nowrap">{showCell(r.phone)}</td>
+                            <td className="px-4 py-3">{showCell(r.business_job)}</td>
+                          </>
+                        ) : activeTab === REPORTS_TAB ? (
+                          <>
+                            <td className="px-4 py-3 whitespace-nowrap">{showCell(r.template_id)}</td>
+                            <td className="px-4 py-3 font-medium text-gray-900">{showCell(r.name)}</td>
+                            <td className="px-4 py-3">{showCell(r.business_name)}</td>
+                            <td className="px-4 py-3 whitespace-nowrap">{showCell(r.phone)}</td>
+                            <td className="px-4 py-3">{showCell(r.loan_amount)}</td>
+                            <td className="px-4 py-3">{showCell(r.sector)}</td>
                           </>
                         ) : (
                           <>
