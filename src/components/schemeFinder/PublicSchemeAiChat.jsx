@@ -4,8 +4,11 @@ import { Send, Sparkles, User, Bot, Loader2, ArrowLeft, X, Copy, Check } from 'l
 import PublicPmepgChrome from './PublicPmepgChrome';
 import SchemeAiChatMarkdown from './SchemeAiChatMarkdown';
 import { resolveSchemeFormData } from '../../utils/schemeFormSession';
+import { getApiBaseUrl } from '../../utils/env';
 
 const MAX_QUESTION_LENGTH = 10000;
+const API_UNREACHABLE_MSG =
+  'Could not reach the API server. Check that the backend is running and VITE_API_BASE_URL points to it.';
 
 function formatClientError(error, data = {}, status = null) {
   if (typeof data.error === 'string' && data.error.trim()) return data.error;
@@ -99,7 +102,8 @@ export default function PublicSchemeAiChat({
           text: m.text,
         }));
 
-      const response = await fetch(`/api/${schemeKey}-ai/chat`, {
+      const apiBase = getApiBaseUrl().replace(/\/$/, '');
+      const response = await fetch(`${apiBase}/${schemeKey}-ai/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -120,13 +124,11 @@ export default function PublicSchemeAiChat({
           throw new Error(
             response.ok
               ? 'Server returned an invalid response. Please try again.'
-              : 'Could not reach the API server. Make sure the backend is running on port 5000.',
+              : API_UNREACHABLE_MSG,
           );
         }
       } else if (!response.ok) {
-        throw new Error(
-          'Could not reach the API server. Make sure the backend is running on port 5000.',
-        );
+        throw new Error(API_UNREACHABLE_MSG);
       }
 
       if (!response.ok) {
