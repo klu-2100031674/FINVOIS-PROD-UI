@@ -35,7 +35,10 @@ import FRTermLoanEVVehicleForm from '../components/forms/FRTermLoanEVVehicleForm
 import FRTermLoanOtherThanEVVehicleForm from '../components/forms/FRTermLoanOtherThanEVVehicleForm';
 import FRTermLoanJCBVehicleForm from '../components/forms/FRTermLoanJCBVehicleForm';
 import FRTermLoanDroneVehicleForm from '../components/forms/FRTermLoanDroneVehicleForm';
-import ReportSectionSelector from '../components/forms/ReportSectionSelector';
+import ManufacturingSectionSelector from '../components/forms/ManufacturingSectionSelector';
+import TradingSectionSelector from '../components/forms/TradingSectionSelector';
+import ServiceWithStockSectionSelector from '../components/forms/ServiceWithStockSectionSelector';
+import ServiceWithoutStockSectionSelector from '../components/forms/ServiceWithoutStockSectionSelector';
 import { companyAPI, reportAPI } from '../api/endpoints';
 import { downloadFile, formatApiErrorMessage } from '../utils';
 import toast from 'react-hot-toast';
@@ -720,23 +723,66 @@ const GeneratePage = () => {
           <span>{showSectionSelector ? 'Back to Form' : 'Back to Dashboard'}</span>
         </button>
 
-        {isAiTermLoanTemplate && sectionSelectorMounted && (
-          <div className={showSectionSelector ? '' : 'hidden'}>
-            <ReportSectionSelector
-              key={draftId || 'term-loan-profile'}
-              initialData={buildSectionSelectorInitialData(tempFormData || {})}
-              isVisible={showSectionSelector}
-              onBack={handleBackFromProfile}
-              onSubmit={handleSectionSelectionSubmit}
-              onStage2Change={syncStage2}
-              onSaveDraft={handleSaveDraftFromProfile}
-              savingDraft={savingDraft}
-              onRegisterSnapshotGetter={(getter) => {
-                profileSnapshotGetterRef.current = getter;
-              }}
-            />
-          </div>
-        )}
+        {isAiTermLoanTemplate && sectionSelectorMounted && (() => {
+          const getSectorFromFormData = (formData) => {
+            const stage1 = formData || {};
+            const sectorVal = (
+              stage1?.['General Information']?.['i14'] ||
+              stage1?.['General Information']?.['I14'] ||
+              stage1?.['General Information']?.['sector'] ||
+              stage1?.['sector'] ||
+              stage1?.['industry_type'] ||
+              ''
+            ).toString().trim().toLowerCase();
+            return sectorVal;
+          };
+
+          const sectorStr = getSectorFromFormData(tempFormData);
+
+          // Resolve the business category from the sector value (preferred) with
+          // a fallback to the template id. Drives which category-specific
+          // Stage-2 section selector is rendered.
+          const resolveCategory = (sector, tplId) => {
+            const s = (sector || '').toLowerCase();
+            const t = (tplId || '').toUpperCase();
+            if (s.includes('manufactur')) return 'manufacturing';
+            if (s.includes('trading')) return 'trading';
+            if (s.includes('without stock')) return 'service_without_stock';
+            if (s.includes('with stock')) return 'service_with_stock';
+            if (s.includes('commercial vehicle') || s.includes('jcb') || s.includes('drone') || t.includes('EV_VEHICLE') || t.includes('JCB_VEHICLE') || t.includes('DRONE_VEHICLE')) return 'service_without_stock';
+            if (t.includes('MANUFACTURING')) return 'manufacturing';
+            if (t.includes('WITHOUT_STOCK')) return 'service_without_stock';
+            return 'service_without_stock';
+          };
+
+          const category = resolveCategory(sectorStr, templateId);
+          const CATEGORY_SELECTORS = {
+            manufacturing: ManufacturingSectionSelector,
+            trading: TradingSectionSelector,
+            service_with_stock: ServiceWithStockSectionSelector,
+            service_without_stock: ServiceWithoutStockSectionSelector,
+          };
+          const CategorySectionSelector = CATEGORY_SELECTORS[category];
+
+          return (
+            <div className={showSectionSelector ? '' : 'hidden'}>
+              <CategorySectionSelector
+                key={`${draftId || 'term-loan-profile'}-${category}`}
+                initialData={buildSectionSelectorInitialData(tempFormData || {})}
+                isVisible={showSectionSelector}
+                onBack={handleBackFromProfile}
+                onSubmit={handleSectionSelectionSubmit}
+                onStage2Change={syncStage2}
+                onSaveDraft={handleSaveDraftFromProfile}
+                savingDraft={savingDraft}
+                templateId={templateId}
+                onRegisterSnapshotGetter={(getter) => {
+                  profileSnapshotGetterRef.current = getter;
+                }}
+              />
+            </div>
+          );
+        })()}
 
         {!showSectionSelector && (
           <>

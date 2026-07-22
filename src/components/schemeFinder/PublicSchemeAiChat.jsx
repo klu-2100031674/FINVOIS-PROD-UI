@@ -108,6 +108,8 @@ export default function PublicSchemeAiChat({
         headers: {
           'Content-Type': 'application/json',
         },
+        // Public scheme chat is cross-origin in deploy — omit cookies to avoid strict CORS.
+        credentials: 'omit',
         body: JSON.stringify({
           message: textToSend,
           history: historyPayload,

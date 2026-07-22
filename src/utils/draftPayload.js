@@ -118,10 +118,28 @@ export function buildSectionSelectorInitialData(fullDraft) {
 }
 
 /** Normalize live ReportSectionSelector state into stage2 draft shape. */
+export function preparePromptsDataForBackend(sectionData) {
+  const data = JSON.parse(JSON.stringify(sectionData || {}));
+  const pd = data.product_details;
+  if (pd && Array.isArray(pd.products)) {
+    const joined = pd.products
+      .map((p) => (p && p.name ? String(p.name).trim() : ''))
+      .filter(Boolean)
+      .join(', ');
+    if (joined) {
+      pd.main_product = joined;
+      pd['products list'] = joined;
+      pd['Services list'] = joined;
+    }
+  }
+  return data;
+}
+
+/** Normalize live ReportSectionSelector state into stage2 draft shape. */
 export function normalizeStage2Snapshot(selectedSections, sectionData, relatedDocuments) {
   return {
     selected_sections: selectedSections || {},
-    prompts_data: sectionData || {},
+    prompts_data: preparePromptsDataForBackend(sectionData),
     related_documents_meta: (relatedDocuments || []).map((d) => ({
       title: d.title || '',
       fileName: d.file?.name || d.fileName || '',

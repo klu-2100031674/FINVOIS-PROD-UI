@@ -19,7 +19,23 @@ const hostFallbackApiBaseMap = {
   'www.finvois.com': 'https://api.finvois.com/api',
   'ca-front-end-dev.onrender.com':
     'https://finvois.centralindia.cloudapp.azure.com/dev/api',
+  // Azure Static Web Apps default hostname (Production SWA) — api_location is empty,
+  // so same-origin /api would 404 without this map or VITE_API_BASE_URL.
+  'mango-sand-02cae6800.azurestaticapps.net': 'https://api.finvois.com/api',
 };
+
+function resolveHostFallbackApiBase(hostname) {
+  const mapped = hostFallbackApiBaseMap[hostname];
+  if (mapped) return mapped;
+  // Preview / named SWA environments: <app>-<pr|name>.azurestaticapps.net
+  if (
+    typeof hostname === 'string' &&
+    hostname.endsWith('.azurestaticapps.net')
+  ) {
+    return 'https://api.finvois.com/api';
+  }
+  return null;
+}
 
 // Default `/api` matches the Vite dev proxy (see vite.config.js) and the prior
 // `(VITE_API_BASE_URL || '/api')` behavior. Override with VITE_API_BASE_URL at
@@ -56,7 +72,7 @@ export const getApiBaseUrl = () => {
   const host = window.location.hostname;
 
   // In deployed builds, prefer known host-specific API URL, then same-origin /api.
-  const mapped = hostFallbackApiBaseMap[host];
+  const mapped = resolveHostFallbackApiBase(host);
   if (mapped) return mapped.replace(/\/$/, '');
 
   const fallback = `${window.location.origin}/api`.replace(/\/$/, '');

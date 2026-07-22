@@ -69,6 +69,10 @@ const DraftsPage = () => {
     'TERM_LOAN_SERVICE_WITHOUT_STOCK',
     'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK',
     'TERM_LOAN_CC',
+    'TERM_LOAN_EV_VEHICLE',
+    'TERM_LOAN_OTHER_THAN_EV_VEHICLE',
+    'TERM_LOAN_JCB_VEHICLE',
+    'TERM_LOAN_DRONE_VEHICLE',
   ]), []);
 
   const formatFormTypeLabel = (formType) => {
@@ -86,6 +90,10 @@ const DraftsPage = () => {
       TERM_LOAN_SERVICE_WITHOUT_STOCK: 'Term Loan (Service, Without Stock)',
       TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK: 'Term Loan (Manufacturing/Service, With Stock)',
       TERM_LOAN_CC: 'Term Loan + CC',
+      TERM_LOAN_EV_VEHICLE: 'EV Commercial Vehicle',
+      TERM_LOAN_OTHER_THAN_EV_VEHICLE: 'Other Than EV Commercial Vehicle',
+      TERM_LOAN_JCB_VEHICLE: 'JCB Vehicle',
+      TERM_LOAN_DRONE_VEHICLE: 'Drone Vehicle',
     };
 
     if (explicit[ft]) return explicit[ft];

@@ -47,6 +47,8 @@ apiClient.interceptors.request.use(
       } else {
         delete config.headers.Authorization;
       }
+      // Public scheme/support calls are cross-origin in deploy — avoid credentialed CORS.
+      config.withCredentials = false;
     }
 
     // FormData: drop default `application/json` and any bare `multipart/form-data` so the
