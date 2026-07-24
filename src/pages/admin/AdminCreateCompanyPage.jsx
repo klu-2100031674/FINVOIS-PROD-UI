@@ -24,7 +24,10 @@ import {
   UserCog,
   RefreshCw,
   ExternalLink,
-  Trash2
+  Trash2,
+  Pencil,
+  Save,
+  X
 } from 'lucide-react';
 
 const initialFormState = {
@@ -355,9 +358,70 @@ const AdminCreateCompanyPage = () => {
     }
   };
 
-  // Explicit select + confirm flow for top-left logo visibility.
   const [topLeftLogosToggleSaving, setTopLeftLogosToggleSaving] = useState(false);
   const [topLeftLogoSelection, setTopLeftLogoSelection] = useState('yes');
+  const [editingOverview, setEditingOverview] = useState(false);
+  const [overviewSaving, setOverviewSaving] = useState(false);
+  const [overviewDraft, setOverviewDraft] = useState(initialFormState);
+
+  const startOverviewEdit = () => {
+    setOverviewDraft({
+      companyName: formData.companyName || '',
+      companyAddress: formData.companyAddress || '',
+      contactPersonName: formData.contactPersonName || '',
+      contactEmail: formData.contactEmail || '',
+      contactPhone: formData.contactPhone || '',
+      showTopLeftLogosInTermLoanCc: formData.showTopLeftLogosInTermLoanCc
+    });
+    setEditingOverview(true);
+  };
+
+  const cancelOverviewEdit = () => {
+    setEditingOverview(false);
+    setOverviewDraft(initialFormState);
+  };
+
+  const handleOverviewDraftChange = (event) => {
+    const { name, value } = event.target;
+    setOverviewDraft((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveOverview = async () => {
+    if (!companyId) return;
+    const companyName = String(overviewDraft.companyName || '').trim();
+    if (!companyName) {
+      toast.error('Company name is required');
+      return;
+    }
+    try {
+      setOverviewSaving(true);
+      const payload = {
+        companyName,
+        companyAddress: String(overviewDraft.companyAddress || '').trim(),
+        contactPersonName: String(overviewDraft.contactPersonName || '').trim(),
+        contactEmail: String(overviewDraft.contactEmail || '').trim(),
+        contactPhone: String(overviewDraft.contactPhone || '').trim()
+      };
+      const response = await companyAPI.updateCompany(companyId, payload);
+      const updatedDetails = response?.data;
+      if (updatedDetails) {
+        setCompanyDetails(updatedDetails);
+      } else {
+        setCompanyDetails((prev) => ({ ...(prev || {}), ...payload }));
+      }
+      setFormData((prev) => ({
+        ...prev,
+        ...payload
+      }));
+      setEditingOverview(false);
+      toast.success('Company details updated');
+    } catch (error) {
+      toast.error(error || 'Failed to update company details');
+    } finally {
+      setOverviewSaving(false);
+    }
+  };
+
   const handleConfirmTopLeftLogosSetting = async () => {
     if (!companyId) return;
     const nextValue = topLeftLogoSelection === 'yes';
@@ -926,22 +990,128 @@ const AdminCreateCompanyPage = () => {
                 </div>
               ) : (
                 <>
-                  <div className="mb-4">
-                    <h2 className="text-lg font-semibold text-gray-900">Company Overview</h2>
-                    <p className="text-sm text-gray-500 mt-0.5">
-                      Basic information about this company (display only).
-                    </p>
+                  <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">Company Overview</h2>
+                      <p className="text-sm text-gray-500 mt-0.5">
+                        {editingOverview
+                          ? 'Update basic company information, then save.'
+                          : 'Basic information about this company.'}
+                      </p>
+                    </div>
+                    {!editingOverview ? (
+                      <button
+                        type="button"
+                        onClick={startOverviewEdit}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-50"
+                      >
+                        <Pencil size={14} />
+                        Edit
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={cancelOverviewEdit}
+                          disabled={overviewSaving}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          <X size={14} />
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveOverview}
+                          disabled={overviewSaving}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
+                        >
+                          <Save size={14} />
+                          {overviewSaving ? 'Saving…' : 'Save'}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <InfoCard icon={Building2} label="Company Name" value={companyDetails?.companyName} />
-                    <InfoCard icon={UserIcon} label="Contact Person" value={companyDetails?.contactPersonName} />
-                    <InfoCard icon={Mail} label="Contact Email" value={companyDetails?.contactEmail} />
-                    <InfoCard icon={Phone} label="Contact Phone" value={companyDetails?.contactPhone} />
-                    <div className="md:col-span-2">
-                      <InfoCard icon={MapPin} label="Address" value={companyDetails?.companyAddress} />
+                  {editingOverview ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label htmlFor="overview-companyName" className="block text-xs font-medium text-gray-600">
+                          Company Name *
+                        </label>
+                        <input
+                          id="overview-companyName"
+                          name="companyName"
+                          type="text"
+                          value={overviewDraft.companyName}
+                          onChange={handleOverviewDraftChange}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label htmlFor="overview-contactPersonName" className="block text-xs font-medium text-gray-600">
+                          Contact Person
+                        </label>
+                        <input
+                          id="overview-contactPersonName"
+                          name="contactPersonName"
+                          type="text"
+                          value={overviewDraft.contactPersonName}
+                          onChange={handleOverviewDraftChange}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label htmlFor="overview-contactEmail" className="block text-xs font-medium text-gray-600">
+                          Contact Email
+                        </label>
+                        <input
+                          id="overview-contactEmail"
+                          name="contactEmail"
+                          type="email"
+                          value={overviewDraft.contactEmail}
+                          onChange={handleOverviewDraftChange}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label htmlFor="overview-contactPhone" className="block text-xs font-medium text-gray-600">
+                          Contact Phone
+                        </label>
+                        <input
+                          id="overview-contactPhone"
+                          name="contactPhone"
+                          type="tel"
+                          value={overviewDraft.contactPhone}
+                          onChange={handleOverviewDraftChange}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div className="md:col-span-2 space-y-1">
+                        <label htmlFor="overview-companyAddress" className="block text-xs font-medium text-gray-600">
+                          Address
+                        </label>
+                        <textarea
+                          id="overview-companyAddress"
+                          name="companyAddress"
+                          rows={3}
+                          value={overviewDraft.companyAddress}
+                          onChange={handleOverviewDraftChange}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <InfoCard icon={Building2} label="Company Name" value={companyDetails?.companyName} />
+                      <InfoCard icon={UserIcon} label="Contact Person" value={companyDetails?.contactPersonName} />
+                      <InfoCard icon={Mail} label="Contact Email" value={companyDetails?.contactEmail} />
+                      <InfoCard icon={Phone} label="Contact Phone" value={companyDetails?.contactPhone} />
+                      <div className="md:col-span-2">
+                        <InfoCard icon={MapPin} label="Address" value={companyDetails?.companyAddress} />
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </section>

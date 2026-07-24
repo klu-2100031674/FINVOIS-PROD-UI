@@ -111,10 +111,10 @@ const FRTermLoanEVVehicleForm = ({
     'Expected Employment Generation': {},
     'Term Loan Details': {},
     'Prepared By': {
-      'j136': 'PARVEZ AND NARAYANA',
-      'j137': 'Chartered Accountants',
-      'j138': 'Vijayawada',
-      'j139': '9014221011',
+      'j136': '',
+      'j137': '',
+      'j138': '',
+      'j139': '',
       'required_stamp': FRCC_REQUIRED_STAMP_DEFAULT
     },
     'Indirect Expenses Increment': {
