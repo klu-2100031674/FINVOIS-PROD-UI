@@ -28,6 +28,7 @@ import {
   User,
   Calendar,
   MessageSquare,
+  MessageCircle,
   Loader2,
   Upload,
   Settings,
@@ -140,6 +141,11 @@ const AdminReportsPage = () => {
   const [selectedReports, setSelectedReports] = useState([]);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const [stampTogglingId, setStampTogglingId] = useState(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+  const [whatsappInput, setWhatsappInput] = useState('');
+  const [activeShareType, setActiveShareType] = useState(null); // 'email', 'whatsapp', or null
 
   const displayStats = useMemo(() => {
     const pending = (stats.pending ?? 0) + STATS_OFFSETS.pending;
@@ -372,6 +378,9 @@ const AdminReportsPage = () => {
 
   const handleViewPdf = async (report) => {
     setSelectedReport(report);
+    setEmailInput(report?.user_id?.email || '');
+    setWhatsappInput(report?.user_id?.phone || '');
+    setActiveShareType(null);
     setShowPdfViewer(true);
     setLoadingPdf(true);
     
@@ -402,6 +411,60 @@ const AdminReportsPage = () => {
       }
     };
   }, [pdfBlobUrl]);
+
+  const handleSendEmail = async () => {
+    if (!selectedReport) return;
+    if (!emailInput.trim()) {
+      toast.error('Please enter a recipient email address.');
+      return;
+    }
+
+    if (!window.confirm(`Send report via email to ${emailInput.trim()}?`)) {
+      return;
+    }
+
+    try {
+      setSendingEmail(true);
+      const response = await api.post(`/admin-reports/${selectedReport._id}/email`, {
+        email: emailInput.trim()
+      });
+      toast.success(response.data?.message || 'Report sent via email successfully.');
+    } catch (error) {
+      console.error('Failed to send email:', error);
+      toast.error(
+        typeof error === 'string' ? error : error?.response?.data?.error || error?.message || 'Failed to send report email'
+      );
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const handleSendWhatsapp = async () => {
+    if (!selectedReport) return;
+    if (!whatsappInput.trim()) {
+      toast.error('Please enter a recipient phone number.');
+      return;
+    }
+
+    if (!window.confirm(`Send report via WhatsApp to ${whatsappInput.trim()}?`)) {
+      return;
+    }
+
+    try {
+      setSendingWhatsapp(true);
+      const response = await api.post(`/admin-reports/${selectedReport._id}/whatsapp`, {
+        phone: whatsappInput.trim()
+      });
+      toast.success(response.data?.message || 'Report sent via WhatsApp successfully.');
+    } catch (error) {
+      console.error('Failed to send WhatsApp:', error);
+      toast.error(
+        typeof error === 'string' ? error : error?.response?.data?.error || error?.message || 'Failed to send WhatsApp report'
+      );
+    } finally {
+      setSendingWhatsapp(false);
+    }
+  };
 
   const handleBulkApprove = async () => {
     if (selectedReports.length === 0) return;
@@ -1343,9 +1406,94 @@ const AdminReportsPage = () => {
       {showPdfViewer && selectedReport && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col">
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-gray-800">{selectedReport.title} - PDF Preview</h2>
-              <div className="flex items-center gap-2">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center gap-4 min-w-0">
+              <h2 className="text-lg font-semibold text-gray-800 truncate min-w-0 flex-1" title={`${selectedReport.title} - PDF Preview`}>
+                {selectedReport.title} <span className="text-gray-400 font-normal text-sm hidden sm:inline">- PDF Preview</span>
+              </h2>
+              <div className="flex items-center gap-2 flex-wrap shrink-0">
+                {activeShareType === null ? (
+                  <>
+                    <button
+                      onClick={() => setActiveShareType('email')}
+                      className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors shadow-sm"
+                      title="Share via Email"
+                    >
+                      <Mail size={14} className="mr-1.5" />
+                      Email
+                    </button>
+
+                    <button
+                      onClick={() => setActiveShareType('whatsapp')}
+                      className="flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg transition-colors shadow-sm"
+                      title="Share via WhatsApp"
+                    >
+                      <MessageCircle size={14} className="mr-1.5" />
+                      WhatsApp
+                    </button>
+                  </>
+                ) : activeShareType === 'email' ? (
+                  <div className="flex items-center border border-gray-300 rounded-lg p-1 bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
+                    <input
+                      type="email"
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      className="px-2 py-1 text-sm bg-transparent outline-none w-48 text-gray-700 font-normal"
+                      placeholder="Recipient email"
+                      title="Recipient Email"
+                      autoFocus
+                    />
+                    <button
+                      onClick={handleSendEmail}
+                      disabled={sendingEmail}
+                      className="flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors"
+                    >
+                      {sendingEmail ? (
+                        <Loader2 size={14} className="mr-1.5 animate-spin" />
+                      ) : (
+                        <Mail size={14} className="mr-1.5" />
+                      )}
+                      Send
+                    </button>
+                    <button
+                      onClick={() => setActiveShareType(null)}
+                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded ml-1"
+                      title="Back"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center border border-gray-300 rounded-lg p-1 bg-gray-50 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-transparent">
+                    <input
+                      type="text"
+                      value={whatsappInput}
+                      onChange={(e) => setWhatsappInput(e.target.value)}
+                      className="px-2 py-1 text-sm bg-transparent outline-none w-36 text-gray-700 font-normal"
+                      placeholder="WhatsApp phone"
+                      title="WhatsApp Phone"
+                      autoFocus
+                    />
+                    <button
+                      onClick={handleSendWhatsapp}
+                      disabled={sendingWhatsapp}
+                      className="flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors"
+                    >
+                      {sendingWhatsapp ? (
+                        <Loader2 size={14} className="mr-1.5 animate-spin" />
+                      ) : (
+                        <MessageCircle size={14} className="mr-1.5" />
+                      )}
+                      Send
+                    </button>
+                    <button
+                      onClick={() => setActiveShareType(null)}
+                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded ml-1"
+                      title="Back"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
                 <button
                   onClick={async () => {
                     try {
@@ -1375,6 +1523,7 @@ const AdminReportsPage = () => {
                   onClick={() => { 
                     setShowPdfViewer(false); 
                     setSelectedReport(null);
+                    setActiveShareType(null);
                     if (pdfBlobUrl) {
                       URL.revokeObjectURL(pdfBlobUrl);
                       setPdfBlobUrl(null);

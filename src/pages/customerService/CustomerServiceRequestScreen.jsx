@@ -6,6 +6,8 @@ import api, { apiErrorMessage } from '../../api/apiClient';
 import useAuth from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 import { isTermLoanTemplateId, resolveTemplateSector } from '../../utils/templateSectorConfig';
+import RequestDocumentsPanel from '../../components/department/RequestDocumentsPanel';
+import RequestChatPanel from '../../components/department/RequestChatPanel';
 
 // Available templates list for selection
 const TEMPLATES_LIST = [
@@ -377,6 +379,21 @@ const CustomerServiceRequestScreen = () => {
               })}
             </div>
           </div>
+
+          <RequestDocumentsPanel
+            requestId={id}
+            apiBase={`/govt-forms/requests/${id}`}
+            status={request.status}
+            currentUserId={user?._id}
+            isCustomer={false}
+          />
+
+          <RequestChatPanel
+            requestId={id}
+            apiBase={`/govt-forms/requests/${id}`}
+            status={request.status}
+            currentUserId={user?._id}
+          />
         </div>
 
         {/* Right column: Action panel, report generation & communications logs */}

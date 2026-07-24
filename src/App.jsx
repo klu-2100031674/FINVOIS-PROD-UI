@@ -94,6 +94,7 @@ import CustomerLoginPage from "./customer/CustomerLoginPage";
 import CustomerDashboardPage from "./customer/CustomerDashboardPage";
 import CustomerProfilePage from "./customer/CustomerProfilePage";
 import CustomerDepartmentRequestsPage from "./customer/CustomerDepartmentRequestsPage";
+import CustomerDepartmentRequestDetailPage from "./customer/CustomerDepartmentRequestDetailPage";
 import {
   AgentDashboardPage,
   AgentReferralsPage,
@@ -588,6 +589,14 @@ function App() {
           element={
             <CustomerRoute>
               <CustomerDepartmentRequestsPage />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/customer/department-requests/:id"
+          element={
+            <CustomerRoute>
+              <CustomerDepartmentRequestDetailPage />
             </CustomerRoute>
           }
         />

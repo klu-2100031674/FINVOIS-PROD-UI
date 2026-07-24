@@ -53,47 +53,23 @@ const SECTION_CONFIG = [
 const ServiceWithoutStockSectionSelector = (props) => {
   const { templateId, ...rest } = props;
 
-  const isEvJcbDrone =
-    templateId === 'TERM_LOAN_EV_VEHICLE' ||
-    templateId === 'TERM_LOAN_JCB_VEHICLE' ||
-    templateId === 'TERM_LOAN_DRONE_VEHICLE';
-
-  const isOtherThanEv = templateId === 'TERM_LOAN_OTHER_THAN_EV_VEHICLE';
+  const tId = String(templateId || '').toUpperCase();
+  const isVehicleTemplate =
+    tId === 'TERM_LOAN_EV_VEHICLE' ||
+    tId === 'TERM_LOAN_OTHER_THAN_EV_VEHICLE' ||
+    tId === 'TERM_LOAN_JCB_VEHICLE' ||
+    tId === 'TERM_LOAN_DRONE_VEHICLE' ||
+    tId.includes('EV_VEHICLE') ||
+    tId.includes('OTHER_THAN_EV') ||
+    tId.includes('JCB_VEHICLE') ||
+    tId.includes('DRONE_VEHICLE');
 
   let config = SECTION_CONFIG;
-  if (isEvJcbDrone) {
+  if (isVehicleTemplate) {
     config = [
       firmConstitutionSection,
-      locationOverviewSection,
-      accessConnectivitySection,
       promoterDetailsSection,
-      makeProductDetailsSection('Service'),
-      makeProductCharacteristicsSection('Service'),
       swotAnalysisSection,
-      targetMarketSection,
-      competitorOverviewSection,
-      marketTrendSection,
-      statutoryApprovalsSection,
-      marketingTechniquesSection,
-      powerRequirementsSection,
-      manpowerSection,
-      conclusionSection,
-    ];
-  } else if (isOtherThanEv) {
-    config = [
-      firmConstitutionSection,
-      locationOverviewSection,
-      accessConnectivitySection,
-      promoterDetailsSection,
-      makeProductDetailsSection('Service'),
-      makeProductCharacteristicsSection('Service'),
-      swotAnalysisSection,
-      targetMarketSection,
-      competitorOverviewSection,
-      marketTrendSection,
-      statutoryApprovalsSection,
-      marketingTechniquesSection,
-      manpowerSection,
       conclusionSection,
     ];
   }

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ClientLayout from '../components/layouts/ClientLayout';
 import api, { apiErrorMessage } from '../api/apiClient';
 import toast from 'react-hot-toast';
-import { ClipboardList, FileText } from 'lucide-react';
+import { ChevronRight, ClipboardList, FileText } from 'lucide-react';
 
 function statusLabel(req) {
   const report = req.reportId;
@@ -49,7 +49,9 @@ const CustomerDepartmentRequestsPage = () => {
               <ClipboardList className="h-6 w-6 text-purple-700" />
               My Department Requests
             </h1>
-            <p className="text-sm text-gray-500 mt-1">Track status of forms you submitted to government departments.</p>
+            <p className="text-sm text-gray-500 mt-1">
+              Track status, documents, and chat for forms you submitted to government departments.
+            </p>
           </div>
         </div>
 
@@ -66,7 +68,12 @@ const CustomerDepartmentRequestsPage = () => {
             {requests.map((req) => {
               const meta = statusLabel(req);
               return (
-                <div key={req._id} className="bg-white border rounded-xl p-5 shadow-sm">
+                <button
+                  key={req._id}
+                  type="button"
+                  onClick={() => navigate(`/customer/department-requests/${req._id}`)}
+                  className="w-full text-left bg-white border rounded-xl p-5 shadow-sm hover:border-purple-300 hover:shadow-md transition-all"
+                >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <h3 className="font-semibold text-gray-900">{req.formId?.name || 'Form'}</h3>
@@ -77,21 +84,34 @@ const CustomerDepartmentRequestsPage = () => {
                         Submitted: {req.createdAt ? new Date(req.createdAt).toLocaleString() : '—'}
                       </p>
                     </div>
-                    <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${meta.className}`}>
-                      {meta.text}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${meta.className}`}>
+                        {meta.text}
+                      </span>
+                      <ChevronRight size={18} className="text-gray-400" />
+                    </div>
                   </div>
                   {req.reportId?.validation_status === 'approved' && (
-                    <button
-                      type="button"
-                      onClick={() => navigate('/customer/reports')}
+                    <span
+                      role="link"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/customer/reports');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.stopPropagation();
+                          navigate('/customer/reports');
+                        }
+                      }}
                       className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-purple-700 hover:text-purple-900"
                     >
                       <FileText size={16} />
                       Open My Reports
-                    </button>
+                    </span>
                   )}
-                </div>
+                </button>
               );
             })}
           </div>

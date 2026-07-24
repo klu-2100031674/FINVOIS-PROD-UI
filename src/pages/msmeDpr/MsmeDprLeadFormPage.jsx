@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { Send, ChevronDown } from 'lucide-react';
 import apiClient from '@/api/apiClient';
 import faqData from '../../data/FAQ.json';
+import OptionalDocumentUpload from '@/components/common/OptionalDocumentUpload';
 import {
   MSME_DPR_SCHEMES,
   MSME_DPR_GENDER_OPTIONS,
   MSME_DPR_LOAN_TYPE_OPTIONS,
   MSME_DPR_RURAL_URBAN_OPTIONS,
-  MSME_DPR_NEED_CA_STAMP_OPTIONS,
+  MSME_DPR_ENTERPRISE_TYPE_OPTIONS,
 } from '@/constants/msmeDprSchemes';
 import {
   LANGUAGES,
@@ -22,13 +23,14 @@ const INITIAL_FORM = {
   gender: '',
   mobileNumber: '',
   natureOfBusiness: '',
+  enterpriseType: '',
+  yearOfRegistration: '',
   schemeAppliedUnder: '',
   loanType: '',
   ruralUrbanCategory: '',
   villageCity: '',
   mandal: '',
   district: '',
-  needCaStamp: 'No',
   description: '',
 };
 
@@ -57,6 +59,7 @@ const MsmeDprLeadFormPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [activeFAQ, setActiveFAQ] = useState(null);
+  const [pendingAttachments, setPendingAttachments] = useState([]);
 
   const toggleFAQ = (index) => {
     setActiveFAQ(activeFAQ === index ? null : index);
@@ -66,7 +69,13 @@ const MsmeDprLeadFormPage = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === 'enterpriseType' && value !== 'Existing Enterprises') {
+        next.yearOfRegistration = '';
+      }
+      return next;
+    });
   };
 
   const handleFillTestData = () => {
@@ -79,8 +88,17 @@ const MsmeDprLeadFormPage = () => {
     setError('');
     setSubmitting(true);
     try {
-      await apiClient.post('/msme-dpr-leads/submit', form);
+      const formData = new FormData();
+      Object.entries(form).forEach(([key, value]) => {
+        formData.append(key, value == null ? '' : String(value));
+      });
+      pendingAttachments.forEach((file) => formData.append('files', file));
+
+      await apiClient.post('/msme-dpr-leads/submit', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       setSuccess(true);
+      setPendingAttachments([]);
     } catch (err) {
       setError(err?.response?.data?.message || err?.message || copy.submitError);
     } finally {
@@ -92,6 +110,7 @@ const MsmeDprLeadFormPage = () => {
     setForm(INITIAL_FORM);
     setSuccess(false);
     setError('');
+    setPendingAttachments([]);
   };
 
   return (
@@ -267,6 +286,39 @@ const MsmeDprLeadFormPage = () => {
                 />
               </FormField>
 
+              <FormField label={copy.enterpriseType} required>
+                <select
+                  name="enterpriseType"
+                  value={form.enterpriseType}
+                  onChange={handleChange}
+                  required
+                  className={selectClass}
+                >
+                  <option value="">{copy.selectEnterpriseType}</option>
+                  {MSME_DPR_ENTERPRISE_TYPE_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {getOptionLabel(language, 'enterpriseType', opt)}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+
+              {form.enterpriseType === 'Existing Enterprises' && (
+                <FormField label={copy.yearOfRegistration} required>
+                  <input
+                    type="text"
+                    name="yearOfRegistration"
+                    value={form.yearOfRegistration}
+                    onChange={handleChange}
+                    required
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder={copy.placeholderYearOfRegistration}
+                    className={inputClass}
+                  />
+                </FormField>
+              )}
+
               <FormField label={copy.schemeAppliedUnder} required>
                 <select
                   name="schemeAppliedUnder"
@@ -367,6 +419,11 @@ const MsmeDprLeadFormPage = () => {
                 />
               </FormField>
 
+              <OptionalDocumentUpload
+                files={pendingAttachments}
+                onChange={setPendingAttachments}
+              />
+
               <button
                 type="submit"
                 disabled={submitting}
@@ -401,16 +458,14 @@ const MsmeDprLeadFormPage = () => {
                     {faq.question}
                   </span>
                   <ChevronDown
-                    className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-300 ${
-                      activeFAQ === idx ? 'rotate-180' : ''
-                    }`}
+                    className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-300 ${activeFAQ === idx ? 'rotate-180' : ''
+                      }`}
                   />
                 </button>
 
                 <div
-                  className={`transition-all duration-300 ease-in-out ${
-                    activeFAQ === idx ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
-                  }`}
+                  className={`transition-all duration-300 ease-in-out ${activeFAQ === idx ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
+                    }`}
                   style={{ overflow: 'hidden' }}
                 >
                   <div className="px-4 pb-3">

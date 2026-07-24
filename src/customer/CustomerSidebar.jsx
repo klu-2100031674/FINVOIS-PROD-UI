@@ -6,6 +6,7 @@ import {
   LogOut,
   FileStack,
   User,
+  ClipboardList,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -34,6 +35,7 @@ const CustomerSidebar = ({
   const navItems = [
     { to: '/customer/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/customer/reports', icon: FileStack, label: 'My Reports' },
+    { to: '/customer/department-requests', icon: ClipboardList, label: 'My Request' },
     { to: '/customer/profile', icon: User, label: 'Profile' },
   ];
 

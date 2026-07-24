@@ -5,6 +5,7 @@ import { FileUp, Send, AlertCircle, Key, ShieldCheck, Mail, Phone, ArrowRight, E
 import api, { apiErrorMessage } from '../api/apiClient';
 import { setAuthData } from '../store/slices/authSlice';
 import toast from 'react-hot-toast';
+import OptionalDocumentUpload from '../components/common/OptionalDocumentUpload';
 
 const labelClass =
   'block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5';
@@ -29,16 +30,17 @@ const PublicFormPage = () => {
   const { customRoute } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  
+
   const [formConfig, setFormConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [submittedData, setSubmittedData] = useState({});
-  
+  const [pendingAttachments, setPendingAttachments] = useState([]);
+
   // Steps: 'form', 'verify', 'done'
   const [step, setStep] = useState('form');
   const [customerContact, setCustomerContact] = useState({ name: '', email: '', phone: '' });
-  
+
   // OTP flow state
   const [otpType, setOtpType] = useState('email'); // 'email' | 'phone'
   const [otpCode, setOtpCode] = useState('');
@@ -59,6 +61,43 @@ const PublicFormPage = () => {
     fetchFormConfig();
   }, [customRoute]);
 
+  const uploadPendingAttachments = async (requestId) => {
+    if (!requestId || !pendingAttachments.length) return;
+    try {
+      const formData = new FormData();
+      pendingAttachments.forEach((file) => formData.append('files', file));
+      await api.post(`/customer/department-requests/${requestId}/documents`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success(
+        pendingAttachments.length === 1
+          ? 'Attachment uploaded'
+          : `${pendingAttachments.length} attachments uploaded`
+      );
+    } catch (err) {
+      toast.error(
+        apiErrorMessage(
+          err,
+          'Request saved, but attachments failed to upload. Open the request later to retry.'
+        )
+      );
+    }
+  };
+
+  const finishSuccessfulSubmit = async (token, user, requestId) => {
+    dispatch(setAuthData({ token, user }));
+    await uploadPendingAttachments(requestId);
+    toast.success('Account verified and request submitted successfully!');
+    setStep('done');
+    setTimeout(() => {
+      if (requestId) {
+        navigate(`/customer/department-requests/${requestId}`);
+      } else {
+        navigate('/customer/dashboard');
+      }
+    }, 1500);
+  };
+
   useEffect(() => {
     if (step === 'verify') {
       checkContactsExistence();
@@ -76,15 +115,8 @@ const PublicFormPage = () => {
       });
 
       if (res.data?.success && res.data?.data) {
-        const { token, user } = res.data.data;
-        dispatch(setAuthData({ token, user }));
-        toast.success('Account verified and request submitted successfully via Google!');
-        setStep('done');
-        
-        // Redirect to customer dashboard after 3 seconds
-        setTimeout(() => {
-          navigate('/customer/dashboard');
-        }, 3000);
+        const { token, user, requestId } = res.data.data;
+        await finishSuccessfulSubmit(token, user, requestId);
       } else {
         toast.error(res.data?.error || 'Verification failed. Please try again.');
       }
@@ -145,10 +177,10 @@ const PublicFormPage = () => {
     try {
       const emailVal = customerContact.email;
       const phoneVal = customerContact.phone;
-      
+
       let emailExists = false;
       let phoneExists = false;
-      
+
       if (emailVal) {
         const res = await api.post('/customer/check-exists', { type: 'email', value: emailVal });
         emailExists = !!res.data?.exists;
@@ -195,13 +227,13 @@ const PublicFormPage = () => {
       toast.error('Invalid email format');
       return;
     }
-    
+
     const newVal = tempEmail.trim();
     updateContactField('email', newVal);
     setEditingEmail(false);
     setOtpSent(false);
     setOtpCode('');
-    
+
     setCheckingExistence(true);
     try {
       const res = await api.post('/customer/check-exists', { type: 'email', value: newVal });
@@ -218,13 +250,13 @@ const PublicFormPage = () => {
       toast.error('Phone number cannot be empty');
       return;
     }
-    
+
     const newVal = tempPhone.trim();
     updateContactField('phone', newVal);
     setEditingPhone(false);
     setOtpSent(false);
     setOtpCode('');
-    
+
     setCheckingExistence(true);
     try {
       const res = await api.post('/customer/check-exists', { type: 'phone', value: newVal });
@@ -347,15 +379,8 @@ const PublicFormPage = () => {
       const res = await api.post('/customer/verify-otp-register', payload);
 
       if (res.data?.success && res.data?.data) {
-        const { token, user } = res.data.data;
-        dispatch(setAuthData({ token, user }));
-        toast.success('Account verified and request submitted successfully!');
-        setStep('done');
-        
-        // Redirect to customer dashboard after 3 seconds
-        setTimeout(() => {
-          navigate('/customer/dashboard');
-        }, 3000);
+        const { token, user, requestId } = res.data.data;
+        await finishSuccessfulSubmit(token, user, requestId);
       } else {
         toast.error(res.data?.error || 'Verification failed. Please check the OTP.');
       }
@@ -420,11 +445,11 @@ const PublicFormPage = () => {
     };
 
     setCustomerContact(contactObj);
-    
+
     // Default to email if present, otherwise phone
     const preferredType = extractedEmail ? 'email' : 'phone';
     setOtpType(preferredType);
-    
+
     setStep('verify');
     toast.success('Details confirmed. Please complete verification to submit your application.');
   };
@@ -483,11 +508,10 @@ const PublicFormPage = () => {
 
               {/* Email Card */}
               {customerContact.email && (
-                <div className={`p-4 rounded-2xl border transition-all ${
-                  otpType === 'email'
+                <div className={`p-4 rounded-2xl border transition-all ${otpType === 'email'
                     ? 'border-orange-500 bg-orange-50/20 shadow-sm'
                     : 'border-gray-200 bg-white hover:border-gray-300'
-                }`}>
+                  }`}>
                   <div className="flex items-center justify-between">
                     <div
                       className="flex items-center gap-3 cursor-pointer flex-1"
@@ -573,11 +597,10 @@ const PublicFormPage = () => {
 
               {/* Phone Card */}
               {customerContact.phone && (
-                <div className={`p-4 rounded-2xl border transition-all ${
-                  otpType === 'phone'
+                <div className={`p-4 rounded-2xl border transition-all ${otpType === 'phone'
                     ? 'border-orange-500 bg-orange-50/20 shadow-sm'
                     : 'border-gray-200 bg-white hover:border-gray-300'
-                }`}>
+                  }`}>
                   <div className="flex items-center justify-between">
                     <div
                       className="flex items-center gap-3 cursor-pointer flex-1"
@@ -662,11 +685,10 @@ const PublicFormPage = () => {
               )}
 
               {/* Google Card */}
-              <div className={`p-4 rounded-2xl border transition-all ${
-                otpType === 'google'
+              <div className={`p-4 rounded-2xl border transition-all ${otpType === 'google'
                   ? 'border-orange-500 bg-orange-50/20 shadow-sm'
                   : 'border-gray-200 bg-white hover:border-gray-300'
-              }`}>
+                }`}>
                 <div className="flex items-center gap-3 cursor-pointer"
                   onClick={() => {
                     setOtpType('google');
@@ -970,6 +992,14 @@ const PublicFormPage = () => {
                 </FormField>
               );
             })}
+
+            <div className="pt-2 border-t border-gray-100">
+              <OptionalDocumentUpload
+                files={pendingAttachments}
+                onChange={setPendingAttachments}
+                className="border-0 pt-0"
+              />
+            </div>
 
             <button
               type="submit"

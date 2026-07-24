@@ -21,6 +21,10 @@ export const FORM_COPY = {
     gender: 'Gender',
     mobileNumber: 'Mobile Number',
     natureOfBusiness: 'Nature of Business',
+    enterpriseType: 'Type of Organisation',
+    selectEnterpriseType: 'Select type of organisation',
+    yearOfRegistration: 'Year of Registration',
+    placeholderYearOfRegistration: 'e.g. 2018',
     schemeAppliedUnder: 'Scheme Applied Under',
     loanType: 'Loan Type',
     ruralUrbanCategory: 'Rural / Urban Category',
@@ -57,6 +61,10 @@ export const FORM_COPY = {
     gender: 'లింగం',
     mobileNumber: 'మొబైల్ నంబర్',
     natureOfBusiness: 'వ్యాపార స్వరూపం',
+    enterpriseType: 'ఎంటర్‌ప్రైజ్ రకం',
+    selectEnterpriseType: 'ఎంటర్‌ప్రైజ్ రకం ఎంచుకోండి',
+    yearOfRegistration: 'రిజిస్ట్రేషన్ సంవత్సరం',
+    placeholderYearOfRegistration: 'ఉదా. 2018',
     schemeAppliedUnder: 'దరఖాస్తు చేసిన పథకం',
     loanType: 'రుణ రకం',
     ruralUrbanCategory: 'గ్రామీణ / నగర వర్గం',
@@ -113,16 +121,22 @@ const RURAL_URBAN_LABELS_TE = {
   'Urban(Other than Panchayat)': 'నగర (పంచాయతీ కాకుండా)',
 };
 
+const ENTERPRISE_TYPE_LABELS_TE = {
+  'New Enterprise': 'కొత్త ఎంటర్‌ప్రైజ్',
+  'Existing Enterprises': 'ఇప్పటికే ఉన్న ఎంటర్‌ప్రైజెస్',
+};
+
 const LABEL_MAPS = {
   gender: GENDER_LABELS_TE,
   scheme: SCHEME_LABELS_TE,
   loanType: LOAN_TYPE_LABELS_TE,
   ruralUrban: RURAL_URBAN_LABELS_TE,
+  enterpriseType: ENTERPRISE_TYPE_LABELS_TE,
 };
 
 /**
  * @param {'en'|'te'} lang
- * @param {'gender'|'scheme'|'loanType'|'ruralUrban'} group
+ * @param {'gender'|'scheme'|'loanType'|'ruralUrban'|'enterpriseType'} group
  * @param {string} value — English enum value stored in form state
  */
 export function getOptionLabel(lang, group, value) {
@@ -136,6 +150,8 @@ export const MSME_DPR_TEST_FORM = {
   gender: 'Male',
   mobileNumber: '9876543210',
   natureOfBusiness: 'Manufacturing',
+  enterpriseType: 'Existing Enterprises',
+  yearOfRegistration: '2018',
   schemeAppliedUnder: 'PMEGP',
   loanType: 'Term Loan',
   ruralUrbanCategory: 'Rural(Panchayat)',

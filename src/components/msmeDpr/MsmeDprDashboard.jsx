@@ -139,29 +139,70 @@ function ServiceAvailedToggle({ checked, disabled, onChange }) {
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 disabled:opacity-50 ${
-        checked ? 'bg-orange-500' : 'bg-gray-200'
-      }`}
+      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 disabled:opacity-50 ${checked ? 'bg-orange-500' : 'bg-gray-200'
+        }`}
     >
       <span
-        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-          checked ? 'translate-x-5' : 'translate-x-0'
-        }`}
+        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${checked ? 'translate-x-5' : 'translate-x-0'
+          }`}
       />
     </button>
   );
 }
 
 function ApplicantDetailPanel({ submission }) {
-  if (!submission.description) return null;
+  const docs = Array.isArray(submission?.documents) ? submission.documents : [];
+  const hasDescription = Boolean(submission?.description);
+  const hasEnterprise = Boolean(submission?.enterpriseType);
+
   return (
-    <div className="px-4 py-3 bg-gray-50 border-t text-sm text-gray-600">
-      <p>
-        <span className="font-medium text-gray-700">Description:</span> {submission.description}
-      </p>
-      <p className="text-xs text-gray-400 mt-2">
+    <div className="px-4 py-3 bg-gray-50 border-t text-sm text-gray-600 space-y-3">
+      {hasEnterprise && (
+        <p>
+          <span className="font-medium text-gray-700">Type of Organisation:</span>{' '}
+          {submission.enterpriseType}
+          {submission.yearOfRegistration
+            ? ` · Year of Registration: ${submission.yearOfRegistration}`
+            : ''}
+        </p>
+      )}
+      {hasDescription && (
+        <p>
+          <span className="font-medium text-gray-700">Description:</span> {submission.description}
+        </p>
+      )}
+      <p className="text-xs text-gray-400">
         Submitted: {submission.createdAt ? new Date(submission.createdAt).toLocaleString() : '—'}
       </p>
+      {docs.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
+            Documents ({docs.length})
+          </p>
+          <ul className="space-y-1">
+            {docs.map((doc) => (
+              <li key={doc.id || doc._id || doc.fileName} className="flex items-center gap-2">
+                <FileText className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+                {doc.url ? (
+                  <a
+                    href={doc.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-orange-700 hover:underline truncate"
+                  >
+                    {doc.fileName}
+                  </a>
+                ) : (
+                  <span className="text-sm text-gray-600 truncate">{doc.fileName}</span>
+                )}
+                {doc.kind && (
+                  <span className="text-[10px] uppercase text-gray-400 shrink-0">{doc.kind}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -294,7 +335,7 @@ const MsmeDprDashboard = ({
   const generateEmptyChartData = useCallback((timeframe) => {
     const labels = [];
     const now = new Date();
-    
+
     if (timeframe === '1d') {
       // Last 24 hours
       for (let i = 23; i >= 0; i--) {
@@ -479,11 +520,10 @@ const MsmeDprDashboard = ({
                     e.stopPropagation();
                     setTimeframe(opt.val);
                   }}
-                  className={`px-3 py-1 text-xs font-semibold rounded-md border transition-all ${
-                    timeframe === opt.val
+                  className={`px-3 py-1 text-xs font-semibold rounded-md border transition-all ${timeframe === opt.val
                       ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
                       : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   {opt.label}
                 </button>
@@ -555,11 +595,10 @@ const MsmeDprDashboard = ({
             <button
               type="button"
               onClick={() => setShowAdvancedFilters((prev) => !prev)}
-              className={`shrink-0 flex items-center justify-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${
-                showAdvancedFilters
+              className={`shrink-0 flex items-center justify-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${showAdvancedFilters
                   ? 'border-orange-300 bg-orange-50 text-orange-800'
                   : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-              }`}
+                }`}
               aria-expanded={showAdvancedFilters}
             >
               <SlidersHorizontal size={16} />
@@ -737,10 +776,10 @@ const MsmeDprDashboard = ({
                           <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
                             {s.createdAt
                               ? new Date(s.createdAt).toLocaleDateString('en-IN', {
-                                  day: '2-digit',
-                                  month: 'short',
-                                  year: 'numeric',
-                                })
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                              })
                               : '—'}
                           </td>
                           <td className="px-3 py-3 font-medium text-gray-900">
@@ -748,7 +787,15 @@ const MsmeDprDashboard = ({
                           </td>
                           <td className="px-3 py-3 text-gray-600">{s.gender}</td>
                           <td className="px-3 py-3 text-gray-600">{s.mobileNumber}</td>
-                          <td className="px-3 py-3 text-gray-600">{s.natureOfBusiness}</td>
+                          <td className="px-3 py-3 text-gray-600">
+                            <div>{s.natureOfBusiness}</div>
+                            {s.enterpriseType && (
+                              <div className="text-xs text-gray-400 mt-0.5">
+                                {s.enterpriseType}
+                                {s.yearOfRegistration ? ` · ${s.yearOfRegistration}` : ''}
+                              </div>
+                            )}
+                          </td>
                           <td className="px-3 py-3 text-gray-600">
                             {displayScheme(s.schemeAppliedUnder)}
                           </td>
@@ -803,16 +850,21 @@ const MsmeDprDashboard = ({
                         <span className="text-[11px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded font-normal shrink-0">
                           {s.createdAt
                             ? new Date(s.createdAt).toLocaleDateString('en-IN', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                              })
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })
                             : '—'}
                         </span>
                         <h3 className="font-semibold text-gray-900 truncate">{s.applicantName}</h3>
                       </div>
                       <p className="text-sm text-gray-500">{s.mobileNumber}</p>
-                      <p className="text-xs text-gray-400 mt-1">{s.natureOfBusiness}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {s.natureOfBusiness}
+                        {s.enterpriseType
+                          ? ` · ${s.enterpriseType}${s.yearOfRegistration ? ` (${s.yearOfRegistration})` : ''}`
+                          : ''}
+                      </p>
                     </div>
                   </button>
                   {expanded && (
@@ -822,8 +874,17 @@ const MsmeDprDashboard = ({
                       </p>
                       <p>
                         <span className="font-medium text-gray-700">Scheme:</span>{' '}
-                          {displayScheme(s.schemeAppliedUnder)}
+                        {displayScheme(s.schemeAppliedUnder)}
                       </p>
+                      {s.enterpriseType && (
+                        <p>
+                          <span className="font-medium text-gray-700">Type of Organisation:</span>{' '}
+                          {s.enterpriseType}
+                          {s.yearOfRegistration
+                            ? ` · Year of Registration: ${s.yearOfRegistration}`
+                            : ''}
+                        </p>
+                      )}
                       <p>
                         <span className="font-medium text-gray-700">Loan Type:</span> {s.loanType}
                       </p>

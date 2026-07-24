@@ -26,4 +26,7 @@ export const MSME_DPR_RURAL_URBAN_OPTIONS = [
   'Urban(Other than Panchayat)',
 ];
 
-export const MSME_DPR_NEED_CA_STAMP_OPTIONS = ['Yes', 'No'];
+export const MSME_DPR_ENTERPRISE_TYPE_OPTIONS = [
+  'New Enterprise',
+  'Existing Enterprises',
+];
