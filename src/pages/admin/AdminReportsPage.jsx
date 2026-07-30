@@ -32,7 +32,8 @@ import {
   Loader2,
   Upload,
   Settings,
-  Building2
+  Building2,
+  Trash2
 } from 'lucide-react';
 import { AdminLayout } from '../../components/layouts';
 import { useAuth } from '../../hooks';
@@ -41,6 +42,7 @@ import { companyAPI } from '../../api/endpoints';
 import toast from 'react-hot-toast';
 import { reportRequiresCaStamp } from '../../utils/frccFormUi';
 import caIndiaStamp from '../../assets/CA_INDIA.jpg';
+import { buildDedupedReportTypeOptions } from '../../utils/reportTypeOptions';
 
 const getReportCompanyName = (report) => {
   if (report?.companyId?.companyName) return report.companyId.companyName;
@@ -140,6 +142,8 @@ const AdminReportsPage = () => {
   // Bulk selection
   const [selectedReports, setSelectedReports] = useState([]);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const showBulkSelect = activeTab === 'pending_validation' || activeTab === '';
   const [stampTogglingId, setStampTogglingId] = useState(null);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
@@ -181,12 +185,21 @@ const AdminReportsPage = () => {
   const fetchReportTypes = useCallback(async () => {
     try {
       const response = await api.get('/admin-reports/meta/report-types');
+      const apiOptions = response.data?.data?.options;
+      if (Array.isArray(apiOptions) && apiOptions.length > 0) {
+        setReportTypeOptions(
+          apiOptions
+            .map((opt) => ({
+              value: String(opt.value || opt).trim(),
+              label: String(opt.label || opt.value || opt).trim(),
+            }))
+            .filter((opt) => opt.value)
+        );
+        return;
+      }
       const types = response.data?.data?.report_types || [];
       const templateIds = response.data?.data?.template_ids || [];
-      const merged = Array.from(new Set([...(types || []), ...(templateIds || [])].filter(Boolean).map(String))).sort(
-        (a, b) => a.localeCompare(b)
-      );
-      setReportTypeOptions(merged);
+      setReportTypeOptions(buildDedupedReportTypeOptions(types, templateIds));
     } catch (error) {
       console.error('Error fetching report types:', error);
     }
@@ -489,6 +502,27 @@ const AdminReportsPage = () => {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedReports.length === 0) return;
+
+    try {
+      setBulkActionLoading(true);
+      const response = await api.post('/admin-reports/bulk-delete', {
+        report_ids: selectedReports,
+      });
+
+      toast.success(response.data?.message || 'Bulk delete completed');
+      setShowBulkDeleteModal(false);
+      setSelectedReports([]);
+      fetchReports();
+      fetchStats();
+    } catch (error) {
+      toast.error(error?.response?.data?.error || 'Bulk delete failed');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
   const handleDownloadExcel = async (report) => {
     try {
       const response = await api.get(`/admin-reports/${report._id}/excel`, {
@@ -756,11 +790,15 @@ const AdminReportsPage = () => {
                 title="Filter by report type"
               >
                 <option value="">All report types</option>
-                {reportTypeOptions.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
+                {reportTypeOptions.map((opt) => {
+                  const value = typeof opt === 'string' ? opt : opt.value;
+                  const label = typeof opt === 'string' ? opt : (opt.label || opt.value);
+                  return (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  );
+                })}
               </select>
               <div className="relative flex-1 min-w-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
@@ -902,6 +940,29 @@ const AdminReportsPage = () => {
             </div>
           </div>
         )}
+        {selectedReports.length > 0 && activeTab === '' && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 flex items-center justify-between">
+            <span className="text-red-700 font-medium">
+              {selectedReports.length} report(s) selected
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowBulkDeleteModal(true)}
+                disabled={bulkActionLoading}
+                className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                <Trash2 size={16} className="mr-2" />
+                Bulk Delete
+              </button>
+              <button
+                onClick={() => setSelectedReports([])}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Reports List */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -918,7 +979,7 @@ const AdminReportsPage = () => {
             <>
               {/* Table Header */}
               <div className="bg-gray-50 px-6 py-3 border-b border-gray-200 hidden md:grid grid-cols-12 gap-4 text-sm font-medium text-gray-600">
-                {activeTab === 'pending_validation' && (
+                {showBulkSelect && (
                   <div className="col-span-1">
                     <input
                       type="checkbox"
@@ -928,7 +989,7 @@ const AdminReportsPage = () => {
                     />
                   </div>
                 )}
-                <div className={activeTab === 'pending_validation' ? 'col-span-3' : 'col-span-4'}>Report</div>
+                <div className={showBulkSelect ? 'col-span-3' : 'col-span-4'}>Report</div>
                 <div className="col-span-2">User</div>
                 <div className="col-span-1">Date</div>
                 <div className="col-span-2">Status</div>
@@ -953,7 +1014,7 @@ const AdminReportsPage = () => {
                 <div key={report._id} className="border-b border-gray-100 last:border-0">
                   <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center hover:bg-gray-50">
                     {/* Checkbox */}
-                    {activeTab === 'pending_validation' && (
+                    {showBulkSelect && (
                       <div className="col-span-1 hidden md:block">
                         <input
                           type="checkbox"
@@ -965,7 +1026,7 @@ const AdminReportsPage = () => {
                     )}
 
                     {/* Report Info */}
-                    <div className={`${activeTab === 'pending_validation' ? 'col-span-3' : 'col-span-4'} min-w-0`}>
+                    <div className={`${showBulkSelect ? 'col-span-3' : 'col-span-4'} min-w-0`}>
                       <h3 className="font-medium text-gray-800 truncate" title={report.title}>{report.title}</h3>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full truncate" title={report.templateId || report.report_type}>
@@ -1270,6 +1331,43 @@ const AdminReportsPage = () => {
           </div>
         )}
       </div>
+
+      {/* Bulk Delete Confirmation Modal (Total tab only) */}
+      {showBulkDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800">Delete reports permanently?</h2>
+              <p className="text-gray-500 mt-1">
+                You are about to permanently delete {selectedReports.length} report
+                {selectedReports.length === 1 ? '' : 's'}. This cannot be undone.
+              </p>
+            </div>
+            <div className="p-6 bg-red-50 border-y border-red-100">
+              <p className="text-sm text-red-800">
+                Hard delete removes the report records from the database (same as single report delete).
+              </p>
+            </div>
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => setShowBulkDeleteModal(false)}
+                disabled={bulkActionLoading}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={bulkActionLoading || selectedReports.length === 0}
+                className="flex items-center px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {bulkActionLoading ? <Loader2 className="animate-spin mr-2" size={16} /> : <Trash2 size={16} className="mr-2" />}
+                Delete permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Approve Modal */}
       {showApproveModal && selectedReport && (

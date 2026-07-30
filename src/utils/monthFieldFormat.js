@@ -10,16 +10,22 @@ export function toMonthInputValue(value) {
     return trimmed;
   }
 
-  // DD-MM-YYYY e.g. 04-01-2025 (term loan loan-start excel format)
-  const ddMmYyyy = trimmed.match(/^(\d{2})-(\d{2})-(\d{4})$/);
-  if (ddMmYyyy) {
-    return `${ddMmYyyy[3]}-${ddMmYyyy[2]}`;
-  }
-
-  // 01-MM-YYYY e.g. 01-04-2027 (FRCC loan-start excel format)
+  // 01-MM-YYYY e.g. 01-04-2026 (canonical loan-start excel format for all templates)
   const excelDate = trimmed.match(/^01-(\d{2})-(\d{4})$/);
   if (excelDate) {
     return `${excelDate[2]}-${excelDate[1]}`;
+  }
+
+  // Legacy MM-01-YYYY e.g. 04-01-2026 (older With Stock / Term Loan+CC bug format)
+  const legacyMm01Yyyy = trimmed.match(/^(\d{2})-01-(\d{4})$/);
+  if (legacyMm01Yyyy) {
+    return `${legacyMm01Yyyy[2]}-${legacyMm01Yyyy[1]}`;
+  }
+
+  // Other DD-MM-YYYY (day not 01) — treat as day-month-year
+  const ddMmYyyy = trimmed.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (ddMmYyyy) {
+    return `${ddMmYyyy[3]}-${ddMmYyyy[2]}`;
   }
 
   // YYYY-MM-DD
@@ -72,12 +78,12 @@ export function normalizeMonthFieldsInFormData(formData) {
   return next;
 }
 
-/** Term loan loan-start month → DD-MM-YYYY for excel. */
+/** Loan-start month → 01-MM-YYYY for excel (all Term Loan / CC6 / CC7 templates). */
 export function toExcelLoanStartMonth(value) {
   const input = toMonthInputValue(value);
   if (!input) return '';
   const [year, month] = input.split('-');
-  return `${month}-01-${year}`;
+  return `01-${month}-${year}`;
 }
 
 /** Term loan first sale bill month → Mon-YY for excel. */
@@ -90,10 +96,7 @@ export function toExcelFirstSaleBillMonth(value) {
   return `${monthName}-${year.slice(-2)}`;
 }
 
-/** FRCC loan-start month → 01-MM-YYYY for excel. */
+/** Alias: same 01-MM-YYYY loan-start format used by FRCC / Term Loan. */
 export function toFrccExcelMonthDate(value) {
-  const input = toMonthInputValue(value);
-  if (!input) return '';
-  const [year, month] = input.split('-');
-  return `01-${month}-${year}`;
+  return toExcelLoanStartMonth(value);
 }

@@ -96,7 +96,7 @@ const FRCC5Form = ({
     'Prepared By': {
       j99: 'PARVEZ AND NARAYANA',
       j100: 'Chartered Accountants',
-      j101: '',
+      j101: 'Vijayawada',
       j102: '9014221011',
       required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
       ...(initialData?.['Prepared By'] || {})
@@ -477,7 +477,7 @@ const FRCC5Form = ({
       'Prepared By': {
         'j99': 'PARVEZ AND NARAYANA',
         'j100': 'Chartered Accountants',
-        'j101': '',
+        'j101': 'Vijayawada',
         'j102': '9014221011',
         'bank_name': 'HDFC Bank',
         'branch_name': 'Corporate Branch',

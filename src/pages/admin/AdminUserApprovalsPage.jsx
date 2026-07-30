@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search,
   CheckCircle,
@@ -8,6 +8,8 @@ import {
   UserCheck,
   Mail,
   Ban,
+  MoreVertical,
+  RefreshCw,
 } from 'lucide-react';
 import { AdminLayout } from '../../components/layouts';
 import api from '../../api/apiClient';
@@ -23,6 +25,19 @@ const EmailBadge = ({ verified }) => (
     {verified ? 'Verified' : 'Awaiting verification'}
   </span>
 );
+
+const AuthProviderBadge = ({ provider }) => {
+  const isGoogle = String(provider || '').toLowerCase() === 'google';
+  return (
+    <span
+      className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
+        isGoogle ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700'
+      }`}
+    >
+      {isGoogle ? 'Google' : 'Email'}
+    </span>
+  );
+};
 
 const UserApprovalsTable = ({
   users,
@@ -48,6 +63,9 @@ const UserApprovalsTable = ({
             Email
           </th>
           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Sign-in
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             Registered
           </th>
           {showActions && (
@@ -60,7 +78,7 @@ const UserApprovalsTable = ({
       <tbody className="bg-white divide-y divide-gray-200">
         {users.length === 0 ? (
           <tr>
-            <td colSpan={showActions ? 5 : 4} className="px-6 py-10 text-center text-gray-500 text-sm">
+            <td colSpan={showActions ? 6 : 5} className="px-6 py-10 text-center text-gray-500 text-sm">
               {emptyMessage}
             </td>
           </tr>
@@ -89,6 +107,9 @@ const UserApprovalsTable = ({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <EmailBadge verified={user.email_verified} />
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <AuthProviderBadge provider={user.auth_provider} />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {user.createdAt ? new Date(user.createdAt).toLocaleString() : 'N/A'}
@@ -142,66 +163,117 @@ const UserApprovalsTable = ({
   </div>
 );
 
-const RejectedUsersTable = ({ users, onView }) => (
-  <div className="overflow-x-auto">
-    <table className="min-w-full divide-y divide-gray-200">
-      <thead className="bg-gray-50">
-        <tr>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            User
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Role
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Rejected
-          </th>
-          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Details
-          </th>
-        </tr>
-      </thead>
-      <tbody className="bg-white divide-y divide-gray-200">
-        {users.length === 0 ? (
+const RejectedUsersTable = ({
+  users,
+  processingId,
+  actionMenuId,
+  setActionMenuId,
+  onView,
+  onAllowReregistration,
+}) => {
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!actionMenuId) return undefined;
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setActionMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [actionMenuId, setActionMenuId]);
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
           <tr>
-            <td colSpan={4} className="px-6 py-10 text-center text-gray-500 text-sm">
-              No rejected registrations
-            </td>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              User
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Role
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Rejected
+            </th>
+            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Actions
+            </th>
           </tr>
-        ) : (
-          users.map((user) => (
-            <tr key={user._id} className="hover:bg-gray-50">
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                <div className="text-sm text-gray-500">{user.email}</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                {formatRoleForDisplay(user.role)}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {user.signup_approved_at
-                  ? new Date(user.signup_approved_at).toLocaleString()
-                  : user.updatedAt
-                    ? new Date(user.updatedAt).toLocaleString()
-                    : '—'}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right">
-                <button
-                  type="button"
-                  onClick={() => onView(user)}
-                  className="p-2 text-[#7e22ce] hover:bg-purple-50 rounded-full"
-                  title="View details"
-                >
-                  <Eye size={18} />
-                </button>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {users.length === 0 ? (
+            <tr>
+              <td colSpan={4} className="px-6 py-10 text-center text-gray-500 text-sm">
+                No rejected registrations
               </td>
             </tr>
-          ))
-        )}
-      </tbody>
-    </table>
-  </div>
-);
+          ) : (
+            users.map((user) => (
+              <tr key={user._id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                  <div className="text-sm text-gray-500">{user.email}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  {formatRoleForDisplay(user.role)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {user.signup_approved_at
+                    ? new Date(user.signup_approved_at).toLocaleString()
+                    : user.updatedAt
+                      ? new Date(user.updatedAt).toLocaleString()
+                      : '—'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right relative">
+                  <div className="inline-flex items-center justify-end gap-1" ref={actionMenuId === user._id ? menuRef : null}>
+                    <button
+                      type="button"
+                      onClick={() => onView(user)}
+                      className="p-2 text-[#7e22ce] hover:bg-purple-50 rounded-full"
+                      title="View details"
+                    >
+                      <Eye size={18} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActionMenuId(actionMenuId === user._id ? null : user._id)
+                      }
+                      disabled={processingId === user._id}
+                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full disabled:opacity-50"
+                      title="More actions"
+                      aria-label="More actions"
+                    >
+                      <MoreVertical size={18} />
+                    </button>
+                    {actionMenuId === user._id && (
+                      <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg z-20 border border-gray-100 py-1 text-left">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActionMenuId(null);
+                            onAllowReregistration(user);
+                          }}
+                          className="flex items-center w-full px-3 py-2 text-sm text-red-700 hover:bg-red-50"
+                        >
+                          <RefreshCw size={15} className="mr-2 shrink-0" />
+                          Allow re-registration
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+};
 
 const AdminUserApprovalsPage = () => {
   const [pendingUsers, setPendingUsers] = useState([]);
@@ -212,6 +284,9 @@ const AdminUserApprovalsPage = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [userToReject, setUserToReject] = useState(null);
+  const [showReregisterModal, setShowReregisterModal] = useState(false);
+  const [userToReregister, setUserToReregister] = useState(null);
+  const [actionMenuId, setActionMenuId] = useState(null);
   const [processingId, setProcessingId] = useState(null);
 
   const fetchAll = async () => {
@@ -279,6 +354,23 @@ const AdminUserApprovalsPage = () => {
     }
   };
 
+  const handleAllowReregistration = async () => {
+    if (!userToReregister?._id) return;
+    try {
+      setProcessingId(userToReregister._id);
+      await api.post(`/users/${userToReregister._id}/allow-reregistration`);
+      toast.success('Account deleted. They can complete re-registration with the same email.');
+      setShowReregisterModal(false);
+      setUserToReregister(null);
+      setShowModal(false);
+      await fetchAll();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to allow re-registration');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const handleViewUser = (user) => {
     setSelectedUser(user);
     setShowModal(true);
@@ -287,6 +379,11 @@ const AdminUserApprovalsPage = () => {
   const openRejectModal = (user) => {
     setUserToReject(user);
     setShowRejectModal(true);
+  };
+
+  const openReregisterModal = (user) => {
+    setUserToReregister(user);
+    setShowReregisterModal(true);
   };
 
   if (loading) {
@@ -392,7 +489,8 @@ const AdminUserApprovalsPage = () => {
             Pending admin approval
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            Email verified — approve or reject to grant or deny platform access.
+            Email verified (including Google signups) — approve or reject to grant or deny platform
+            access.
           </p>
         </div>
         <UserApprovalsTable
@@ -413,11 +511,18 @@ const AdminUserApprovalsPage = () => {
             Rejected registrations
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            Users whose signup was rejected. They cannot log in until approved through a new
-            registration or manual account changes.
+            Users whose signup was rejected. Use Allow re-registration to delete their account so
+            they can sign up again with the same email.
           </p>
         </div>
-        <RejectedUsersTable users={filteredRejected} onView={handleViewUser} />
+        <RejectedUsersTable
+          users={filteredRejected}
+          processingId={processingId}
+          actionMenuId={actionMenuId}
+          setActionMenuId={setActionMenuId}
+          onView={handleViewUser}
+          onAllowReregistration={openReregisterModal}
+        />
       </section>
 
       {showModal && selectedUser && (
@@ -438,6 +543,12 @@ const AdminUserApprovalsPage = () => {
                   <dt className="text-gray-500">Email verification</dt>
                   <dd className="mt-1">
                     <EmailBadge verified={selectedUser.email_verified} />
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500">Sign-in method</dt>
+                  <dd className="mt-1">
+                    <AuthProviderBadge provider={selectedUser.auth_provider} />
                   </dd>
                 </div>
                 <div>
@@ -501,7 +612,19 @@ const AdminUserApprovalsPage = () => {
                 >
                   Close
                 </button>
-                {selectedUser.signup_approval_status !== 'rejected' && (
+                {selectedUser.signup_approval_status === 'rejected' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowModal(false);
+                      openReregisterModal(selectedUser);
+                    }}
+                    disabled={processingId === selectedUser._id}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                  >
+                    Allow re-registration
+                  </button>
+                ) : (
                   <>
                     <button
                       type="button"
@@ -559,6 +682,41 @@ const AdminUserApprovalsPage = () => {
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
               >
                 Confirm reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showReregisterModal && userToReregister && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="text-lg font-bold text-gray-800 mb-2">Allow re-registration?</h2>
+            <p className="text-gray-600 text-sm mb-6">
+              This permanently deletes <strong>{userToReregister.name}</strong> (
+              {userToReregister.email}) so they can complete re-registration with the same email.
+              This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReregisterModal(false);
+                  setUserToReregister(null);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAllowReregistration}
+                disabled={processingId === userToReregister._id}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {processingId === userToReregister._id
+                  ? 'Deleting...'
+                  : 'Delete & allow re-registration'}
               </button>
             </div>
           </div>

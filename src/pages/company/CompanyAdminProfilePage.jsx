@@ -15,6 +15,7 @@ import {
   Building2
 } from 'lucide-react';
 import { AdminLayout } from '../../components/layouts';
+import { ProfileSecuritySection } from '../../components/common';
 import { useAuth, useAdminTierProfile } from '../../hooks';
 
 const CompanyAdminProfilePage = () => {
@@ -233,6 +234,10 @@ const CompanyAdminProfilePage = () => {
               <p className="text-xs text-purple-700 mt-1">Reports waiting for action</p>
             </div>
           </div>
+        </div>
+
+        <div className="mt-6">
+          <ProfileSecuritySection user={user} onUpdated={refreshUser} variant="card" />
         </div>
       </div>
     </AdminLayout>

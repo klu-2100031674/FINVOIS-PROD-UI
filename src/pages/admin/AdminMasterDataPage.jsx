@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Layers, Download, Loader2, RefreshCw, Search } from 'lucide-react';
+import { Layers, Download, Loader2, RefreshCw, Search, FileSpreadsheet, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AdminLayout } from '../../components/layouts';
 import adminExecutiveReportsAPI from '../../api/adminExecutiveReportsAPI';
@@ -12,14 +12,19 @@ const FORM_TYPE_OPTIONS = [
   { value: 'SBI_IncomeTax', label: 'Income Tax (ITR)' }
 ];
 
-// Scheme tab hidden — re-enable when master-data scheme listing is needed again
-// const SCHEME_OPTIONS = [{ value: 'cmep', label: 'CMEP' }];
+// "Scheme Data" covers every active scheme (CMEP / PMEGP / AP IDP).
+const SCHEME_OPTIONS = [
+  { value: '', label: 'All schemes' },
+  { value: 'cmep', label: 'CMEP' },
+  { value: 'pmegp', label: 'PMEGP' },
+  { value: 'ap_idp_4_0', label: 'AP IDP' }
+];
 
 const TABS = [
   { id: 'reports', label: 'Lead DPR' },
   { id: 'executive', label: 'SBI Executive' },
   { id: 'emi', label: 'Calculator' },
-  // { id: 'scheme', label: 'Scheme' },
+  { id: 'scheme', label: 'Scheme Data' },
   { id: 'client-screening', label: 'Client Screening' },
   { id: 'franchise', label: 'Franchise' },
   { id: 'lead-request', label: 'Lead Request' }
@@ -27,10 +32,14 @@ const TABS = [
 
 const LEAD_TABS = new Set(['lead-request']);
 const CLIENT_SCREENING_TAB = 'client-screening';
+const SCHEME_TAB = 'scheme';
 const REPORTS_TAB = 'reports';
 
 const getMasterDataColumnCount = (tab) => {
   if (tab === 'emi') return 3;
+  // Scheme Data adds a select checkbox column and a per-row export actions column
+  // on top of the 4 requested data columns (Scheme Name / Applicant / Phone / Business Name).
+  if (tab === SCHEME_TAB) return 6;
   if (tab === CLIENT_SCREENING_TAB) return 4;
   if (tab === REPORTS_TAB) return 6;
   return 5;
@@ -40,6 +49,7 @@ const getSearchPlaceholder = (tab) => {
   if (tab === REPORTS_TAB) return 'Search name, business name, phone, email…';
   if (tab === 'executive') return 'Search applicant, form type, file name…';
   if (tab === 'emi') return 'Search name, phone number…';
+  if (tab === SCHEME_TAB) return 'Search name, phone number, scheme…';
   if (tab === 'client-screening') return 'Search name, phone number, topics…';
   if (tab === 'franchise') return 'Search applicant name, phone, email, city, franchise…';
   if (tab === 'lead-request') return 'Search name, phone, email, service, partner…';
@@ -48,6 +58,7 @@ const getSearchPlaceholder = (tab) => {
 
 const getFormTypeColumnLabel = (tab) => {
   if (tab === 'executive') return 'Form Type';
+  if (tab === SCHEME_TAB) return 'Scheme';
   if (tab === CLIENT_SCREENING_TAB) return 'Date & Time';
   if (tab === 'franchise') return 'Franchise';
   if (tab === 'lead-request') return 'Service';
@@ -66,6 +77,11 @@ const AdminMasterDataPage = () => {
   const [formTypeFilter, setFormTypeFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
+
+  // Scheme Data row selection for per-record / bulk export (Excel or PDF).
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [exportingRecordId, setExportingRecordId] = useState(null);
+  const [exportingSelected, setExportingSelected] = useState(false);
 
   const queryParams = useMemo(
     () => ({
@@ -103,11 +119,87 @@ const AdminMasterDataPage = () => {
     setFormTypeFilter('');
     setSearchQuery('');
     setDateRange({ start: '', end: '' });
+    setSelectedIds(new Set());
   }, [activeTab]);
 
   useEffect(() => {
     fetchRows(1);
+    // Selection is page/filter-scoped — stale ids from a previous page would
+    // otherwise silently get included in the next export.
+    setSelectedIds(new Set());
   }, [fetchRows]);
+
+  const toggleRowSelected = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const allRowsOnPageSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r._id));
+
+  const toggleSelectAllOnPage = () => {
+    setSelectedIds((prev) => {
+      if (allRowsOnPageSelected) {
+        const next = new Set(prev);
+        rows.forEach((r) => next.delete(r._id));
+        return next;
+      }
+      const next = new Set(prev);
+      rows.forEach((r) => next.add(r._id));
+      return next;
+    });
+  };
+
+  // Pulls a usable filename out of Content-Disposition, falling back to a
+  // sensible default — the server decides the extension (.xlsx/.pdf/.zip)
+  // based on how many records were requested, so we can't hardcode it here.
+  const downloadBlobResponse = (response, fallbackName) => {
+    const disposition = response.headers?.['content-disposition'] || '';
+    const match = /filename="?([^"]+)"?/i.exec(disposition);
+    const fileName = match ? match[1] : fallbackName;
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleExportSchemeRecord = async (id, format) => {
+    try {
+      setExportingRecordId(id);
+      const response = await adminExecutiveReportsAPI.exportSchemeRecords({ ids: [id], format });
+      downloadBlobResponse(response, `scheme-data.${format === 'pdf' ? 'pdf' : 'xlsx'}`);
+      toast.success(`${format === 'pdf' ? 'PDF' : 'Excel'} downloaded`);
+    } catch (error) {
+      toast.error(error?.response?.data?.error || `Failed to export ${format === 'pdf' ? 'PDF' : 'Excel'}`);
+    } finally {
+      setExportingRecordId(null);
+    }
+  };
+
+  const handleExportSchemeSelected = async (format) => {
+    if (selectedIds.size === 0) return;
+    try {
+      setExportingSelected(true);
+      const response = await adminExecutiveReportsAPI.exportSchemeRecords({
+        ids: Array.from(selectedIds),
+        format
+      });
+      const fallback = selectedIds.size > 1 ? 'scheme-data-export.zip' : `scheme-data.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+      downloadBlobResponse(response, fallback);
+      toast.success(`Exported ${selectedIds.size} record${selectedIds.size > 1 ? 's' : ''}`);
+    } catch (error) {
+      toast.error(error?.response?.data?.error || 'Failed to export selected records');
+    } finally {
+      setExportingSelected(false);
+    }
+  };
 
   const handleExportExcel = async () => {
     try {
@@ -202,6 +294,20 @@ const AdminMasterDataPage = () => {
                   ))}
                 </select>
               )}
+              {activeTab === SCHEME_TAB && (
+                <select
+                  value={formTypeFilter}
+                  onChange={(e) => setFormTypeFilter(e.target.value)}
+                  className="w-full sm:w-56 shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                  aria-label="Filter scheme"
+                >
+                  {SCHEME_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              )}
               <div className="relative flex-1 min-w-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
@@ -246,6 +352,34 @@ const AdminMasterDataPage = () => {
           </div>
         </div>
 
+        {activeTab === SCHEME_TAB && selectedIds.size > 0 && (
+          <div className="bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="text-sm font-medium text-purple-900">
+              {selectedIds.size} record{selectedIds.size > 1 ? 's' : ''} selected
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleExportSchemeSelected('excel')}
+                disabled={exportingSelected}
+                className="flex items-center px-3 py-1.5 text-sm bg-white border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-50"
+              >
+                {exportingSelected ? <Loader2 size={16} className="mr-1.5 animate-spin" /> : <FileSpreadsheet size={16} className="mr-1.5" />}
+                Export Selected (Excel)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExportSchemeSelected('pdf')}
+                disabled={exportingSelected}
+                className="flex items-center px-3 py-1.5 text-sm bg-white border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-50"
+              >
+                {exportingSelected ? <Loader2 size={16} className="mr-1.5 animate-spin" /> : <FileText size={16} className="mr-1.5" />}
+                Export Selected (PDF)
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
             <div className="text-sm text-gray-600">
@@ -289,6 +423,22 @@ const AdminMasterDataPage = () => {
                         <th className="px-4 py-3 text-left font-semibold">Name</th>
                         <th className="px-4 py-3 text-left font-semibold">Phone no</th>
                         <th className="px-4 py-3 text-left font-semibold">Date & Time</th>
+                      </>
+                    ) : activeTab === SCHEME_TAB ? (
+                      <>
+                        <th className="px-4 py-3 text-left">
+                          <input
+                            type="checkbox"
+                            checked={allRowsOnPageSelected}
+                            onChange={toggleSelectAllOnPage}
+                            aria-label="Select all rows on this page"
+                          />
+                        </th>
+                        <th className="px-4 py-3 text-left font-semibold">Scheme Name</th>
+                        <th className="px-4 py-3 text-left font-semibold">Applicant Name</th>
+                        <th className="px-4 py-3 text-left font-semibold">Phone Number</th>
+                        <th className="px-4 py-3 text-left font-semibold">Business Name</th>
+                        <th className="px-4 py-3 text-left font-semibold">Export</th>
                       </>
                     ) : activeTab === CLIENT_SCREENING_TAB ? (
                       <>
@@ -344,6 +494,51 @@ const AdminMasterDataPage = () => {
                             <td className="px-4 py-3 font-medium text-gray-900">{showCell(r.name)}</td>
                             <td className="px-4 py-3 whitespace-nowrap">{showCell(r.phone)}</td>
                             <td className="px-4 py-3 whitespace-nowrap text-gray-500">{showCell(r.address)}</td>
+                          </>
+                        ) : activeTab === SCHEME_TAB ? (
+                          <>
+                            <td className="px-4 py-3">
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.has(r._id)}
+                                onChange={() => toggleRowSelected(r._id)}
+                                aria-label={`Select ${r.name || 'record'}`}
+                              />
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">{showCell(r.scheme_name || r.templateLabel)}</td>
+                            <td className="px-4 py-3 font-medium text-gray-900">{showCell(r.name)}</td>
+                            <td className="px-4 py-3 whitespace-nowrap">{showCell(r.phone)}</td>
+                            <td className="px-4 py-3">{showCell(r.business_job)}</td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  title="Export this record as Excel"
+                                  onClick={() => handleExportSchemeRecord(r._id, 'excel')}
+                                  disabled={exportingRecordId === r._id}
+                                  className="p-1.5 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                                >
+                                  {exportingRecordId === r._id ? (
+                                    <Loader2 size={14} className="animate-spin" />
+                                  ) : (
+                                    <FileSpreadsheet size={14} />
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  title="Export this record as PDF"
+                                  onClick={() => handleExportSchemeRecord(r._id, 'pdf')}
+                                  disabled={exportingRecordId === r._id}
+                                  className="p-1.5 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                                >
+                                  {exportingRecordId === r._id ? (
+                                    <Loader2 size={14} className="animate-spin" />
+                                  ) : (
+                                    <FileText size={14} />
+                                  )}
+                                </button>
+                              </div>
+                            </td>
                           </>
                         ) : activeTab === CLIENT_SCREENING_TAB ? (
                           <>

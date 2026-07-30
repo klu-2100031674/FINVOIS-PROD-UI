@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProfile, updateProfile, selectProfile, selectUserLoading } from '../store/slices/userSlice';
 import ClientLayout from '../components/layouts/ClientLayout';
+import { ProfileSecuritySection } from '../components/common';
 import { User, Mail, Phone, Save, ShieldAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -171,6 +172,14 @@ const CustomerProfilePage = () => {
               </button>
             </div>
           </form>
+        </div>
+
+        <div className="mt-6">
+          <ProfileSecuritySection
+            user={profile}
+            onUpdated={() => dispatch(fetchProfile())}
+            variant="card"
+          />
         </div>
       </div>
     </ClientLayout>

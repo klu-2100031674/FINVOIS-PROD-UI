@@ -182,7 +182,7 @@ const FRCC3Form = ({
     'Prepared By': {
       'j96': 'PARVEZ AND NARAYANA',
       'j97': 'Chartered Accountants',
-      'j98': '',
+      'j98': 'Vijayawada',
       'j99': '9014221011',
       'bank_name': '',
       'branch_name': '',

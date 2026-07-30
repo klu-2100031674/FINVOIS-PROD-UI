@@ -357,6 +357,18 @@ export const commissionAPI = {
 // ============================================================================
 
 export const userAPI = {
+  updatePassword: async (currentPassword, newPassword) => {
+    const payload = { new_password: newPassword };
+    if (currentPassword) payload.current_password = currentPassword;
+    const response = await apiClient.patch('/users/password', payload);
+    return response.data;
+  },
+
+  linkGoogle: async (idToken) => {
+    const response = await apiClient.post('/users/link-google', { idToken });
+    return response.data;
+  },
+
   // Get user profile
   getProfile: async () => {
     const response = await apiClient.get('/users/profile');

@@ -251,7 +251,7 @@ const FRCC2Form = ({
       "bank_name": "", "branch_name": "",
       "j123": "PARVEZ AND NARAYANA",
       "j124": "Chartered Accountants",
-      "j125": "",
+      "j125": "Vijayawada",
       "j126": "9014221011",
       "required_stamp": FRCC_REQUIRED_STAMP_DEFAULT,
     }

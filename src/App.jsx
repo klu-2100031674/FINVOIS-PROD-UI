@@ -5,7 +5,7 @@
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useAuth } from "./hooks";
 import {
@@ -120,6 +120,7 @@ import CompanyUsersPage from "./pages/company/CompanyUsersPage";
 import CompanyUserReportsByPersonPage from "./pages/company/CompanyUserReportsByPersonPage";
 import CompanyUserDashboardPage from "./pages/company/user/CompanyUserDashboardPage";
 import CompanyUserProfilePage from "./pages/company/user/CompanyUserProfilePage";
+import SimpleRoleProfilePage from "./pages/SimpleRoleProfilePage";
 import CompanyUserGeneratePage from "./pages/company/user/CompanyUserGeneratePage";
 import CompanyUserReportsPage from "./pages/company/user/CompanyUserReportsPage";
 import FRCC2FormPage from "./pages/FRCC2FormPage";
@@ -1258,6 +1259,14 @@ function App() {
             </MsmeDprViewerRoute>
           }
         />
+        <Route
+          path="/msme-dpr/profile"
+          element={
+            <MsmeDprViewerRoute>
+              <SimpleRoleProfilePage />
+            </MsmeDprViewerRoute>
+          }
+        />
 
         {/* Department Dashboard */}
         <Route
@@ -1265,6 +1274,14 @@ function App() {
           element={
             <DepartmentRoute>
               <DepartmentDashboardPage />
+            </DepartmentRoute>
+          }
+        />
+        <Route
+          path="/department/profile"
+          element={
+            <DepartmentRoute>
+              <SimpleRoleProfilePage />
             </DepartmentRoute>
           }
         />

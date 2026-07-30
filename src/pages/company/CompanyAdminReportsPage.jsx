@@ -73,12 +73,24 @@ const CompanyAdminReportsPage = () => {
   const fetchReportTypes = useCallback(async () => {
     try {
       const response = await api.get('/admin-reports/meta/report-types');
+      const apiOptions = response.data?.data?.options;
+      if (Array.isArray(apiOptions) && apiOptions.length > 0) {
+        setReportTypeOptions(
+          apiOptions
+            .map((opt) => ({
+              value: String(opt.value || opt).trim(),
+              label: String(opt.label || opt.value || opt).trim(),
+            }))
+            .filter((opt) => opt.value)
+        );
+        return;
+      }
       const types = response.data?.data?.report_types || [];
       const templateIds = response.data?.data?.template_ids || [];
       const merged = Array.from(new Set([...(types || []), ...(templateIds || [])].filter(Boolean).map(String))).sort(
         (a, b) => a.localeCompare(b)
       );
-      setReportTypeOptions(merged);
+      setReportTypeOptions(merged.map((v) => ({ value: v, label: v })));
     } catch (error) {
       // Non-blocking: still allow search by text
       console.error('Error fetching report types:', error);
@@ -325,11 +337,15 @@ const CompanyAdminReportsPage = () => {
                 title="Filter by report type"
               >
                 <option value="">All Types</option>
-                {reportTypeOptions.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
+                {reportTypeOptions.map((opt) => {
+                  const value = typeof opt === 'string' ? opt : opt.value;
+                  const label = typeof opt === 'string' ? opt : (opt.label || opt.value);
+                  return (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  );
+                })}
               </select>
             </div>
             <div className="flex-1 relative">

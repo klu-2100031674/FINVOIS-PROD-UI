@@ -6,22 +6,19 @@ import {
   CreditCard, 
   Smartphone, 
   Save,
-  Eye,
-  EyeOff,
-  Lock,
   Shield,
   Gift
 } from 'lucide-react';
 import { AgentLayout } from '../../components/layouts';
+import { ProfileSecuritySection } from '../../components/common';
 import useAuth from '../../hooks/useAuth';
 import api from '../../api/apiClient';
 import toast from 'react-hot-toast';
 
 const AgentProfilePage = () => {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingPayment, setIsEditingPayment] = useState(false);
   
@@ -43,12 +40,6 @@ const AgentProfilePage = () => {
 
   const [upiDetails, setUpiDetails] = useState({
     upi_id: ''
-  });
-
-  const [passwordData, setPasswordData] = useState({
-    current_password: '',
-    new_password: '',
-    confirm_password: ''
   });
 
   const [originalProfileData, setOriginalProfileData] = useState({
@@ -109,11 +100,6 @@ const AgentProfilePage = () => {
   const handleUpiChange = (e) => {
     const { name, value } = e.target;
     setUpiDetails(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handlePasswordChange = (e) => {
-    const { name, value } = e.target;
-    setPasswordData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSaveProfile = async () => {
@@ -191,32 +177,6 @@ const AgentProfilePage = () => {
       toast.success('Payment details updated successfully');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update payment details');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleChangePassword = async () => {
-    if (passwordData.new_password !== passwordData.confirm_password) {
-      toast.error('New passwords do not match');
-      return;
-    }
-
-    if (passwordData.new_password.length < 6) {
-      toast.error('Password must be at least 6 characters');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await api.patch('/users/password', {
-        current_password: passwordData.current_password,
-        new_password: passwordData.new_password
-      });
-      toast.success('Password changed successfully');
-      setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to change password');
     } finally {
       setLoading(false);
     }
@@ -568,77 +528,7 @@ const AgentProfilePage = () => {
 
           {/* Security Tab */}
           {activeTab === 'security' && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-4 flex items-center">
-                  <Lock size={20} className="mr-2 text-purple-600" />
-                  Change Password
-                </h3>
-                <div className="max-w-md space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Current Password
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        name="current_password"
-                        value={passwordData.current_password}
-                        onChange={handlePasswordChange}
-                        className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        placeholder="Enter current password"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                      >
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      New Password
-                    </label>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      name="new_password"
-                      value={passwordData.new_password}
-                      onChange={handlePasswordChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="Enter new password"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Confirm New Password
-                    </label>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      name="confirm_password"
-                      value={passwordData.confirm_password}
-                      onChange={handlePasswordChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="Confirm new password"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-start pt-4 border-t border-gray-200">
-                <button
-                  onClick={handleChangePassword}
-                  disabled={loading || !passwordData.current_password || !passwordData.new_password || !passwordData.confirm_password}
-                  className="flex items-center px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
-                >
-                  <Lock size={18} className="mr-2" />
-                  {loading ? 'Updating...' : 'Update Password'}
-                </button>
-              </div>
-            </div>
+            <ProfileSecuritySection user={user} onUpdated={refreshUser} variant="flush" />
           )}
         </div>
       </div>

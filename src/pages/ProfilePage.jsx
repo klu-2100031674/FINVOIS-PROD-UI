@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useAuth } from '../hooks';
 import { fetchProfile, updateProfile, selectProfile, selectUserLoading, selectUserError } from '../store/slices/userSlice';
-import { Button, Input, Loading } from '../components/common';
+import { Input, Loading, ProfileSecuritySection } from '../components/common';
 import toast from 'react-hot-toast';
 import {
   User,
@@ -275,12 +275,13 @@ const ProfilePage = ({ variant }) => {
               </div>
             )}
 
-            {/* Navigation Menu (Desktop) */}
-            <nav className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2 hidden lg:block">
+            {/* Navigation Menu (Responsive) */}
+            <nav className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2 flex flex-row lg:flex-col gap-1 overflow-x-auto lg:overflow-x-visible">
               <button
+                type="button"
                 onClick={() => setActiveTab('personal')}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all ${activeTab === 'personal'
-                    ? 'bg-purple-50 text-purple-700'
+                className={`flex-none lg:w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all whitespace-nowrap ${activeTab === 'personal'
+                    ? 'bg-purple-50 text-purple-700 font-semibold'
                     : 'text-gray-600 hover:bg-gray-50'
                   }`}
               >
@@ -289,9 +290,10 @@ const ProfilePage = ({ variant }) => {
               </button>
               {!isExecutiveProfile && (
                 <button
+                  type="button"
                   onClick={() => setActiveTab('company')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all ${activeTab === 'company'
-                      ? 'bg-purple-50 text-purple-700'
+                  className={`flex-none lg:w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all whitespace-nowrap ${activeTab === 'company'
+                      ? 'bg-purple-50 text-purple-700 font-semibold'
                       : 'text-gray-600 hover:bg-gray-50'
                     }`}
                 >
@@ -299,10 +301,17 @@ const ProfilePage = ({ variant }) => {
                   Company Details
                 </button>
               )}
-              <div className="h-px bg-gray-100 my-2" />
-              <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-400 cursor-not-allowed">
+              <div className="hidden lg:block h-px bg-gray-100 my-2" />
+              <button
+                type="button"
+                onClick={() => setActiveTab('security')}
+                className={`flex-none lg:w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all whitespace-nowrap ${activeTab === 'security'
+                    ? 'bg-purple-50 text-purple-700 font-semibold'
+                    : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+              >
                 <ShieldCheck className="w-4 h-4" />
-                Security (Coming Soon)
+                Security Settings
               </button>
             </nav>
           </div>
@@ -610,7 +619,19 @@ const ProfilePage = ({ variant }) => {
                   </div>
                 )}
 
+                {/* Security Tab */}
+                {activeTab === 'security' && (
+                  <div className="animate-fadeIn">
+                    <ProfileSecuritySection
+                      user={dataSource}
+                      onUpdated={() => dispatch(fetchProfile())}
+                      variant="flush"
+                    />
+                  </div>
+                )}
+
                 {/* Mobile FAB Save Button */}
+                {activeTab !== 'security' && (
                 <div className="fixed bottom-6 right-6 md:hidden">
                   <button
                     type="submit"
@@ -620,6 +641,7 @@ const ProfilePage = ({ variant }) => {
                     {isSubmitting ? <Loading small white /> : <Save className="w-6 h-6" />}
                   </button>
                 </div>
+                )}
               </form>
             </div>
           </div>

@@ -137,6 +137,20 @@ export const authAPI = {
   googleAuth: async (idToken) => {
     try {
       const response = await apiClient.post('/users/google-auth', { idToken });
+      const user = response.data?.data?.user;
+      if (user) {
+        const approvalStatus = resolveSignupApprovalStatus(user);
+        if (approvalStatus !== 'approved') {
+          setAuthToken(null);
+          const userKey = import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data';
+          localStorage.removeItem(userKey);
+          const message =
+            approvalStatus === 'rejected'
+              ? 'Your registration was not approved. Please contact support.'
+              : 'Your account is pending admin approval. You can sign in after an admin approves your registration.';
+          throw { error: message, message, signup_approval_status: approvalStatus };
+        }
+      }
       if (response.data.success && response.data.data?.token) {
         setAuthToken(response.data.data.token);
       }

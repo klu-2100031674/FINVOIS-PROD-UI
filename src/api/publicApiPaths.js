@@ -5,7 +5,13 @@ export function isPublicAnonymousApiPath(url) {
   const u = String(url || '');
   const isClientScreeningSubmit =
     u.includes('/client-screening') && !u.includes('/client-screening/mail-routing');
+  // Unified scheme route (form/mail/chat via action field) — public for the
+  // active schemes, same as the legacy per-action paths below.
+  const isUnifiedSchemeRoute =
+    u.includes('/schemes/cmep') || u.includes('/schemes/pmegp') || u.includes('/schemes/ap-idp');
+
   return (
+    isUnifiedSchemeRoute ||
     u.includes('/schemes/mail') ||
     u.includes('/cmep-ai/chat') ||
     u.includes('/cmep-ai/chat/stream') ||

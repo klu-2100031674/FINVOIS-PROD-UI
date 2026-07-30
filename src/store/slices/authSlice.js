@@ -53,7 +53,26 @@ const initialState = {
 const extractErrorMessage = (err) => {
   if (!err) return 'An error occurred';
   if (typeof err === 'string') return err;
+
+  // Prefer structured signup-approval errors (avoid soft "successfully registered" copy)
+  const approvalStatus = err.signup_approval_status;
+  if (approvalStatus === 'pending') {
+    return (
+      err.error ||
+      'Your account is pending admin approval. You can sign in after an admin approves your registration.'
+    );
+  }
+  if (approvalStatus === 'rejected') {
+    return (
+      err.error ||
+      'Your registration was not approved. Please contact support.'
+    );
+  }
+
   // If API threw response.data directly, that may contain message or error
+  if (err.error && typeof err.error === 'string' && /pending admin approval|not approved/i.test(err.error)) {
+    return err.error;
+  }
   if (err.message && typeof err.message === 'string') return err.message;
   if (err.error && typeof err.error === 'string') return err.error;
   if (err.msg && typeof err.msg === 'string') return err.msg;

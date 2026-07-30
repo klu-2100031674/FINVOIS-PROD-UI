@@ -28,7 +28,8 @@ export function dashboardHomePath(roleOrUser) {
 
 export function profilePathForRole(roleOrUser) {
   const r = navigationRole(roleOrUser);
-  if (r === 'msme_dpr_viewer') return '/msme-dpr-dashboard';
+  if (r === 'msme_dpr_viewer') return '/msme-dpr/profile';
+  if (r === 'department') return '/department/profile';
   if (r === 'company_admin') return '/company/profile';
   if (r === 'company_user') return '/company/user/profile';
   if (r === 'admin') return '/admin/profile';

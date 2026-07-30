@@ -87,6 +87,13 @@ const PublicFormPage = () => {
   const finishSuccessfulSubmit = async (token, user, requestId) => {
     dispatch(setAuthData({ token, user }));
     await uploadPendingAttachments(requestId);
+    if (requestId) {
+      try {
+        await api.post(`/customer/department-requests/${requestId}/notify-submission`);
+      } catch {
+        // Non-blocking: email may already have been sent or deferred flush failed silently.
+      }
+    }
     toast.success('Account verified and request submitted successfully!');
     setStep('done');
     setTimeout(() => {

@@ -30,6 +30,17 @@ const adminExecutiveReportsAPI = {
     );
   },
 
+  // Exports one (single file) or many (zip, one file per record) Scheme Data
+  // submissions with full form data + AI chat transcript + metadata.
+  // responseType 'blob' is required here (not JSON) since the server streams
+  // back binary xlsx/pdf/zip bytes.
+  exportSchemeRecords: ({ ids, format }) =>
+    apiClient.post(
+      '/admin-executive-reports/master-data/scheme/export',
+      { ids, format },
+      { responseType: 'blob' }
+    ),
+
   listReports: (params = {}) => {
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {

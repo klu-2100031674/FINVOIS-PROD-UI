@@ -80,7 +80,7 @@ const FRCC6Form = ({
     'Prepared By': {
       i158: 'PARVEZ AND NARAYANA',
       i159: 'Chartered Accountants',
-      i160: '',
+      i160: 'Vijayawada',
       i161: '9014221011',
       bank_name: '',
       branch_name: '',

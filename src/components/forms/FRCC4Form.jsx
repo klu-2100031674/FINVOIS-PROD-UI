@@ -82,7 +82,8 @@ const FRCC4Form = ({
     },
     'Prepared By': {
       bank_name: '', branch_name: '',
-      j100: '', j101: '', j102: '', j103: '',
+      j100: 'PARVEZ AND NARAYANA', j101: 'Chartered Accountants',
+      j102: 'Vijayawada', j103: '9014221011',
       required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
       ...(initialData['Prepared By'] || {})
     }

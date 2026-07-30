@@ -1177,7 +1177,8 @@ const FRTermLoanWithStockForm = ({
     if (updatedFormData['Term Loan Details']?.['i52'] && updatedFormData['Term Loan Details']['i52'].includes('-')) {
       const [year, month] = updatedFormData['Term Loan Details']['i52'].split('-');
       if (year && month) {
-        updatedFormData['Term Loan Details']['i52'] = `${month.padStart(2, '0')}-01-${year}`;
+        // Excel expects 01-MM-YYYY (DMY day=1) so Apr-2026 → 01-04-2026
+        updatedFormData['Term Loan Details']['i52'] = `01-${month.padStart(2, '0')}-${year}`;
       }
     }
     if (updatedFormData['Term Loan Details']?.['i53'] && updatedFormData['Term Loan Details']['i53'].includes('-')) {

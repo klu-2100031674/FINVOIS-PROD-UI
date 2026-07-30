@@ -1,5 +1,5 @@
 import React, { Fragment, useState, useEffect, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   LogOut,
   Inbox,
@@ -18,6 +18,7 @@ import {
   TrendingUp,
   RefreshCw,
   Mail,
+  User,
 } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import DepartmentEmailOverlay from './DepartmentEmailOverlay';
@@ -137,12 +138,75 @@ function isPrimaryField(field) {
   return false;
 }
 
+function collectFormFileDocs(request) {
+  const fields = request?.formId?.fields || [];
+  const submittedData = request?.submittedData || {};
+  const docs = [];
+  for (const field of fields) {
+    if (String(field?.type || '').toLowerCase() !== 'file') continue;
+    const val = submittedData[field.id];
+    if (!val || typeof val !== 'object' || !val.fileName) continue;
+    const href = val.base64 || val.dataUrl || val.data || val.url || null;
+    docs.push({
+      id: `form-file-${field.id}`,
+      fileName: val.fileName,
+      kind: 'document',
+      url: href,
+      source: 'form',
+    });
+  }
+  return docs;
+}
+
 function RequestDetailPanel({ request }) {
   const fields = request.formId?.fields || [];
   const submittedData = request.submittedData || {};
   const detailFields = fields.filter((f) => !isPrimaryField(f));
+  const formFileDocs = useMemo(() => collectFormFileDocs(request), [request]);
+  const [uploadedDocs, setUploadedDocs] = useState([]);
+  const [docsLoading, setDocsLoading] = useState(false);
 
-  if (detailFields.length === 0) {
+  useEffect(() => {
+    let cancelled = false;
+    const requestId = request?._id;
+    if (!requestId) return undefined;
+
+    const load = async () => {
+      setDocsLoading(true);
+      try {
+        const res = await api.get(`/govt-forms/requests/${requestId}/documents`);
+        if (!cancelled) {
+          setUploadedDocs(Array.isArray(res.data?.data) ? res.data.data : []);
+        }
+      } catch {
+        if (!cancelled) setUploadedDocs([]);
+      } finally {
+        if (!cancelled) setDocsLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [request?._id]);
+
+  const docs = useMemo(() => {
+    const merged = [...formFileDocs];
+    const seen = new Set(formFileDocs.map((d) => String(d.fileName || '').toLowerCase()));
+    for (const doc of uploadedDocs) {
+      const name = String(doc.fileName || '').toLowerCase();
+      if (name && seen.has(name)) continue;
+      if (name) seen.add(name);
+      merged.push(doc);
+    }
+    return merged;
+  }, [formFileDocs, uploadedDocs]);
+
+  const hasDetails = detailFields.length > 0;
+  const hasDocs = docs.length > 0;
+
+  if (!hasDetails && !hasDocs && !docsLoading) {
     return (
       <div className="px-4 py-3 bg-gray-50 border-t text-sm text-gray-500">
         No additional form details submitted.
@@ -151,21 +215,59 @@ function RequestDetailPanel({ request }) {
   }
 
   return (
-    <div className="px-4 py-3 bg-gray-50 border-t">
-      <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
-        Additional form details
-      </p>
-      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
-        {detailFields.map((field) => (
-          <div key={field.id}>
-            <dt className="font-medium text-gray-700">{field.label}</dt>
-            <dd className="text-gray-600 mt-0.5 break-words">{formatFieldValue(submittedData[field.id])}</dd>
-          </div>
-        ))}
-      </dl>
-      <p className="text-xs text-gray-400 mt-3">
-        Applicant name: {getContactValue(submittedData, fields, 'name')}
-      </p>
+    <div className="px-4 py-3 bg-gray-50 border-t text-sm text-gray-600 space-y-3">
+      {hasDetails && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+            Additional form details
+          </p>
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+            {detailFields.map((field) => (
+              <div key={field.id}>
+                <dt className="font-medium text-gray-700">{field.label}</dt>
+                <dd className="text-gray-600 mt-0.5 break-words">{formatFieldValue(submittedData[field.id])}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="text-xs text-gray-400 mt-3">
+            Applicant name: {getContactValue(submittedData, fields, 'name')}
+          </p>
+        </div>
+      )}
+
+      {(hasDocs || docsLoading) && (
+        <div>
+          <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
+            Documents {hasDocs ? `(${docs.length})` : ''}
+          </p>
+          {docsLoading && !hasDocs ? (
+            <p className="text-xs text-gray-400">Loading documents…</p>
+          ) : (
+            <ul className="space-y-1">
+              {docs.map((doc) => (
+                <li key={doc.id || doc._id || doc.fileName} className="flex items-center gap-2">
+                  <FileText className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                  {doc.url ? (
+                    <a
+                      href={doc.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-purple-700 hover:underline truncate"
+                    >
+                      {doc.fileName}
+                    </a>
+                  ) : (
+                    <span className="text-sm text-gray-600 truncate">{doc.fileName}</span>
+                  )}
+                  {doc.kind && (
+                    <span className="text-[10px] uppercase text-gray-400 shrink-0">{doc.kind}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -594,7 +696,7 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
             <p className="text-sm text-gray-500 mt-1">Applicant submissions and report statuses</p>
           </div>
           <div className="flex items-center gap-2">
-            {adminView && selectedDeptId && (
+            {((adminView && selectedDeptId) || (!adminView && user?._id)) && (
               <button
                 type="button"
                 onClick={() => setEmailOverlayOpen(true)}
@@ -1027,13 +1129,22 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
               {user?.name || 'Department'} Dashboard
             </span>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 text-sm font-medium text-red-600 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors"
-          >
-            <LogOut size={16} />
-            Logout
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/department/profile"
+              className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-lg transition-colors border border-gray-200"
+            >
+              <User size={16} />
+              Profile
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 text-sm font-medium text-red-600 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors"
+            >
+              <LogOut size={16} />
+              Logout
+            </button>
+          </div>
         </header>
       )}
 
@@ -1138,11 +1249,11 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
           </div>
         </div>
       )}
-      {adminView && selectedDeptId && (
+      {((adminView && selectedDeptId) || (!adminView && user?._id)) && (
         <DepartmentEmailOverlay
           isOpen={emailOverlayOpen}
           onClose={() => setEmailOverlayOpen(false)}
-          departmentId={selectedDeptId}
+          departmentId={adminView ? selectedDeptId : user._id}
         />
       )}
     </div>

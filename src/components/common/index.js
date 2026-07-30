@@ -11,3 +11,4 @@ export { default as Modal } from './Modal';
 export { default as PaymentModal } from './PaymentModal';
 export { default as AnalysisSheetsModal } from './AnalysisSheetsModal';
 export { default as ReportGenerationModal } from './ReportGenerationModal';
+export { default as ProfileSecuritySection } from './ProfileSecuritySection';

@@ -936,7 +936,8 @@ const FRTermLoanCCForm = ({
     if (updatedFormData['Means of Finance details']?.['i59']) {
       const [year, month] = updatedFormData['Means of Finance details']['i59'].split('-');
       if (year && month) {
-        updatedFormData['Means of Finance details']['i59'] = `${month.padStart(2, '0')}-01-${year}`;
+        // Excel expects 01-MM-YYYY (DMY day=1) so Apr-2026 → 01-04-2026
+        updatedFormData['Means of Finance details']['i59'] = `01-${month.padStart(2, '0')}-${year}`;
       }
     }
     if (updatedFormData['Means of Finance details']?.['i60']) {

@@ -30,6 +30,8 @@ export function formatRoleForDisplay(role, userContext = null) {
   if (r === 'company_user') return 'Company user';
   if (r === 'customer_service') return 'Customer Service';
   if (r === 'department') return 'Department';
+  if (r === 'msme_dpr_viewer') return 'MSME DPR Viewer';
+  if (r === 'customer') return 'Customer';
   if (r === 'user') {
     if (hasCompanyContext(userContext)) return 'Company user';
     return 'User';

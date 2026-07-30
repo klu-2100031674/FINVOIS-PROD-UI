@@ -29,6 +29,8 @@ export async function fetchMsmeDprNotificationEmails() {
 }
 
 export async function saveMsmeDprNotificationEmails(emails) {
-  const response = await apiClient.put('/msme-dpr-leads/notification-emails', { emails });
+  const response = await apiClient.put('/msme-dpr-leads/notification-emails', {
+    emails,
+  });
   return response.data;
 }

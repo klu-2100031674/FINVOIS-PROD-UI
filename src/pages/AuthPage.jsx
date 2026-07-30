@@ -189,9 +189,13 @@ const AuthPage = () => {
       const result = await googleLogin(idToken);
       
       const loggedInUser = result?.data?.user;
-      const userRole = loggedInUser
-        ? normalizeRoleFromUser(loggedInUser)
-        : 'user';
+      if (!loggedInUser) {
+        toast.error('Google sign-in failed. Please try again.');
+        logout();
+        return;
+      }
+
+      const userRole = normalizeRoleFromUser(loggedInUser);
       const emailVerified = loggedInUser?.email_verified;
       const isActive = loggedInUser?.is_active;
       const approvalStatus = resolveSignupApprovalStatus(loggedInUser);
@@ -203,7 +207,9 @@ const AuthPage = () => {
       }
 
       if (approvalStatus === 'pending') {
-        toast.error('Your account is pending admin approval.');
+        toast.error(
+          'Your account is pending admin approval. You can sign in after an admin approves your registration.'
+        );
         logout();
         return;
       }
@@ -237,7 +243,22 @@ const AuthPage = () => {
       }
     } catch (err) {
       console.error('Google login error:', err);
-      const errorMessage = typeof err === 'string' ? err : (err?.message || 'Google login failed');
+      const approvalStatus =
+        typeof err === 'object' && err ? err.signup_approval_status : undefined;
+      let errorMessage =
+        typeof err === 'string'
+          ? err
+          : err?.error || err?.message || 'Google login failed';
+      if (approvalStatus === 'pending' || /pending admin approval/i.test(String(errorMessage))) {
+        errorMessage =
+          'Your account is pending admin approval. You can sign in after an admin approves your registration.';
+      } else if (
+        approvalStatus === 'rejected' ||
+        /not approved/i.test(String(errorMessage))
+      ) {
+        errorMessage =
+          'Your registration was not approved. Please contact support or ask an admin to allow re-registration.';
+      }
       setApiError(errorMessage);
       toast.error(errorMessage);
     } finally {
