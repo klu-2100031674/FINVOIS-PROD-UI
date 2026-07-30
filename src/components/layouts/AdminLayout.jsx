@@ -187,11 +187,11 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
     }
 
     if (role === 'admin') {
-      items.push({
-        to: '/admin/schemes',
-        icon: Landmark,
-        label: 'Schemes',
-      });
+      // items.push({
+      //   to: '/admin/schemes',
+      //   icon: Landmark,
+      //   label: 'Schemes',
+      // });
       items.push({
         to: '/admin/client-screening/emails',
         icon: UserCheck,
