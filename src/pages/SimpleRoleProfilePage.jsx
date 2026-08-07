@@ -1,5 +1,5 @@
 /**
- * Lightweight profile for department and msme_dpr_viewer roles.
+ * Lightweight profile for department, msme_dpr_viewer, and mepma_dpr_viewer roles.
  * Personal info + shared password / Google linking.
  */
 import React, { useEffect, useState } from 'react';

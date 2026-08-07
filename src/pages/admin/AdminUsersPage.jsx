@@ -325,6 +325,7 @@ const AdminUsersPage = () => {
               <option value="company_admin">Company Admin</option>
               <option value="agent">Channel partner</option>
               <option value="executive">Executive</option>
+              <option value="mepma_dpr_viewer">MEPMA DPR Viewer</option>
               <option value="user">User</option>
             </select>
           </div>
@@ -853,6 +854,7 @@ const AdminUsersPage = () => {
                   <option value="user">User</option>
                   <option value="agent">Channel Partner</option>
                   <option value="executive">Executive</option>
+                  <option value="mepma_dpr_viewer">MEPMA DPR Viewer</option>
                   <option value="lead_manager">Service Manager</option>
                   <option value="admin">Super Admin</option>
                 </select>

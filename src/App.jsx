@@ -8,6 +8,7 @@ import { Toaster } from "react-hot-toast";
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useAuth } from "./hooks";
+// import { GoogleReferralPromptModal } from "./components/common"; // not in v3.12 MEMPA
 import {
   AuthPage,
   DashboardPage,
@@ -39,6 +40,8 @@ import {
   ExecutiveSbiOfficePage,
   ExecutiveSbiBussinessPage,
   ExecutiveIncomeTaxPage,
+  // ExecutiveBoiPage, // not in v3.12 MEMPA
+  // ExecutiveBoiHousingPage, // not in v3.12 MEMPA
   ExecutiveReportsPage,
   ExecutiveDraftsPage,
   AdminPage,
@@ -81,6 +84,7 @@ import {
   AdminFranchiseApplicationsPage,
   ClientScreeningMailPage,
   AdminMsmeDprDashboardPage,
+  AdminMepmaDprDashboardPage,
   AdminGovtFormsPage,
   AdminDepartmentDashboardPage,
 } from "./pages/admin";
@@ -149,6 +153,7 @@ import ServiceDetailPage from "./pages/ServiceDetailPage";
 import ServiceLayout from "./components/layouts/ServiceLayout";
 import MsmeDprLeadFormPage from "./pages/msmeDpr/MsmeDprLeadFormPage";
 import MsmeDprDashboardPage from "./pages/msmeDpr/MsmeDprDashboardPage";
+import MepmaDprDashboardPage from "./pages/mepmaDpr/MepmaDprDashboardPage";
 import FranchisesPage from "./pages/franchise/FranchisesPage";
 import FranchiseDetailPage from "./pages/franchise/FranchiseDetailPage";
 import FranchiseApplyPage from "./pages/franchise/FranchiseApplyPage";
@@ -168,6 +173,8 @@ import BlogPage from "./components/LandingPage/pages/BlogPage";
 import { AboutPage, CareersPage, PartnersPage, ContactPage, HelpCenterPage, APIPage } from "./components/LandingPage/pages/CompanyPages";
 import { PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, CookiesPage } from "./components/LandingPage/pages/LegalPages";
 import { effectiveUserRole } from "./utils/normalizeUserRole";
+// import { isExecutiveRole } from "./utils/normalizeUserRole"; // not in v3.12 MEMPA
+// import { getBankForExecutiveRole } from "./utils/executiveTemplates"; // not in v3.12 MEMPA
 import { dashboardHomePath } from "./utils/routePaths";
 import { canAccessApplication } from "./utils/signupApproval";
 
@@ -188,6 +195,52 @@ const AuthCompanyStatusSync = () => {
   }, [isAuthenticated, user, getProfile]);
   return null;
 };
+
+/**
+ * After Google signup, show an optional referral-code dialog once
+ * (driven by `referral_prompt_pending` from the API — cleared on apply/skip).
+ * Not in v3.12 MEMPA — keep commented until that module ships.
+ */
+// const GoogleReferralPromptHost = () => {
+//   const { isAuthenticated, user, updateUser } = useAuth();
+//   const [open, setOpen] = useState(false);
+//
+//   const needsPrompt =
+//     isAuthenticated &&
+//     user &&
+//     (user.needs_referral_prompt === true ||
+//       (user.referral_prompt_pending === true && !user.agent_id));
+//
+//   useEffect(() => {
+//     setOpen(Boolean(needsPrompt));
+//   }, [needsPrompt]);
+//
+//   if (!needsPrompt && !open) return null;
+//
+//   const clearPromptOnUser = (extra = {}) => {
+//     updateUser({
+//       referral_prompt_pending: false,
+//       needs_referral_prompt: false,
+//       ...extra,
+//     });
+//   };
+//
+//   return (
+//     <GoogleReferralPromptModal
+//       isOpen={open}
+//       onClose={() => {
+//         setOpen(false);
+//         clearPromptOnUser();
+//       }}
+//       onApplied={(data) => {
+//         setOpen(false);
+//         clearPromptOnUser({
+//           agent_id: data?.agent_id || true,
+//         });
+//       }}
+//     />
+//   );
+// };
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -254,6 +307,18 @@ const MsmeDprViewerRoute = ({ children }) => {
   return children;
 };
 
+const MepmaDprViewerRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const r = effectiveUserRole(user);
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  if (r !== 'mepma_dpr_viewer') {
+    return <Navigate to={dashboardHomePath(user)} replace />;
+  }
+  return children;
+};
+
 // Admin-only access to report validation (approve/reject/etc.).
 // Company admins don't get this — they are sent to /company/reports instead.
 const SuperAdminRoute = ({ children }) => {
@@ -311,6 +376,16 @@ const ExecutiveRoute = ({ children }) => {
   }
   return children;
 };
+
+// Not in v3.12 MEMPA — BOI/SBI bank-scoped executive routing
+// const ExecutiveBankRoute = ({ bank, children }) => {
+//   const { user } = useAuth();
+//   const allowedBank = getBankForExecutiveRole(effectiveUserRole(user));
+//   if (allowedBank && allowedBank !== bank) {
+//     return <Navigate to="/executive/dashboard" replace />;
+//   }
+//   return children;
+// };
 
 const DepartmentRoute = ({ children }) => {
   const { isAuthenticated, user } = useAuth();
@@ -482,6 +557,8 @@ const PublicRoute = ({ children }) => {
     return <Navigate to="/agent/dashboard" replace />;
   } else if (normalizedRole === 'msme_dpr_viewer') {
     return <Navigate to="/msme-dpr-dashboard" replace />;
+  } else if (normalizedRole === 'mepma_dpr_viewer') {
+    return <Navigate to="/mepma-dpr-dashboard" replace />;
   } else if (normalizedRole === 'customer') {
     return <Navigate to="/customer/dashboard" replace />;
   } else if (normalizedRole === 'department') {
@@ -494,6 +571,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthCompanyStatusSync />
+      {/* <GoogleReferralPromptHost /> */}{/* not in v3.12 MEMPA */}
       {/* Toast Notifications */}
       <Toaster
         position="top-right"
@@ -641,6 +719,28 @@ function App() {
             </ExecutiveRoute>
           }
         />
+        {/* Not in v3.12 MEMPA — BOI executive routes
+        <Route
+          path="/executive/templates/boi/*"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveBankRoute bank="BOI">
+                <ExecutiveBoiPage />
+              </ExecutiveBankRoute>
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/templates/boi-housing"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveBankRoute bank="BOI">
+                <ExecutiveBoiHousingPage />
+              </ExecutiveBankRoute>
+            </ExecutiveRoute>
+          }
+        />
+        */}
         <Route
           path="/executive/reports"
           element={
@@ -1236,6 +1336,14 @@ function App() {
           }
         />
         <Route
+          path="/admin/mepma-dpr-dashboard"
+          element={
+            <AdminOnlyRoute>
+              <AdminMepmaDprDashboardPage />
+            </AdminOnlyRoute>
+          }
+        />
+        <Route
           path="/admin/govt-forms"
           element={
             <AdminOnlyRoute>
@@ -1265,6 +1373,22 @@ function App() {
             <MsmeDprViewerRoute>
               <SimpleRoleProfilePage />
             </MsmeDprViewerRoute>
+          }
+        />
+        <Route
+          path="/mepma-dpr-dashboard"
+          element={
+            <MepmaDprViewerRoute>
+              <MepmaDprDashboardPage />
+            </MepmaDprViewerRoute>
+          }
+        />
+        <Route
+          path="/mepma-dpr/profile"
+          element={
+            <MepmaDprViewerRoute>
+              <SimpleRoleProfilePage />
+            </MepmaDprViewerRoute>
           }
         />
 

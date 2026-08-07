@@ -208,6 +208,11 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
         label: 'AP MSME DC',
       });
       items.push({
+        to: '/admin/mepma-dpr-dashboard',
+        icon: FileText,
+        label: 'MEPMA DC',
+      });
+      items.push({
         to: '/admin/govt-forms',
         icon: Layers,
         label: 'Govt Forms',

@@ -238,6 +238,8 @@ const AuthPage = () => {
         navigate('/agent/dashboard', { replace: true });
       } else if (userRole === 'msme_dpr_viewer') {
         navigate('/msme-dpr-dashboard', { replace: true });
+      } else if (userRole === 'mepma_dpr_viewer') {
+        navigate('/mepma-dpr-dashboard', { replace: true });
       } else {
         navigate('/dashboard', { replace: true });
       }
@@ -511,6 +513,8 @@ const ensureVmReady = async () => {
         navigate('/agent/dashboard', { replace: true });
       } else if (userRole === 'msme_dpr_viewer') {
         navigate('/msme-dpr-dashboard', { replace: true });
+      } else if (userRole === 'mepma_dpr_viewer') {
+        navigate('/mepma-dpr-dashboard', { replace: true });
       } else if (userRole === 'department') {
         navigate('/department/dashboard', { replace: true });
       } else {

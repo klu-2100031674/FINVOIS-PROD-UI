@@ -33,6 +33,7 @@ export function isPublicAnonymousApiPath(url) {
     isClientScreeningSubmit ||
     u.includes('/form-submissions/emi-calculator/submit') ||
     u.includes('/msme-dpr-leads/submit') ||
+    u.includes('/mepma-dpr-leads/submit') ||
     u.includes('/scheme-forms/')
   );
 }

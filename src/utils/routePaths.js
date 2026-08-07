@@ -18,6 +18,7 @@ export function dashboardHomePath(roleOrUser) {
   if (r === 'admin') return '/admin/dashboard';
   if (r === 'lead_manager') return '/admin/lead-manager/dashboard';
   if (r === 'msme_dpr_viewer') return '/msme-dpr-dashboard';
+  if (r === 'mepma_dpr_viewer') return '/mepma-dpr-dashboard';
   if (r === 'agent') return '/agent/dashboard';
   if (r === 'executive') return '/executive/dashboard';
   if (r === 'department') return '/department/dashboard';
@@ -29,6 +30,7 @@ export function dashboardHomePath(roleOrUser) {
 export function profilePathForRole(roleOrUser) {
   const r = navigationRole(roleOrUser);
   if (r === 'msme_dpr_viewer') return '/msme-dpr/profile';
+  if (r === 'mepma_dpr_viewer') return '/mepma-dpr/profile';
   if (r === 'department') return '/department/profile';
   if (r === 'company_admin') return '/company/profile';
   if (r === 'company_user') return '/company/user/profile';
