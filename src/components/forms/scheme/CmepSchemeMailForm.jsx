@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api, { REPORT_HEAVY_TIMEOUT } from '../../../api/apiClient';
-import { saveSchemeFormSession } from '../../../utils/schemeFormSession';
+import { resolveSchemeFormData, saveSchemeFormSession } from '../../../utils/schemeFormSession';
 import {
   CHALLENGE_OPTIONS,
   optionNameForMail,
@@ -23,12 +23,26 @@ const CmepSchemeMailForm = ({
   const [selected, setSelected] = useState(() => ({}));
   const [otherText, setOtherText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [cmepForm, setCmepForm] = useState(() => resolveSchemeFormData('cmepForm', linkState));
 
   useEffect(() => {
-    if (linkState?.cmepForm) {
-      saveSchemeFormSession('cmepForm', linkState.cmepForm);
+    const resolved = resolveSchemeFormData('cmepForm', linkState);
+    setCmepForm(resolved);
+    if (resolved) {
+      saveSchemeFormSession('cmepForm', resolved);
     }
   }, [linkState]);
+
+  const resolvedLinkState = useMemo(
+    () => (cmepForm ? { ...(linkState || {}), cmepForm } : linkState),
+    [linkState, cmepForm],
+  );
+
+  const displayName =
+    (fullName && fullName !== 'Applicant' ? fullName : '') ||
+    (cmepForm?.fullName || '').trim() ||
+    'Applicant';
+  const hasFormPayload = hasCmepFormPayload || !!cmepForm;
 
   const selectedEntries = useMemo(() => {
     return CHALLENGE_OPTIONS.filter((o) => selected[o.id]);
@@ -57,18 +71,21 @@ const CmepSchemeMailForm = ({
 
     const optionNames = selectedEntries.map((o) => optionNameForMail(o, o.id === 'other' ? otherDetail : ''));
     const optionIds = selectedEntries.map((o) => o.id);
+    const formData = resolveSchemeFormData('cmepForm', resolvedLinkState);
 
     setIsSending(true);
     try {
+      // Unified scheme route: schemeKey now lives in the URL, action selects the operation.
       await api.post(
-        '/support/cmep',
+        '/schemes/cmep',
         {
-          fullName,
+          action: 'mail',
+          fullName: displayName,
           selectedOptions: optionNames,
           selectedOptionIds: optionIds,
           otherText: otherOn ? otherText : '',
           source: supportSource,
-          formData: linkState?.cmepForm || null,
+          formData: formData || null,
         },
         { timeout: REPORT_HEAVY_TIMEOUT },
       );
@@ -86,7 +103,7 @@ const CmepSchemeMailForm = ({
     <div className="space-y-6 max-w-3xl mx-auto">
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Follow-up support</h1>
-        {!hasCmepFormPayload && (
+        {!hasFormPayload && (
           <p className="mt-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
             No CMEP form data was passed. You can still send a message; default name is shown as &quot;Applicant&quot;.{' '}
             <Link to={cmepFormPath} className="font-semibold underline text-amber-900">
@@ -139,7 +156,7 @@ const CmepSchemeMailForm = ({
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-gray-100">
           <Link
             to={cmepFormPath}
-            state={linkState}
+            state={resolvedLinkState}
             className="text-sm font-semibold text-gray-700 hover:text-gray-900 underline"
           >
             ← Back to form
@@ -147,7 +164,7 @@ const CmepSchemeMailForm = ({
           <div className="flex flex-wrap items-center gap-2 justify-end">
             <Link
               to={cmepAiChatPath}
-              state={linkState}
+              state={resolvedLinkState}
               className="px-5 py-2 border border-gray-300 text-gray-900 rounded-lg hover:bg-gray-50 transition-all duration-200 text-sm font-semibold"
             >
               Move to Next Page

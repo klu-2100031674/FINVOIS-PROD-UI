@@ -5,13 +5,29 @@
 
 export { default as AuthPage } from './AuthPage';
 export { default as DashboardPage } from './DashboardPage';
-export { default as ExecutiveDashboardPage } from './Executive/ExecutiveDashboardPage';
-export { default as ExecutiveSbiHousePage } from './Executive/ExecutiveSbiHousePage';
-export { default as ExecutiveSbiOfficePage } from './Executive/ExecutiveSbiOfficePage';
-export { default as ExecutiveSbiBussinessPage } from './Executive/ExecutiveSbiBussinessPage';
-export { default as ExecutiveIncomeTaxPage } from './Executive/ExecutiveIncomeTaxPage';
-export { default as ExecutiveReportsPage } from './Executive/ExecutiveReportsPage';
-export { default as ExecutiveDraftsPage } from './Executive/ExecutiveDraftsPage';
+export { default as ExecutiveDashboardPage } from './Executive/sbi/SbiDashboardPage';
+export { default as ExecutiveSbiHousePage } from './Executive/sbi/SbiHousePage';
+export { default as ExecutiveSbiOfficePage } from './Executive/sbi/SbiOfficePage';
+export { default as ExecutiveSbiBussinessPage } from './Executive/sbi/SbiBusinessPage';
+export { default as ExecutiveIncomeTaxPage } from './Executive/sbi/SbiIncomeTaxPage';
+export { default as ExecutiveBoiPage } from './Executive/boi/BoiClassicPage';
+export { default as ExecutiveBoiHousingPage } from './Executive/boi/BoiHousingPage';
+export { default as ExecutiveBoiMsmePage } from './Executive/boi/BoiMsmePage';
+export { default as ExecutiveBoiHomeLoan1Page } from './Executive/boi/BoiHomeLoan1Page';
+export { default as ExecutiveBoiHomeLoan2Page } from './Executive/boi/BoiHomeLoan2Page';
+export { default as ExecutiveBoiHomeLoan3Page } from './Executive/boi/BoiHomeLoan3Page';
+export { default as ExecutiveBoiHomeLoan3GuarantorPage } from './Executive/boi/BoiHomeLoan3GuarantorPage';
+export { default as ExecutiveBoiHomeLoan4Page } from './Executive/boi/BoiHomeLoan4Page';
+export { default as ExecutiveReportsPage } from './Executive/sbi/SbiReportsPage';
+export { default as ExecutiveDraftsPage } from './Executive/sbi/SbiDraftsPage';
+export { default as SbiDashboardPage } from './Executive/sbi/SbiDashboardPage';
+export { default as BoiDashboardPage } from './Executive/boi/BoiDashboardPage';
+export { default as SbiReportsPage } from './Executive/sbi/SbiReportsPage';
+export { default as BoiReportsPage } from './Executive/boi/BoiReportsPage';
+export { default as SbiDraftsPage } from './Executive/sbi/SbiDraftsPage';
+export { default as BoiDraftsPage } from './Executive/boi/BoiDraftsPage';
+export { default as SbiProfilePage } from './Executive/sbi/SbiProfilePage';
+export { default as BoiProfilePage } from './Executive/boi/BoiProfilePage';
 export { default as DraftsPage } from './DraftsPage';
 export { default as GeneratePage } from './GeneratePage';
 export { default as ReportsPage } from './ReportsPage';
@@ -62,3 +78,7 @@ export { default as PublicApIdpAiChatPage } from './scheme/apIdp/PublicApIdpAiCh
 // Client screening (standalone — not a scheme form)
 export { default as PublicClientScreeningPage } from './clientScreening/PublicClientScreeningPage';
 export { default as PublicFormPage } from './PublicFormPage';
+
+// Theory Pages
+export { default as TheoryPagesHubPage } from './TheoryPagesHubPage';
+export { default as TheoryGeneratePage } from './TheoryGeneratePage';

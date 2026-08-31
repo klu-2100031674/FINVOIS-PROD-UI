@@ -28,8 +28,12 @@ const useAuth = () => {
     return dispatch(login(credentials)).unwrap();
   };
 
-  const handleGoogleLogin = async (idToken) => {
-    return dispatch(googleLogin(idToken)).unwrap();
+  const handleGoogleLogin = async (idTokenOrOptions) => {
+    const payload =
+      typeof idTokenOrOptions === 'string'
+        ? { idToken: idTokenOrOptions }
+        : idTokenOrOptions;
+    return dispatch(googleLogin(payload)).unwrap();
   };
 
   const handleRegister = async (userData) => {

@@ -16,6 +16,9 @@ const adminExecutiveReportsAPI = {
     );
   },
 
+  getReportHelpMasterDetail: (id) =>
+    apiClient.get(`/admin-executive-reports/master-data/report-help/${id}`),
+
   downloadMasterDataExcel: (params = {}) => {
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {

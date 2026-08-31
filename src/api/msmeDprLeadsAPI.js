@@ -34,3 +34,9 @@ export async function saveMsmeDprNotificationEmails(emails) {
   });
   return response.data;
 }
+
+export async function deleteMsmeDprLead(id) {
+  const response = await apiClient.delete(`/msme-dpr-leads/${id}`);
+  return response.data;
+}
+

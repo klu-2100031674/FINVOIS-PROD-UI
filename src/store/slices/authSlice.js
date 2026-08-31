@@ -144,9 +144,12 @@ export const login = createAsyncThunk(
 
 export const googleLogin = createAsyncThunk(
   'auth/googleLogin',
-  async (idToken, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
-      const response = await api.auth.googleAuth(idToken);
+      const idToken = typeof payload === 'string' ? payload : payload?.idToken;
+      const referral_code =
+        typeof payload === 'object' && payload ? payload.referral_code : undefined;
+      const response = await api.auth.googleAuth(idToken, { referral_code });
       const userKey = import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data';
       const user = response?.data?.user;
 

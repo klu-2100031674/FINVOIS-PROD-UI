@@ -32,7 +32,12 @@ const STEPS = {
     COMMERCIAL_VEHICLE_TYPE: 13,
 };
 
-const AIAssistant = ({ onSelectTemplate, showGenerationModeStep = false, showHeader = true }) => {
+const AIAssistant = ({
+    onSelectTemplate,
+    showGenerationModeStep = false,
+    showHeader = true,
+    hideGenerateReportOption = false,
+}) => {
     const navigate = useNavigate();
     const [currentStep, setCurrentStep] = useState(STEPS.REPORT_TYPE);
     const [selectedReportType, setSelectedReportType] = useState(null);
@@ -83,19 +88,21 @@ const AIAssistant = ({ onSelectTemplate, showGenerationModeStep = false, showHea
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
                 Please select the type of report you would like to be prepared
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <SelectionCard
-                    icon={UserIcon}
-                    title="Generate report"
-                    description="(to generate Report on your own)"
-                    onClick={() => {
-                        if (selectedReportType === 'CMA') {
-                            handleNext(STEPS.CMA_WC_LIMIT);
-                        } else {
-                            handleNext(STEPS.SECTOR);
-                        }
-                    }}
-                />
+            <div className={`grid gap-4 ${hideGenerateReportOption ? 'grid-cols-1 max-w-md mx-auto' : 'grid-cols-1 md:grid-cols-2'}`}>
+                {!hideGenerateReportOption && (
+                    <SelectionCard
+                        icon={UserIcon}
+                        title="Generate report"
+                        description="(to generate Report on your own)"
+                        onClick={() => {
+                            if (selectedReportType === 'CMA') {
+                                handleNext(STEPS.CMA_WC_LIMIT);
+                            } else {
+                                handleNext(STEPS.SECTOR);
+                            }
+                        }}
+                    />
+                )}
                 <SelectionCard
                     icon={UserGroupIcon}
                     title="Send Data for Report"

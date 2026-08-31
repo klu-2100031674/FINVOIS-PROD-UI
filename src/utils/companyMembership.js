@@ -1,4 +1,4 @@
-import { normalizeRoleFromUser } from './normalizeUserRole';
+import { normalizeRoleFromUser, isExecutiveRole } from './normalizeUserRole';
 
 export const isChannelPartner = (user) => {
   if (!user) return false;
@@ -10,8 +10,8 @@ export const isChannelPartner = (user) => {
 
 export const isExecutive = (user) => {
   if (!user) return false;
-  if (normalizeRoleFromUser(user) === 'executive') return true;
-  if (user.userCategory === 'FEXEC') return true;
+  if (isExecutiveRole(normalizeRoleFromUser(user))) return true;
+  if (['FEXEC', 'FSBI', 'FBOI'].includes(user.userCategory)) return true;
   return false;
 };
 

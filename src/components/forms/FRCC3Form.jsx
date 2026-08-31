@@ -14,7 +14,8 @@ import {
 } from '@heroicons/react/24/outline';
 
 import SaveDraftButton from '../common/SaveDraftButton';
-import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD } from '../../utils/frccFormUi';
+
+import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_CIBIL_FIELD } from '../../utils/frccFormUi';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -115,13 +116,15 @@ const sections = [
     title: 'Prepared By',
     icon: UsersIcon,
     fields: [
-      { id: 'j96',        label: 'Name 1',                    type: 'text', required: true },
-      { id: 'j97',        label: 'Name 2',                    type: 'text', required: true },
-      { id: 'j98',        label: 'Address',                   type: 'text', required: true },
-      { id: 'j99',        label: 'Contact',                   type: 'text', required: true },
-      { id: 'bank_name',  label: 'Bank Name / Department Name', type: 'text', required: true },
-      { id: 'branch_name', label: 'Branch Name',              type: 'text', required: true },
+      { id: 'j96',         label: 'Partner Name 1',              type: 'text', required: true  },
+      { id: 'j97',         label: 'Partner Name 2',              type: 'text', required: false },
+      { id: 'j98',         label: 'Address',                     type: 'text', required: true  },
+      { id: 'j99',         label: 'Mobile Number',               type: 'text', required: true  },
       FRCC_REQUIRED_STAMP_FIELD,
+      { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text', required: false },
+      { id: 'branch_name', label: 'Branch Name',                 type: 'text', required: false },
+      PREPARED_BY_BANKER_MAIL_FIELD,
+      PREPARED_BY_CIBIL_FIELD,
     ]
   }
 ];
@@ -187,6 +190,8 @@ const FRCC3Form = ({
       'bank_name': '',
       'branch_name': '',
       'required_stamp': FRCC_REQUIRED_STAMP_DEFAULT,
+      'banker_mail_id': '',
+      'cibil_score': '',
     }
   });
 
@@ -199,6 +204,8 @@ const FRCC3Form = ({
         ...initialData,
         'Prepared By': {
           required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
+      banker_mail_id: '',
+      cibil_score: '',
           ...(initialData['Prepared By'] || {}),
         },
       });
@@ -287,6 +294,8 @@ const FRCC3Form = ({
         'j98': 'Hyderabad, Telangana', 'j99': '9014221011',
         'bank_name': 'State Bank of India', 'branch_name': 'Main Branch',
         'required_stamp': FRCC_REQUIRED_STAMP_DEFAULT,
+      'banker_mail_id': '',
+      'cibil_score': '',
       }
     });
   }, []);
@@ -395,7 +404,14 @@ const FRCC3Form = ({
     if (onSubmit) {
       const excelData = convertToExcelData(formData);
       onSubmit({
-        formData: { excelData, formData },
+        formData: {
+          excelData,
+          formData,
+          additionalData: {
+            bank_name: formData['Prepared By']['bank_name'],
+            branch_name: formData['Prepared By']['branch_name']
+          }
+        },
         templateId: templateId || 'frcc3',
         reportId
       });

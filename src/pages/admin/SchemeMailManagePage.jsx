@@ -214,8 +214,8 @@ const SchemeMailManagePage = () => {
                   Default email for all schemes
                 </p>
                 <p className="text-xs text-gray-600 mt-1 leading-snug max-w-3xl">
-                  Applied to every question across PMEGP, AP IDP 4.0, and Client screening whose own
-                  email is left blank. Leave this blank to disable the fallback entirely.
+                  Applied to every scheme support question whose own email is left blank. Leave this
+                  blank to disable the fallback entirely.
                 </p>
               </div>
               <div className="px-4 py-3">

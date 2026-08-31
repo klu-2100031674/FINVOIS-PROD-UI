@@ -25,7 +25,7 @@ import {
 } from '../../components/reportHelp/ReportHelpUi';
 
 const MAX_FILES_DEFAULT = 10;
-const MAX_SIZE_MB_DEFAULT = 10;
+const MAX_SIZE_MB_DEFAULT = 5;
 
 export default function ReportHelpNewPage() {
   const navigate = useNavigate();

@@ -1,3 +1,7 @@
+/**
+ * Report generated / not-generated status column temporarily disabled
+ * (applies to both Admin + MSME portal dashboards using this component).
+ */
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ChevronDown,
@@ -10,6 +14,7 @@ import {
   RefreshCw,
   Search,
   SlidersHorizontal,
+  Trash2,
   TrendingUp,
 } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
@@ -27,6 +32,7 @@ import {
 import toast from 'react-hot-toast';
 import MsmeDprEmailOverlay from '@/components/msmeDpr/MsmeDprEmailOverlay';
 import {
+  deleteMsmeDprLead,
   fetchMsmeDprLeads,
   updateMsmeDprServiceAvailed,
 } from '@/api/msmeDprLeadsAPI';
@@ -154,9 +160,37 @@ function ApplicantDetailPanel({ submission }) {
   const docs = Array.isArray(submission?.documents) ? submission.documents : [];
   const hasDescription = Boolean(submission?.description);
   const hasEnterprise = Boolean(submission?.enterpriseType);
+  const hasAadhar = Boolean(submission?.aadharNumber);
+  const hasPan = Boolean(submission?.panNumber);
+  const assets = Array.isArray(submission?.dprAssets) ? submission.dprAssets : [];
+  const hasAssets = assets.length > 0;
+  const hasLoanTerms = Boolean(
+    submission?.loanTermPeriod ||
+    submission?.rateOfInterest ||
+    submission?.processingFee ||
+    submission?.loanAmount
+  );
 
   return (
-    <div className="px-4 py-3 bg-gray-50 border-t text-sm text-gray-600 space-y-3">
+    <div className="px-4 py-4 bg-gray-50 border-t text-sm text-gray-600 space-y-3.5">
+      {/* Identity Badges */}
+      {(hasAadhar || hasPan) && (
+        <div className="flex flex-wrap items-center gap-3">
+          {hasAadhar && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-lg text-xs font-mono">
+              <span className="font-semibold text-amber-700 uppercase tracking-wider text-[10px]">Aadhaar:</span>
+              <span>{submission.aadharNumber}</span>
+            </div>
+          )}
+          {hasPan && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-900 border border-blue-200 rounded-lg text-xs font-mono">
+              <span className="font-semibold text-blue-700 uppercase tracking-wider text-[10px]">PAN:</span>
+              <span>{submission.panNumber}</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {hasEnterprise && (
         <p>
           <span className="font-medium text-gray-700">Type of Organisation:</span>{' '}
@@ -166,11 +200,115 @@ function ApplicantDetailPanel({ submission }) {
             : ''}
         </p>
       )}
+
       {hasDescription && (
         <p>
           <span className="font-medium text-gray-700">Description:</span> {submission.description}
         </p>
       )}
+
+      {/* Location Details (Rural/Urban, Village/City, Mandal, District) */}
+      {(submission?.ruralUrbanCategory || submission?.villageCity || submission?.mandal || submission?.district) && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+          {submission.ruralUrbanCategory && (
+            <div className="p-2 bg-gray-100/80 rounded-lg border border-gray-200">
+              <span className="text-[10px] font-semibold uppercase text-gray-500 block">Rural / Urban</span>
+              <span className="text-xs font-semibold text-gray-800">{submission.ruralUrbanCategory}</span>
+            </div>
+          )}
+          {submission.villageCity && (
+            <div className="p-2 bg-gray-100/80 rounded-lg border border-gray-200">
+              <span className="text-[10px] font-semibold uppercase text-gray-500 block">Village / City</span>
+              <span className="text-xs font-semibold text-gray-800">{submission.villageCity}</span>
+            </div>
+          )}
+          {submission.mandal && (
+            <div className="p-2 bg-gray-100/80 rounded-lg border border-gray-200">
+              <span className="text-[10px] font-semibold uppercase text-gray-500 block">Mandal</span>
+              <span className="text-xs font-semibold text-gray-800">{submission.mandal}</span>
+            </div>
+          )}
+          {submission.district && (
+            <div className="p-2 bg-gray-100/80 rounded-lg border border-gray-200">
+              <span className="text-[10px] font-semibold uppercase text-gray-500 block">District</span>
+              <span className="text-xs font-semibold text-gray-800">{submission.district}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Other Information required for preparing DPR */}
+      {(hasAssets || hasLoanTerms) && (
+        <div className="p-3.5 bg-white rounded-xl border border-orange-200/90 shadow-xs space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900">
+              Other Information required for preparing DPR
+            </h4>
+          </div>
+
+          {hasAssets && (
+            <div className="overflow-x-auto rounded-lg border border-gray-200">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-100/70 border-b border-gray-200 text-gray-700 font-semibold">
+                    <th className="px-3 py-2 w-8">#</th>
+                    <th className="px-3 py-2">Asset Model</th>
+                    <th className="px-3 py-2">Asset Category</th>
+                    <th className="px-3 py-2 text-right">Amount (₹)</th>
+                    <th className="px-3 py-2 text-right">Loan %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {assets.map((asset, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50/60">
+                      <td className="px-3 py-2 text-gray-400 font-mono">{idx + 1}</td>
+                      <td className="px-3 py-2 font-medium text-gray-900">{asset.assetModel || '—'}</td>
+                      <td className="px-3 py-2 text-gray-600">{asset.assetCategory || '—'}</td>
+                      <td className="px-3 py-2 text-right font-mono text-gray-900 font-medium">
+                        {asset.amount ? Number(asset.amount).toLocaleString('en-IN') || asset.amount : '—'}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-gray-700">
+                        {asset.loanPercentage ? `${asset.loanPercentage}%` : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {hasLoanTerms && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+              {submission.loanTermPeriod && (
+                <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                  <span className="text-[10px] font-semibold uppercase text-gray-400 block">Loan Term</span>
+                  <span className="text-xs font-semibold text-gray-800">{submission.loanTermPeriod}</span>
+                </div>
+              )}
+              {submission.rateOfInterest && (
+                <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                  <span className="text-[10px] font-semibold uppercase text-gray-400 block">Rate of Interest</span>
+                  <span className="text-xs font-semibold text-gray-800">{submission.rateOfInterest}</span>
+                </div>
+              )}
+              {submission.processingFee && (
+                <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                  <span className="text-[10px] font-semibold uppercase text-gray-400 block">Processing Fee</span>
+                  <span className="text-xs font-semibold text-gray-800">{submission.processingFee}</span>
+                </div>
+              )}
+              {submission.loanAmount && (
+                <div className="p-2.5 bg-orange-50/60 rounded-lg border border-orange-200/60">
+                  <span className="text-[10px] font-semibold uppercase text-orange-600 block">Loan Amount</span>
+                  <span className="text-xs font-bold text-orange-950">{submission.loanAmount}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <p className="text-xs text-gray-400">
         Submitted: {submission.createdAt ? new Date(submission.createdAt).toLocaleString() : '—'}
       </p>
@@ -210,6 +348,7 @@ function ApplicantDetailPanel({ submission }) {
 const MsmeDprDashboard = ({
   showServiceAvailed = false,
   showEmailConfig = false,
+  showDelete = false,
 }) => {
   const initialFilters = useMemo(() => getInitialFilters(showServiceAvailed), [showServiceAvailed]);
 
@@ -219,6 +358,7 @@ const MsmeDprDashboard = ({
   const [submissions, setSubmissions] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const [emailOverlayOpen, setEmailOverlayOpen] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showTrendChart, setShowTrendChart] = useState(false);
@@ -296,6 +436,26 @@ const MsmeDprDashboard = ({
       toast.error(err?.response?.data?.message || 'Failed to update status');
     } finally {
       setTogglingId(null);
+    }
+  };
+
+  const handleDeleteSubmission = async (id, applicantName) => {
+    const label = applicantName || 'this submission';
+    if (!window.confirm(`Delete received form data for "${label}"? This cannot be undone.`)) {
+      return;
+    }
+    setDeletingId(id);
+    try {
+      const data = await deleteMsmeDprLead(id);
+      if (data?.stats) setStats(data.stats);
+      setSubmissions((prev) => prev.filter((item) => item._id !== id));
+      if (expandedId === id) setExpandedId(null);
+      toast.success('Submission deleted');
+      await loadData(appliedFilters, page, timeframe);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to delete submission');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -426,7 +586,7 @@ const MsmeDprDashboard = ({
     ? 'No submissions match the selected filters.'
     : 'No submissions yet.';
 
-  const tableColSpan = 13;
+  const tableColSpan = showDelete ? 10 : 9;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
@@ -747,11 +907,8 @@ const MsmeDprDashboard = ({
                     <th className="px-3 py-3">Nature of Business</th>
                     <th className="px-3 py-3">Scheme Applied Under</th>
                     <th className="px-3 py-3">Loan Type</th>
-                    <th className="px-3 py-3">Rural / Urban</th>
-                    <th className="px-3 py-3">Village / City</th>
-                    <th className="px-3 py-3">Mandal</th>
-                    <th className="px-3 py-3">District</th>
                     <th className="px-3 py-3">Service Availed</th>
+                    {showDelete && <th className="px-3 py-3 text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -800,12 +957,6 @@ const MsmeDprDashboard = ({
                             {displayScheme(s.schemeAppliedUnder)}
                           </td>
                           <td className="px-3 py-3 text-gray-600 max-w-[140px]">{s.loanType}</td>
-                          <td className="px-3 py-3 text-gray-600 max-w-[120px]">
-                            {s.ruralUrbanCategory}
-                          </td>
-                          <td className="px-3 py-3 text-gray-600">{s.villageCity}</td>
-                          <td className="px-3 py-3 text-gray-600">{s.mandal}</td>
-                          <td className="px-3 py-3 text-gray-600">{s.district}</td>
                           <td className="px-3 py-3">
                             <ServiceAvailedCell
                               checked={s.serviceAvailed}
@@ -814,6 +965,20 @@ const MsmeDprDashboard = ({
                               onChange={(val) => handleToggleServiceAvailed(s._id, val)}
                             />
                           </td>
+                          {showDelete && (
+                            <td className="px-3 py-3 text-right">
+                              <button
+                                type="button"
+                                disabled={deletingId === s._id}
+                                onClick={() => handleDeleteSubmission(s._id, s.applicantName)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-700 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
+                                title="Delete submission"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                {deletingId === s._id ? '…' : 'Delete'}
+                              </button>
+                            </td>
+                          )}
                         </tr>
                         {expanded && (
                           <tr>
@@ -868,60 +1033,56 @@ const MsmeDprDashboard = ({
                     </div>
                   </button>
                   {expanded && (
-                    <div className="px-4 pb-4 space-y-2 text-sm text-gray-600 border-t pt-3">
-                      <p>
-                        <span className="font-medium text-gray-700">Gender:</span> {s.gender}
-                      </p>
-                      <p>
-                        <span className="font-medium text-gray-700">Scheme:</span>{' '}
-                        {displayScheme(s.schemeAppliedUnder)}
-                      </p>
-                      {s.enterpriseType && (
+                    <div className="border-t">
+                      <div className="px-4 py-3 space-y-2 text-sm text-gray-600">
                         <p>
-                          <span className="font-medium text-gray-700">Type of Organisation:</span>{' '}
-                          {s.enterpriseType}
-                          {s.yearOfRegistration
-                            ? ` · Year of Registration: ${s.yearOfRegistration}`
-                            : ''}
+                          <span className="font-medium text-gray-700">Gender:</span> {s.gender}
                         </p>
-                      )}
-                      <p>
-                        <span className="font-medium text-gray-700">Loan Type:</span> {s.loanType}
-                      </p>
-                      <p>
-                        <span className="font-medium text-gray-700">Rural / Urban:</span>{' '}
-                        {s.ruralUrbanCategory}
-                      </p>
-                      <p>
-                        <span className="font-medium text-gray-700">Village / City:</span>{' '}
-                        {s.villageCity}
-                      </p>
-                      <p>
-                        <span className="font-medium text-gray-700">Mandal:</span> {s.mandal}
-                      </p>
-                      <p>
-                        <span className="font-medium text-gray-700">District:</span> {s.district}
-                      </p>
-                      <p>
-                        <span className="font-medium text-gray-700">Service Availed:</span>{' '}
-                        {formatServiceAvailed(s.serviceAvailed)}
-                      </p>
-                      {s.description && (
                         <p>
-                          <span className="font-medium text-gray-700">Description:</span>{' '}
-                          {s.description}
+                          <span className="font-medium text-gray-700">Scheme:</span>{' '}
+                          {displayScheme(s.schemeAppliedUnder)}
                         </p>
-                      )}
-                      {showServiceAvailed && (
-                        <div className="flex items-center justify-between pt-2">
-                          <span className="font-medium text-gray-700">Update service availed</span>
-                          <ServiceAvailedToggle
-                            checked={parseServiceAvailed(s.serviceAvailed)}
-                            disabled={togglingId === s._id}
-                            onChange={(val) => handleToggleServiceAvailed(s._id, val)}
-                          />
-                        </div>
-                      )}
+                        <p>
+                          <span className="font-medium text-gray-700">Loan Type:</span> {s.loanType}
+                        </p>
+                        <p>
+                          <span className="font-medium text-gray-700">Rural / Urban:</span>{' '}
+                          {s.ruralUrbanCategory}
+                        </p>
+                        <p>
+                          <span className="font-medium text-gray-700">Location:</span>{' '}
+                          {[s.villageCity, s.mandal, s.district].filter(Boolean).join(', ')}
+                        </p>
+                        <p>
+                          <span className="font-medium text-gray-700">Service Availed:</span>{' '}
+                          {formatServiceAvailed(s.serviceAvailed)}
+                        </p>
+                        {showServiceAvailed && (
+                          <div className="flex items-center justify-between pt-2">
+                            <span className="font-medium text-gray-700">Update service availed</span>
+                            <ServiceAvailedToggle
+                              checked={parseServiceAvailed(s.serviceAvailed)}
+                              disabled={togglingId === s._id}
+                              onChange={(val) => handleToggleServiceAvailed(s._id, val)}
+                            />
+                          </div>
+                        )}
+                        {showDelete && (
+                          <div className="flex items-center justify-between pt-2 border-t mt-2">
+                            <span className="font-medium text-gray-700">Delete submission</span>
+                            <button
+                              type="button"
+                              disabled={deletingId === s._id}
+                              onClick={() => handleDeleteSubmission(s._id, s.applicantName)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              {deletingId === s._id ? 'Deleting…' : 'Delete'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <ApplicantDetailPanel submission={s} />
                     </div>
                   )}
                 </div>

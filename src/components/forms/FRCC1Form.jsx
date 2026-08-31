@@ -108,13 +108,13 @@ const sections = [
     title: 'Prepared By',
     icon: UsersIcon,
     fields: [
-      { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text', required: true, note: 'Enter bank or department name' },
-      { id: 'branch_name', label: 'Branch Name',                 type: 'text', required: true, note: 'Enter branch name' },
-      { id: 'j94', label: 'Name 1',    type: 'text', required: true, note: 'Enter name 1' },
-      { id: 'j95', label: 'Name 2',    type: 'text', required: true, note: 'Enter name 2' },
-      { id: 'j96', label: 'Address',   type: 'text', required: true, note: 'Enter address' },
-      { id: 'j97', label: 'Contact',   type: 'text', required: true, note: 'Enter contact number' },
+      { id: 'j94',         label: 'Partner Name 1',              type: 'text', required: true,  note: 'Enter partner name 1' },
+      { id: 'j95',         label: 'Partner Name 2',              type: 'text', required: false, note: 'Enter partner name 2 (optional)' },
+      { id: 'j96',         label: 'Address',                     type: 'text', required: true,  note: 'Enter address' },
+      { id: 'j97',         label: 'Mobile Number',               type: 'text', required: true,  note: 'Enter mobile number' },
       FRCC_REQUIRED_STAMP_FIELD,
+      { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text', required: false, note: 'Enter bank or department name' },
+      { id: 'branch_name', label: 'Branch Name',                 type: 'text', required: false, note: 'Enter branch name' },
     ]
   }
 ];
@@ -447,10 +447,10 @@ const FRCC1Form = ({
       i29: { label: "Months Interest paid in First Financial Year",     value: ie["i29"] || 0 },
       i30: { label: "Months Turnover done in First Financial Year",     value: ie["i30"] || 0 },
 
-      j94: { label: "Name 1",   value: pb["j94"] || "" },
-      j95: { label: "Name 2",   value: pb["j95"] || "" },
-      j96: { label: "Address",  value: pb["j96"] || "" },
-      j97: { label: "Contact",  value: pb["j97"] || "" }
+      j94: { label: "Partner Name 1", value: pb["j94"] || "" },
+      j95: { label: "Partner Name 2", value: pb["j95"] || "" },
+      j96: { label: "Address",        value: pb["j96"] || "" },
+      j97: { label: "Mobile Number",  value: pb["j97"] || "" }
     };
 
     Object.keys(fixedAssetsMapping).forEach(categoryTitle => {

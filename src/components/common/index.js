@@ -8,6 +8,7 @@ export { default as Input } from './Input';
 export { default as Card } from './Card';
 export { default as Loading } from './Loading';
 export { default as Modal } from './Modal';
+export { default as GoogleReferralPromptModal } from './GoogleReferralPromptModal';
 export { default as PaymentModal } from './PaymentModal';
 export { default as AnalysisSheetsModal } from './AnalysisSheetsModal';
 export { default as ReportGenerationModal } from './ReportGenerationModal';

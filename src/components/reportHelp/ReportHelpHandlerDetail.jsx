@@ -4,11 +4,15 @@ import {
   DocumentArrowDownIcon,
   DocumentCheckIcon,
   SparklesIcon,
+  EyeIcon,
+  EnvelopeIcon,
+  ChatBubbleLeftEllipsisIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import ReportHelpStatusBadge from './ReportHelpStatusBadge';
 import ReportHelpUpdatesThread from './ReportHelpUpdatesThread';
 import { reportHelpAPI } from '../../api/endpoints';
+import api from '../../api/apiClient';
 import {
   DOCUMENT_CHECKLIST_LABELS,
   REPORT_TYPE_OPTIONS,
@@ -54,6 +58,9 @@ export default function ReportHelpHandlerDetail({
   buildGeneratePath,
   buildReportsLink,
   typeAccentClass = 'text-emerald-700',
+  // Admin-only: view generated report PDF inline + send via WhatsApp/Email
+  // (auto-filled from client contact, editable before sending).
+  enableReportActions = false,
 }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -63,6 +70,15 @@ export default function ReportHelpHandlerDetail({
   const [showDocForm, setShowDocForm] = useState(false);
   const [checklist, setChecklist] = useState({});
   const [docMessage, setDocMessage] = useState('');
+
+  const [showReportViewer, setShowReportViewer] = useState(false);
+  const [loadingPdf, setLoadingPdf] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
+  const [activeShareType, setActiveShareType] = useState(null); // 'email' | 'whatsapp' | null
+  const [emailInput, setEmailInput] = useState('');
+  const [whatsappInput, setWhatsappInput] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -103,6 +119,78 @@ export default function ReportHelpHandlerDetail({
     runAction('need_more_documents', { checklist: selected, message: docMessage });
   };
 
+  useEffect(() => {
+    return () => {
+      if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
+    };
+  }, [pdfBlobUrl]);
+
+  const handleViewGeneratedReport = async (linkedReport, user, request) => {
+    if (!linkedReport?._id || !id) return;
+    setEmailInput(request?.user_email || user?.email || '');
+    setWhatsappInput(request?.contact_phone || user?.phone || '');
+    setActiveShareType(null);
+    setShowReportViewer(true);
+    setLoadingPdf(true);
+    try {
+      const response = await api.get(`/report-help/${id}/linked-report/pdf?inline=true`, {
+        responseType: 'blob',
+      });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      setPdfBlobUrl(URL.createObjectURL(blob));
+    } catch (err) {
+      toast.error('Failed to load report PDF');
+      setShowReportViewer(false);
+    } finally {
+      setLoadingPdf(false);
+    }
+  };
+
+  const closeReportViewer = () => {
+    setShowReportViewer(false);
+    if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
+    setPdfBlobUrl(null);
+    setActiveShareType(null);
+  };
+
+  const handleSendReportEmail = async () => {
+    if (!id) return;
+    const email = emailInput.trim();
+    if (!email) {
+      toast.error('Please enter a recipient email address.');
+      return;
+    }
+    setSendingEmail(true);
+    try {
+      const response = await api.post(`/report-help/${id}/linked-report/email`, { email });
+      toast.success(response.data?.message || 'Report sent via email successfully.');
+      setActiveShareType(null);
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to send report email');
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const handleSendReportWhatsapp = async () => {
+    if (!id) return;
+    const phone = whatsappInput.trim();
+    if (!phone) {
+      toast.error('Please enter a recipient phone number.');
+      return;
+    }
+    setSendingWhatsapp(true);
+    try {
+      const response = await api.post(`/report-help/${id}/linked-report/whatsapp`, { phone });
+      toast.success(response.data?.message || 'Report sent via WhatsApp successfully.');
+      setActiveShareType(null);
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to send report via WhatsApp');
+    } finally {
+      setSendingWhatsapp(false);
+    }
+  };
+
   if (loading) {
     return (
       <Layout {...layoutProps}>
@@ -127,7 +215,7 @@ export default function ReportHelpHandlerDetail({
 
   const user = request.user_id;
   const clientUserId = user?._id || request.user_id;
-  const canAct = request.canAct ?? ['pending', 'documents_submitted'].includes(request.status);
+  const canAct = request.canAct ?? ['pending', 'documents_submitted', 'rejected'].includes(request.status);
   const canGenerate = GENERATE_STATUSES.includes(request.status);
   const linkedReport = request.linked_report;
   const reportsLink = buildReportsLink?.(clientUserId, user?.name);
@@ -209,15 +297,27 @@ export default function ReportHelpHandlerDetail({
                     <p className="font-semibold text-purple-900">Linked report</p>
                     <p className="text-purple-800 mt-0.5">{linkedReport.title}</p>
                     <p className="text-sm text-purple-700 mt-1">{validationLabel(linkedReport.validation_status)}</p>
-                    {reportsLink && (
-                      <Link
-                        to={reportsLink.to}
-                        state={reportsLink.state}
-                        className={`inline-block mt-2 text-sm font-semibold hover:opacity-90 ${typeAccentClass}`}
-                      >
-                        {reportsLink.label} →
-                      </Link>
-                    )}
+                    <div className="flex flex-wrap items-center gap-3 mt-2">
+                      {reportsLink && (
+                        <Link
+                          to={reportsLink.to}
+                          state={reportsLink.state}
+                          className={`text-sm font-semibold hover:opacity-90 ${typeAccentClass}`}
+                        >
+                          {reportsLink.label} →
+                        </Link>
+                      )}
+                      {enableReportActions && (
+                        <button
+                          type="button"
+                          onClick={() => handleViewGeneratedReport(linkedReport, user, request)}
+                          className="inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-lg bg-white border border-purple-200 text-purple-700 hover:bg-purple-50"
+                        >
+                          <EyeIcon className="w-4 h-4" aria-hidden />
+                          View report
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </ReportHelpCard>
@@ -231,7 +331,7 @@ export default function ReportHelpHandlerDetail({
                 disabled={acting}
                 onClick={() => runAction('accept')}
               >
-                Accept request
+                {request.status === 'rejected' ? 'Accept / reclaim request' : 'Accept request'}
               </ReportHelpPrimaryButton>
               <button
                 type="button"
@@ -241,16 +341,18 @@ export default function ReportHelpHandlerDetail({
               >
                 Need more documents
               </button>
-              <ReportHelpSecondaryButton
-                disabled={acting}
-                onClick={() => {
-                  const reason = window.prompt('Rejection reason (optional):') || '';
-                  runAction('reject', { rejection_reason: reason });
-                }}
-                className="!text-red-700 !border-red-200 hover:!bg-red-50"
-              >
-                Reject
-              </ReportHelpSecondaryButton>
+              {request.status !== 'rejected' && (
+                <ReportHelpSecondaryButton
+                  disabled={acting}
+                  onClick={() => {
+                    const reason = window.prompt('Rejection reason (optional):') || '';
+                    runAction('reject', { rejection_reason: reason });
+                  }}
+                  className="!text-red-700 !border-red-200 hover:!bg-red-50"
+                >
+                  Reject
+                </ReportHelpSecondaryButton>
+              )}
             </div>
           )}
 
@@ -338,6 +440,108 @@ export default function ReportHelpHandlerDetail({
           partnerLabel={accent === 'green' ? 'partner' : 'support team'}
         />
       </ReportHelpPageShell>
+
+      {enableReportActions && showReportViewer && linkedReport && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center gap-4 min-w-0">
+              <h2 className="text-lg font-semibold text-gray-800 truncate min-w-0 flex-1">
+                {linkedReport.title}
+              </h2>
+              <div className="flex items-center gap-2 flex-wrap shrink-0">
+                {activeShareType === null ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setActiveShareType('email')}
+                      className="flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
+                    >
+                      <EnvelopeIcon className="w-4 h-4 mr-1.5" aria-hidden />
+                      Email
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveShareType('whatsapp')}
+                      className="flex items-center px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg transition-colors"
+                    >
+                      <ChatBubbleLeftEllipsisIcon className="w-4 h-4 mr-1.5" aria-hidden />
+                      WhatsApp
+                    </button>
+                  </>
+                ) : activeShareType === 'email' ? (
+                  <>
+                    <input
+                      type="email"
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      placeholder="Recipient email"
+                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg w-56"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSendReportEmail}
+                      disabled={sendingEmail}
+                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg disabled:opacity-50"
+                    >
+                      {sendingEmail ? 'Sending…' : 'Send'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveShareType(null)}
+                      className="px-2 py-2 text-xs text-gray-500 hover:text-gray-700"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <input
+                      type="tel"
+                      value={whatsappInput}
+                      onChange={(e) => setWhatsappInput(e.target.value)}
+                      placeholder="WhatsApp phone"
+                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg w-44"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSendReportWhatsapp}
+                      disabled={sendingWhatsapp}
+                      className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg disabled:opacity-50"
+                    >
+                      {sendingWhatsapp ? 'Sending…' : 'Send'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveShareType(null)}
+                      className="px-2 py-2 text-xs text-gray-500 hover:text-gray-700"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={closeReportViewer}
+                  className="px-3 py-2 text-sm text-gray-500 hover:text-gray-800"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 min-h-0">
+              {loadingPdf ? (
+                <div className="h-full flex items-center justify-center text-gray-500">Loading report…</div>
+              ) : pdfBlobUrl ? (
+                <iframe src={pdfBlobUrl} title="Generated report" className="w-full h-full" />
+              ) : (
+                <div className="h-full flex items-center justify-center text-gray-500">
+                  Report preview unavailable.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

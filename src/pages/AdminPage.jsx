@@ -262,7 +262,8 @@ const AdminPage = () => {
                           >
                             <option value="user">User</option>
                             <option value="agent">Channel partner</option>
-                            <option value="executive">Executive</option>
+                            <option value="sbi_executive">SBI Executive</option>
+                            <option value="boi_executive">BOI Executive</option>
                             <option value="company_admin">Company Admin</option>
                             <option value="admin">Super Admin</option>
                           </select>

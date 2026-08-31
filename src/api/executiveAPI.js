@@ -45,6 +45,34 @@ export const executiveAPI = {
     return response.data;
   },
 
+  generateBoiReport: async (caseData, pdfBlob) => {
+    const sanitized = JSON.parse(JSON.stringify(caseData));
+    const EVIDENCE_KEYS = ['applicantPhotos', 'coApplicantPhotos', 'residencePhotos',
+      'employmentPhotos', 'identityDocs', 'incomeDocs', 'additionalDocs'];
+    for (const appId of Object.keys(sanitized.modules ?? {})) {
+      const evMod = sanitized.modules[appId]?.evidence?.evidence;
+      if (evMod) {
+        for (const key of EVIDENCE_KEYS) {
+          if (Array.isArray(evMod[key])) {
+            evMod[key] = evMod[key].map(({ dataUrl: _drop, ...rest }) => rest);
+          }
+        }
+      }
+      for (const key of EVIDENCE_KEYS) {
+        if (Array.isArray(sanitized[key])) {
+          sanitized[key] = sanitized[key].map(({ dataUrl: _drop, ...rest }) => rest);
+        }
+      }
+    }
+    const body = new FormData();
+    body.append('formData', JSON.stringify(sanitized));
+    if (pdfBlob) body.append('pdf', pdfBlob, 'boi-report.pdf');
+    const response = await apiClient.post('/executive/reports/boi/generate', body, {
+      timeout: 180000
+    });
+    return response.data;
+  },
+
   downloadReport: async (reportId, fileName) => {
     const response = await apiClient.get(`/executive/reports/${reportId}/download`, {
       responseType: 'blob'

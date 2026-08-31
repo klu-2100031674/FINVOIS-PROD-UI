@@ -4,6 +4,7 @@ export function getIncomeTaxTestData() {
     rlms: '501260416071248',
     branch: 'RACPC-2, VIJAYAWADA',
     name: 'MR. SANTOSH KUMAR JAJU',
+    phone: '9849509761',
     pan: 'ARQPS8056F',
     udin: '26222863TIQNXH9953',
     place: 'Vijayawada',

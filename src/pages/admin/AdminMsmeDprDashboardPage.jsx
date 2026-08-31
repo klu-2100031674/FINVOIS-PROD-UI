@@ -3,7 +3,11 @@ import MsmeDprDashboard from '@/components/msmeDpr/MsmeDprDashboard';
 
 const AdminMsmeDprDashboardPage = () => (
   <AdminLayout>
-    <MsmeDprDashboard showServiceAvailed showEmailConfig />
+    <MsmeDprDashboard
+      showServiceAvailed
+      showEmailConfig
+      // showDelete // Uncomment to enable option to delete a form data
+    />
   </AdminLayout>
 );
 

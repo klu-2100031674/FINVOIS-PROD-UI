@@ -21,6 +21,7 @@ export default function AgentReportHelpDetailPage() {
         state: { userName },
         label: 'View client reports',
       })}
+      enableReportActions
     />
   );
 }

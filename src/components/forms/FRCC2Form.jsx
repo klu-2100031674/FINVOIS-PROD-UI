@@ -14,7 +14,8 @@ import {
 } from '@heroicons/react/24/outline';
 
 import SaveDraftButton from '../common/SaveDraftButton';
-import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD } from '../../utils/frccFormUi';
+
+import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_CIBIL_FIELD } from '../../utils/frccFormUi';
 
 // Generate financial year options in 2024-25 format, current year to +20 years
 const generateFinancialYearOptions = () => {
@@ -175,13 +176,15 @@ const sections = [
     title: 'Prepared By',
     icon: UsersIcon,
     fields: [
-      { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text', required: true },
-      { id: 'branch_name', label: 'Branch Name',                 type: 'text', required: true },
-      { id: 'j123', label: 'Name 1',    type: 'text', required: true },
-      { id: 'j124', label: 'Name 2',    type: 'text', required: true },
-      { id: 'j125', label: 'Address',   type: 'text', required: true },
-      { id: 'j126', label: 'Contact',   type: 'text', required: true },
+      { id: 'j123',        label: 'Partner Name 1',              type: 'text', required: true  },
+      { id: 'j124',        label: 'Partner Name 2',              type: 'text', required: false },
+      { id: 'j125',        label: 'Address',                     type: 'text', required: true  },
+      { id: 'j126',        label: 'Mobile Number',               type: 'text', required: true  },
       FRCC_REQUIRED_STAMP_FIELD,
+      { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text', required: false },
+      { id: 'branch_name', label: 'Branch Name',                 type: 'text', required: false },
+      PREPARED_BY_BANKER_MAIL_FIELD,
+      PREPARED_BY_CIBIL_FIELD,
     ]
   }
 ];
@@ -254,6 +257,8 @@ const FRCC2Form = ({
       "j125": "Vijayawada",
       "j126": "9014221011",
       "required_stamp": FRCC_REQUIRED_STAMP_DEFAULT,
+      "banker_mail_id": "",
+      "cibil_score": "",
     }
   });
 
@@ -380,6 +385,8 @@ const FRCC2Form = ({
         "j123": "PARVEZ AND NARAYANA", "j124": "Chartered Accountants",
         "j125": "Hyderabad, Telangana", "j126": "9014221011",
         "required_stamp": FRCC_REQUIRED_STAMP_DEFAULT,
+      "banker_mail_id": "",
+      "cibil_score": "",
       }
     });
   }, []);
@@ -553,8 +560,10 @@ const FRCC2Form = ({
         formData: {
           excelData,
           formData,
-          bank_name: formData["Prepared By"]["bank_name"],
-          branch_name: formData["Prepared By"]["branch_name"]
+          additionalData: {
+            bank_name: formData["Prepared By"]["bank_name"],
+            branch_name: formData["Prepared By"]["branch_name"]
+          }
         },
         templateId: templateId || 'frcc2',
         reportId

@@ -294,7 +294,9 @@ const FRTermLoanCCForm = ({
       'j137': 'Chartered Accountants',
       'j138': 'Vijayawada',
       'j139': '9014221011',
-      'required_stamp': FRCC_REQUIRED_STAMP_DEFAULT
+      'required_stamp': FRCC_REQUIRED_STAMP_DEFAULT,
+      'bank_name': '',
+      'branch_name': '',
     },
     'Expected Employment Generation': {
       'i24': '', 'j24': '', // Skilled
@@ -959,8 +961,8 @@ const FRTermLoanCCForm = ({
     return {
       ...updatedFormData,
       rawFormData: JSON.parse(JSON.stringify(formData)),
-      bank_name: formData['General Information']['bank_name'],
-      branch_name: formData['General Information']['branch_name'],
+      bank_name: formData['Prepared By']?.['bank_name'] || '',
+      branch_name: formData['Prepared By']?.['branch_name'] || '',
       'Fixed Assets Schedule': convertedAssets,
       'Asset Loan Percentages': loanPercentages,
       'Asset Loan Amounts': loanAmounts,
@@ -1917,7 +1919,7 @@ const FRTermLoanCCForm = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-gray-800">
-                  Partner Name 1 (Prepared By)
+                  Partner Name 1
                 </label>
                 <input
                   type="text"
@@ -1929,7 +1931,7 @@ const FRTermLoanCCForm = ({
               </div>
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-gray-800">
-                  Partner Name 2 (Prepared By)
+                  Partner Name 2
                 </label>
                 <input
                   type="text"
@@ -1941,7 +1943,7 @@ const FRTermLoanCCForm = ({
               </div>
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-gray-800">
-                  Address (Prepared By)
+                  Address
                 </label>
                 <input
                   type="text"
@@ -1953,7 +1955,7 @@ const FRTermLoanCCForm = ({
               </div>
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-gray-800">
-                  Mobile Number (Prepared By)
+                  Mobile Number
                 </label>
                 <input
                   type="text"
@@ -1983,8 +1985,8 @@ const FRTermLoanCCForm = ({
                 </label>
                 <input
                   type="text"
-                  value={formData['General Information']?.['bank_name'] || ''}
-                  onChange={(e) => handleInputChange('General Information', 'bank_name', e.target.value)}
+                  value={(formData['Prepared By'] && formData['Prepared By']['bank_name']) || ''}
+                  onChange={(e) => handleInputChange('Prepared By', 'bank_name', e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
                   placeholder="Enter bank or department name"
                 />
@@ -1995,8 +1997,8 @@ const FRTermLoanCCForm = ({
                 </label>
                 <input
                   type="text"
-                  value={formData['General Information']?.['branch_name'] || ''}
-                  onChange={(e) => handleInputChange('General Information', 'branch_name', e.target.value)}
+                  value={(formData['Prepared By'] && formData['Prepared By']['branch_name']) || ''}
+                  onChange={(e) => handleInputChange('Prepared By', 'branch_name', e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
                   placeholder="Enter branch name"
                 />

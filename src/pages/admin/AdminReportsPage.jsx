@@ -1204,7 +1204,10 @@ const AdminReportsPage = () => {
                             Report Details
                           </h4>
                           <div className="space-y-1 text-sm">
-                            <p><span className="text-gray-500">Template:</span> {report.templateId}</p>
+                            <p><span className="text-gray-500">Nature of Business:</span> {report.nature_of_business || 'N/A'}</p>
+                            <p><span className="text-gray-500">Project Cost:</span> {report.project_cost || 'N/A'}</p>
+                            <p><span className="text-gray-500">Term Period:</span> {report.term_period || 'N/A'}</p>
+                            <p><span className="text-gray-500">Mobile No:</span> {report.mobile_no || report.user_id?.mobile || report.user_id?.phone || 'N/A'}</p>
                             <p><span className="text-gray-500">Type:</span> {report.report_type || 'N/A'}</p>
                             <p><span className="text-gray-500">Client:</span> {report.client_name || 'N/A'}</p>
                             <p><span className="text-gray-500">Payment:</span> 
@@ -1270,6 +1273,7 @@ const AdminReportsPage = () => {
                                   </div>
                                 </div>
                               )}
+                              {/* Analysis Parameters section removed from UI
                               {report.analysis_options?.extra_data && (
                                 <div>
                                   <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Analysis Parameters</p>
@@ -1294,6 +1298,7 @@ const AdminReportsPage = () => {
                                   </div>
                                 </div>
                               )}
+                              */}
                             </div>
                           </div>
                         )}

@@ -4,53 +4,26 @@
  * Matching main dashboard UI theme
  */
 
-import React, { useMemo, useState, useRef, useLayoutEffect, useCallback } from 'react';
-import { NavLink, useNavigate, Link, useLocation } from 'react-router-dom';
+import React, { useState, useRef, useLayoutEffect, useCallback } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks';
 import NotificationBell from '../common/NotificationBell';
 import finvoisLogo from '../../assets/finvois.png';
 import {
-  LayoutDashboard,
-  Users,
-  DollarSign,
-  FileText,
   ChevronLeft,
   ChevronRight,
-  LogOut,
   Menu,
   X,
-  Wallet,
-  FileStack,
-  User,
-  Settings,
-  BarChart3,
-  Zap,
-  CreditCard,
-  Gift,
-  Mail,
-  Building2,
-  FolderOpen,
-  Briefcase,
-  UserCheck,
-  Landmark,
-  Send,
-  Inbox,
-  Store,
-  Layers,
-  TrendingUp,
-  ClipboardList,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
 import { normalizeUserRole } from '../../utils/normalizeUserRole';
-import { getReportHelpNavLabel } from '../../utils/reportHelpNav';
-import { companyAPI } from '../../api/endpoints';
+import AdminSidebar from '../../pages/admin/AdminSidebar';
+import CompanyAdminSidebar from '../../pages/company/CompanyAdminSidebar';
 
 const ADMIN_SIDEBAR_SCROLL_KEY = 'finvois-admin-sidebar-scroll';
 
 const AdminLayout = ({ children, hideSidebar = false }) => {
-  const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const sidebarNavRef = useRef(null);
@@ -81,187 +54,7 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
     }
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/auth');
-    toast.success('Logged out successfully');
-  };
-
   const role = normalizeUserRole(user?.role);
-
-  const roleBadgeLabel = {
-    admin:         'Super Admin',
-    company_admin: 'Company Admin',
-    lead_manager:  'Service Manager',
-    agent:         'Channel Partner',
-    executive:     'Executive',
-  }[role] || 'User';
-
-  const navItems = useMemo(() => {
-
-    // ── Service Manager: isolated sidebar — CRM items only, no profile ──
-    if (role === 'lead_manager') {
-      return [
-        { to: '/admin/lead-manager/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-        { type: 'section', key: 'crm-section', label: 'CRM' },
-        { to: '/admin/leads',          icon: UserCheck,  label: 'Service Providers' },
-        { to: '/admin/services',       icon: Briefcase,  label: 'Services' },
-        { to: '/admin/banks',          icon: Landmark,   label: 'Banks' },
-        { to: '/admin/banks/send-dpr', icon: Send,       label: 'Send to Banks' },
-      ];
-    }
-    // ─────────────────────────────────────────────────────────────────
-
-    const companyIdForRoutes = companyAPI.normalizeCompanyId(
-      user?.companyId?._id ||
-        user?.companyId?.id ||
-        user?.companyId?.$oid ||
-        user?.company?._id ||
-        user?.company?.id ||
-        user?.company_id ||
-        (typeof user?.companyId === 'string' || typeof user?.companyId === 'number' ? user.companyId : '')
-    );
-
-    const items = [
-      { to: role === 'company_admin' ? '/company/dashboard' : '/admin/dashboard', icon: LayoutDashboard, label: role === 'company_admin' ? 'Company Dashboard' : 'Admin Dashboard' },
-      { to: role === 'company_admin' ? '/company/generate' : '/admin/generate', icon: Zap, label: 'Generate Reports' },
-      { to: '/drafts', icon: FolderOpen, label: 'Drafts' },
-    ];
-
-    if (role !== 'company_admin') {
-      items.push({ to: '/admin/users', icon: Users, label: 'User Management' });
-      if (role === 'admin') {
-        items.push({ to: '/admin/user-approvals', icon: UserCheck, label: 'User Approvals' });
-        items.push({ to: '/admin/report-help', icon: Inbox, label: 'Report Help' });
-      }
-    }
-
-    if (role === 'company_admin') {
-      items.push({
-        to: '/company/my-reports',
-        icon: FileStack,
-        label: 'My Reports'
-      });
-      items.push({
-        to: '/report-help',
-        icon: Inbox,
-        label: getReportHelpNavLabel(user),
-      });
-    }
-
-    // Company admins: org settings (logos, users) live under /admin/companies/:id — not /company/profile (personal account).
-    if (role === 'company_admin') {
-      items.push({ type: 'section', key: 'company-nav-section', label: 'Your company' });
-      if (companyIdForRoutes) {
-        items.push({
-          to: `/admin/companies/${companyIdForRoutes}`,
-          icon: Building2,
-          label: 'Company Profile',
-          title: 'Company logos, details, and users',
-        });
-      }
-      items.push({
-        to: '/company/credits',
-        icon: Gift,
-        label: 'Manage Credits'
-      });
-    }
-
-    items.push({
-      to: role === 'company_admin' ? '/company/reports' : '/admin/reports',
-      icon: FileText,
-      label: role === 'company_admin' ? 'Company Reports' : 'Report Validation'
-    });
-
-    if (role === 'admin') {
-      items.push({
-        to: '/admin/banker-reports',
-        icon: Briefcase,
-        label: 'Banker Reports'
-      });
-      items.push({
-        to: '/admin/master-data',
-        icon: Layers,
-        label: 'Master Data'
-      });
-    }
-
-    if (role === 'admin') {
-      // items.push({
-      //   to: '/admin/schemes',
-      //   icon: Landmark,
-      //   label: 'Schemes',
-      // });
-      items.push({
-        to: '/admin/client-screening/emails',
-        icon: UserCheck,
-        label: 'Client Screening',
-      });
-      items.push({
-        to: '/admin/franchises',
-        icon: Store,
-        label: 'Franchise',
-      });
-      items.push({
-        to: '/admin/msme-dpr-dashboard',
-        icon: FileText,
-        label: 'AP MSME DC',
-      });
-      items.push({
-        to: '/admin/mepma-dpr-dashboard',
-        icon: FileText,
-        label: 'MEPMA DC',
-      });
-      items.push({
-        to: '/admin/govt-forms',
-        icon: Layers,
-        label: 'Govt Forms',
-      });
-      items.push({
-        to: '/admin/department-name',
-        icon: ClipboardList,
-        label: 'Dept Dashboard',
-      });
-    }
-
-    if (role !== 'company_admin' && role !== 'lead_manager') {
-      items.push(
-        { to: '/admin/templates', icon: FileStack, label: 'Template Config' },
-        { to: '/admin/withdrawals', icon: Wallet, label: 'Withdrawals' },
-        { to: '/admin/payments', icon: CreditCard, label: 'Transactions' },
-        { to: '/admin/free-credits', icon: Gift, label: 'Free Reports' },
-        { to: '/admin/promotional-emails', icon: Mail, label: 'Promo Emails' },
-      );
-    }
-
-    // CRM section — visible to admin AND lead_manager
-    if (role !== 'company_admin') {
-      items.push(
-        { type: 'section', key: 'crm-section', label: 'CRM' },
-        { to: '/admin/services', icon: Briefcase, label: 'Services' },
-        { to: '/admin/leads', icon: UserCheck, label: 'Service Providers' },
-        { to: '/admin/banks', icon: Landmark, label: 'Banks' },
-        // Sales CRM — temporarily hidden from admin sidebar
-        // { type: 'section', key: 'sales-crm-section', label: 'Sales CRM' },
-        // { to: '/admin/sales/dashboard', icon: BarChart3,  label: 'CRM Dashboard', indent: true },
-        // { to: '/admin/sales/managers',  icon: Users,      label: 'Managers',       indent: true },
-        // { to: '/admin/sales/upload',    icon: Zap,        label: 'Upload Clients', indent: true },
-        // { to: '/admin/sales/clients',   icon: DollarSign, label: 'All Clients',    indent: true },
-        // { to: '/admin/sales/reports',   icon: FileText,   label: 'CRM Reports',    indent: true }
-      );
-    }
-
-    if (role === 'admin') {
-      items.push({ to: '/admin/companies', icon: Building2, label: 'Company Management' });
-    }
-
-    items.push({
-      to: role === 'company_admin' ? '/company/profile' : '/admin/profile',
-      icon: User,
-      label: 'Profile'
-    });
-    return items;
-  }, [role, user]);
 
   return (
     <div className="min-h-screen bg-gray-50 font-['Inter']">
@@ -308,170 +101,24 @@ const AdminLayout = ({ children, hideSidebar = false }) => {
 
       <div className="flex">
         {/* Sidebar - Desktop */}
-        {!hideSidebar && (
-          <aside
-            className={`hidden lg:flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ${
-              sidebarOpen ? 'w-64' : 'w-20'
-            }`}
-            style={{ height: 'calc(100vh - 64px)', position: 'sticky', top: '64px' }}
-          >
-          {/* User Profile Section */}
-          <div className={`p-4 border-b border-gray-200 ${!sidebarOpen ? 'flex justify-center' : ''}`}>
-            <div className={`flex items-center ${!sidebarOpen ? '' : 'gap-3'}`}>
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-purple-900 flex items-center justify-center text-white font-semibold flex-shrink-0">
-                {user?.name?.[0]?.toUpperCase() || 'A'}
-              </div>
-              {sidebarOpen && (
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{user?.name || 'Admin'}</p>
-                  <p className="text-xs text-gray-500 truncate">{user?.email || 'admin@example.com'}</p>
-                </div>
-              )}
-            </div>
-            {sidebarOpen && (
-              <div className="flex items-center gap-2 mt-2">
-                <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
-                  {roleBadgeLabel}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <nav
-            ref={sidebarNavRef}
-            className="flex-1 py-4 overflow-y-auto"
-            onScroll={persistSidebarScroll}
-          >
-            <ul className="space-y-1 px-3">
-              {navItems.map((item) =>
-                item.type === 'section' ? (
-                  !sidebarOpen ? null : (
-                  <li key={item.key} className="pt-3 pb-1">
-                    <span className="px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                      {item.label}
-                    </span>
-                  </li>
-                  )
-                ) : (
-                  <li key={item.to}>
-                    <NavLink
-                      to={item.to}
-                      title={item.title}
-                      onClick={saveSidebarScrollBeforeNavigate}
-                      className={({ isActive }) =>
-                        `flex items-center rounded-lg transition-colors ${
-                          item.indent ? 'px-2 py-2 ml-2' : 'px-3 py-2.5'
-                        } ${
-                          isActive
-                            ? 'bg-purple-50 text-purple-700 font-medium'
-                            : 'text-gray-700 hover:bg-gray-100'
-                        }`
-                      }
-                    >
-                      <item.icon size={item.indent ? 16 : 20} className="flex-shrink-0" />
-                      {sidebarOpen && (
-                        <span className={`ml-3 ${item.indent ? 'text-sm' : ''}`}>
-                          {item.label}
-                        </span>
-                      )}
-                    </NavLink>
-                  </li>
-                )
-              )}
-            </ul>
-          </nav>
-
-          {/* Logout Button */}
-          <div className="p-3 border-t border-gray-200">
-            <button
-              onClick={handleLogout}
-              className={`flex items-center w-full px-3 py-2.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors ${
-                !sidebarOpen ? 'justify-center' : ''
-              }`}
-            >
-              <LogOut size={20} className="flex-shrink-0" />
-              {sidebarOpen && <span className="ml-3 font-medium">Logout</span>}
-            </button>
-          </div>
-          </aside>
-        )}
-
-        {/* Mobile Sidebar Overlay */}
-        {!hideSidebar && mobileMenuOpen && (
-          <div className="lg:hidden fixed inset-0 z-40">
-            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setMobileMenuOpen(false)} />
-            <aside
-              ref={mobileSidebarRef}
-              onScroll={persistSidebarScroll}
-              className="fixed left-0 top-16 bottom-0 w-64 bg-white border-r border-gray-200 z-50 overflow-y-auto"
-            >
-              {/* User Profile Section - Mobile */}
-              <div className="p-4 border-b border-gray-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-purple-900 flex items-center justify-center text-white font-semibold">
-                    {user?.name?.[0]?.toUpperCase() || 'A'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{user?.name || 'Admin'}</p>
-                    <p className="text-xs text-gray-500 truncate">{user?.email || 'admin@example.com'}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
-                    {roleBadgeLabel}
-                  </span>
-                </div>
-              </div>
-
-              <nav className="py-4">
-                <ul className="space-y-1 px-3">
-                  {navItems.map((item) =>
-                    item.type === 'section' ? (
-                      <li key={item.key} className="pt-3 pb-1">
-                        <span className="px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                          {item.label}
-                        </span>
-                      </li>
-                    ) : (
-                      <li key={item.to}>
-                        <NavLink
-                          to={item.to}
-                          title={item.title}
-                          onClick={() => {
-                            saveSidebarScrollBeforeNavigate();
-                            setMobileMenuOpen(false);
-                          }}
-                          className={({ isActive }) =>
-                            `flex items-center rounded-lg transition-colors ${
-                              item.indent ? 'px-2 py-2 ml-2' : 'px-3 py-2.5'
-                            } ${
-                              isActive
-                                ? 'bg-purple-50 text-purple-700 font-medium'
-                                : 'text-gray-700 hover:bg-gray-100'
-                            }`
-                          }
-                        >
-                          <item.icon size={item.indent ? 16 : 20} />
-                          <span className={`ml-3 ${item.indent ? 'text-sm' : ''}`}>{item.label}</span>
-                        </NavLink>
-                      </li>
-                    )
-                  )}
-                </ul>
-              </nav>
-
-              {/* Logout Button - Mobile */}
-              <div className="p-3 border-t border-gray-200">
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center w-full px-3 py-2.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-                >
-                  <LogOut size={20} />
-                  <span className="ml-3 font-medium">Logout</span>
-                </button>
-              </div>
-            </aside>
-          </div>
+        {role === 'company_admin' ? (
+          <CompanyAdminSidebar
+            sidebarOpen={sidebarOpen}
+            mobileMenuOpen={mobileMenuOpen}
+            setMobileMenuOpen={setMobileMenuOpen}
+            hideSidebar={hideSidebar}
+          />
+        ) : (
+          <AdminSidebar
+            sidebarOpen={sidebarOpen}
+            mobileMenuOpen={mobileMenuOpen}
+            setMobileMenuOpen={setMobileMenuOpen}
+            hideSidebar={hideSidebar}
+            persistSidebarScroll={persistSidebarScroll}
+            saveSidebarScrollBeforeNavigate={saveSidebarScrollBeforeNavigate}
+            sidebarNavRef={sidebarNavRef}
+            mobileSidebarRef={mobileSidebarRef}
+          />
         )}
 
         {/* Main Content */}

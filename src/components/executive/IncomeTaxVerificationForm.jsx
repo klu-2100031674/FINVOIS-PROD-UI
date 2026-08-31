@@ -41,6 +41,7 @@ function emptyForm() {
     rlms: '',
     branch: '',
     name: '',
+    phone: '',
     pan: '',
     udin: '',
     place: '',
@@ -207,6 +208,14 @@ const IncomeTaxVerificationForm = () => {
                 value={form.name}
                 onChange={handleChange}
                 required
+                className="mb-0"
+                inputClassName={EXECUTIVE_INPUT_CLASS}
+              />
+              <Input
+                label="Ph no"
+                name="phone"
+                value={form.phone}
+                onChange={handleChange}
                 className="mb-0"
                 inputClassName={EXECUTIVE_INPUT_CLASS}
               />

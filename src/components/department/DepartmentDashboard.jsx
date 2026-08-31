@@ -1,4 +1,4 @@
-import React, { Fragment, useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   LogOut,
@@ -19,6 +19,12 @@ import {
   RefreshCw,
   Mail,
   User,
+  Eye,
+  Download,
+  X,
+  MessageSquare,
+  FileSpreadsheet,
+  PanelRightOpen,
 } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import DepartmentEmailOverlay from './DepartmentEmailOverlay';
@@ -37,6 +43,100 @@ import api, { apiErrorMessage } from '../../api/apiClient';
 import useAuth from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 import finvoisLogo from '../../assets/finvois.png';
+import RequestChatPanel from './RequestChatPanel';
+
+async function fetchDeptRequestReportBlob(requestId, kind = 'pdf', inline = false) {
+  const qs = kind === 'pdf' && inline ? '?inline=1' : '';
+  return api.get(`/govt-forms/requests/${requestId}/report/${kind}${qs}`, {
+    responseType: 'blob',
+  });
+}
+
+async function viewApprovedRequestPdf(requestId) {
+  const res = await fetchDeptRequestReportBlob(requestId, 'pdf', true);
+  const blob = new Blob([res.data], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank', 'noopener,noreferrer');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+async function downloadApprovedRequestFile(requestId, kind = 'pdf') {
+  const res = await fetchDeptRequestReportBlob(requestId, kind, false);
+  const type =
+    kind === 'excel'
+      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      : 'application/pdf';
+  const blob = new Blob([res.data], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = kind === 'excel' ? `report-${requestId}.xlsx` : `report-${requestId}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+function ApprovedReportActions({ requestId }) {
+  const [busy, setBusy] = useState(null);
+
+  const run = async (action, fn) => {
+    try {
+      setBusy(action);
+      await fn();
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Failed to open report'));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+      <button
+        type="button"
+        disabled={!!busy}
+        onClick={(e) => {
+          e.stopPropagation();
+          run('view', () => viewApprovedRequestPdf(requestId));
+        }}
+        className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 disabled:opacity-50"
+        title="View PDF"
+      >
+        <Eye className="h-4 w-4 shrink-0" />
+        {busy === 'view' ? 'Opening…' : 'View report'}
+      </button>
+      <div className="grid grid-cols-2 gap-2 sm:min-w-[220px]">
+        <button
+          type="button"
+          disabled={!!busy}
+          onClick={(e) => {
+            e.stopPropagation();
+            run('pdf', () => downloadApprovedRequestFile(requestId, 'pdf'));
+          }}
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          title="Download PDF"
+        >
+          <Download className="h-4 w-4 shrink-0 text-gray-500" />
+          {busy === 'pdf' ? '…' : 'PDF'}
+        </button>
+        <button
+          type="button"
+          disabled={!!busy}
+          onClick={(e) => {
+            e.stopPropagation();
+            run('excel', () => downloadApprovedRequestFile(requestId, 'excel'));
+          }}
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          title="Download Excel"
+        >
+          <FileSpreadsheet className="h-4 w-4 shrink-0 text-emerald-600" />
+          {busy === 'excel' ? '…' : 'Excel'}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 ChartJS.register(
   CategoryScale,
@@ -205,68 +305,142 @@ function RequestDetailPanel({ request }) {
 
   const hasDetails = detailFields.length > 0;
   const hasDocs = docs.length > 0;
-
-  if (!hasDetails && !hasDocs && !docsLoading) {
-    return (
-      <div className="px-4 py-3 bg-gray-50 border-t text-sm text-gray-500">
-        No additional form details submitted.
-      </div>
-    );
-  }
+  const requestId = request?._id;
+  const reportStatus = getDeptReportStatus(request);
+  const reportApproved = reportStatus.filterKey === 'generated';
 
   return (
-    <div className="px-4 py-3 bg-gray-50 border-t text-sm text-gray-600 space-y-3">
-      {hasDetails && (
+    <div className="space-y-5 text-sm text-gray-600">
+      <div className="grid grid-cols-2 gap-3 text-sm">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
-            Additional form details
+          <p className="text-xs text-gray-500">Form</p>
+          <p className="font-medium text-gray-900">{request.formId?.name || 'Deleted Form'}</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500">Status</p>
+          <span
+            className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${reportStatus.badgeClass}`}
+          >
+            {reportStatus.label}
+          </span>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500">Applicant</p>
+          <p className="font-medium text-gray-900">
+            {getContactValue(submittedData, fields, 'name')}
           </p>
-          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+        </div>
+        <div>
+          <p className="text-xs text-gray-500">Submitted</p>
+          <p className="font-medium text-gray-900">
+            {request.createdAt ? new Date(request.createdAt).toLocaleString() : '—'}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500">Email</p>
+          <p className="font-medium text-gray-900 break-all">
+            {getContactValue(submittedData, fields, 'email')}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500">Phone</p>
+          <p className="font-medium text-gray-900">
+            {getContactValue(submittedData, fields, 'phone')}
+          </p>
+        </div>
+      </div>
+
+      {reportApproved && requestId ? (
+        <section>
+          <h4 className="text-sm font-semibold text-gray-900 mb-2">Generated report</h4>
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
+            <ApprovedReportActions requestId={requestId} />
+          </div>
+        </section>
+      ) : (
+        <section>
+          <h4 className="text-sm font-semibold text-gray-900 mb-2">Generated report</h4>
+          <p className="text-sm text-gray-500 border border-dashed border-gray-200 rounded-lg px-3 py-6 text-center">
+            No approved report available yet.
+          </p>
+        </section>
+      )}
+
+      {hasDetails && (
+        <section>
+          <h4 className="text-sm font-semibold text-gray-900 mb-2">Additional form details</h4>
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 rounded-xl border border-gray-200 bg-white p-3">
             {detailFields.map((field) => (
               <div key={field.id}>
-                <dt className="font-medium text-gray-700">{field.label}</dt>
-                <dd className="text-gray-600 mt-0.5 break-words">{formatFieldValue(submittedData[field.id])}</dd>
+                <dt className="text-xs text-gray-500">{field.label}</dt>
+                <dd className="font-medium text-gray-800 mt-0.5 break-words">
+                  {formatFieldValue(submittedData[field.id])}
+                </dd>
               </div>
             ))}
           </dl>
-          <p className="text-xs text-gray-400 mt-3">
-            Applicant name: {getContactValue(submittedData, fields, 'name')}
-          </p>
-        </div>
+        </section>
       )}
 
-      {(hasDocs || docsLoading) && (
-        <div>
-          <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
-            Documents {hasDocs ? `(${docs.length})` : ''}
+      <section>
+        <h4 className="text-sm font-semibold text-gray-900 mb-2">
+          Documents ({docs.length})
+        </h4>
+        {docsLoading && !hasDocs ? (
+          <p className="text-sm text-gray-500 border border-dashed border-gray-200 rounded-lg px-3 py-6 text-center">
+            Loading documents…
           </p>
-          {docsLoading && !hasDocs ? (
-            <p className="text-xs text-gray-400">Loading documents…</p>
-          ) : (
-            <ul className="space-y-1">
-              {docs.map((doc) => (
-                <li key={doc.id || doc._id || doc.fileName} className="flex items-center gap-2">
-                  <FileText className="h-3.5 w-3.5 text-purple-500 shrink-0" />
-                  {doc.url ? (
-                    <a
-                      href={doc.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-purple-700 hover:underline truncate"
-                    >
-                      {doc.fileName}
-                    </a>
-                  ) : (
-                    <span className="text-sm text-gray-600 truncate">{doc.fileName}</span>
-                  )}
-                  {doc.kind && (
-                    <span className="text-[10px] uppercase text-gray-400 shrink-0">{doc.kind}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        ) : !hasDocs ? (
+          <p className="text-sm text-gray-500 border border-dashed border-gray-200 rounded-lg px-3 py-6 text-center">
+            No documents uploaded.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {docs.map((doc) => (
+              <li
+                key={doc.id || doc._id || doc.fileName}
+                className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white"
+              >
+                <div className="min-w-0 flex items-start gap-2">
+                  <FileText className="h-4 w-4 text-purple-500 shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 truncate">{doc.fileName}</p>
+                    {doc.kind ? (
+                      <p className="text-xs text-gray-500 uppercase">{doc.kind}</p>
+                    ) : null}
+                  </div>
+                </div>
+                {doc.url ? (
+                  <a
+                    href={doc.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  >
+                    <Download size={14} />
+                    Open
+                  </a>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {requestId && (
+        <section>
+          <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-1.5">
+            <MessageSquare size={14} className="text-purple-700" />
+            Chat
+          </h4>
+          <RequestChatPanel
+            requestId={String(requestId)}
+            apiBase={`/govt-forms/requests/${requestId}`}
+            status={request.status}
+            readOnly
+            compact
+          />
+        </section>
       )}
     </div>
   );
@@ -355,7 +529,7 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
   const [loading, setLoading] = useState(true);
   const [showChart, setShowChart] = useState(true);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [expandedId, setExpandedId] = useState(null);
+  const [detailRequest, setDetailRequest] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
 
   // Filters State
@@ -414,7 +588,20 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
   const fetchDepartments = async () => {
     try {
       const res = await api.get('/govt-forms/departments');
-      setDepartments(res.data?.data || []);
+      const list = res.data?.data || [];
+      setDepartments(list);
+      // All Departments disabled — default to first department when none selected
+      if (adminView && list.length > 0) {
+        const searchParams = new URLSearchParams(location.search);
+        const fromUrl = searchParams.get('departmentId') || '';
+        if (!fromUrl && !selectedDeptId) {
+          const firstId = String(list[0]._id);
+          setSelectedDeptId(firstId);
+          navigate(`/admin/department-name?departmentId=${encodeURIComponent(firstId)}`, {
+            replace: true,
+          });
+        }
+      }
     } catch (err) {
       console.error('Failed to load departments', err);
     }
@@ -660,8 +847,6 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
       : 'No requests received yet.';
 
   const renderDashboardContent = () => {
-    const tableColSpan = showServiceAvailed ? 9 : 8;
-
     return (
       <div className="space-y-6">
         {/* Department Selector for Admin */}
@@ -678,7 +863,9 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
               }}
               className="w-full sm:w-72 px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 focus:border-orange-500 bg-gray-50 text-sm outline-none transition-all font-medium"
             >
+              {/* All Departments option temporarily disabled
               <option value="">All Departments</option>
+              */}
               {departments.map((dept) => (
                 <option key={dept._id} value={dept._id}>
                   {dept.name}
@@ -921,7 +1108,6 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      <th className="px-3 py-3 w-8" />
                       <th className="px-3 py-3">Form Name</th>
                       <th className="px-3 py-3">Email</th>
                       <th className="px-3 py-3">Phone No</th>
@@ -934,7 +1120,6 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
                     {paginatedRequests.map((req) => {
-                      const expanded = expandedId === req._id;
                       const fields = req.formId?.fields || [];
                       const submittedData = req.submittedData || {};
                       const reportStatus = getDeptReportStatus(req);
@@ -943,54 +1128,49 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
                       else if (req.status === 'claimed') assignee = req.claimedBy?.name || 'Claimed';
 
                       return (
-                        <Fragment key={req._id}>
-                          <tr className="hover:bg-gray-50/50">
+                        <tr key={req._id} className="hover:bg-gray-50/50">
+                          <td className="px-3 py-3 font-semibold text-gray-900 whitespace-nowrap">
+                            {req.formId?.name || 'Deleted Form'}
+                          </td>
+                          <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
+                            {getContactValue(submittedData, fields, 'email')}
+                          </td>
+                          <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
+                            {getContactValue(submittedData, fields, 'phone')}
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap">
+                            <span
+                              className={`inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full ${reportStatus.badgeClass}`}
+                            >
+                              {reportStatus.label}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{assignee}</td>
+                          <td className="px-3 py-3 text-gray-500 whitespace-nowrap">
+                            {new Date(req.createdAt).toLocaleString()}
+                          </td>
+                          {showServiceAvailed && (
                             <td className="px-3 py-3">
+                              <input
+                                type="checkbox"
+                                checked={!!req.serviceAvailed}
+                                disabled={togglingId === req._id}
+                                onChange={(e) => handleToggleServiceAvailed(req._id, e.target.checked)}
+                                className="rounded text-orange-500 focus:ring-orange-500 h-4 w-4 border-gray-300 cursor-pointer"
+                              />
+                            </td>
+                          )}
+                          <td className="px-3 py-3 text-right whitespace-nowrap">
+                            <div className="inline-flex items-center justify-end gap-2">
                               <button
                                 type="button"
-                                onClick={() => setExpandedId(expanded ? null : req._id)}
-                                className="text-gray-400 hover:text-gray-600"
-                                aria-expanded={expanded}
+                                onClick={() => setDetailRequest(req)}
+                                className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 border border-gray-200 text-gray-700 bg-white rounded-lg hover:bg-gray-50 font-semibold transition-all"
+                                title="View chat, documents, and report"
                               >
-                                {expanded ? (
-                                  <ChevronDown className="h-4 w-4" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4" />
-                                )}
+                                <PanelRightOpen className="h-3.5 w-3.5" />
+                                View details
                               </button>
-                            </td>
-                            <td className="px-3 py-3 font-semibold text-gray-900 whitespace-nowrap">
-                              {req.formId?.name || 'Deleted Form'}
-                            </td>
-                            <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                              {getContactValue(submittedData, fields, 'email')}
-                            </td>
-                            <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                              {getContactValue(submittedData, fields, 'phone')}
-                            </td>
-                            <td className="px-3 py-3 whitespace-nowrap">
-                              <span
-                                className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${reportStatus.badgeClass}`}
-                              >
-                                {reportStatus.label}
-                              </span>
-                            </td>
-                            <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{assignee}</td>
-                            <td className="px-3 py-3 text-gray-500 whitespace-nowrap">
-                              {new Date(req.createdAt).toLocaleString()}
-                            </td>
-                            {showServiceAvailed && (
-                              <td className="px-3 py-3">
-                                <input
-                                  type="checkbox"
-                                  checked={!!req.serviceAvailed}
-                                  disabled={togglingId === req._id}
-                                  onChange={(e) => handleToggleServiceAvailed(req._id, e.target.checked)}
-                                  className="rounded text-orange-500 focus:ring-orange-500 h-4 w-4 border-gray-300 cursor-pointer"
-                                />
-                              </td>
-                            )}
-                            <td className="px-3 py-3 text-right whitespace-nowrap">
                               <button
                                 type="button"
                                 onClick={() => setSelectedRequest(req)}
@@ -998,16 +1178,9 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
                               >
                                 Manage Staff
                               </button>
-                            </td>
-                          </tr>
-                          {expanded && (
-                            <tr>
-                              <td colSpan={tableColSpan} className="p-0">
-                                <RequestDetailPanel request={req} />
-                              </td>
-                            </tr>
-                          )}
-                        </Fragment>
+                            </div>
+                          </td>
+                        </tr>
                       );
                     })}
                   </tbody>
@@ -1018,7 +1191,6 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
             {/* Mobile Cards View */}
             <div className="lg:hidden space-y-3">
               {paginatedRequests.map((req) => {
-                const expanded = expandedId === req._id;
                 const fields = req.formId?.fields || [];
                 const submittedData = req.submittedData || {};
                 const reportStatus = getDeptReportStatus(req);
@@ -1027,53 +1199,44 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
                 else if (req.status === 'claimed') assignee = req.claimedBy?.name || 'Claimed';
 
                 return (
-                  <div key={req._id} className="bg-white border rounded-2xl overflow-hidden shadow-sm">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedId(expanded ? null : req._id)}
-                      className="w-full text-left p-4 flex items-start gap-3"
-                    >
-                      {expanded ? (
-                        <ChevronDown className="h-5 w-5 text-gray-400 shrink-0 mt-0.5" />
-                      ) : (
-                        <ChevronRight className="h-5 w-5 text-gray-400 shrink-0 mt-0.5" />
-                      )}
+                  <div key={req._id} className="bg-white border rounded-2xl overflow-hidden shadow-sm p-4 space-y-3">
+                    <div className="flex items-start gap-3">
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-gray-900">{req.formId?.name || 'Deleted Form'}</h3>
                         <p className="text-sm text-gray-500">{getContactValue(submittedData, fields, 'email')}</p>
                         <p className="text-sm text-gray-500">{getContactValue(submittedData, fields, 'phone')}</p>
                         <p className="text-xs text-gray-400 mt-1">{new Date(req.createdAt).toLocaleString()}</p>
+                        <p className="text-xs text-gray-500 mt-1">Staff: {assignee}</p>
                       </div>
                       <span
                         className={`shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full ${reportStatus.badgeClass}`}
                       >
                         {reportStatus.label}
                       </span>
-                    </button>
-                    {expanded && (
-                      <div className="border-t">
-                        <RequestDetailPanel request={req} />
-                        <div className="px-4 pb-4 space-y-1 text-sm text-gray-600 border-t pt-3">
-                          <p>
-                            <span className="font-semibold text-gray-700">Assigned Staff:</span> {assignee}
-                          </p>
-                          {showServiceAvailed && (
-                            <div className="flex items-center justify-between pt-2 border-t mt-2">
-                              <span className="font-semibold text-gray-700">Service Availed</span>
-                              <input
-                                type="checkbox"
-                                checked={!!req.serviceAvailed}
-                                disabled={togglingId === req._id}
-                                onChange={(e) => handleToggleServiceAvailed(req._id, e.target.checked)}
-                                className="rounded text-orange-500 focus:ring-orange-500 h-4 w-4 border-gray-300 cursor-pointer"
-                              />
-                            </div>
-                          )}
-                        </div>
+                    </div>
+                    {showServiceAvailed && (
+                      <div className="flex items-center justify-between pt-2 border-t">
+                        <span className="text-sm font-semibold text-gray-700">Service Availed</span>
+                        <input
+                          type="checkbox"
+                          checked={!!req.serviceAvailed}
+                          disabled={togglingId === req._id}
+                          onChange={(e) => handleToggleServiceAvailed(req._id, e.target.checked)}
+                          className="rounded text-orange-500 focus:ring-orange-500 h-4 w-4 border-gray-300 cursor-pointer"
+                        />
                       </div>
                     )}
-                    <div className="px-4 pb-4 flex justify-end">
+                    <div className="flex flex-wrap justify-end gap-2 pt-1">
                       <button
+                        type="button"
+                        onClick={() => setDetailRequest(req)}
+                        className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 border border-gray-200 text-gray-700 bg-white rounded-lg hover:bg-gray-50 font-semibold transition-all"
+                      >
+                        <PanelRightOpen className="h-3.5 w-3.5" />
+                        View details
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setSelectedRequest(req)}
                         className="text-xs px-3 py-1.5 border border-purple-200 text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 font-semibold transition-all"
                       >
@@ -1155,6 +1318,36 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
         <main className="flex-1 max-w-[1400px] w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
           {renderDashboardContent()}
         </main>
+      )}
+
+      {/* Request detail drawer (chat, documents, report) */}
+      {detailRequest && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/40"
+            aria-label="Close detail"
+            onClick={() => setDetailRequest(null)}
+          />
+          <div className="relative h-full w-full max-w-xl bg-white shadow-xl overflow-y-auto">
+            <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Request detail</h3>
+                <p className="text-xs text-gray-500">Documents, chat, and generated report</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailRequest(null)}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-4">
+              <RequestDetailPanel request={detailRequest} />
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Staff Assignment Modal */}

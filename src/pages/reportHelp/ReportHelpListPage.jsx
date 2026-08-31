@@ -23,11 +23,11 @@ const FILTERS = [
   { value: 'rejected', label: 'Rejected' },
 ];
 
-const TERMINAL_STATUSES = new Set(['completed', 'rejected']);
+const WAITING_STATUSES = new Set(['pending', 'documents_submitted']);
 
 function matchesFilter(request, filter) {
   if (filter === 'all') return true;
-  if (filter === 'waiting') return !TERMINAL_STATUSES.has(request.status);
+  if (filter === 'waiting') return WAITING_STATUSES.has(request.status);
   return request.status === filter;
 }
 

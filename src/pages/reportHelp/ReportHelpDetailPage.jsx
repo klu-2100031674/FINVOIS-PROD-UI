@@ -22,6 +22,7 @@ import {
   ReportHelpDetailGrid,
   ReportHelpLoading,
   ReportHelpPageShell,
+  ReportHelpPrimaryButton,
 } from '../../components/reportHelp/ReportHelpUi';
 
 const reportTypeLabel = (v) => REPORT_TYPE_OPTIONS.find((o) => o.value === v)?.label || v;
@@ -44,6 +45,7 @@ export default function ReportHelpDetailPage() {
   const { user } = useAuth();
   const [request, setRequest] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [reclaiming, setReclaiming] = useState(false);
 
   const load = useCallback(async (opts = {}) => {
     const silent = opts.silent === true;
@@ -61,6 +63,19 @@ export default function ReportHelpDetailPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleReclaim = async () => {
+    try {
+      setReclaiming(true);
+      const res = await reportHelpAPI.reclaim(id);
+      setRequest(res?.data || null);
+      toast.success('Request resubmitted — it is waiting for review again');
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to reclaim request');
+    } finally {
+      setReclaiming(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -146,11 +161,23 @@ export default function ReportHelpDetailPage() {
             </div>
           )}
 
-          {request.status === 'rejected' && request.rejection_reason && (
-            <div className="mt-4">
-              <ReportHelpAlert variant="danger" title="Request declined">
-                {request.rejection_reason}
-              </ReportHelpAlert>
+          {request.status === 'rejected' && (
+            <div className="mt-4 space-y-3">
+              {request.rejection_reason && (
+                <ReportHelpAlert variant="danger" title="Request declined">
+                  {request.rejection_reason}
+                </ReportHelpAlert>
+              )}
+              <ReportHelpPrimaryButton
+                disabled={reclaiming}
+                onClick={handleReclaim}
+                className="!bg-[#7e22ce] hover:!bg-[#6b21a8]"
+              >
+                {reclaiming ? 'Resubmitting…' : 'Reclaim & resubmit request'}
+              </ReportHelpPrimaryButton>
+              <p className="text-xs text-gray-500">
+                This sends the request back to Waiting so {handlerNoun} can accept it again.
+              </p>
             </div>
           )}
         </ReportHelpCard>

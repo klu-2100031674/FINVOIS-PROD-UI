@@ -68,34 +68,24 @@ export function hasPreparedByValue(value) {
   return value !== undefined && value !== null && String(value).trim() !== '';
 }
 
-/** Term loan templates store bank/branch under General Information. */
+/** Term loan templates store optional bank/branch under General Information. */
 export function isTermLoanPreparedByValid(formData) {
   const preparedBy = formData?.['Prepared By'] || {};
-  const generalInfo = formData?.['General Information'] || {};
   return (
     hasPreparedByValue(preparedBy.j138) &&
     hasPreparedByValue(preparedBy.j139) &&
-    hasPreparedByValue(generalInfo.bank_name) &&
-    hasPreparedByValue(generalInfo.branch_name) &&
     hasPreparedByValue(preparedBy.required_stamp)
   );
 }
 
 export function getTermLoanPreparedByErrors(formData) {
   const preparedBy = formData?.['Prepared By'] || {};
-  const generalInfo = formData?.['General Information'] || {};
   const errors = {};
   if (!hasPreparedByValue(preparedBy.j138)) {
     errors.j138 = 'Address (Prepared By) is required';
   }
   if (!hasPreparedByValue(preparedBy.j139)) {
     errors.j139 = 'Mobile Number (Prepared By) is required';
-  }
-  if (!hasPreparedByValue(generalInfo.bank_name)) {
-    errors.bank_name = 'Bank Name / Department Name is required';
-  }
-  if (!hasPreparedByValue(generalInfo.branch_name)) {
-    errors.branch_name = 'Branch Name is required';
   }
   if (!hasPreparedByValue(preparedBy.required_stamp)) {
     errors.required_stamp = 'Required Stamp is required';

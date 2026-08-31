@@ -103,7 +103,8 @@ export default function PublicSchemeAiChat({
         }));
 
       const apiBase = getApiBaseUrl().replace(/\/$/, '');
-      const response = await fetch(`${apiBase}/${schemeKey}-ai/chat`, {
+      // Unified scheme route: one path per scheme, action='chat' picks the operation.
+      const response = await fetch(`${apiBase}/schemes/${schemeKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -111,6 +112,7 @@ export default function PublicSchemeAiChat({
         // Public scheme chat is cross-origin in deploy — omit cookies to avoid strict CORS.
         credentials: 'omit',
         body: JSON.stringify({
+          action: 'chat',
           message: textToSend,
           history: historyPayload,
           formData: resolvedFormData,

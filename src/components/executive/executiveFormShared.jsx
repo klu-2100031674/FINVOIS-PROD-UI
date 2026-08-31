@@ -2,9 +2,11 @@ import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Download, FileText, Loader2, Upload, ChevronDown, Save } from 'lucide-react';
 import { Button } from '../common';
+import { useAuth } from '../../hooks';
+import { executiveReportsPath, executiveDraftsPath } from '../../utils/routePaths';
 
 export const MAX_PHOTOS = 8;
-export const MAX_SITE_PHOTO_BYTES = 4 * 1024 * 1024;
+export const MAX_SITE_PHOTO_BYTES = 5 * 1024 * 1024;
 
 /** Merge new site photo picks; skip files over 4MB. */
 export function mergeSitePhotoFiles(prev, selectedFiles) {
@@ -335,6 +337,9 @@ export function StickyFormActions({
   savingDraft = false,
   loadingDraft = false
 }) {
+  const { user } = useAuth();
+  const reportsPath = executiveReportsPath(user);
+  const draftsPath = executiveDraftsPath(user);
   const canDownload = lastGenerated?.id && lastGenerated?.validationStatus === 'approved';
   const submittedPending =
     lastGenerated?.id && lastGenerated?.validationStatus !== 'approved';
@@ -353,7 +358,7 @@ export function StickyFormActions({
         </p>
       )}
       <Link
-        to="/executive/reports"
+        to={reportsPath}
         className="inline-flex items-center justify-center px-4 py-2.5 min-h-[44px] text-sm font-semibold text-[#7e22ce] hover:underline md:min-h-0"
       >
         View my reports
@@ -398,7 +403,7 @@ export function StickyFormActions({
           </Button>
         )}
         <Link
-          to="/executive/drafts"
+          to={draftsPath}
           className="inline-flex items-center px-4 py-2.5 text-sm font-semibold text-[#7e22ce] hover:underline"
         >
           My drafts
@@ -462,7 +467,7 @@ export function StickyFormActions({
                   </Button>
                 )}
                 <Link
-                  to="/executive/reports"
+                  to={reportsPath}
                   className={`inline-flex items-center justify-center px-3 py-2 text-sm font-semibold text-[#7e22ce] border border-[#7e22ce] rounded-lg ${
                     canDownload ? 'flex-1' : 'w-full'
                   }`}

@@ -41,6 +41,7 @@ const CompanyUserDashboardPage = () => {
       <DashboardAISection
         onSelectTemplate={handleTemplateSelect}
         showGenerationModeStep
+        hideGenerateReportOption
       />
     </ClientLayout>
   );

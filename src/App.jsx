@@ -35,19 +35,12 @@ import {
   Stage3Page,
   FRCC1FormPage,
   ProfilePage,
-  ExecutiveDashboardPage,
-  ExecutiveSbiHousePage,
-  ExecutiveSbiOfficePage,
-  ExecutiveSbiBussinessPage,
-  ExecutiveIncomeTaxPage,
-  // ExecutiveBoiPage, // not in v3.12 MEMPA
-  // ExecutiveBoiHousingPage, // not in v3.12 MEMPA
-  ExecutiveReportsPage,
-  ExecutiveDraftsPage,
   AdminPage,
   AdminPaymentsPage,
   PublicClientScreeningPage,
   PublicFormPage,
+  TheoryPagesHubPage,
+  TheoryGeneratePage,
 } from "./pages";
 import {
   AdminDashboardPage,
@@ -125,6 +118,30 @@ import CompanyUserReportsByPersonPage from "./pages/company/CompanyUserReportsBy
 import CompanyUserDashboardPage from "./pages/company/user/CompanyUserDashboardPage";
 import CompanyUserProfilePage from "./pages/company/user/CompanyUserProfilePage";
 import SimpleRoleProfilePage from "./pages/SimpleRoleProfilePage";
+import {
+  SbiDashboardPage,
+  SbiReportsPage,
+  SbiDraftsPage,
+  SbiProfilePage,
+  SbiHousePage,
+  SbiOfficePage,
+  SbiBusinessPage,
+  SbiIncomeTaxPage,
+} from "./pages/Executive/sbi";
+import {
+  BoiDashboardPage,
+  BoiReportsPage,
+  BoiDraftsPage,
+  BoiProfilePage,
+  BoiClassicPage,
+  BoiHousingPage,
+  BoiMsmePage,
+  BoiHomeLoan1Page,
+  BoiHomeLoan2Page,
+  BoiHomeLoan3Page,
+  BoiHomeLoan3GuarantorPage,
+  BoiHomeLoan4Page,
+} from "./pages/Executive/boi";
 import CompanyUserGeneratePage from "./pages/company/user/CompanyUserGeneratePage";
 import CompanyUserReportsPage from "./pages/company/user/CompanyUserReportsPage";
 import FRCC2FormPage from "./pages/FRCC2FormPage";
@@ -172,10 +189,9 @@ import DocumentationPage from "./components/LandingPage/pages/DocumentationPage"
 import BlogPage from "./components/LandingPage/pages/BlogPage";
 import { AboutPage, CareersPage, PartnersPage, ContactPage, HelpCenterPage, APIPage } from "./components/LandingPage/pages/CompanyPages";
 import { PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, CookiesPage } from "./components/LandingPage/pages/LegalPages";
-import { effectiveUserRole } from "./utils/normalizeUserRole";
-// import { isExecutiveRole } from "./utils/normalizeUserRole"; // not in v3.12 MEMPA
-// import { getBankForExecutiveRole } from "./utils/executiveTemplates"; // not in v3.12 MEMPA
-import { dashboardHomePath } from "./utils/routePaths";
+import { effectiveUserRole, isExecutiveRole } from "./utils/normalizeUserRole";
+import { getBankForExecutiveRole } from "./utils/executiveTemplates";
+import { dashboardHomePath, profilePathForRole, executiveDashboardPath } from "./utils/routePaths";
 import { canAccessApplication } from "./utils/signupApproval";
 
 /** One-shot profile refresh so org users get `companyIsActive` from API (legacy cached blobs). */
@@ -371,21 +387,30 @@ const ExecutiveRoute = ({ children }) => {
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
   }
-  if (r !== 'executive') {
+  if (!isExecutiveRole(r)) {
     return <Navigate to={dashboardHomePath(user)} replace />;
   }
   return children;
 };
 
-// Not in v3.12 MEMPA — BOI/SBI bank-scoped executive routing
-// const ExecutiveBankRoute = ({ bank, children }) => {
-//   const { user } = useAuth();
-//   const allowedBank = getBankForExecutiveRole(effectiveUserRole(user));
-//   if (allowedBank && allowedBank !== bank) {
-//     return <Navigate to="/executive/dashboard" replace />;
-//   }
-//   return children;
-// };
+const ExecutiveBankRoute = ({ bank, children }) => {
+  const { user } = useAuth();
+  const allowedBank = getBankForExecutiveRole(effectiveUserRole(user));
+  if (allowedBank && allowedBank !== bank) {
+    return <Navigate to={executiveDashboardPath(user)} replace />;
+  }
+  return children;
+};
+
+const ExecutiveHomeRedirect = () => {
+  const { user } = useAuth();
+  return <Navigate to={executiveDashboardPath(user)} replace />;
+};
+
+const ExecutiveProfileRedirect = () => {
+  const { user } = useAuth();
+  return <Navigate to={profilePathForRole(user)} replace />;
+};
 
 const DepartmentRoute = ({ children }) => {
   const { isAuthenticated, user } = useAuth();
@@ -425,7 +450,7 @@ const CustomerRoute = ({ children }) => {
 
 const NonExecutiveRoute = ({ children }) => {
   const { user } = useAuth();
-  if (effectiveUserRole(user) === 'executive') {
+  if (isExecutiveRole(effectiveUserRole(user))) {
     return <Navigate to={dashboardHomePath(user)} replace />;
   }
   return children;
@@ -680,91 +705,211 @@ function App() {
           }
         />
         <Route
-          path="/executive/dashboard"
+          path="/executive/sbi/dashboard"
           element={
             <ExecutiveRoute>
-              <ExecutiveDashboardPage />
-            </ExecutiveRoute>
-          }
-        />
-        <Route
-          path="/executive/templates/sbi-house"
-          element={
-            <ExecutiveRoute>
-              <ExecutiveSbiHousePage />
-            </ExecutiveRoute>
-          }
-        />
-        <Route
-          path="/executive/templates/sbi-office"
-          element={
-            <ExecutiveRoute>
-              <ExecutiveSbiOfficePage />
-            </ExecutiveRoute>
-          }
-        />
-        <Route
-          path="/executive/templates/sbi-bussiness"
-          element={
-            <ExecutiveRoute>
-              <ExecutiveSbiBussinessPage />
-            </ExecutiveRoute>
-          }
-        />
-        <Route
-          path="/executive/templates/income-tax"
-          element={
-            <ExecutiveRoute>
-              <ExecutiveIncomeTaxPage />
-            </ExecutiveRoute>
-          }
-        />
-        {/* Not in v3.12 MEMPA — BOI executive routes
-        <Route
-          path="/executive/templates/boi/*"
-          element={
-            <ExecutiveRoute>
-              <ExecutiveBankRoute bank="BOI">
-                <ExecutiveBoiPage />
+              <ExecutiveBankRoute bank="SBI">
+                <SbiDashboardPage />
               </ExecutiveBankRoute>
             </ExecutiveRoute>
           }
         />
         <Route
-          path="/executive/templates/boi-housing"
+          path="/executive/sbi/templates/sbi-house"
           element={
             <ExecutiveRoute>
-              <ExecutiveBankRoute bank="BOI">
-                <ExecutiveBoiHousingPage />
+              <ExecutiveBankRoute bank="SBI">
+                <SbiHousePage />
               </ExecutiveBankRoute>
             </ExecutiveRoute>
           }
         />
-        */}
         <Route
-          path="/executive/reports"
+          path="/executive/sbi/templates/sbi-office"
           element={
             <ExecutiveRoute>
-              <ExecutiveReportsPage />
+              <ExecutiveBankRoute bank="SBI">
+                <SbiOfficePage />
+              </ExecutiveBankRoute>
             </ExecutiveRoute>
           }
         />
         <Route
-          path="/executive/drafts"
+          path="/executive/sbi/templates/sbi-bussiness"
           element={
             <ExecutiveRoute>
-              <ExecutiveDraftsPage />
+              <ExecutiveBankRoute bank="SBI">
+                <SbiBusinessPage />
+              </ExecutiveBankRoute>
             </ExecutiveRoute>
           }
         />
         <Route
-          path="/executive/profile"
+          path="/executive/sbi/templates/income-tax"
           element={
             <ExecutiveRoute>
-              <ProfilePage variant="executive" />
+              <ExecutiveBankRoute bank="SBI">
+                <SbiIncomeTaxPage />
+              </ExecutiveBankRoute>
             </ExecutiveRoute>
           }
         />
+        <Route
+          path="/executive/sbi/reports"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveBankRoute bank="SBI">
+                <SbiReportsPage />
+              </ExecutiveBankRoute>
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/sbi/drafts"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveBankRoute bank="SBI">
+                <SbiDraftsPage />
+              </ExecutiveBankRoute>
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/sbi/profile"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveBankRoute bank="SBI">
+                <SbiProfilePage />
+              </ExecutiveBankRoute>
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/boi/dashboard"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveBankRoute bank="BOI">
+                <BoiDashboardPage />
+              </ExecutiveBankRoute>
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/boi/templates/boi/*"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveBankRoute bank="BOI">
+                <BoiClassicPage />
+              </ExecutiveBankRoute>
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/boi/templates/boi-housing"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveBankRoute bank="BOI">
+                <BoiHousingPage />
+              </ExecutiveBankRoute>
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/boi/templates/boi-msme"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveBankRoute bank="BOI">
+                <BoiMsmePage />
+              </ExecutiveBankRoute>
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/boi/templates/boi-home-loan-1"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveBankRoute bank="BOI">
+                <BoiHomeLoan1Page />
+              </ExecutiveBankRoute>
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/boi/templates/boi-home-loan-2"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveBankRoute bank="BOI">
+                <BoiHomeLoan2Page />
+              </ExecutiveBankRoute>
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/boi/templates/boi-home-loan-3"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveBankRoute bank="BOI">
+                <BoiHomeLoan3Page />
+              </ExecutiveBankRoute>
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/boi/templates/boi-home-loan-3-guarantor"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveBankRoute bank="BOI">
+                <BoiHomeLoan3GuarantorPage />
+              </ExecutiveBankRoute>
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/boi/templates/boi-home-loan-4"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveBankRoute bank="BOI">
+                <BoiHomeLoan4Page />
+              </ExecutiveBankRoute>
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/boi/reports"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveBankRoute bank="BOI">
+                <BoiReportsPage />
+              </ExecutiveBankRoute>
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/boi/drafts"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveBankRoute bank="BOI">
+                <BoiDraftsPage />
+              </ExecutiveBankRoute>
+            </ExecutiveRoute>
+          }
+        />
+        <Route
+          path="/executive/boi/profile"
+          element={
+            <ExecutiveRoute>
+              <ExecutiveBankRoute bank="BOI">
+                <BoiProfilePage />
+              </ExecutiveBankRoute>
+            </ExecutiveRoute>
+          }
+        />
+        {/* Legacy executive paths → bank-scoped homes */}
+        <Route path="/executive/dashboard" element={<ExecutiveRoute><ExecutiveHomeRedirect /></ExecutiveRoute>} />
+        <Route path="/executive/reports" element={<ExecutiveRoute><ExecutiveHomeRedirect /></ExecutiveRoute>} />
+        <Route path="/executive/drafts" element={<ExecutiveRoute><ExecutiveHomeRedirect /></ExecutiveRoute>} />
+        <Route path="/executive/profile" element={<ExecutiveRoute><ExecutiveProfileRedirect /></ExecutiveRoute>} />
+        <Route path="/executive/templates/*" element={<ExecutiveRoute><ExecutiveHomeRedirect /></ExecutiveRoute>} />
         <Route
           path="/company/dashboard"
           element={
@@ -778,6 +923,22 @@ function App() {
           element={
             <AdminOrCompanyAdminRoute>
               <CompanyAdminGeneratePage />
+            </AdminOrCompanyAdminRoute>
+          }
+        />
+        <Route
+          path="/company/theory-pages"
+          element={
+            <AdminOrCompanyAdminRoute>
+              <TheoryPagesHubPage />
+            </AdminOrCompanyAdminRoute>
+          }
+        />
+        <Route
+          path="/company/theory-pages/generate"
+          element={
+            <AdminOrCompanyAdminRoute>
+              <TheoryGeneratePage />
             </AdminOrCompanyAdminRoute>
           }
         />
@@ -813,6 +974,22 @@ function App() {
             <GenerateWizardRoute>
               <GeneratePage />
             </GenerateWizardRoute>
+          }
+        />
+        <Route
+          path="/theory-pages"
+          element={
+            <RetailUserRoute>
+              <TheoryPagesHubPage />
+            </RetailUserRoute>
+          }
+        />
+        <Route
+          path="/theory-pages/generate"
+          element={
+            <RetailUserRoute>
+              <TheoryGeneratePage />
+            </RetailUserRoute>
           }
         />
         <Route
@@ -860,6 +1037,14 @@ function App() {
           }
         />
         <Route
+          path="/generate/pmegp/ai-chat"
+          element={
+            <GenerateWizardRoute>
+              <PublicPmegpAiChatPage />
+            </GenerateWizardRoute>
+          }
+        />
+        <Route
           path="/generate/ap-idp"
           element={
             <GenerateWizardRoute>
@@ -876,6 +1061,14 @@ function App() {
           }
         />
         <Route
+          path="/generate/ap-idp/ai-chat"
+          element={
+            <GenerateWizardRoute>
+              <PublicApIdpAiChatPage />
+            </GenerateWizardRoute>
+          }
+        />
+        <Route
           path="/generate/cmep"
           element={
             <GenerateWizardRoute>
@@ -888,6 +1081,14 @@ function App() {
           element={
             <GenerateWizardRoute>
               <CmepSchemeMailPage />
+            </GenerateWizardRoute>
+          }
+        />
+        <Route
+          path="/generate/cmep/ai-chat"
+          element={
+            <GenerateWizardRoute>
+              <PublicCmepAiChatPage />
             </GenerateWizardRoute>
           }
         />
@@ -954,6 +1155,22 @@ function App() {
           element={
             <CompanyUserRoute>
               <CompanyUserGeneratePage />
+            </CompanyUserRoute>
+          }
+        />
+        <Route
+          path="/company/user/theory-pages"
+          element={
+            <CompanyUserRoute>
+              <TheoryPagesHubPage />
+            </CompanyUserRoute>
+          }
+        />
+        <Route
+          path="/company/user/theory-pages/generate"
+          element={
+            <CompanyUserRoute>
+              <TheoryGeneratePage />
             </CompanyUserRoute>
           }
         />
@@ -1244,6 +1461,22 @@ function App() {
           element={
             <AdminGenerateRoute>
               <AdminGenerateReportPage />
+            </AdminGenerateRoute>
+          }
+        />
+        <Route
+          path="/admin/theory-pages"
+          element={
+            <AdminGenerateRoute>
+              <TheoryPagesHubPage />
+            </AdminGenerateRoute>
+          }
+        />
+        <Route
+          path="/admin/theory-pages/generate"
+          element={
+            <AdminGenerateRoute>
+              <TheoryGeneratePage />
             </AdminGenerateRoute>
           }
         />

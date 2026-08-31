@@ -134,9 +134,14 @@ export const authAPI = {
   },
 
   // Google Authentication (Login/Register)
-  googleAuth: async (idToken) => {
+  googleAuth: async (idToken, options = {}) => {
     try {
-      const response = await apiClient.post('/users/google-auth', { idToken });
+      const payload = { idToken };
+      const referralCode = options?.referral_code;
+      if (referralCode) {
+        payload.referral_code = String(referralCode).trim();
+      }
+      const response = await apiClient.post('/users/google-auth', payload);
       const user = response.data?.data?.user;
       if (user) {
         const approvalStatus = resolveSignupApprovalStatus(user);

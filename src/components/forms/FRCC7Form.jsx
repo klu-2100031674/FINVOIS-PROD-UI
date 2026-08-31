@@ -16,7 +16,8 @@ import {
 } from '@heroicons/react/24/outline';
 
 import SaveDraftButton from '../common/SaveDraftButton';
-import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD } from '../../utils/frccFormUi';
+
+import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_CIBIL_FIELD } from '../../utils/frccFormUi';
 
 const parseNumberInput = (val) => val === '' ? '' : (val.endsWith('.') || val.endsWith('.0') ? val : (isNaN(parseFloat(val)) ? val : parseFloat(val)));
 
@@ -87,6 +88,8 @@ const FRCC7Form = ({
       bank_name: '',
       branch_name: '',
       required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
+      banker_mail_id: '',
+      cibil_score: '',
     }
   });
 
@@ -115,8 +118,6 @@ const FRCC7Form = ({
         { id: 'i7',          label: 'Contact No. of Authorised Person', type: 'text',   required: true },
         { id: 'i8',          label: 'Sector',                         type: 'select',   options: ['Manufacturing sector', 'Service sector (with stock)', 'Trading sector'], required: true },
         { id: 'i9',          label: 'Nature of Business',             type: 'text',     required: true },
-        { id: 'bank_name',   label: 'Bank Name / Department Name',    type: 'text',     required: true },
-        { id: 'branch_name', label: 'Branch Name',                    type: 'text',     required: true },
       ]
     },
     {
@@ -212,13 +213,15 @@ const FRCC7Form = ({
       title: 'Prepared By',
       icon: UserIcon,
       fields: [
-        { id: 'i159',        label: 'Name 1 (Prepared By)',        type: 'text', required: true  },
-        { id: 'i160',        label: 'Name 2 (Prepared By)',        type: 'text', required: false },
-        { id: 'i161',        label: 'Address (Prepared By)',       type: 'text', required: true  },
-        { id: 'i162',        label: 'Mobile Number (Prepared By)', type: 'text', required: true  },
-        { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text', required: true  },
-        { id: 'branch_name', label: 'Branch Name',                 type: 'text', required: true  },
+        { id: 'i159',        label: 'Partner Name 1',              type: 'text', required: true  },
+        { id: 'i160',        label: 'Partner Name 2',              type: 'text', required: false },
+        { id: 'i161',        label: 'Address',                     type: 'text', required: true  },
+        { id: 'i162',        label: 'Mobile Number',               type: 'text', required: true  },
         FRCC_REQUIRED_STAMP_FIELD,
+        { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text', required: false },
+        { id: 'branch_name', label: 'Branch Name',                 type: 'text', required: false },
+      PREPARED_BY_BANKER_MAIL_FIELD,
+      PREPARED_BY_CIBIL_FIELD,
       ]
     },
   ];
@@ -378,6 +381,8 @@ const FRCC7Form = ({
         i161: 'Hyderabad', i162: '9014221011',
         bank_name: 'ICICI Bank', branch_name: 'Industrial Branch',
         required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
+      banker_mail_id: '',
+      cibil_score: '',
       }
     });
   }, []);
@@ -442,9 +447,9 @@ const FRCC7Form = ({
         formData: {
           excelData,
           formData,
-          bank_name: formData['General Information']?.['bank_name'] || '',
-          branch_name: formData['General Information']?.['branch_name'] || '',
           additionalData: {
+            bank_name:   formData['Prepared By']?.['bank_name'] || '',
+            branch_name: formData['Prepared By']?.['branch_name'] || '',
             'New Asset Schedule': formData['New Asset Schedule'],
             'Gross Assets Opening Balance': formData['Gross Assets Opening Balance']
           }

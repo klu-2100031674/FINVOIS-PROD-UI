@@ -12,7 +12,8 @@ import {
   TrashIcon
 } from '@heroicons/react/24/outline';
 import SaveDraftButton from '../common/SaveDraftButton';
-import { getAuditedSectionDisplayTitle, isOpeningStockField, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD } from '../../utils/frccFormUi';
+
+import { getAuditedSectionDisplayTitle, isOpeningStockField, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_CIBIL_FIELD } from '../../utils/frccFormUi';
 
 // Fixed Assets Mapping - Matches Excel Template CC5 Exactly
 const fixedAssetsMapping = {
@@ -99,6 +100,8 @@ const FRCC5Form = ({
       j101: 'Vijayawada',
       j102: '9014221011',
       required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
+      banker_mail_id: '',
+      cibil_score: '',
       ...(initialData?.['Prepared By'] || {})
     }
   });
@@ -189,13 +192,15 @@ const FRCC5Form = ({
       title: 'Prepared By',
       icon: BuildingOfficeIcon,
       fields: [
-        { id: 'j99', label: 'Name 1', type: 'text', required: true, note: 'Enter name 1' },
-        { id: 'j100', label: 'Name 2', type: 'text', required: false, note: 'Enter name 2 (optional)' },
-        { id: 'j101', label: 'Address', type: 'text', required: true, note: 'Enter address' },
-        { id: 'j102', label: 'Contact', type: 'text', required: true, note: 'Enter contact number' },
-        { id: 'bank_name', label: 'Bank Name / Department Name', type: 'text', required: true, note: 'Enter bank or department name' },
-        { id: 'branch_name', label: 'Branch Name', type: 'text', required: true, note: 'Enter branch name' },
+        { id: 'j99',         label: 'Partner Name 1',              type: 'text', required: true,  note: 'Enter partner name 1' },
+        { id: 'j100',        label: 'Partner Name 2',              type: 'text', required: false, note: 'Enter partner name 2 (optional)' },
+        { id: 'j101',        label: 'Address',                     type: 'text', required: true,  note: 'Enter address' },
+        { id: 'j102',        label: 'Mobile Number',               type: 'text', required: true,  note: 'Enter mobile number' },
         FRCC_REQUIRED_STAMP_FIELD,
+        { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text', required: false, note: 'Enter bank or department name' },
+        { id: 'branch_name', label: 'Branch Name',                 type: 'text', required: false, note: 'Enter branch name' },
+      PREPARED_BY_BANKER_MAIL_FIELD,
+      PREPARED_BY_CIBIL_FIELD,
       ]
     }
   ];
@@ -207,6 +212,8 @@ const FRCC5Form = ({
         ...initialData,
         'Prepared By': {
           required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
+      banker_mail_id: '',
+      cibil_score: '',
           ...(initialData['Prepared By'] || {}),
         },
       });
@@ -482,6 +489,8 @@ const FRCC5Form = ({
         'bank_name': 'HDFC Bank',
         'branch_name': 'Corporate Branch',
         'required_stamp': FRCC_REQUIRED_STAMP_DEFAULT,
+      'banker_mail_id': '',
+      'cibil_score': '',
       }
     });
   }, []);
@@ -613,9 +622,9 @@ const FRCC5Form = ({
         formData: {
           excelData,
           formData,
-          bank_name: formData['General Information']['bank_name'],
-          branch_name: formData['General Information']['branch_name'],
           additionalData: {
+            bank_name:   formData['Prepared By']['bank_name'],
+            branch_name: formData['Prepared By']['branch_name'],
             'Fixed Assets Schedule': formData['Fixed Assets Schedule']
           }
         }

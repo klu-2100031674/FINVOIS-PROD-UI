@@ -85,7 +85,7 @@ const ReportReadyPage = () => {
 
             <h1 className="text-3xl font-bold text-gray-900 mb-3 font-manrope">Report Submitted!</h1>
             <p className="text-gray-500 text-lg mb-8 font-inter">
-              Your report for validation has been sent for CA validation.
+              Your report sent for CA validation.
             </p>
 
             <div className="flex flex-col gap-3 mt-auto">

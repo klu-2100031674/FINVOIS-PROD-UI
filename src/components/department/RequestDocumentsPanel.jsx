@@ -157,7 +157,7 @@ export default function RequestDocumentsPanel({
 
       {!unlocked && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-4">
-          Documents and chat unlock after a customer-service agent claims or is assigned to this request.
+          Not Claimed Yet
           {isCustomer ? ' You can still attach files when submitting the form.' : ''}
         </p>
       )}

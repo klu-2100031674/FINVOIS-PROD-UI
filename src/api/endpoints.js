@@ -236,6 +236,21 @@ export const reportAPI = {
     return response.data;
   },
 
+  // AI-only Theory Page (no Excel)
+  generateTheoryPage: async (templateId, formData, options = {}) => {
+    const { paidReportId = null, isAdmin = false } = options || {};
+    const payload = formData ? { ...formData } : {};
+    if (paidReportId) payload.paidReportId = paidReportId;
+    if (isAdmin) payload.isAdmin = true;
+    payload.content_kind = 'theory';
+    const response = await apiClient.post(
+      `/reports/templates/${templateId}/generate-theory-page`,
+      payload,
+      { timeout: REPORT_HEAVY_TIMEOUT }
+    );
+    return response.data;
+  },
+
   // Download full report file
   getFullReportDownloadUrl: (fileName) => {
     return `${API_BASE_URL}/temp/${fileName}`;
@@ -252,8 +267,12 @@ export const reportAPI = {
     formData = null,
     bankName = null,
     branchName = null,
-    assistedOptions = null
+    assistedOptions = null,
+    requestId = null
   ) => {
+    const isTheory =
+      (typeof templateId === 'string' && templateId.toUpperCase().startsWith('THEORY_')) ||
+      formData?.content_kind === 'theory';
     const response = await apiClient.post('/reports/create-payment-order', {
       template_id: templateId,
       report_title: reportTitle,
@@ -264,6 +283,8 @@ export const reportAPI = {
       formData,
       bank_name: bankName,
       branch_name: branchName,
+      ...(isTheory ? { content_kind: 'theory' } : {}),
+      requestId,
       ...(assistedOptions?.assistedUserId
         ? { assisted_user_id: assistedOptions.assistedUserId }
         : {}),
@@ -778,6 +799,11 @@ export const reportHelpAPI = {
 
   performAction: async (id, payload) => {
     const response = await apiClient.patch(`/report-help/${id}/action`, payload);
+    return response.data;
+  },
+
+  reclaim: async (id) => {
+    const response = await apiClient.post(`/report-help/${id}/reclaim`);
     return response.data;
   },
 

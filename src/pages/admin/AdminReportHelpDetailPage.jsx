@@ -19,6 +19,7 @@ export default function AdminReportHelpDetailPage() {
         to: '/admin/reports',
         label: 'View in report validation',
       })}
+      enableReportActions
     />
   );
 }

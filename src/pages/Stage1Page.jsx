@@ -885,7 +885,7 @@ const Stage1Page = () => {
 
           {isSavingEdits && (
             <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-40">
-              <Loading text="Applying Final Sheet Edits" />
+              <Loading text="Applying Edits" />
             </div>
           )}
 

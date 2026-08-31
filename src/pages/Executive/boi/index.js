@@ -1,0 +1,13 @@
+export { default as BoiSidebar } from './BoiSidebar';
+export { default as BoiDashboardPage } from './BoiDashboardPage';
+export { default as BoiReportsPage } from './BoiReportsPage';
+export { default as BoiDraftsPage } from './BoiDraftsPage';
+export { default as BoiProfilePage } from './BoiProfilePage';
+export { default as BoiClassicPage } from './BoiClassicPage';
+export { default as BoiHousingPage } from './BoiHousingPage';
+export { default as BoiMsmePage } from './BoiMsmePage';
+export { default as BoiHomeLoan1Page } from './BoiHomeLoan1Page';
+export { default as BoiHomeLoan2Page } from './BoiHomeLoan2Page';
+export { default as BoiHomeLoan3Page } from './BoiHomeLoan3Page';
+export { default as BoiHomeLoan3GuarantorPage } from './BoiHomeLoan3GuarantorPage';
+export { default as BoiHomeLoan4Page } from './BoiHomeLoan4Page';

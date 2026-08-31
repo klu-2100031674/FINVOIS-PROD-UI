@@ -1,5 +1,9 @@
+/**
+ * Phone OTP login (customer send-otp / verify-otp-register) temporarily disabled.
+ * Restored old direct submit via POST /msme-dpr-leads/submit.
+ */
 import { useState } from 'react';
-import { Send, ChevronDown } from 'lucide-react';
+import { Send, ChevronDown, Plus, Trash2, CheckSquare, Square } from 'lucide-react';
 import apiClient from '@/api/apiClient';
 import faqData from '../../data/FAQ.json';
 import OptionalDocumentUpload from '@/components/common/OptionalDocumentUpload';
@@ -9,19 +13,30 @@ import {
   MSME_DPR_LOAN_TYPE_OPTIONS,
   MSME_DPR_RURAL_URBAN_OPTIONS,
   MSME_DPR_ENTERPRISE_TYPE_OPTIONS,
+  MSME_DPR_ASSET_CATEGORIES,
 } from '@/constants/msmeDprSchemes';
 import {
   LANGUAGES,
   FORM_COPY,
   MSME_WEBSITE_URL,
   getOptionLabel,
-  MSME_DPR_TEST_FORM,
+  MSME_DPR_TEST_FORM_1,
+  MSME_DPR_TEST_FORM_2,
 } from '@/constants/msmeDprFormTranslations';
+
+const createEmptyAsset = () => ({
+  assetModel: '',
+  assetCategory: '',
+  amount: '',
+  loanPercentage: '',
+});
 
 const INITIAL_FORM = {
   applicantName: '',
   gender: '',
   mobileNumber: '',
+  aadharNumber: '',
+  panNumber: '',
   natureOfBusiness: '',
   enterpriseType: '',
   yearOfRegistration: '',
@@ -32,6 +47,12 @@ const INITIAL_FORM = {
   mandal: '',
   district: '',
   description: '',
+  hasOtherDprInfo: false,
+  dprAssets: [createEmptyAsset()],
+  loanTermPeriod: '',
+  rateOfInterest: '',
+  processingFee: '',
+  loanAmount: '',
 };
 
 const labelClass =
@@ -40,12 +61,17 @@ const inputClass =
   'w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all text-sm';
 const selectClass = `${inputClass} appearance-none`;
 
-function FormField({ label, required, children }) {
+function FormField({ label, required, optional, children }) {
   return (
     <div>
       <label className={labelClass}>
         {label}
         {required && <span className="text-red-500 ml-0.5">*</span>}
+        {optional && (
+          <span className="text-gray-400 font-normal ml-1 lowercase text-[11px]">
+            (optional)
+          </span>
+        )}
       </label>
       {children}
     </div>
@@ -60,6 +86,7 @@ const MsmeDprLeadFormPage = () => {
   const [success, setSuccess] = useState(false);
   const [activeFAQ, setActiveFAQ] = useState(null);
   const [pendingAttachments, setPendingAttachments] = useState([]);
+  const [testDataClickCount, setTestDataClickCount] = useState(0);
 
   const toggleFAQ = (index) => {
     setActiveFAQ(activeFAQ === index ? null : index);
@@ -78,8 +105,73 @@ const MsmeDprLeadFormPage = () => {
     });
   };
 
+  const handleAadharChange = (e) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 12);
+    setForm((prev) => ({ ...prev, aadharNumber: value }));
+  };
+
+  const handlePanChange = (e) => {
+    const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+    setForm((prev) => ({ ...prev, panNumber: value }));
+  };
+
+  const handleToggleOtherInfo = () => {
+    setForm((prev) => {
+      const nextHasOther = !prev.hasOtherDprInfo;
+      return {
+        ...prev,
+        hasOtherDprInfo: nextHasOther,
+        dprAssets:
+          nextHasOther && (!prev.dprAssets || prev.dprAssets.length === 0)
+            ? [createEmptyAsset()]
+            : prev.dprAssets,
+      };
+    });
+  };
+
+  const handleAssetChange = (index, field, value) => {
+    setForm((prev) => {
+      const updatedAssets = [...prev.dprAssets];
+      updatedAssets[index] = {
+        ...updatedAssets[index],
+        [field]: value,
+      };
+      return { ...prev, dprAssets: updatedAssets };
+    });
+  };
+
+  const handleAddAssetRow = () => {
+    setForm((prev) => ({
+      ...prev,
+      dprAssets: [...(prev.dprAssets || []), createEmptyAsset()],
+    }));
+  };
+
+  const handleRemoveAssetRow = (index) => {
+    setForm((prev) => {
+      const filtered = prev.dprAssets.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        dprAssets: filtered.length > 0 ? filtered : [createEmptyAsset()],
+      };
+    });
+  };
+
   const handleFillTestData = () => {
-    setForm({ ...MSME_DPR_TEST_FORM });
+    if (testDataClickCount % 2 === 0) {
+      // 1st click: Basic test data
+      setForm({
+        ...MSME_DPR_TEST_FORM_1,
+        dprAssets: [createEmptyAsset()],
+      });
+    } else {
+      // 2nd click: Extended test data with Asset Table and Loan parameters
+      setForm({
+        ...MSME_DPR_TEST_FORM_2,
+        dprAssets: MSME_DPR_TEST_FORM_2.dprAssets.map((a) => ({ ...a })),
+      });
+    }
+    setTestDataClickCount((prev) => prev + 1);
     setError('');
   };
 
@@ -90,7 +182,17 @@ const MsmeDprLeadFormPage = () => {
     try {
       const formData = new FormData();
       Object.entries(form).forEach(([key, value]) => {
-        formData.append(key, value == null ? '' : String(value));
+        if (key === 'dprAssets') {
+          if (form.hasOtherDprInfo && Array.isArray(value)) {
+            formData.append('dprAssets', JSON.stringify(value));
+          } else {
+            formData.append('dprAssets', JSON.stringify([]));
+          }
+        } else if (key === 'hasOtherDprInfo') {
+          formData.append('hasOtherDprInfo', form.hasOtherDprInfo ? 'true' : 'false');
+        } else {
+          formData.append(key, value == null ? '' : String(value));
+        }
       });
       pendingAttachments.forEach((file) => formData.append('files', file));
 
@@ -111,6 +213,7 @@ const MsmeDprLeadFormPage = () => {
     setSuccess(false);
     setError('');
     setPendingAttachments([]);
+    setTestDataClickCount(0);
   };
 
   return (
@@ -189,9 +292,10 @@ const MsmeDprLeadFormPage = () => {
               <button
                 type="button"
                 onClick={handleFillTestData}
+                title="Click once for basic test data, click again for extended asset & loan test data"
                 className="px-4 py-2 text-sm font-medium text-orange-600 border border-orange-300 rounded-lg hover:bg-orange-50 transition-colors"
               >
-                {copy.fillTestData}
+                {copy.fillTestData} {testDataClickCount > 0 ? `(${testDataClickCount % 2 === 0 ? 'Extended' : 'Basic'})` : ''}
               </button>
             )}
           </div>
@@ -273,6 +377,34 @@ const MsmeDprLeadFormPage = () => {
                   className={inputClass}
                 />
               </FormField>
+
+              {/* Optional Aadhaar & PAN under Mobile Number */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField label={copy.aadharNumber} optional>
+                  <input
+                    type="text"
+                    name="aadharNumber"
+                    value={form.aadharNumber}
+                    onChange={handleAadharChange}
+                    inputMode="numeric"
+                    maxLength={12}
+                    placeholder={copy.placeholderAadhar}
+                    className={inputClass}
+                  />
+                </FormField>
+
+                <FormField label={copy.panNumber} optional>
+                  <input
+                    type="text"
+                    name="panNumber"
+                    value={form.panNumber}
+                    onChange={handlePanChange}
+                    maxLength={10}
+                    placeholder={copy.placeholderPan}
+                    className={`${inputClass} uppercase`}
+                  />
+                </FormField>
+              </div>
 
               <FormField label={copy.natureOfBusiness} required>
                 <input
@@ -406,7 +538,186 @@ const MsmeDprLeadFormPage = () => {
                 />
               </FormField>
 
+              {/* Other Information required for preparing DPR */}
+              <div className="border border-orange-200 bg-orange-50/40 rounded-2xl p-4 sm:p-5 transition-all space-y-4">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={handleToggleOtherInfo}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleToggleOtherInfo();
+                    }
+                  }}
+                  className="flex items-start gap-3 cursor-pointer select-none"
+                >
+                  <div className="text-orange-600 mt-0.5 shrink-0">
+                    {form.hasOtherDprInfo ? (
+                      <CheckSquare className="w-5 h-5" />
+                    ) : (
+                      <Square className="w-5 h-5 text-gray-400" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-gray-900">
+                      {copy.otherInfoRequired}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {copy.otherInfoRequiredSub}
+                    </p>
+                  </div>
+                </div>
 
+                {form.hasOtherDprInfo && (
+                  <div className="pt-3 border-t border-orange-200/80 space-y-4 animate-in fade-in duration-200">
+                    {/* Asset Table */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wider text-gray-700">
+                          Assets Breakdown
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleAddAssetRow}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-orange-700 bg-orange-100 hover:bg-orange-200 rounded-lg transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          {copy.addRow}
+                        </button>
+                      </div>
+
+                      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="bg-gray-100/80 border-b border-gray-200 text-gray-700 font-semibold">
+                              <th className="p-2.5 min-w-[130px]">{copy.assetModel}</th>
+                              <th className="p-2.5 min-w-[160px]">{copy.assetCategory}</th>
+                              <th className="p-2.5 min-w-[100px]">{copy.amount}</th>
+                              <th className="p-2.5 min-w-[80px]">{copy.loanPercentage}</th>
+                              <th className="p-2.5 w-10 text-center" />
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {form.dprAssets?.map((asset, idx) => (
+                              <tr key={idx} className="hover:bg-gray-50/50">
+                                <td className="p-2">
+                                  <input
+                                    type="text"
+                                    value={asset.assetModel}
+                                    onChange={(e) =>
+                                      handleAssetChange(idx, 'assetModel', e.target.value)
+                                    }
+                                    placeholder={copy.placeholderAssetModel}
+                                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-orange-500 outline-none"
+                                  />
+                                </td>
+                                <td className="p-2">
+                                  <select
+                                    value={asset.assetCategory}
+                                    onChange={(e) =>
+                                      handleAssetChange(idx, 'assetCategory', e.target.value)
+                                    }
+                                    className="w-full px-2 py-1.5 text-xs rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-orange-500 outline-none"
+                                  >
+                                    <option value="">{copy.selectAssetCategory}</option>
+                                    {MSME_DPR_ASSET_CATEGORIES.map((cat) => (
+                                      <option key={cat} value={cat}>
+                                        {getOptionLabel(language, 'assetCategory', cat)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </td>
+                                <td className="p-2">
+                                  <input
+                                    type="text"
+                                    value={asset.amount}
+                                    onChange={(e) =>
+                                      handleAssetChange(idx, 'amount', e.target.value)
+                                    }
+                                    placeholder={copy.placeholderAmount}
+                                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-orange-500 outline-none"
+                                  />
+                                </td>
+                                <td className="p-2">
+                                  <input
+                                    type="text"
+                                    value={asset.loanPercentage}
+                                    onChange={(e) =>
+                                      handleAssetChange(idx, 'loanPercentage', e.target.value)
+                                    }
+                                    placeholder={copy.placeholderLoanPercentage}
+                                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-orange-500 outline-none"
+                                  />
+                                </td>
+                                <td className="p-2 text-center">
+                                  {form.dprAssets.length > 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveAssetRow(idx)}
+                                      className="p-1 text-gray-400 hover:text-red-500 rounded-md transition-colors"
+                                      title={copy.removeRow}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Loan parameters below table */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                      <FormField label={copy.loanTermPeriod} optional>
+                        <input
+                          type="text"
+                          name="loanTermPeriod"
+                          value={form.loanTermPeriod}
+                          onChange={handleChange}
+                          placeholder={copy.placeholderLoanTermPeriod}
+                          className={inputClass}
+                        />
+                      </FormField>
+
+                      <FormField label={copy.rateOfInterest} optional>
+                        <input
+                          type="text"
+                          name="rateOfInterest"
+                          value={form.rateOfInterest}
+                          onChange={handleChange}
+                          placeholder={copy.placeholderRateOfInterest}
+                          className={inputClass}
+                        />
+                      </FormField>
+
+                      <FormField label={copy.processingFee} optional>
+                        <input
+                          type="text"
+                          name="processingFee"
+                          value={form.processingFee}
+                          onChange={handleChange}
+                          placeholder={copy.placeholderProcessingFee}
+                          className={inputClass}
+                        />
+                      </FormField>
+
+                      <FormField label={copy.loanAmount} optional>
+                        <input
+                          type="text"
+                          name="loanAmount"
+                          value={form.loanAmount}
+                          onChange={handleChange}
+                          placeholder={copy.placeholderLoanAmount}
+                          className={inputClass}
+                        />
+                      </FormField>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <FormField label={copy.description}>
                 <textarea
@@ -458,14 +769,16 @@ const MsmeDprLeadFormPage = () => {
                     {faq.question}
                   </span>
                   <ChevronDown
-                    className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-300 ${activeFAQ === idx ? 'rotate-180' : ''
-                      }`}
+                    className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-300 ${
+                      activeFAQ === idx ? 'rotate-180' : ''
+                    }`}
                   />
                 </button>
 
                 <div
-                  className={`transition-all duration-300 ease-in-out ${activeFAQ === idx ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
-                    }`}
+                  className={`transition-all duration-300 ease-in-out ${
+                    activeFAQ === idx ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
+                  }`}
                   style={{ overflow: 'hidden' }}
                 >
                   <div className="px-4 pb-3">

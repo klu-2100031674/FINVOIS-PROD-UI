@@ -875,7 +875,11 @@ const FRTermLoanDroneVehicleForm = ({
         'j137': 'Chartered Accountants',
         'j138': 'Vijayawada',
         'j139': '9014221011',
-        'required_stamp': FRCC_REQUIRED_STAMP_DEFAULT
+        'required_stamp': FRCC_REQUIRED_STAMP_DEFAULT,
+      'banker_mail_id': '',
+      'cibil_score': '',
+        'bank_name': '',
+        'branch_name': '',
       },
       'Expected Employment Generation': {
         'i24': 5,
@@ -1922,7 +1926,7 @@ const FRTermLoanDroneVehicleForm = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Partner Name 1 (Prepared By)
+            Partner Name 1
           </label>
           <input
             type="text"
@@ -1934,7 +1938,7 @@ const FRTermLoanDroneVehicleForm = ({
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Partner Name 2 (Prepared By)
+            Partner Name 2
           </label>
           <input
             type="text"
@@ -1946,7 +1950,7 @@ const FRTermLoanDroneVehicleForm = ({
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Address (Prepared By)
+            Address
           </label>
           <input
             type="text"
@@ -1958,7 +1962,7 @@ const FRTermLoanDroneVehicleForm = ({
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Mobile Number (Prepared By)
+            Mobile Number
           </label>
           <input
             type="text"
@@ -1988,8 +1992,8 @@ const FRTermLoanDroneVehicleForm = ({
           </label>
           <input
             type="text"
-            value={(formData['General Information'] && formData['General Information']['bank_name']) || ''}
-            onChange={(e) => handleFieldChange('General Information', 'bank_name', e.target.value)}
+            value={(formData['Prepared By'] && formData['Prepared By']['bank_name']) || ''}
+            onChange={(e) => handleFieldChange('Prepared By', 'bank_name', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
             placeholder="Enter bank or department name"
           />
@@ -2000,10 +2004,38 @@ const FRTermLoanDroneVehicleForm = ({
           </label>
           <input
             type="text"
-            value={(formData['General Information'] && formData['General Information']['branch_name']) || ''}
-            onChange={(e) => handleFieldChange('General Information', 'branch_name', e.target.value)}
+            value={(formData['Prepared By'] && formData['Prepared By']['branch_name']) || ''}
+            onChange={(e) => handleFieldChange('Prepared By', 'branch_name', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
             placeholder="Enter branch name"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            Banker Mail ID
+          </label>
+          <input
+            type="email"
+            value={(formData['Prepared By'] && formData['Prepared By']['banker_mail_id']) || ''}
+            onChange={(e) => handleFieldChange('Prepared By', 'banker_mail_id', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="Enter banker email"
+            autoComplete="off"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            CIBIL Score
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={(formData['Prepared By'] && formData['Prepared By']['cibil_score']) || ''}
+            onChange={(e) => handleFieldChange('Prepared By', 'cibil_score', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="e.g. 750"
+            autoComplete="off"
           />
         </div>
       </div>
@@ -2290,8 +2322,8 @@ const FRTermLoanDroneVehicleForm = ({
       ...updatedFormData,
       rawFormData: JSON.parse(JSON.stringify(formData)),
       excelData,
-      bank_name: formData['General Information']['bank_name'],
-      branch_name: formData['General Information']['branch_name'],
+      bank_name: formData['Prepared By']?.['bank_name'] || '',
+      branch_name: formData['Prepared By']?.['branch_name'] || '',
       'Asset Loan Percentages': loanPercentages,
       'Asset Loan Amounts': loanAmounts,
       'Loan Percentage Cells': loanPercentageCells

@@ -30,3 +30,18 @@ export const MSME_DPR_ENTERPRISE_TYPE_OPTIONS = [
   'New Enterprise',
   'Existing Enterprises',
 ];
+
+export const MSME_DPR_ASSET_CATEGORIES = [
+  'Plant and Machinery',
+  'Service Equipment',
+  'Shed Construction and Civil works',
+  'Land',
+  'Electrical Items & plumbing items',
+  'Electronic Items',
+  'Furniture and Fittings',
+  'Vehicles',
+  'Live stock',
+  'Other Assets (Nil Depreciation)',
+  'Other Assets (Including Amortisable Assets)',
+  'Non Current Assets (Deposits , Advances etc)',
+];

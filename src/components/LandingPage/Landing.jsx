@@ -54,6 +54,8 @@ const Landing = () => {
       {/* Hero Section */}
       <Hero />
 
+      <CTA />
+
       {/* Trusted By Section */}
       <section className="py-10 px-6 border-y border-gray-100 bg-white/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto">
@@ -83,7 +85,6 @@ const Landing = () => {
       <ReportTypes />
       <AppDownload />
       <Testimonials />
-      <CTA />
       <Footer />
     </div>
   );

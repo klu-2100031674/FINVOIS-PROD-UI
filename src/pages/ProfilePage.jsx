@@ -18,11 +18,14 @@ import {
   Briefcase,
   Gift,
   Handshake,
-  Trash2
+  Trash2,
+  ClipboardCheck
 } from 'lucide-react';
 import ClientLayout from '../components/layouts/ClientLayout';
 import { formatRoleForDisplay } from '../utils/roleDisplay';
 import { companyAPI } from '../api/endpoints';
+import api from '../api/apiClient';
+import { hasTableAccess, isTableAccessEligibleUser } from '../utils/tableAccess';
 
 function mapProfileToForm(source) {
   if (!source) return null;
@@ -50,7 +53,10 @@ function mapProfileToForm(source) {
 }
 
 const ProfilePage = ({ variant }) => {
-  const isExecutiveProfile = variant === 'executive';
+  const isSbiExecutiveProfile = variant === 'sbi_executive' || variant === 'executive';
+  const isBoiExecutiveProfile = variant === 'boi_executive';
+  const isExecutiveProfile = isSbiExecutiveProfile || isBoiExecutiveProfile;
+  const bankLabel = isBoiExecutiveProfile ? 'BOI' : isSbiExecutiveProfile ? 'SBI' : '';
   const execIdentityHighlight =
     'rounded-xl border-2 border-sky-300 bg-sky-50/80 p-4 md:p-5 shadow-sm';
   const execReportHighlight =
@@ -90,6 +96,9 @@ const ProfilePage = ({ variant }) => {
     apLogoUrl: '',
     companyLogoUrl: ''
   });
+  const [vrStatus, setVrStatus] = useState({ loading: true, table_access: false, pending: null, latest: null });
+  const [vrMessage, setVrMessage] = useState('');
+  const [vrSubmitting, setVrSubmitting] = useState(false);
   const dataSource = profile || user;
   const companyLogo1 =
     dataSource?.apLogoDisplayUrl ||
@@ -110,6 +119,28 @@ const ProfilePage = ({ variant }) => {
   const displayRole = formatRoleForDisplay(dataSource?.role || 'user', dataSource);
   const freeCredits = Number(dataSource?.free_reports_count || 0);
   const referringAgent = dataSource?.referring_agent || null;
+  const isVrEligible = isTableAccessEligibleUser(dataSource);
+  const userHasValidationRights = hasTableAccess(dataSource) || vrStatus.table_access === true;
+
+  const loadValidationRightsStatus = async () => {
+    if (!isVrEligible) {
+      setVrStatus({ loading: false, table_access: false, pending: null, latest: null });
+      return;
+    }
+    try {
+      setVrStatus((prev) => ({ ...prev, loading: true }));
+      const response = await api.get('/validation-rights-requests/mine');
+      const payload = response?.data?.data || {};
+      setVrStatus({
+        loading: false,
+        table_access: payload.table_access === true,
+        pending: payload.pending || null,
+        latest: payload.latest || null,
+      });
+    } catch (err) {
+      setVrStatus((prev) => ({ ...prev, loading: false }));
+    }
+  };
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -118,6 +149,12 @@ const ProfilePage = ({ variant }) => {
     }
     dispatch(fetchProfile());
   }, [dispatch, isAuthenticated, navigate]);
+
+  useEffect(() => {
+    if (isAuthenticated && isVrEligible) {
+      loadValidationRightsStatus();
+    }
+  }, [isAuthenticated, isVrEligible, dataSource?.table_access]);
 
   useEffect(() => {
     if (profile) {
@@ -169,6 +206,26 @@ const ProfilePage = ({ variant }) => {
         setFormData(prev => ({ ...prev, [field]: event.target.result }));
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRequestValidationRights = async () => {
+    if (vrSubmitting || userHasValidationRights || vrStatus.pending) return;
+    setVrSubmitting(true);
+    try {
+      await api.post('/validation-rights-requests', {
+        message: vrMessage.trim() || undefined,
+      });
+      toast.success('Validation Rights request submitted');
+      setVrMessage('');
+      await loadValidationRightsStatus();
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.error || error?.error || 'Failed to submit request'
+      );
+      await loadValidationRightsStatus();
+    } finally {
+      setVrSubmitting(false);
     }
   };
 
@@ -247,6 +304,60 @@ const ProfilePage = ({ variant }) => {
                 </span>
               </div>
             </div>
+
+            {!isExecutiveProfile && isVrEligible && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-left">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="p-2 bg-indigo-50 rounded-lg">
+                    <ClipboardCheck className="w-5 h-5 text-indigo-700" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-gray-900">Validation Rights</h3>
+                </div>
+                {vrStatus.loading ? (
+                  <p className="text-sm text-gray-500">Checking status…</p>
+                ) : userHasValidationRights ? (
+                  <div className="rounded-xl border border-green-100 bg-green-50 px-3 py-3">
+                    <p className="text-sm font-medium text-green-800">Validation Rights granted</p>
+                    <p className="text-xs text-green-700 mt-1">
+                      You can view Stage 1 financials sheets.
+                    </p>
+                  </div>
+                ) : vrStatus.pending ? (
+                  <div className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-3">
+                    <p className="text-sm font-medium text-amber-800">Request pending</p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      An admin will review your request. You cannot submit another until it is resolved.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-600">
+                      Request access to view financials sheets.
+                    </p>
+                    <textarea
+                      value={vrMessage}
+                      onChange={(e) => setVrMessage(e.target.value.slice(0, 500))}
+                      rows={3}
+                      placeholder="Optional reason (e.g. need to validate client reports)"
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent resize-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRequestValidationRights}
+                      disabled={vrSubmitting}
+                      className="w-full px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {vrSubmitting ? 'Submitting…' : 'Request Validation Rights'}
+                    </button>
+                    {vrStatus.latest?.status === 'rejected' && (
+                      <p className="text-xs text-gray-500">
+                        Your previous request was dismissed. You may submit a new request.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {!isExecutiveProfile && referringAgent && (
               <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6">
@@ -458,17 +569,19 @@ const ProfilePage = ({ variant }) => {
                       </div>
                     </div>
 
-                    {/* Signatures & Report settings */}
+                    {/* Signatures & Report settings — bank-specific executive profile */}
+                    {isExecutiveProfile && (
                     <div
-                      className={
-                        isExecutiveProfile
-                          ? `mt-6 ${execReportHighlight}`
-                          : 'mt-6 border-t border-gray-100 pt-6'
-                      }
+                      className={`mt-6 ${execReportHighlight}`}
                     >
-                      <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">
-                        Report & Verification Defaults
+                      <h4 className="text-sm font-semibold text-gray-700 mb-1 uppercase tracking-wide">
+                        {bankLabel} Report & Verification Defaults
                       </h4>
+                      <p className="text-xs text-gray-500 mb-4">
+                        {isBoiExecutiveProfile
+                          ? 'Used on BOI Housing, MSME, and Home Loan PDFs (verified by, supervised by, signatures).'
+                          : 'Used on SBI House, Office, Business, and Income Tax PDFs (footer contact, verified by, supervised by, signatures).'}
+                      </p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Input
                           label="Supervised Name"
@@ -487,7 +600,7 @@ const ProfilePage = ({ variant }) => {
                           icon={User}
                         />
                         <Input
-                          label="Default Firm Contact Numbers"
+                          label={isBoiExecutiveProfile ? 'Default Firm / Contact Numbers' : 'Default Firm Contact Numbers'}
                           name="firm_contact"
                           value={formData.firm_contact}
                           onChange={handleInputChange}
@@ -503,15 +616,17 @@ const ProfilePage = ({ variant }) => {
                           icon={MapPin}
                         />
                       </div>
-                      {isExecutiveProfile && (
-                        <p className="text-xs text-purple-700/80 mt-3">
-                          Report City appears in the left footer of SBI House, Office, and Business PDFs.
-                        </p>
-                      )}
+                      <p className="text-xs text-purple-700/80 mt-3">
+                        {isBoiExecutiveProfile
+                          ? 'Report City and contact defaults fill BOI PDF headers/footers when the form does not override them.'
+                          : 'Report City appears in the left footer of SBI House, Office, and Business PDFs.'}
+                      </p>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                         <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">Executive Signature</label>
+                          <label className="block text-sm font-medium text-gray-700">
+                            {isBoiExecutiveProfile ? 'BOI Executive Signature' : 'Executive Signature'}
+                          </label>
                           <div className="relative group border border-gray-200 bg-gray-50 rounded-xl h-28 flex items-center justify-center overflow-hidden">
                             {formData.signature_image ? (
                               <img src={formData.signature_image} alt="Executive Signature" className="h-full w-full object-contain p-2" />
@@ -533,7 +648,11 @@ const ProfilePage = ({ variant }) => {
                               <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload('signature_image')} />
                             </label>
                           </div>
-                          <p className="text-[10px] text-gray-400">Rendered on page 2 beside &quot;FIELD EXECUTIVE SIGN&quot;.</p>
+                          <p className="text-[10px] text-gray-400">
+                            {isBoiExecutiveProfile
+                              ? 'Rendered on BOI certification / auditor signature blocks.'
+                              : 'Rendered on page 2 beside "FIELD EXECUTIVE SIGN".'}
+                          </p>
                         </div>
 
                         <div className="space-y-2">
@@ -560,11 +679,14 @@ const ProfilePage = ({ variant }) => {
                             </label>
                           </div>
                           <p className="text-[10px] text-gray-400">
-                            Rendered on the bottom footer of every page above &quot;Supervised by&quot;.
+                            {isBoiExecutiveProfile
+                              ? 'Optional on BOI PDFs when a supervisor sign-off image is required.'
+                              : 'Rendered on the bottom footer of every page above "Supervised by".'}
                           </p>
                         </div>
                       </div>
                     </div>
+                    )}
                   </div>
                 )}
 

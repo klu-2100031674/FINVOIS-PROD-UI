@@ -186,7 +186,10 @@ const AuthPage = () => {
         }
       }
 
-      const result = await googleLogin(idToken);
+      const result = await googleLogin({
+        idToken,
+        referral_code: registerData.referral_code || searchParams.get('ref') || undefined,
+      });
       
       const loggedInUser = result?.data?.user;
       if (!loggedInUser) {

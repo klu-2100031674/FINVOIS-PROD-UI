@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Search, Filter, MoreVertical, Edit2, Eye, UserPlus, ChevronRight, ChevronDown } from 'lucide-react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Search, Filter, MoreVertical, Edit2, Eye, UserPlus, ChevronRight, ChevronDown, Trash2, Check, X } from 'lucide-react';
 import { AdminLayout } from '../../components/layouts';
 import api from '../../api/apiClient';
 import toast from 'react-hot-toast';
@@ -9,11 +9,14 @@ import {
   userBelongsToCompany,
 } from '../../utils/companyMembership';
 import { resolveSignupApprovalStatus } from '../../utils/signupApproval';
+import { isTableAccessEligibleUser } from '../../utils/tableAccess';
 
 const isSignupPending = (user) => resolveSignupApprovalStatus(user) === 'pending';
 const isSignupRejected = (user) => resolveSignupApprovalStatus(user) === 'rejected';
 const isSignupApproved = (user) => resolveSignupApprovalStatus(user) === 'approved';
 const isSignupRestricted = (user) => !isSignupApproved(user);
+
+const canManageTableAccess = (user) => isTableAccessEligibleUser(user);
 
 const isUserActive = (user) => {
   if (typeof user?.is_active === 'boolean') return user.is_active;
@@ -61,20 +64,35 @@ const AdminUsersPage = () => {
   const [actionMenu, setActionMenu] = useState(null);
   const [showCommissionModal, setShowCommissionModal] = useState(false);
   const [commissionRate, setCommissionRate] = useState(0);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Create User modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const EMPTY_NEW_USER = { name: '', email: '', password: '', role: 'user', phone: '' };
   const [newUser, setNewUser] = useState(EMPTY_NEW_USER);
+  const [pendingVrRequests, setPendingVrRequests] = useState([]);
+  const [vrActionId, setVrActionId] = useState(null);
 
   useEffect(() => {
     fetchUsers();
+    fetchPendingVrRequests();
   }, []);
 
   useEffect(() => {
     filterUsers();
   }, [users, searchTerm, roleFilter, statusFilter, referralFilter]);
+
+  const pendingVrUserIds = useMemo(() => {
+    const ids = new Set();
+    pendingVrRequests.forEach((req) => {
+      const uid = req.userId?._id || req.userId?.id || req.userId;
+      if (uid) ids.add(String(uid));
+    });
+    return ids;
+  }, [pendingVrRequests]);
 
   const fetchUsers = async () => {
     try {
@@ -86,6 +104,16 @@ const AdminUsersPage = () => {
       toast.error('Failed to fetch users');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPendingVrRequests = async () => {
+    try {
+      const response = await api.get('/validation-rights-requests?status=pending');
+      setPendingVrRequests(response?.data?.data || []);
+    } catch (error) {
+      // Non-blocking for page load; admins without route still see users list
+      console.error('Error fetching Validation Rights requests:', error);
     }
   };
 
@@ -162,23 +190,81 @@ const AdminUsersPage = () => {
     setActionMenu(null);
   };
 
-  // Temporarily disabled — all users have Table access. Restore when needed.
-  // const handleTableAccessChange = async (userId, tableAccess) => {
-  //   try {
-  //     await api.patch(`/users/${userId}`, { table_access: tableAccess });
-  //     toast.success(tableAccess ? 'Table access granted' : 'Table access revoked');
-  //     fetchUsers();
-  //   } catch (error) {
-  //     toast.error(error?.response?.data?.error || error?.error || 'Failed to update table access');
-  //   }
-  //   setActionMenu(null);
-  // };
+  const handleTableAccessChange = async (userId, tableAccess) => {
+    try {
+      await api.patch(`/users/${userId}`, { table_access: tableAccess });
+      toast.success(tableAccess ? 'Validation Rights granted' : 'Validation Rights revoked');
+      fetchUsers();
+      fetchPendingVrRequests();
+    } catch (error) {
+      toast.error(error?.response?.data?.error || error?.error || 'Failed to update Validation Rights');
+    }
+    setActionMenu(null);
+  };
+
+  const handleApproveVrRequest = async (requestId) => {
+    if (!requestId || vrActionId) return;
+    setVrActionId(requestId);
+    try {
+      await api.patch(`/validation-rights-requests/${requestId}/approve`);
+      toast.success('Validation Rights granted');
+      await Promise.all([fetchUsers(), fetchPendingVrRequests()]);
+    } catch (error) {
+      toast.error(error?.response?.data?.error || error?.error || 'Failed to grant Validation Rights');
+    } finally {
+      setVrActionId(null);
+    }
+  };
+
+  const handleRejectVrRequest = async (requestId) => {
+    if (!requestId || vrActionId) return;
+    setVrActionId(requestId);
+    try {
+      await api.patch(`/validation-rights-requests/${requestId}/reject`);
+      toast.success('Request dismissed');
+      await fetchPendingVrRequests();
+    } catch (error) {
+      toast.error(error?.response?.data?.error || error?.error || 'Failed to dismiss request');
+    } finally {
+      setVrActionId(null);
+    }
+  };
 
   const handleEditCommission = (user) => {
     setSelectedUser(user);
     setCommissionRate(user.commission_rate || 0);
     setShowCommissionModal(true);
     setActionMenu(null);
+  };
+
+  const handleAskDeleteUser = (user) => {
+    setUserToDelete(user);
+    setShowDeleteModal(true);
+    setActionMenu(null);
+  };
+
+  const handleConfirmDeleteUser = async () => {
+    if (!userToDelete?._id) return;
+    try {
+      setDeleting(true);
+      await api.delete(`/users/${userToDelete._id}`);
+      toast.success(
+        `${userToDelete.name || 'User'} and related records deleted successfully`
+      );
+      setShowDeleteModal(false);
+      setUserToDelete(null);
+      if (selectedUser?._id === userToDelete._id) {
+        setShowModal(false);
+        setSelectedUser(null);
+      }
+      fetchUsers();
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.error || error?.error || 'Failed to delete user'
+      );
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleUpdateCommission = async () => {
@@ -276,6 +362,77 @@ const AdminUsersPage = () => {
         </button>
       </div>
 
+      {/* Pending Validation Rights queue */}
+      {pendingVrRequests.length > 0 && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <h2 className="text-sm font-semibold text-amber-900">
+                Pending Validation Rights
+              </h2>
+              <p className="text-xs text-amber-700 mt-0.5">
+                {pendingVrRequests.length} request{pendingVrRequests.length === 1 ? '' : 's'} awaiting review
+              </p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {pendingVrRequests.map((req) => {
+              const reqUser = req.userId && typeof req.userId === 'object' ? req.userId : null;
+              const reqId = req._id || req.id;
+              const busy = vrActionId === reqId;
+              return (
+                <div
+                  key={reqId}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white rounded-lg border border-amber-100 px-3 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {reqUser?.name || 'Unknown user'}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">{reqUser?.email || '—'}</p>
+                    {req.message ? (
+                      <p className="text-xs text-gray-600 mt-1 line-clamp-2">{req.message}</p>
+                    ) : null}
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      Requested{' '}
+                      {req.createdAt
+                        ? new Date(req.createdAt).toLocaleString('en-IN', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        : '—'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => handleApproveVrRequest(reqId)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                      <Check size={14} />
+                      Grant
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => handleRejectVrRequest(reqId)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      <X size={14} />
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
@@ -291,8 +448,8 @@ const AdminUsersPage = () => {
           <p className="text-2xl font-bold text-gray-900 mt-1">{agentCount}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Showing</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{filteredUsers.length}</p>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">VR pending</p>
+          <p className="text-2xl font-bold text-amber-700 mt-1">{pendingVrRequests.length}</p>
         </div>
       </div>
 
@@ -324,8 +481,13 @@ const AdminUsersPage = () => {
               <option value="lead_manager">Service Manager</option>
               <option value="company_admin">Company Admin</option>
               <option value="agent">Channel partner</option>
-              <option value="executive">Executive</option>
+              <option value="sbi_executive">SBI Executive</option>
+              <option value="boi_executive">BOI Executive</option>
+              <option value="customer_service">Customer Service</option>
+              <option value="department">Department</option>
+              <option value="msme_dpr_viewer">MSME DPR Viewer</option>
               <option value="mepma_dpr_viewer">MEPMA DPR Viewer</option>
+              <option value="customer">Customer</option>
               <option value="user">User</option>
             </select>
           </div>
@@ -445,13 +607,16 @@ const AdminUsersPage = () => {
                           <span className={`inline-block max-w-full truncate px-2 py-0.5 text-[11px] font-semibold rounded-full ${getRoleBadgeColor(user.role)}`}>
                             {formatRoleForDisplay(user.role, user)}
                           </span>
-                          {/* Temporarily disabled — all users have Table access. Restore when needed.
-                          {user.role === 'user' && user.table_access && (
+                          {canManageTableAccess(user) && user.table_access && (
                             <span className="inline-block px-2 py-0.5 text-[10px] font-semibold rounded-full bg-indigo-100 text-indigo-800">
-                              Table
+                              Validation Rights
                             </span>
                           )}
-                          */}
+                          {canManageTableAccess(user) && !user.table_access && pendingVrUserIds.has(String(user._id)) && (
+                            <span className="inline-block px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-100 text-amber-800">
+                              VR Request Pending
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-3 py-3 align-middle">
@@ -465,34 +630,25 @@ const AdminUsersPage = () => {
                         </span>
                       </td>
                       <td className="px-2 py-3 align-middle text-right relative">
-                        {signupRestricted ? (
-                          <button
-                            type="button"
-                            onClick={() => handleViewUser(user)}
-                            className="p-1.5 text-[#7e22ce] hover:bg-purple-50 rounded-lg transition-colors"
-                            title="View details"
-                          >
-                            <Eye size={16} />
-                          </button>
-                        ) : (
-                          <>
+                        <button
+                          type="button"
+                          onClick={() => setActionMenu(actionMenu === user._id ? null : user._id)}
+                          className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                          <MoreVertical size={16} />
+                        </button>
+
+                        {actionMenu === user._id && (
+                          <div className="absolute right-0 mt-1 w-52 bg-white rounded-lg shadow-lg z-20 border border-gray-100 py-1">
                             <button
                               type="button"
-                              onClick={() => setActionMenu(actionMenu === user._id ? null : user._id)}
-                              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                              onClick={() => handleViewUser(user)}
+                              className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                             >
-                              <MoreVertical size={16} />
+                              <Eye size={15} className="mr-2 shrink-0" /> View details
                             </button>
-
-                            {actionMenu === user._id && (
-                              <div className="absolute right-0 mt-1 w-52 bg-white rounded-lg shadow-lg z-20 border border-gray-100 py-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleViewUser(user)}
-                                  className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                >
-                                  <Eye size={15} className="mr-2 shrink-0" /> View details
-                                </button>
+                            {!signupRestricted && (
+                              <>
                                 {user.role === 'agent' && (
                                   <button
                                     onClick={() => handleEditCommission(user)}
@@ -501,17 +657,17 @@ const AdminUsersPage = () => {
                                     <Edit2 size={15} className="mr-2 shrink-0" /> Edit commission
                                   </button>
                                 )}
+                                {canManageTableAccess(user) && (
+                                  <button
+                                    onClick={() => handleTableAccessChange(user._id, !user.table_access)}
+                                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                  >
+                                    <Edit2 size={15} className="mr-2 shrink-0" />
+                                    {user.table_access ? 'Revoke Validation Rights' : 'Grant Validation Rights'}
+                                  </button>
+                                )}
                                 {user.role === 'user' && (
                                   <>
-                                    {/* Temporarily disabled — all users have Table access. Restore when needed.
-                                    <button
-                                      onClick={() => handleTableAccessChange(user._id, !user.table_access)}
-                                      className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                    >
-                                      <Edit2 size={15} className="mr-2 shrink-0" />
-                                      {user.table_access ? 'Revoke Table access' : 'Grant Table access'}
-                                    </button>
-                                    */}
                                     <button
                                       onClick={() => handleRoleChange(user._id, 'agent')}
                                       className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -520,11 +676,18 @@ const AdminUsersPage = () => {
                                       Promote to channel partner
                                     </button>
                                     <button
-                                      onClick={() => handleRoleChange(user._id, 'executive')}
+                                      onClick={() => handleRoleChange(user._id, 'sbi_executive')}
                                       className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                                     >
                                       <Edit2 size={15} className="mr-2 shrink-0" />
-                                      Promote to executive
+                                      Promote to SBI Executive
+                                    </button>
+                                    <button
+                                      onClick={() => handleRoleChange(user._id, 'boi_executive')}
+                                      className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                    >
+                                      <Edit2 size={15} className="mr-2 shrink-0" />
+                                      Promote to BOI Executive
                                     </button>
                                     <button
                                       onClick={() => handleRoleChange(user._id, 'customer_service')}
@@ -553,7 +716,7 @@ const AdminUsersPage = () => {
                                     Demote to user
                                   </button>
                                 )}
-                                {user.role === 'executive' && (
+                                {(user.role === 'sbi_executive' || user.role === 'boi_executive' || user.role === 'executive') && (
                                   <button
                                     onClick={() => handleRoleChange(user._id, 'user')}
                                     className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -569,9 +732,16 @@ const AdminUsersPage = () => {
                                   <Edit2 size={15} className="mr-2 shrink-0" />
                                   {isUserActive(user) ? 'Deactivate' : 'Activate'}
                                 </button>
-                              </div>
+                              </>
                             )}
-                          </>
+                            <button
+                              type="button"
+                              onClick={() => handleAskDeleteUser(user)}
+                              className="flex items-center w-full px-3 py-2 text-sm text-red-700 hover:bg-red-50 border-t border-gray-100 mt-1"
+                            >
+                              <Trash2 size={15} className="mr-2 shrink-0" /> Delete user
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -651,14 +821,12 @@ const AdminUsersPage = () => {
                     <p className="text-sm text-gray-500">Role</p>
                     <p className="font-medium">{formatRoleForDisplay(selectedUser.role, selectedUser).toUpperCase()}</p>
                   </div>
-                  {/* Temporarily disabled — all users have Table access. Restore when needed.
-                  {selectedUser.role === 'user' && (
+                  {canManageTableAccess(selectedUser) && (
                     <div>
-                      <p className="text-sm text-gray-500">Table access</p>
+                      <p className="text-sm text-gray-500">Validation Rights</p>
                       <p className="font-medium">{selectedUser.table_access ? 'Granted' : 'Not granted'}</p>
                     </div>
                   )}
-                  */}
                   <div>
                     <p className="text-sm text-gray-500">Status</p>
                     <p className="font-medium">{getUserStatusLabel(selectedUser)}</p>
@@ -853,8 +1021,8 @@ const AdminUsersPage = () => {
                 >
                   <option value="user">User</option>
                   <option value="agent">Channel Partner</option>
-                  <option value="executive">Executive</option>
-                  <option value="mepma_dpr_viewer">MEPMA DPR Viewer</option>
+                  <option value="sbi_executive">SBI Executive</option>
+                  <option value="boi_executive">BOI Executive</option>
                   <option value="lead_manager">Service Manager</option>
                   <option value="admin">Super Admin</option>
                 </select>
@@ -891,6 +1059,45 @@ const AdminUsersPage = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showDeleteModal && userToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="text-lg font-bold text-gray-800 mb-2">Delete user permanently?</h2>
+            <p className="text-gray-600 text-sm mb-3">
+              This permanently deletes <strong>{userToDelete.name}</strong> (
+              {userToDelete.email}) — role:{' '}
+              <strong>{formatRoleForDisplay(userToDelete.role, userToDelete)}</strong>.
+            </p>
+            <p className="text-red-700 text-sm mb-6 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+              Their reports, drafts, wallet, commissions, department records, and related files
+              will also be deleted. This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (deleting) return;
+                  setShowDeleteModal(false);
+                  setUserToDelete(null);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteUser}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete permanently'}
+              </button>
+            </div>
           </div>
         </div>
       )}

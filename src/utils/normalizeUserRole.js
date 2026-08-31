@@ -8,7 +8,14 @@ export function normalizeUserRole(role) {
   }
   if (normalized === 'super_admin') return 'admin';
   if (['lead manager', 'lead-manager', 'leadmanager', 'service manager', 'service-manager', 'servicemanager'].includes(normalized)) return 'lead_manager';
+  // Legacy platform executive → SBI executive
+  if (normalized === 'executive') return 'sbi_executive';
   return normalized;
+}
+
+export function isExecutiveRole(role) {
+  const r = normalizeUserRole(role);
+  return r === 'sbi_executive' || r === 'boi_executive';
 }
 
 function hasOrgCompanyId(user) {
