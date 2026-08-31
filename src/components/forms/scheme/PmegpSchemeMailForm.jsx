@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import api, { REPORT_HEAVY_TIMEOUT } from '../../../api/apiClient';
+import { REPORT_HEAVY_TIMEOUT } from '../../../api/apiClient';
+import { postSchemeMail } from '../../../api/schemeUnifiedApi';
 import { resolveSchemeFormData, saveSchemeFormSession } from '../../../utils/schemeFormSession';
 import {
   CHALLENGE_OPTIONS,
@@ -75,11 +76,9 @@ const PmegpSchemeMailForm = ({
 
     setIsSending(true);
     try {
-      // Unified scheme route: schemeKey now lives in the URL, action selects the operation.
-      await api.post(
-        '/schemes/pmegp',
+      await postSchemeMail(
+        'pmegp',
         {
-          action: 'mail',
           fullName: displayName,
           selectedOptions: optionNames,
           selectedOptionIds: optionIds,

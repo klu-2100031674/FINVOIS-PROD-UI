@@ -4,6 +4,7 @@ import { Send, Sparkles, User, Bot, Loader2, ArrowLeft, X, Copy, Check } from 'l
 import PublicPmepgChrome from './PublicPmepgChrome';
 import SchemeAiChatMarkdown from './SchemeAiChatMarkdown';
 import { resolveSchemeFormData } from '../../utils/schemeFormSession';
+import { postSchemeChatFetch } from '../../api/schemeUnifiedApi';
 import { getApiBaseUrl } from '../../utils/env';
 
 const MAX_QUESTION_LENGTH = 10000;
@@ -103,21 +104,16 @@ export default function PublicSchemeAiChat({
         }));
 
       const apiBase = getApiBaseUrl().replace(/\/$/, '');
-      // Unified scheme route: one path per scheme, action='chat' picks the operation.
-      const response = await fetch(`${apiBase}/schemes/${schemeKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        // Public scheme chat is cross-origin in deploy — omit cookies to avoid strict CORS.
-        credentials: 'omit',
-        body: JSON.stringify({
-          action: 'chat',
+      const response = await postSchemeChatFetch(
+        apiBase,
+        schemeKey,
+        {
           message: textToSend,
           history: historyPayload,
           formData: resolvedFormData,
-        }),
-      });
+        },
+        { credentials: 'omit' },
+      );
 
       const rawText = await response.text();
       let data = {};
