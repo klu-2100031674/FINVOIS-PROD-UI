@@ -62,11 +62,21 @@ const adminExecutiveReportsAPI = {
 
   markUnderReview: (reportId) => apiClient.patch(`/admin-executive-reports/${reportId}/review`),
 
+  reReview: (reportId) => apiClient.patch(`/admin-executive-reports/${reportId}/re-review`),
+
+  moveToPending: (reportId) => apiClient.patch(`/admin-executive-reports/${reportId}/pending`),
+
   approve: (reportId, validation_notes) =>
     apiClient.patch(`/admin-executive-reports/${reportId}/approve`, { validation_notes }),
 
   reject: (reportId, rejection_reason) =>
     apiClient.patch(`/admin-executive-reports/${reportId}/reject`, { rejection_reason }),
+
+  bulkReview: (report_ids) =>
+    apiClient.post('/admin-executive-reports/bulk-review', { report_ids }),
+
+  bulkMoveToPending: (report_ids) =>
+    apiClient.post('/admin-executive-reports/bulk-pending', { report_ids }),
 
   bulkApprove: (report_ids, validation_notes) =>
     apiClient.post('/admin-executive-reports/bulk-approve', { report_ids, validation_notes }),

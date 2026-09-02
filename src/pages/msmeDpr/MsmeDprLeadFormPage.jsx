@@ -48,6 +48,7 @@ const INITIAL_FORM = {
   district: '',
   description: '',
   hasOtherDprInfo: false,
+  workingCapital: '',
   dprAssets: [createEmptyAsset()],
   loanTermPeriod: '',
   rateOfInterest: '',
@@ -78,6 +79,16 @@ function FormField({ label, required, optional, children }) {
   );
 }
 
+const calculateAssetLoan = (asset) => {
+  const amt = parseFloat(String(asset?.amount || '').replace(/,/g, '')) || 0;
+  const pctStr = String(asset?.loanPercentage || '').replace(/,/g, '');
+  const pct = pctStr === '' ? 0 : parseFloat(pctStr) || 0;
+  if (pct > 0) {
+    return (amt * pct) / 100;
+  }
+  return 0;
+};
+
 const MsmeDprLeadFormPage = () => {
   const [form, setForm] = useState(INITIAL_FORM);
   const [language, setLanguage] = useState('en');
@@ -94,12 +105,38 @@ const MsmeDprLeadFormPage = () => {
 
   const copy = FORM_COPY[language] || FORM_COPY.en;
 
+  const isWorkingCapitalLoan =
+    form.loanType === 'Term Loan and working capital loan' ||
+    form.loanType === 'Working capital or OD Loan' ||
+    String(form.loanType || '').toLowerCase().includes('working capital');
+
+  const totalAssetLoan = (form.dprAssets || []).reduce(
+    (sum, asset) => sum + calculateAssetLoan(asset),
+    0
+  );
+  const workingCapitalNum = isWorkingCapitalLoan
+    ? parseFloat(String(form.workingCapital || '').replace(/,/g, '')) || 0
+    : 0;
+  const totalCalculatedLoan = Math.round(totalAssetLoan + workingCapitalNum);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => {
       const next = { ...prev, [name]: value };
       if (name === 'enterpriseType' && value !== 'Existing Enterprises') {
         next.yearOfRegistration = '';
+      }
+      if (name === 'loanType') {
+        if (!value) {
+          next.hasOtherDprInfo = false;
+          next.workingCapital = '';
+        } else if (
+          value !== 'Term Loan and working capital loan' &&
+          value !== 'Working capital or OD Loan' &&
+          !value.toLowerCase().includes('working capital')
+        ) {
+          next.workingCapital = '';
+        }
       }
       return next;
     });
@@ -116,6 +153,11 @@ const MsmeDprLeadFormPage = () => {
   };
 
   const handleToggleOtherInfo = () => {
+    if (!form.loanType) {
+      setError(copy.selectLoanTypeFirst);
+      return;
+    }
+    setError('');
     setForm((prev) => {
       const nextHasOther = !prev.hasOtherDprInfo;
       return {
@@ -162,12 +204,14 @@ const MsmeDprLeadFormPage = () => {
       // 1st click: Basic test data
       setForm({
         ...MSME_DPR_TEST_FORM_1,
+        workingCapital: '',
         dprAssets: [createEmptyAsset()],
       });
     } else {
       // 2nd click: Extended test data with Asset Table and Loan parameters
       setForm({
         ...MSME_DPR_TEST_FORM_2,
+        workingCapital: MSME_DPR_TEST_FORM_2.workingCapital || '',
         dprAssets: MSME_DPR_TEST_FORM_2.dprAssets.map((a) => ({ ...a })),
       });
     }
@@ -180,8 +224,15 @@ const MsmeDprLeadFormPage = () => {
     setError('');
     setSubmitting(true);
     try {
+      const resolvedLoanAmount =
+        totalCalculatedLoan > 0 ? String(totalCalculatedLoan) : form.loanAmount || '';
+
       const formData = new FormData();
-      Object.entries(form).forEach(([key, value]) => {
+      Object.entries({
+        ...form,
+        loanAmount: resolvedLoanAmount,
+        workingCapital: isWorkingCapitalLoan ? form.workingCapital : '',
+      }).forEach(([key, value]) => {
         if (key === 'dprAssets') {
           if (form.hasOtherDprInfo && Array.isArray(value)) {
             formData.append('dprAssets', JSON.stringify(value));
@@ -539,7 +590,13 @@ const MsmeDprLeadFormPage = () => {
               </FormField>
 
               {/* Other Information required for preparing DPR */}
-              <div className="border border-orange-200 bg-orange-50/40 rounded-2xl p-4 sm:p-5 transition-all space-y-4">
+              <div
+                className={`border rounded-2xl p-4 sm:p-5 transition-all space-y-4 ${
+                  !form.loanType
+                    ? 'border-gray-200 bg-gray-50/60 opacity-80 cursor-not-allowed'
+                    : 'border-orange-200 bg-orange-50/40'
+                }`}
+              >
                 <div
                   role="button"
                   tabIndex={0}
@@ -550,7 +607,9 @@ const MsmeDprLeadFormPage = () => {
                       handleToggleOtherInfo();
                     }
                   }}
-                  className="flex items-start gap-3 cursor-pointer select-none"
+                  className={`flex items-start gap-3 select-none ${
+                    !form.loanType ? 'cursor-not-allowed' : 'cursor-pointer'
+                  }`}
                 >
                   <div className="text-orange-600 mt-0.5 shrink-0">
                     {form.hasOtherDprInfo ? (
@@ -563,14 +622,36 @@ const MsmeDprLeadFormPage = () => {
                     <p className="text-sm font-semibold text-gray-900">
                       {copy.otherInfoRequired}
                     </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {copy.otherInfoRequiredSub}
+                    <p className="text-xs mt-0.5">
+                      {!form.loanType ? (
+                        <span className="text-orange-600 font-medium">
+                          {copy.selectLoanTypeFirst}
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">{copy.otherInfoRequiredSub}</span>
+                      )}
                     </p>
                   </div>
                 </div>
 
-                {form.hasOtherDprInfo && (
+                {form.hasOtherDprInfo && form.loanType && (
                   <div className="pt-3 border-t border-orange-200/80 space-y-4 animate-in fade-in duration-200">
+                    {/* Working Capital question above table when working capital loan is selected */}
+                    {isWorkingCapitalLoan && (
+                      <div className="bg-white p-4 rounded-xl border border-orange-200/80 shadow-xs space-y-1.5">
+                        <FormField label={copy.workingCapital} optional>
+                          <input
+                            type="text"
+                            name="workingCapital"
+                            value={form.workingCapital}
+                            onChange={handleChange}
+                            placeholder={copy.placeholderWorkingCapital}
+                            className={inputClass}
+                          />
+                        </FormField>
+                      </div>
+                    )}
+
                     {/* Asset Table */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
@@ -595,75 +676,84 @@ const MsmeDprLeadFormPage = () => {
                               <th className="p-2.5 min-w-[160px]">{copy.assetCategory}</th>
                               <th className="p-2.5 min-w-[100px]">{copy.amount}</th>
                               <th className="p-2.5 min-w-[80px]">{copy.loanPercentage}</th>
+                              <th className="p-2.5 min-w-[110px]">Loan Amount (₹)</th>
                               <th className="p-2.5 w-10 text-center" />
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100">
-                            {form.dprAssets?.map((asset, idx) => (
-                              <tr key={idx} className="hover:bg-gray-50/50">
-                                <td className="p-2">
-                                  <input
-                                    type="text"
-                                    value={asset.assetModel}
-                                    onChange={(e) =>
-                                      handleAssetChange(idx, 'assetModel', e.target.value)
-                                    }
-                                    placeholder={copy.placeholderAssetModel}
-                                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-orange-500 outline-none"
-                                  />
-                                </td>
-                                <td className="p-2">
-                                  <select
-                                    value={asset.assetCategory}
-                                    onChange={(e) =>
-                                      handleAssetChange(idx, 'assetCategory', e.target.value)
-                                    }
-                                    className="w-full px-2 py-1.5 text-xs rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-orange-500 outline-none"
-                                  >
-                                    <option value="">{copy.selectAssetCategory}</option>
-                                    {MSME_DPR_ASSET_CATEGORIES.map((cat) => (
-                                      <option key={cat} value={cat}>
-                                        {getOptionLabel(language, 'assetCategory', cat)}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </td>
-                                <td className="p-2">
-                                  <input
-                                    type="text"
-                                    value={asset.amount}
-                                    onChange={(e) =>
-                                      handleAssetChange(idx, 'amount', e.target.value)
-                                    }
-                                    placeholder={copy.placeholderAmount}
-                                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-orange-500 outline-none"
-                                  />
-                                </td>
-                                <td className="p-2">
-                                  <input
-                                    type="text"
-                                    value={asset.loanPercentage}
-                                    onChange={(e) =>
-                                      handleAssetChange(idx, 'loanPercentage', e.target.value)
-                                    }
-                                    placeholder={copy.placeholderLoanPercentage}
-                                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-orange-500 outline-none"
-                                  />
-                                </td>
-                                <td className="p-2 text-center">
-                                  {form.dprAssets.length > 1 && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveAssetRow(idx)}
-                                      className="p-1 text-gray-400 hover:text-red-500 rounded-md transition-colors"
-                                      title={copy.removeRow}
+                            {form.dprAssets?.map((asset, idx) => {
+                              const rowLoanAmt = calculateAssetLoan(asset);
+                              return (
+                                <tr key={idx} className="hover:bg-gray-50/50">
+                                  <td className="p-2">
+                                    <input
+                                      type="text"
+                                      value={asset.assetModel}
+                                      onChange={(e) =>
+                                        handleAssetChange(idx, 'assetModel', e.target.value)
+                                      }
+                                      placeholder={copy.placeholderAssetModel}
+                                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-orange-500 outline-none"
+                                    />
+                                  </td>
+                                  <td className="p-2">
+                                    <select
+                                      value={asset.assetCategory}
+                                      onChange={(e) =>
+                                        handleAssetChange(idx, 'assetCategory', e.target.value)
+                                      }
+                                      className="w-full px-2 py-1.5 text-xs rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-orange-500 outline-none"
                                     >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
+                                      <option value="">{copy.selectAssetCategory}</option>
+                                      {MSME_DPR_ASSET_CATEGORIES.map((cat) => (
+                                        <option key={cat} value={cat}>
+                                          {getOptionLabel(language, 'assetCategory', cat)}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  <td className="p-2">
+                                    <input
+                                      type="text"
+                                      value={asset.amount}
+                                      onChange={(e) =>
+                                        handleAssetChange(idx, 'amount', e.target.value)
+                                      }
+                                      placeholder={copy.placeholderAmount}
+                                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-orange-500 outline-none"
+                                    />
+                                  </td>
+                                  <td className="p-2">
+                                    <input
+                                      type="text"
+                                      value={asset.loanPercentage}
+                                      onChange={(e) =>
+                                        handleAssetChange(idx, 'loanPercentage', e.target.value)
+                                      }
+                                      placeholder={copy.placeholderLoanPercentage}
+                                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-orange-500 outline-none"
+                                    />
+                                  </td>
+                                  <td className="p-2 font-medium text-gray-700 whitespace-nowrap">
+                                    {rowLoanAmt > 0
+                                      ? `₹${Math.round(rowLoanAmt).toLocaleString('en-IN')}`
+                                      : '₹0'}
+                                  </td>
+                                  <td className="p-2 text-center">
+                                    {form.dprAssets.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveAssetRow(idx)}
+                                        className="p-1 text-gray-400 hover:text-red-500 rounded-md transition-colors"
+                                        title={copy.removeRow}
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -704,15 +794,26 @@ const MsmeDprLeadFormPage = () => {
                         />
                       </FormField>
 
-                      <FormField label={copy.loanAmount} optional>
-                        <input
-                          type="text"
-                          name="loanAmount"
-                          value={form.loanAmount}
-                          onChange={handleChange}
-                          placeholder={copy.placeholderLoanAmount}
-                          className={inputClass}
-                        />
+                      <FormField label={copy.loanAmount}>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            name="loanAmount"
+                            value={
+                              totalCalculatedLoan > 0
+                                ? `₹${totalCalculatedLoan.toLocaleString('en-IN')}`
+                                : form.loanAmount
+                                  ? `₹${form.loanAmount}`
+                                  : '₹0'
+                            }
+                            readOnly
+                            disabled
+                            className={`${inputClass} bg-gray-100 text-gray-800 font-semibold cursor-not-allowed border-gray-300 pr-24`}
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-orange-700 bg-orange-100 px-2 py-0.5 rounded-md border border-orange-200 select-none">
+                            Auto Sum
+                          </span>
+                        </div>
                       </FormField>
                     </div>
                   </div>

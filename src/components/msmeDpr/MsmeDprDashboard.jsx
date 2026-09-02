@@ -165,6 +165,7 @@ function ApplicantDetailPanel({ submission }) {
   const assets = Array.isArray(submission?.dprAssets) ? submission.dprAssets : [];
   const hasAssets = assets.length > 0;
   const hasLoanTerms = Boolean(
+    submission?.workingCapital ||
     submission?.loanTermPeriod ||
     submission?.rateOfInterest ||
     submission?.processingFee ||
@@ -279,7 +280,15 @@ function ApplicantDetailPanel({ submission }) {
           )}
 
           {hasLoanTerms && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-1">
+              {submission.workingCapital && (
+                <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                  <span className="text-[10px] font-semibold uppercase text-gray-400 block">Working Capital</span>
+                  <span className="text-xs font-semibold text-gray-800 font-mono">
+                    ₹{Number(submission.workingCapital).toLocaleString('en-IN') || submission.workingCapital}
+                  </span>
+                </div>
+              )}
               {submission.loanTermPeriod && (
                 <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">
                   <span className="text-[10px] font-semibold uppercase text-gray-400 block">Loan Term</span>
@@ -300,8 +309,10 @@ function ApplicantDetailPanel({ submission }) {
               )}
               {submission.loanAmount && (
                 <div className="p-2.5 bg-orange-50/60 rounded-lg border border-orange-200/60">
-                  <span className="text-[10px] font-semibold uppercase text-orange-600 block">Loan Amount</span>
-                  <span className="text-xs font-bold text-orange-950">{submission.loanAmount}</span>
+                  <span className="text-[10px] font-semibold uppercase text-orange-600 block">Total Loan Amount</span>
+                  <span className="text-xs font-bold text-orange-950 font-mono">
+                    {submission.loanAmount.startsWith('₹') ? submission.loanAmount : `₹${submission.loanAmount}`}
+                  </span>
                 </div>
               )}
             </div>

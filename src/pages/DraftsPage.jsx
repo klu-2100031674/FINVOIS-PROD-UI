@@ -9,6 +9,7 @@ import AgentLayout from '../components/layouts/AgentLayout';
 import {
   Trash2,
   Pencil,
+  Copy,
   CheckCircle2,
   Clock3,
   FileStack,
@@ -18,9 +19,11 @@ import {
   CalendarClock,
   FolderOpen,
   AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import {
   deleteDraftV2,
+  duplicateDraft,
   fetchDrafts,
   selectDrafts,
   selectDraftsLoading,
@@ -29,6 +32,11 @@ import { setFormData } from '../store/slices/reportSlice';
 import { useAuth } from '../hooks';
 import { generateHubLandingPath } from '../utils/routePaths';
 import { effectiveUserRole } from '../utils/normalizeUserRole';
+import {
+  isExecutiveDraftFormType,
+  getExecutiveTemplatePath,
+  getTemplateIdFromDraftFormType,
+} from '../utils/executiveDraftConfig';
 
 const AUTHORISED_PERSON_FIELD_BY_FORM = {
   frcc1: 'i6',
@@ -57,6 +65,7 @@ const DraftsPage = () => {
 
   const [formTypeFilter, setFormTypeFilter] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [duplicatingId, setDuplicatingId] = useState(null);
 
   const KNOWN_FORM_TYPES = useMemo(() => ([
     'frcc1',
@@ -104,22 +113,67 @@ const DraftsPage = () => {
       .replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
-  const getAuthorisedPersonName = (formData, formType) => {
-    const general = formData?.['General Information'] || formData?.formData?.['General Information'];
+  const getAuthorisedPersonName = (rawFormData, formType) => {
+    if (!rawFormData || typeof rawFormData !== 'object') return null;
+
+    const data = rawFormData.formData || rawFormData.form_data || rawFormData.rawFormData || rawFormData;
+    const general =
+      data?.['General Information'] ||
+      data?.formData?.['General Information'] ||
+      data?.form_data?.['General Information'] ||
+      data?.rawFormData?.['General Information'] ||
+      rawFormData?.['General Information'];
+
+    const prompts = data?.prompts_data || data?.prompts || rawFormData?.prompts_data;
+
     const formKey = String(formType || '').toLowerCase();
     const primaryField = AUTHORISED_PERSON_FIELD_BY_FORM[formKey];
 
     const candidates = [
       primaryField ? general?.[primaryField] : null,
-      general?.i5,
       general?.i6,
+      general?.i5,
+      general?.i8,
+      general?.i7,
+      general?.i15,
       general?.['Name of Authorised Person'],
+      general?.['Name of Authorized Person'],
+      general?.['Authorised Person'],
+      general?.['Authorized Person'],
       general?.R5C2,
-      formData?.authorisedPerson,
-      formData?.authorizedPerson,
+      general?.R6C2,
+      prompts?.firm_constitution?.authorised_person,
+      prompts?.firm_constitution?.authorized_person,
+      prompts?.firm_constitution?.applicant_name,
+      prompts?.authorised_person,
+      prompts?.authorized_person,
+      prompts?.applicant_name,
+      prompts?.client_name,
+      data?.authorisedPerson,
+      data?.authorizedPerson,
+      data?.authorised_person,
+      data?.authorized_person,
+      data?.applicant_name,
+      data?.applicantName,
+      data?.client_name,
+      data?.clientName,
+      data?.client_details?.client_name,
+      data?.borrower_name,
+      data?.borrowerName,
+      data?.subject_names,
+      data?.name,
+      rawFormData?.authorisedPerson,
+      rawFormData?.authorizedPerson,
+      rawFormData?.authorised_person,
+      rawFormData?.authorized_person,
+      rawFormData?.applicant_name,
+      rawFormData?.client_name,
+      rawFormData?.name,
     ];
 
-    const name = candidates.find((value) => value != null && String(value).trim().length > 0);
+    const name = candidates.find(
+      (value) => value != null && typeof value === 'string' && value.trim().length > 0
+    );
     return name ? String(name).trim() : null;
   };
 
@@ -142,9 +196,52 @@ const DraftsPage = () => {
   const visibleCount = visibleDrafts.length;
 
   const handleEdit = (draft) => {
-    if (!draft?.formType) return;
-    dispatch(setFormData(draft.formData || {}));
-    navigate(`/generate?templateId=${encodeURIComponent(draft.formType)}&draftId=${draft._id}`);
+    const rawType = draft?.formType || draft?.templateId;
+    if (!rawType) {
+      toast.error('Cannot open draft: unknown template ID');
+      return;
+    }
+    const payload = draft?.formData || draft?.form_data || {};
+    dispatch(setFormData(payload));
+
+    if (isExecutiveDraftFormType(rawType)) {
+      const templateId =
+        getTemplateIdFromDraftFormType(rawType) ||
+        payload.templateId ||
+        rawType;
+      const path = getExecutiveTemplatePath(templateId);
+      navigate(`${path}?draftId=${draft._id}`);
+      return;
+    }
+
+    const normalizeTemplateId = (t) => {
+      const lower = String(t || '').trim().toLowerCase();
+      if (['cc1', 'frcc1', 'format cc1', 'frcc1form'].includes(lower)) return 'frcc1';
+      if (['cc2', 'frcc2', 'format cc2', 'frcc2form'].includes(lower)) return 'frcc2';
+      if (['cc3', 'frcc3', 'format cc3', 'frcc3form'].includes(lower)) return 'frcc3';
+      if (['cc4', 'frcc4', 'format cc4', 'frcc4form'].includes(lower)) return 'frcc4';
+      if (['cc5', 'frcc5', 'format cc5', 'frcc5form'].includes(lower)) return 'frcc5';
+      if (['cc6', 'frcc6', 'format cc6', 'frcc6form'].includes(lower)) return 'frcc6';
+      if (['cc7', 'frcc7', 'format cc7', 'frcc7form'].includes(lower)) return 'frcc7';
+      return rawType;
+    };
+
+    const targetTemplateId = normalizeTemplateId(rawType);
+    navigate(`/generate?templateId=${encodeURIComponent(targetTemplateId)}&draftId=${draft._id}`);
+  };
+
+  const handleDuplicate = async (draft) => {
+    if (!draft?._id) return;
+    try {
+      setDuplicatingId(draft._id);
+      await dispatch(duplicateDraft(draft._id)).unwrap();
+      toast.success('Draft duplicated successfully');
+      dispatch(fetchDrafts({ status: 'draft' }));
+    } catch (e) {
+      toast.error(typeof e === 'string' ? e : e?.message || 'Failed to duplicate draft');
+    } finally {
+      setDuplicatingId(null);
+    }
   };
 
   const handleDelete = async (draftId) => {
@@ -318,7 +415,7 @@ const DraftsPage = () => {
                                 <div>
                                   <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Authorised person</dt>
                                   <dd className="mt-0.5 font-medium text-gray-900">
-                                    {getAuthorisedPersonName(d.formData, d.formType) || (
+                                    {getAuthorisedPersonName(d.formData || d.form_data || d, d.formType || d.templateId) || (
                                       <span className="font-normal text-slate-400">Not filled</span>
                                     )}
                                   </dd>
@@ -348,6 +445,19 @@ const DraftsPage = () => {
                           >
                             <Pencil className="h-4 w-4" aria-hidden />
                             Edit
+                          </button>
+                          <button
+                            type="button"
+                            disabled={duplicatingId === d._id}
+                            onClick={() => handleDuplicate(d)}
+                            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-purple-200 bg-purple-50 px-4 py-2.5 text-sm font-semibold text-purple-700 transition hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-500/30 disabled:opacity-50 sm:flex-initial sm:min-w-[112px]"
+                          >
+                            {duplicatingId === d._id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                            ) : (
+                              <Copy className="h-4 w-4" aria-hidden />
+                            )}
+                            Duplicate
                           </button>
                           <button
                             type="button"

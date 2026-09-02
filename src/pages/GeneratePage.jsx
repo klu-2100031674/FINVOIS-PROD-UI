@@ -204,7 +204,22 @@ const GeneratePage = () => {
     setShowSectionSelector(false);
   };
 
-  const isAiTermLoanTemplate = AI_TERM_LOAN_TEMPLATES.includes(templateId);
+  const normalizeKey = (t) => {
+    if (!t) return '';
+    const str = String(t).trim();
+    const lower = str.toLowerCase();
+    if (['cc1', 'frcc1', 'format cc1', 'frcc1form'].includes(lower)) return 'frcc1';
+    if (['cc2', 'frcc2', 'format cc2', 'frcc2form'].includes(lower)) return 'frcc2';
+    if (['cc3', 'frcc3', 'format cc3', 'frcc3form'].includes(lower)) return 'frcc3';
+    if (['cc4', 'frcc4', 'format cc4', 'frcc4form'].includes(lower)) return 'frcc4';
+    if (['cc5', 'frcc5', 'format cc5', 'frcc5form'].includes(lower)) return 'frcc5';
+    if (['cc6', 'frcc6', 'format cc6', 'frcc6form'].includes(lower)) return 'frcc6';
+    if (['cc7', 'frcc7', 'format cc7', 'frcc7form'].includes(lower)) return 'frcc7';
+    return str.toUpperCase();
+  };
+  const activeTemplateKey = normalizeKey(templateId);
+
+  const isAiTermLoanTemplate = AI_TERM_LOAN_TEMPLATES.includes(templateId) || AI_TERM_LOAN_TEMPLATES.includes(activeTemplateKey);
 
   const {
     savingDraft,
@@ -397,14 +412,15 @@ const GeneratePage = () => {
     dispatch(fetchDraftByIdV2(draftId))
       .unwrap()
       .then((draft) => {
-        const data = draft?.formData;
+        const draftObj = draft?.data || draft;
+        const data = draftObj?.formData || draftObj?.form_data;
         if (data && typeof data === 'object') {
           setTempFormData(data);
           dispatch(setFormData(data));
           hydrateFromLoadedDraft(data);
           // Always resume on Stage 1 form; pre-mount profile selector if stage2 exists
           setShowSectionSelector(false);
-          if (hasStage2DraftData(data, draft?.currentStep)) {
+          if (hasStage2DraftData(data, draftObj?.currentStep || draft?.currentStep)) {
             setSectionSelectorMounted(true);
           }
         }
@@ -853,7 +869,7 @@ const GeneratePage = () => {
         )} */}
 
             {/* Template Forms */}
-            {(templateId === 'frcc1' || templateId === 'Format CC1') && (
+            {(activeTemplateKey === 'frcc1') && (
               <FRCC1Form
                 onSubmit={handleFormSubmit}
                 templateId={templateId}
@@ -862,7 +878,7 @@ const GeneratePage = () => {
                 initialData={stage1InitialData}
               />
             )}
-            {(templateId === 'frcc2' || templateId === 'Format CC2') && (
+            {(activeTemplateKey === 'frcc2') && (
               <FRCC2Form
                 onSubmit={handleFormSubmit}
                 templateId={templateId}
@@ -871,7 +887,7 @@ const GeneratePage = () => {
                 initialData={stage1InitialData}
               />
             )}
-            {(templateId === 'frcc3' || templateId === 'Format CC3') && (
+            {(activeTemplateKey === 'frcc3') && (
               <FRCC3Form
                 onSubmit={handleFormSubmit}
                 templateId={templateId}
@@ -880,7 +896,7 @@ const GeneratePage = () => {
                 initialData={stage1InitialData}
               />
             )}
-            {(templateId === 'frcc4' || templateId === 'Format CC4') && (
+            {(activeTemplateKey === 'frcc4') && (
               <FRCC4Form
                 onSubmit={handleFormSubmit}
                 templateId={templateId}
@@ -889,7 +905,7 @@ const GeneratePage = () => {
                 initialData={stage1InitialData}
               />
             )}
-            {(templateId === 'frcc5' || templateId === 'Format CC5') && (
+            {(activeTemplateKey === 'frcc5') && (
               <FRCC5Form
                 onSubmit={handleFormSubmit}
                 templateId={templateId}
@@ -898,7 +914,7 @@ const GeneratePage = () => {
                 initialData={stage1InitialData}
               />
             )}
-            {(templateId === 'frcc6' || templateId === 'Format CC6') && (
+            {(activeTemplateKey === 'frcc6') && (
               <FRCC6Form
                 onSubmit={handleFormSubmit}
                 templateId={templateId}
@@ -907,7 +923,7 @@ const GeneratePage = () => {
                 initialData={stage1InitialData}
               />
             )}
-            {(templateId === 'frcc7' || templateId === 'Format CC7') && (
+            {(activeTemplateKey === 'frcc7') && (
               <FRCC7Form
                 onSubmit={handleFormSubmit}
                 templateId={templateId}
@@ -916,7 +932,7 @@ const GeneratePage = () => {
                 initialData={stage1InitialData}
               />
             )}
-            {(templateId === 'TERM_LOAN_SERVICE_WITHOUT_STOCK') && (
+            {(activeTemplateKey === 'TERM_LOAN_SERVICE_WITHOUT_STOCK') && (
               <FRTermLoanForm
                 onSubmit={handleFormSubmit}
                 templateId={templateId}
@@ -929,7 +945,7 @@ const GeneratePage = () => {
                 savingDraft={savingDraft}
               />
             )}
-            {(templateId === 'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK') && (
+            {(activeTemplateKey === 'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK') && (
               <FRTermLoanWithStockForm
                 onSubmit={handleFormSubmit}
                 templateId={templateId}
@@ -942,7 +958,7 @@ const GeneratePage = () => {
                 savingDraft={savingDraft}
               />
             )}
-            {(templateId === 'TERM_LOAN_CC') && (
+            {(activeTemplateKey === 'TERM_LOAN_CC') && (
               <FRTermLoanCCForm
                 onSubmit={handleFormSubmit}
                 templateId={templateId}
@@ -955,7 +971,7 @@ const GeneratePage = () => {
                 savingDraft={savingDraft}
               />
             )}
-            {(templateId === 'TERM_LOAN_EV_VEHICLE') && (
+            {(activeTemplateKey === 'TERM_LOAN_EV_VEHICLE') && (
               <FRTermLoanEVVehicleForm
                 onSubmit={handleFormSubmit}
                 templateId={templateId}
@@ -968,7 +984,7 @@ const GeneratePage = () => {
                 savingDraft={savingDraft}
               />
             )}
-            {(templateId === 'TERM_LOAN_OTHER_THAN_EV_VEHICLE') && (
+            {(activeTemplateKey === 'TERM_LOAN_OTHER_THAN_EV_VEHICLE') && (
               <FRTermLoanOtherThanEVVehicleForm
                 onSubmit={handleFormSubmit}
                 templateId={templateId}
@@ -981,7 +997,7 @@ const GeneratePage = () => {
                 savingDraft={savingDraft}
               />
             )}
-            {(templateId === 'TERM_LOAN_JCB_VEHICLE') && (
+            {(activeTemplateKey === 'TERM_LOAN_JCB_VEHICLE') && (
               <FRTermLoanJCBVehicleForm
                 onSubmit={handleFormSubmit}
                 templateId={templateId}
@@ -994,7 +1010,7 @@ const GeneratePage = () => {
                 savingDraft={savingDraft}
               />
             )}
-            {(templateId === 'TERM_LOAN_DRONE_VEHICLE') && (
+            {(activeTemplateKey === 'TERM_LOAN_DRONE_VEHICLE') && (
               <FRTermLoanDroneVehicleForm
                 onSubmit={handleFormSubmit}
                 templateId={templateId}
@@ -1008,20 +1024,16 @@ const GeneratePage = () => {
               />
             )}
             {templateId &&
-              templateId !== 'frcc1' && templateId !== 'Format CC1' &&
-              templateId !== 'frcc2' && templateId !== 'Format CC2' &&
-              templateId !== 'frcc3' && templateId !== 'Format CC3' &&
-              templateId !== 'frcc4' && templateId !== 'Format CC4' &&
-              templateId !== 'frcc5' && templateId !== 'Format CC5' &&
-              templateId !== 'frcc6' && templateId !== 'Format CC6' &&
-              templateId !== 'frcc7' && templateId !== 'Format CC7' &&
-              templateId !== 'TERM_LOAN_SERVICE_WITHOUT_STOCK' &&
-              templateId !== 'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK' &&
-              templateId !== 'TERM_LOAN_CC' &&
-              templateId !== 'TERM_LOAN_EV_VEHICLE' &&
-              templateId !== 'TERM_LOAN_OTHER_THAN_EV_VEHICLE' &&
-              templateId !== 'TERM_LOAN_JCB_VEHICLE' &&
-              templateId !== 'TERM_LOAN_DRONE_VEHICLE' && (
+              ![
+                'frcc1', 'frcc2', 'frcc3', 'frcc4', 'frcc5', 'frcc6', 'frcc7',
+                'TERM_LOAN_SERVICE_WITHOUT_STOCK',
+                'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK',
+                'TERM_LOAN_CC',
+                'TERM_LOAN_EV_VEHICLE',
+                'TERM_LOAN_OTHER_THAN_EV_VEHICLE',
+                'TERM_LOAN_JCB_VEHICLE',
+                'TERM_LOAN_DRONE_VEHICLE'
+              ].includes(activeTemplateKey) && (
                 <Card className="mb-6">
                   <div className="text-center py-12">
                     <div className="text-6xl mb-4">🚧</div>

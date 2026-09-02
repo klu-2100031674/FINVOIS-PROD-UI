@@ -143,7 +143,7 @@ const AdminReportsPage = () => {
   const [selectedReports, setSelectedReports] = useState([]);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
-  const showBulkSelect = activeTab === 'pending_validation' || activeTab === '';
+  const showBulkSelect = activeTab === 'pending_validation' || activeTab === 'under_review' || activeTab === '';
   const [stampTogglingId, setStampTogglingId] = useState(null);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
@@ -380,12 +380,42 @@ const AdminReportsPage = () => {
 
   const handleMarkUnderReview = async (report) => {
     try {
-      await api.patch(`/admin-reports/${report._id}/review`);
-      toast.success('Report marked as under review');
+      const endpoint = (report.is_re_review || report.validation_status === 'rejected')
+        ? `/admin-reports/${report._id}/re-review`
+        : `/admin-reports/${report._id}/review`;
+      await api.patch(endpoint);
+      toast.success(report.is_re_review || report.validation_status === 'rejected' ? 'Report moved to under review for re-review' : 'Report marked as under review');
       fetchReports();
       fetchStats();
     } catch (error) {
       toast.error('Failed to update report status');
+    }
+  };
+
+  const handleMoveToPending = async (report) => {
+    try {
+      await api.patch(`/admin-reports/${report._id}/pending`);
+      toast.success('Report moved to pending section');
+      fetchReports();
+      fetchStats();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to move report to pending');
+    }
+  };
+
+  const handleBulkMoveToPending = async () => {
+    if (selectedReports.length === 0) return;
+    try {
+      setBulkActionLoading(true);
+      await api.post('/admin-reports/bulk-pending', { report_ids: selectedReports });
+      toast.success(`Moved ${selectedReports.length} report(s) to pending section`);
+      setSelectedReports([]);
+      fetchReports();
+      fetchStats();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to bulk move reports to pending');
+    } finally {
+      setBulkActionLoading(false);
     }
   };
 
@@ -476,6 +506,28 @@ const AdminReportsPage = () => {
       );
     } finally {
       setSendingWhatsapp(false);
+    }
+  };
+
+  const handleBulkReview = async () => {
+    if (selectedReports.length === 0) return;
+
+    if (!window.confirm(`Move ${selectedReports.length} report(s) to under review?`)) return;
+
+    try {
+      setBulkActionLoading(true);
+      const response = await api.post('/admin-reports/bulk-review', {
+        report_ids: selectedReports,
+      });
+
+      toast.success(response.data?.message || 'Reports moved to under review');
+      setSelectedReports([]);
+      fetchReports();
+      fetchStats();
+    } catch (error) {
+      toast.error('Bulk review failed');
+    } finally {
+      setBulkActionLoading(false);
     }
   };
 
@@ -671,7 +723,14 @@ const AdminReportsPage = () => {
     }
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status, report) => {
+    if (report?.is_re_review && (status === 'under_review' || status === 'pending_validation')) {
+      return (
+        <span className="inline-block max-w-full truncate px-2 py-1 text-xs font-semibold rounded-full bg-purple-200 text-purple-800 border border-purple-300" title="Re-Review Report">
+          Re-Review
+        </span>
+      );
+    }
     const statusConfig = {
       pending_validation: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Pending' },
       under_review: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Under Validation for CA' },
@@ -924,6 +983,52 @@ const AdminReportsPage = () => {
             </span>
             <div className="flex gap-2">
               <button
+                onClick={handleBulkReview}
+                disabled={bulkActionLoading}
+                className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              >
+                {bulkActionLoading ? <Loader2 className="animate-spin mr-2" size={16} /> : <AlertCircle size={16} className="mr-2" />}
+                Move to Under Review
+              </button>
+              <button
+                onClick={() => setSelectedReports([])}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+        {selectedReports.length > 0 && (activeTab === 'rejected' || activeTab === 'under_review') && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 flex items-center justify-between">
+            <span className="text-amber-800 font-medium">
+              {selectedReports.length} report(s) selected
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={handleBulkMoveToPending}
+                disabled={bulkActionLoading}
+                className="flex items-center px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50"
+              >
+                {bulkActionLoading ? <Loader2 className="animate-spin mr-2" size={16} /> : <Clock size={16} className="mr-2" />}
+                Move to Pending
+              </button>
+              <button
+                onClick={() => setSelectedReports([])}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+        {selectedReports.length > 0 && activeTab === 'under_review' && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4 flex items-center justify-between">
+            <span className="text-green-700 font-medium">
+              {selectedReports.length} report(s) selected
+            </span>
+            <div className="flex gap-2">
+              <button
                 onClick={handleBulkApprove}
                 disabled={bulkActionLoading}
                 className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
@@ -1146,14 +1251,25 @@ const AdminReportsPage = () => {
                         </>
                       )}
 
-                      {report.validation_status === 'pending_validation' && (
+                      {['pending_validation', 'rejected'].includes(report.validation_status) && (
                         <button
                           onClick={() => handleMarkUnderReview(report)}
                           className="flex items-center gap-1 px-3 py-1.5 text-sm text-[#7e22ce] bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200 shrink-0"
-                          title="Start Review"
+                          title={report.is_re_review || report.validation_status === 'rejected' ? "Start Re-Review" : "Start Review"}
                         >
                           <AlertCircle size={16} />
-                          <span>Start Review</span>
+                          <span>{report.is_re_review || report.validation_status === 'rejected' ? "Re-Review" : "Start Review"}</span>
+                        </button>
+                      )}
+
+                      {['rejected', 'under_review', 'approved'].includes(report.validation_status) && (
+                        <button
+                          onClick={() => handleMoveToPending(report)}
+                          className="flex items-center gap-1 px-3 py-1.5 text-sm text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors border border-amber-200 shrink-0"
+                          title="Move report to Pending section"
+                        >
+                          <Clock size={16} />
+                          <span>Move to Pending</span>
                         </button>
                       )}
 

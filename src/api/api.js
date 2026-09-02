@@ -676,6 +676,22 @@ export const draftAPI = {
       throw error.response?.data || error;
     }
   },
+  createDraftFromReport: async (reportId) => {
+    try {
+      const response = await apiClient.post(`/drafts/from-report/${reportId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+  duplicateDraft: async (draftId) => {
+    try {
+      const response = await apiClient.post(`/drafts/by-id/${draftId}/duplicate`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
 
   // Legacy template-based drafts (kept for existing flows)
   saveDraft: async (templateId, draftData) => {

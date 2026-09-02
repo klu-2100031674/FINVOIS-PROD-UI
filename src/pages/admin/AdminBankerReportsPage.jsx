@@ -194,12 +194,61 @@ const AdminBankerReportsPage = () => {
 
   const handleMarkUnderReview = async (report) => {
     try {
-      await adminExecutiveReportsAPI.markUnderReview(report._id);
-      toast.success('Report marked as under review');
+      const isReReview = report.is_re_review || report.validation_status === 'rejected';
+      if (isReReview) {
+        await adminExecutiveReportsAPI.reReview(report._id);
+      } else {
+        await adminExecutiveReportsAPI.markUnderReview(report._id);
+      }
+      toast.success(isReReview ? 'Moved to under review for re-review' : 'Report marked as under review');
       fetchReports(pagination.current_page);
       fetchStats();
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to update report status');
+    }
+  };
+
+  const handleMoveToPending = async (report) => {
+    try {
+      await adminExecutiveReportsAPI.moveToPending(report._id);
+      toast.success('Report moved to pending section');
+      fetchReports(pagination.current_page);
+      fetchStats();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to move report to pending');
+    }
+  };
+
+  const handleBulkMoveToPending = async () => {
+    if (selectedIds.length === 0) return;
+    try {
+      setBulkActionLoading(true);
+      const res = await adminExecutiveReportsAPI.bulkMoveToPending(selectedIds);
+      toast.success(res.data?.message || `Moved ${selectedIds.length} report(s) to pending section`);
+      setSelectedIds([]);
+      fetchReports(pagination.current_page);
+      fetchStats();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Bulk move to pending failed');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkReview = async () => {
+    if (selectedIds.length === 0) return;
+    try {
+      setBulkActionLoading(true);
+      const res = await adminExecutiveReportsAPI.bulkReview(selectedIds);
+      const data = res.data?.data;
+      toast.success(res.data?.message || `Moved ${data?.success ?? 0} report(s) to under review`);
+      setSelectedIds([]);
+      fetchReports(pagination.current_page);
+      fetchStats();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Bulk review failed');
+    } finally {
+      setBulkActionLoading(false);
     }
   };
 
@@ -319,7 +368,14 @@ const AdminBankerReportsPage = () => {
     }
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status, report) => {
+    if (report?.is_re_review && (status === 'under_review' || status === 'pending_validation')) {
+      return (
+        <span className="inline-block max-w-full truncate px-2.5 py-1 text-xs font-semibold rounded-full bg-purple-200 text-purple-800 border border-purple-300" title="Re-Review Report">
+          Re-Review
+        </span>
+      );
+    }
     const statusConfig = {
       pending_validation: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Pending' },
       under_review: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Under Review' },
@@ -328,7 +384,9 @@ const AdminBankerReportsPage = () => {
     };
     const config = statusConfig[status] || { bg: 'bg-gray-100', text: 'text-gray-600', label: status };
     return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-full ${config.bg} ${config.text}`}>
+      <span
+        className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${config.bg} ${config.text}`}
+      >
         {config.label}
       </span>
     );
@@ -460,7 +518,29 @@ const AdminBankerReportsPage = () => {
               {selectedCount} report{selectedCount === 1 ? '' : 's'} selected
             </span>
             <div className="flex flex-wrap gap-2">
-              {canBulkApproveReject && (
+              {activeTab === 'pending_validation' && (
+                <button
+                  type="button"
+                  disabled={bulkActionLoading}
+                  onClick={handleBulkReview}
+                  className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 text-sm font-medium"
+                >
+                  <AlertCircle size={16} className="mr-2" />
+                  Move to Under Review
+                </button>
+              )}
+              {['rejected', 'under_review'].includes(activeTab) && (
+                <button
+                  type="button"
+                  disabled={bulkActionLoading}
+                  onClick={handleBulkMoveToPending}
+                  className="inline-flex items-center px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 text-sm font-medium"
+                >
+                  <Clock size={16} className="mr-2" />
+                  Move to Pending
+                </button>
+              )}
+              {activeTab === 'under_review' && (
                 <>
                   <button
                     type="button"
@@ -576,7 +656,7 @@ const AdminBankerReportsPage = () => {
                         {new Date(report.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
                       </p>
                     </div>
-                    <div className="col-span-2">{getStatusBadge(report.validation_status)}</div>
+                    <div className="col-span-2">{getStatusBadge(report.validation_status, report)}</div>
                     <div className="col-span-2 flex items-center justify-end gap-2 flex-wrap">
                       <button
                         type="button"
@@ -620,14 +700,25 @@ const AdminBankerReportsPage = () => {
                           </button>
                         </>
                       )}
-                      {report.validation_status === 'pending_validation' && (
+                      {['pending_validation', 'rejected'].includes(report.validation_status) && (
                         <button
                           type="button"
                           onClick={() => handleMarkUnderReview(report)}
                           className="flex items-center gap-1 px-3 py-1.5 text-sm text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200"
                         >
                           <AlertCircle size={16} />
-                          Start Review
+                          {report.is_re_review || report.validation_status === 'rejected' ? 'Re-Review' : 'Start Review'}
+                        </button>
+                      )}
+                      {['rejected', 'under_review', 'approved'].includes(report.validation_status) && (
+                        <button
+                          type="button"
+                          onClick={() => handleMoveToPending(report)}
+                          className="flex items-center gap-1 px-3 py-1.5 text-sm text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200"
+                          title="Move report to Pending section"
+                        >
+                          <Clock size={16} />
+                          <span>Move to Pending</span>
                         </button>
                       )}
                       <button

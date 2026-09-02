@@ -78,6 +78,30 @@ export const deleteDraftV2 = createAsyncThunk(
   }
 );
 
+export const createDraftFromReport = createAsyncThunk(
+  'drafts/createDraftFromReport',
+  async (reportId, { rejectWithValue }) => {
+    try {
+      const response = await api.draft.createDraftFromReport(reportId);
+      return response.data || response;
+    } catch (error) {
+      return rejectWithValue(error.message || error.error || 'Failed to create draft from report');
+    }
+  }
+);
+
+export const duplicateDraft = createAsyncThunk(
+  'drafts/duplicateDraft',
+  async (draftId, { rejectWithValue }) => {
+    try {
+      const response = await api.draft.duplicateDraft(draftId);
+      return response.data || response;
+    } catch (error) {
+      return rejectWithValue(error.message || error.error || 'Failed to duplicate draft');
+    }
+  }
+);
+
 const draftSlice = createSlice({
   name: 'drafts',
   initialState,

@@ -958,6 +958,7 @@ function App() {
             </AdminOrCompanyAdminRoute>
           }
         />
+        <Route path="/draft" element={<Navigate to="/drafts" replace />} />
         <Route
           path="/drafts"
           element={

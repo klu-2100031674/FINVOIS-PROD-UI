@@ -19,6 +19,7 @@ export const MSME_DPR_LOAN_TYPE_OPTIONS = [
   'Term Loan',
   'Term Loan and working capital loan',
   'Working capital or OD Loan',
+  'Gold Loan',
 ];
 
 export const MSME_DPR_RURAL_URBAN_OPTIONS = [
