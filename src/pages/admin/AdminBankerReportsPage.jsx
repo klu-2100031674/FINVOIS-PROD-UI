@@ -529,17 +529,6 @@ const AdminBankerReportsPage = () => {
                   Move to Under Review
                 </button>
               )}
-              {['rejected', 'under_review'].includes(activeTab) && (
-                <button
-                  type="button"
-                  disabled={bulkActionLoading}
-                  onClick={handleBulkMoveToPending}
-                  className="inline-flex items-center px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 text-sm font-medium"
-                >
-                  <Clock size={16} className="mr-2" />
-                  Move to Pending
-                </button>
-              )}
               {activeTab === 'under_review' && (
                 <>
                   <button
@@ -614,7 +603,7 @@ const AdminBankerReportsPage = () => {
                 )}
                 <div className={canSelect ? 'col-span-3' : 'col-span-4'}>Report</div>
                 <div className="col-span-2">Executive</div>
-                <div className="col-span-2">Date</div>
+                <div className="col-span-2">Date & Time</div>
                 <div className="col-span-2">Status</div>
                 <div className="col-span-2 text-right">Actions</div>
               </div>
@@ -653,7 +642,14 @@ const AdminBankerReportsPage = () => {
                     </div>
                     <div className="col-span-2">
                       <p className="text-sm text-gray-600">
-                        {new Date(report.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
+                        {new Date(report.createdAt).toLocaleString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true,
+                        })}
                       </p>
                     </div>
                     <div className="col-span-2">{getStatusBadge(report.validation_status, report)}</div>
@@ -708,17 +704,6 @@ const AdminBankerReportsPage = () => {
                         >
                           <AlertCircle size={16} />
                           {report.is_re_review || report.validation_status === 'rejected' ? 'Re-Review' : 'Start Review'}
-                        </button>
-                      )}
-                      {['rejected', 'under_review', 'approved'].includes(report.validation_status) && (
-                        <button
-                          type="button"
-                          onClick={() => handleMoveToPending(report)}
-                          className="flex items-center gap-1 px-3 py-1.5 text-sm text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200"
-                          title="Move report to Pending section"
-                        >
-                          <Clock size={16} />
-                          <span>Move to Pending</span>
                         </button>
                       )}
                       <button

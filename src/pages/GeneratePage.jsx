@@ -172,6 +172,7 @@ const GeneratePage = () => {
     searchParams.get('newDraft') === '1' || searchParams.get('newDraft') === 'true';
   const assistedUserId = searchParams.get('assistedUserId') || '';
   const reportHelpId = searchParams.get('reportHelpId') || '';
+  const deptRequestId = searchParams.get('requestId') || '';
   const isAssistedGeneration = Boolean(assistedUserId && reportHelpId);
   const template = useSelector(selectSelectedTemplate);
   const generatedExcel = useSelector(selectGeneratedExcel);
@@ -444,6 +445,7 @@ const GeneratePage = () => {
         if (searchParams.get('admin') === 'true') stageParams.set('admin', 'true');
         if (assistedUserId) stageParams.set('assistedUserId', assistedUserId);
         if (reportHelpId) stageParams.set('reportHelpId', reportHelpId);
+        if (deptRequestId) stageParams.set('requestId', deptRequestId);
         navigate(`/stage1?${stageParams.toString()}`);
         generationRequestedRef.current = false;
         setIsProcessing(false);
@@ -456,7 +458,7 @@ const GeneratePage = () => {
     );
     generationRequestedRef.current = false;
     setIsProcessing(false);
-  }, [generatedExcel, navigate, templateId, searchParams, assistedUserId, reportHelpId]);
+  }, [generatedExcel, navigate, templateId, searchParams, assistedUserId, reportHelpId, deptRequestId]);
 
   // Check if admin mode (no credits required)
   const isAdminMode = searchParams.get('admin') === 'true' && normalizeUserRole(user?.role) === 'admin';

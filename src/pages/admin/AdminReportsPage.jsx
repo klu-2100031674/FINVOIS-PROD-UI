@@ -82,10 +82,10 @@ const VALIDATION_STATUSES = [
 ];
 
 const STATS_OFFSETS = {
-  pending: -74,
-  under_review: -102,
+  pending: 0,
+  under_review: 0,
   approved: 4492,
-  rejected: 19
+  rejected: 0
 };
 
 const AdminReportsPage = () => {
@@ -999,29 +999,6 @@ const AdminReportsPage = () => {
             </div>
           </div>
         )}
-        {selectedReports.length > 0 && (activeTab === 'rejected' || activeTab === 'under_review') && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 flex items-center justify-between">
-            <span className="text-amber-800 font-medium">
-              {selectedReports.length} report(s) selected
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={handleBulkMoveToPending}
-                disabled={bulkActionLoading}
-                className="flex items-center px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50"
-              >
-                {bulkActionLoading ? <Loader2 className="animate-spin mr-2" size={16} /> : <Clock size={16} className="mr-2" />}
-                Move to Pending
-              </button>
-              <button
-                onClick={() => setSelectedReports([])}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
         {selectedReports.length > 0 && activeTab === 'under_review' && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4 flex items-center justify-between">
             <span className="text-green-700 font-medium">
@@ -1262,18 +1239,8 @@ const AdminReportsPage = () => {
                         </button>
                       )}
 
-                      {['rejected', 'under_review', 'approved'].includes(report.validation_status) && (
-                        <button
-                          onClick={() => handleMoveToPending(report)}
-                          className="flex items-center gap-1 px-3 py-1.5 text-sm text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors border border-amber-200 shrink-0"
-                          title="Move report to Pending section"
-                        >
-                          <Clock size={16} />
-                          <span>Move to Pending</span>
-                        </button>
-                      )}
-
-                      {(report.validation_status === 'under_review' || report.validation_status === 'approved') && (
+                      {(report.validation_status === 'under_review' || report.validation_status === 'approved') &&
+                        !(report.content_kind === 'theory' || String(report.templateId || '').startsWith('THEORY_')) && (
                         <button
                           onClick={() => handleOpenUploadModal(report)}
                           className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors shrink-0"
