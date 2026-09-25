@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Filter, MoreVertical, Edit2, Eye, UserPlus, ChevronRight, ChevronDown, Trash2, Check, X } from 'lucide-react';
+import { Search, Filter, MoreVertical, Edit2, Eye, UserPlus, ChevronRight, ChevronDown, Check, X } from 'lucide-react';
 import { AdminLayout } from '../../components/layouts';
 import api from '../../api/apiClient';
 import toast from 'react-hot-toast';
@@ -12,6 +12,27 @@ import {
 import { resolveSignupApprovalStatus } from '../../utils/signupApproval';
 import { isTableAccessEligibleUser } from '../../utils/tableAccess';
 import { isApprovalRightsEligibleUser } from '../../utils/approvalRights';
+
+/** Returns true if the email is a system-generated placeholder for phone-verified customers. */
+function isPlaceholderEmail(email) {
+  return typeof email === 'string' && email.endsWith('@phone.customer.finvois');
+}
+
+/**
+ * Human-readable contact for a user.
+ * Phone-verified customers store a placeholder email — show their phone instead.
+ */
+function displayUserContact(user) {
+  if (user?.role === 'customer' && isPlaceholderEmail(user?.email)) {
+    return user?.phone ? `📱 ${user.phone}` : '—';
+  }
+  return user?.email || '—';
+}
+
+/** Resolved phone number (User model stores it in `phone`, not `mobile`). */
+function displayUserPhone(user) {
+  return user?.phone || user?.mobile || 'N/A';
+}
 
 const isSignupPending = (user) => resolveSignupApprovalStatus(user) === 'pending';
 const isSignupRejected = (user) => resolveSignupApprovalStatus(user) === 'rejected';
@@ -194,9 +215,12 @@ const AdminUsersPage = () => {
         const agentSearch = agent
           ? `${agent.name} ${agent.email}`.toLowerCase()
           : '';
+        const contactDisplay = displayUserContact(user).toLowerCase();
         return (
           user.name?.toLowerCase().includes(term) ||
-          user.email?.toLowerCase().includes(term) ||
+          contactDisplay.includes(term) ||
+          (!isPlaceholderEmail(user.email) && user.email?.toLowerCase().includes(term)) ||
+          user.phone?.includes(searchTerm) ||
           user.mobile?.includes(searchTerm) ||
           companyName.toLowerCase().includes(term) ||
           agentSearch.includes(term)
@@ -668,7 +692,7 @@ const AdminUsersPage = () => {
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500 truncate mt-0.5">{user.email}</p>
+                          <p className="text-xs text-gray-500 truncate mt-0.5">{displayUserContact(user)}</p>
                         </div>
                       </td>
                       <td className="px-3 py-3 align-middle hidden md:table-cell min-w-0">
@@ -903,14 +927,7 @@ const AdminUsersPage = () => {
               </button>
             </>
           )}
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => handleAskDeleteUser(actionMenuUser)}
-            className="flex items-center w-full px-3 py-2 text-sm text-red-700 hover:bg-red-50 border-t border-gray-100 mt-1"
-          >
-            <Trash2 size={15} className="mr-2 shrink-0" /> Delete user
-          </button>
+          {/* Delete user is disabled — deactivate the account instead so their MSME / MEPMA / DPR requests stay hidden. */}
         </div>,
         document.body
       )}
@@ -933,7 +950,11 @@ const AdminUsersPage = () => {
               <div className="space-y-4">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-800">{selectedUser.name}</h3>
-                  <p className="text-gray-500">{selectedUser.email}</p>
+                  {isPlaceholderEmail(selectedUser.email) ? (
+                    <p className="text-gray-500">📱 Phone-verified customer — {selectedUser.phone || '—'}</p>
+                  ) : (
+                    <p className="text-gray-500">{selectedUser.email}</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
@@ -967,7 +988,7 @@ const AdminUsersPage = () => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Mobile</p>
-                    <p className="font-medium">{selectedUser.mobile || 'N/A'}</p>
+                    <p className="font-medium">{displayUserPhone(selectedUser)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Referral Code</p>
