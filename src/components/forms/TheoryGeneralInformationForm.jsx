@@ -125,7 +125,6 @@ const TheoryGeneralInformationForm = ({ value = {}, onChange, lockSector = false
             value={gi.i14}
             onChange={(e) => set('i14', e.target.value)}
             className={inputClass}
-            disabled={lockSector}
           >
             <option value="">Select Sector</option>
             <option value="Manufacturing">Manufacturing</option>

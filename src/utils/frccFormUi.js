@@ -48,6 +48,7 @@ export const PREPARED_BY_CIBIL_FIELD = {
 };
 
 export function isFrccTemplateId(templateId) {
+  if (String(templateId || '').trim().toUpperCase() === 'GOLD_LOAN') return true;
   const match = String(templateId || '').toUpperCase().match(/CC(\d+)/);
   if (match) {
     const ccNumber = parseInt(match[1], 10);

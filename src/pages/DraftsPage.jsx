@@ -82,6 +82,7 @@ const DraftsPage = () => {
     'TERM_LOAN_OTHER_THAN_EV_VEHICLE',
     'TERM_LOAN_JCB_VEHICLE',
     'TERM_LOAN_DRONE_VEHICLE',
+    'GOLD_LOAN',
   ]), []);
 
   const formatFormTypeLabel = (formType) => {
@@ -103,6 +104,7 @@ const DraftsPage = () => {
       TERM_LOAN_OTHER_THAN_EV_VEHICLE: 'Other Than EV Commercial Vehicle',
       TERM_LOAN_JCB_VEHICLE: 'JCB Vehicle',
       TERM_LOAN_DRONE_VEHICLE: 'Drone Vehicle',
+      GOLD_LOAN: 'Gold Loan',
     };
 
     if (explicit[ft]) return explicit[ft];

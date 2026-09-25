@@ -3,6 +3,7 @@
  * (applies to both Admin + MSME portal dashboards using this component).
  */
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ChevronDown,
   ChevronLeft,
@@ -16,6 +17,7 @@ import {
   SlidersHorizontal,
   Trash2,
   TrendingUp,
+  ClipboardList,
 } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
@@ -30,7 +32,11 @@ import {
   Legend,
 } from 'chart.js';
 import toast from 'react-hot-toast';
+import useAuth from '@/hooks/useAuth';
+import api from '@/api/apiClient';
 import MsmeDprEmailOverlay from '@/components/msmeDpr/MsmeDprEmailOverlay';
+import AdminDprStaffActions from '@/components/govtForms/AdminDprStaffActions';
+import { staffHandlerName, workflowFromLead } from '@/utils/dprWorkflowStatus';
 import {
   deleteMsmeDprLead,
   fetchMsmeDprLeads,
@@ -42,6 +48,7 @@ import {
   MSME_DPR_RURAL_URBAN_OPTIONS,
   MSME_DPR_SCHEMES,
 } from '@/constants/msmeDprSchemes';
+import { displayMsmeLoanType } from '@/utils/msmeLoanTypeDisplay';
 
 ChartJS.register(
   CategoryScale,
@@ -169,11 +176,27 @@ function ApplicantDetailPanel({ submission }) {
     submission?.loanTermPeriod ||
     submission?.rateOfInterest ||
     submission?.processingFee ||
+    submission?.moratoriumPeriod ||
     submission?.loanAmount
   );
 
   return (
     <div className="px-4 py-4 bg-gray-50 border-t text-sm text-gray-600 space-y-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl border border-orange-200 bg-orange-50/70">
+        <div>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-orange-700 block mb-1">
+            Loan Type
+          </span>
+          <span className="text-sm font-semibold text-gray-900">{displayMsmeLoanType(submission.loanType)}</span>
+        </div>
+        <div>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-orange-700 block mb-1">
+            Sector
+          </span>
+          <span className="text-sm font-semibold text-gray-900">{submission.sector || '—'}</span>
+        </div>
+      </div>
+
       {/* Identity Badges */}
       {(hasAadhar || hasPan) && (
         <div className="flex flex-wrap items-center gap-3">
@@ -200,6 +223,23 @@ function ApplicantDetailPanel({ submission }) {
             ? ` · Year of Registration: ${submission.yearOfRegistration}`
             : ''}
         </p>
+      )}
+
+      {(submission?.natureOfBusiness || submission?.schemeAppliedUnder) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {submission.natureOfBusiness && (
+            <p>
+              <span className="font-medium text-gray-700">Nature of Business:</span>{' '}
+              {submission.natureOfBusiness}
+            </p>
+          )}
+          {submission.schemeAppliedUnder && (
+            <p>
+              <span className="font-medium text-gray-700">Scheme Applied Under:</span>{' '}
+              {displayScheme(submission.schemeAppliedUnder)}
+            </p>
+          )}
+        </div>
       )}
 
       {hasDescription && (
@@ -307,6 +347,12 @@ function ApplicantDetailPanel({ submission }) {
                   <span className="text-xs font-semibold text-gray-800">{submission.processingFee}</span>
                 </div>
               )}
+              {submission.moratoriumPeriod && (
+                <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                  <span className="text-[10px] font-semibold uppercase text-gray-400 block">Moratorium (months)</span>
+                  <span className="text-xs font-semibold text-gray-800">{submission.moratoriumPeriod}</span>
+                </div>
+              )}
               {submission.loanAmount && (
                 <div className="p-2.5 bg-orange-50/60 rounded-lg border border-orange-200/60">
                   <span className="text-[10px] font-semibold uppercase text-orange-600 block">Total Loan Amount</span>
@@ -356,11 +402,73 @@ function ApplicantDetailPanel({ submission }) {
   );
 }
 
+// Report templates available for generation (same list as CustomerServiceRequestScreen)
+const TEMPLATES_LIST = [
+  { id: 'frcc1', name: 'Cash Credit Form 1' },
+  { id: 'frcc2', name: 'Cash Credit Form 2' },
+  { id: 'frcc3', name: 'Cash Credit Form 3' },
+  { id: 'frcc4', name: 'Cash Credit Form 4' },
+  { id: 'frcc5', name: 'Cash Credit Form 5' },
+  { id: 'frcc6', name: 'Cash Credit Form 6' },
+  { id: 'frcc7', name: 'Cash Credit Form 7' },
+  { id: 'TERM_LOAN_SERVICE_WITHOUT_STOCK', name: 'Term Loan Form' },
+  { id: 'TERM_LOAN_CC', name: 'Term Loan Cash Credit Form' },
+  { id: 'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK', name: 'Term Loan With Stock Form' },
+  { id: 'TERM_LOAN_EV_VEHICLE', name: 'EV Commercial Vehicle' },
+  { id: 'TERM_LOAN_OTHER_THAN_EV_VEHICLE', name: 'Other Than EV Commercial Vehicle' },
+  { id: 'TERM_LOAN_JCB_VEHICLE', name: 'JCB Vehicle' },
+  { id: 'TERM_LOAN_DRONE_VEHICLE', name: 'Drone Vehicle' },
+  { id: 'GOLD_LOAN', name: 'Gold Loan' },
+];
+
+/**
+ * Inline template-selector + "Generate" button rendered per lead row.
+ * Visible only when `showGenerateReport` is true.
+ */
+function GenerateReportCell({ leadId, departmentRequestId, navigate }) {
+  const [selected, setSelected] = useState('frcc1');
+  return (
+    <div className="flex items-center gap-1.5">
+      <select
+        value={selected}
+        onChange={(e) => setSelected(e.target.value)}
+        onClick={(e) => e.stopPropagation()}
+        className="text-xs border border-gray-300 rounded-lg px-2 py-1.5 bg-white focus:ring-1 focus:ring-orange-400 focus:outline-none max-w-[140px]"
+        title="Select report template"
+      >
+        {TEMPLATES_LIST.map((t) => (
+          <option key={t.id} value={t.id}>{t.name}</option>
+        ))}
+      </select>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          const params = new URLSearchParams({ templateId: selected, newDraft: '1', msmeLeadId: leadId });
+          const requestId = departmentRequestId?._id || departmentRequestId || '';
+          if (requestId) params.set('requestId', String(requestId));
+          navigate(`/generate?${params.toString()}`);
+        }}
+        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors shrink-0"
+        title="Generate report pre-filled with this submission"
+      >
+        <ClipboardList className="h-3.5 w-3.5" />
+        Go
+      </button>
+    </div>
+  );
+}
+
 const MsmeDprDashboard = ({
-  showServiceAvailed = false,
+  showServiceAvailed: _showServiceAvailedProp = false, // Service Availed UI hidden; DB field retained
   showEmailConfig = false,
   showDelete = false,
+  showGenerateReport = false,
 }) => {
+  const showServiceAvailed = false;
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const navigate = useNavigate();
   const initialFilters = useMemo(() => getInitialFilters(showServiceAvailed), [showServiceAvailed]);
 
   const [loading, setLoading] = useState(true);
@@ -370,12 +478,15 @@ const MsmeDprDashboard = ({
   const [expandedId, setExpandedId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [emailOverlayOpen, setEmailOverlayOpen] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showTrendChart, setShowTrendChart] = useState(false);
   const [timeframe, setTimeframe] = useState('1month');
   const [filters, setFilters] = useState(initialFilters);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
+  const [csAgents, setCsAgents] = useState([]);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -385,8 +496,9 @@ const MsmeDprDashboard = ({
   });
 
   const loadData = useCallback(
-    async (filterParams, pageNum = 1, currentTimeframe = '1month') => {
-      setLoading(true);
+    async (filterParams, pageNum = 1, currentTimeframe = '1month', options = {}) => {
+      const silent = Boolean(options?.silent);
+      if (!silent) setLoading(true);
       try {
         const data = await fetchMsmeDprLeads({
           ...buildApiFilters(filterParams, showServiceAvailed),
@@ -408,9 +520,11 @@ const MsmeDprDashboard = ({
           }
         );
       } catch (err) {
-        toast.error(err?.response?.data?.message || 'Failed to load MSME DPR data');
+        if (!silent) {
+          toast.error(err?.response?.data?.message || 'Failed to load MSME DPR data');
+        }
       } finally {
-        setLoading(false);
+        if (!silent) setLoading(false);
       }
     },
     [showServiceAvailed]
@@ -419,6 +533,30 @@ const MsmeDprDashboard = ({
   useEffect(() => {
     loadData(appliedFilters, page, timeframe);
   }, [appliedFilters, page, timeframe, loadData]);
+
+  // Clear selection when the page or filters change
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [appliedFilters, page, timeframe]);
+
+  // Keep DPR Status / assign actions live (claim, generate, auto-unclaim).
+  useEffect(() => {
+    const timer = setInterval(() => {
+      loadData(appliedFilters, page, timeframe, { silent: true });
+    }, 15000);
+    return () => clearInterval(timer);
+  }, [appliedFilters, page, timeframe, loadData]);
+
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    let cancelled = false;
+    api.get('/govt-forms/customer-service')
+      .then((res) => {
+        if (!cancelled) setCsAgents(res.data?.data || []);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isAdmin]);
 
   const handleApplyFilters = (e) => {
     e?.preventDefault();
@@ -460,6 +598,11 @@ const MsmeDprDashboard = ({
       const data = await deleteMsmeDprLead(id);
       if (data?.stats) setStats(data.stats);
       setSubmissions((prev) => prev.filter((item) => item._id !== id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(String(id));
+        return next;
+      });
       if (expandedId === id) setExpandedId(null);
       toast.success('Submission deleted');
       await loadData(appliedFilters, page, timeframe);
@@ -468,6 +611,68 @@ const MsmeDprDashboard = ({
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const pageIds = useMemo(
+    () => submissions.map((s) => String(s._id)).filter(Boolean),
+    [submissions]
+  );
+  const selectedCount = selectedIds.size;
+  const allOnPageSelected =
+    pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+
+  const toggleSelectOne = (id) => {
+    const key = String(id);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleSelectAllOnPage = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allOnPageSelected) {
+        pageIds.forEach((id) => next.delete(id));
+      } else {
+        pageIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    if (
+      !window.confirm(
+        `Delete ${ids.length} selected submission${ids.length === 1 ? '' : 's'}? This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    setBulkDeleting(true);
+    let deleted = 0;
+    let failed = 0;
+    for (const id of ids) {
+      try {
+        await deleteMsmeDprLead(id);
+        deleted += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+    setSelectedIds(new Set());
+    if (expandedId && ids.includes(String(expandedId))) setExpandedId(null);
+    await loadData(appliedFilters, page, timeframe);
+    if (failed === 0) {
+      toast.success(`Deleted ${deleted} submission${deleted === 1 ? '' : 's'}`);
+    } else {
+      toast.error(`Deleted ${deleted}, failed ${failed}. Refresh and retry failed rows.`);
+    }
+    setBulkDeleting(false);
   };
 
   const formatLabel = useCallback((label) => {
@@ -578,17 +783,7 @@ const MsmeDprDashboard = ({
           pointHoverRadius: 6,
           pointBackgroundColor: 'rgb(249, 115, 22)',
         },
-        {
-          label: 'Service availed',
-          data: serviceAvailed,
-          borderColor: 'rgb(20, 184, 166)',
-          backgroundColor: 'rgba(20, 184, 166, 0.12)',
-          fill: true,
-          tension: 0.35,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          pointBackgroundColor: 'rgb(20, 184, 166)',
-        },
+        // Service availed chart series hidden — DPR workflow status replaces it
       ],
     };
   }, [chartSeries, timeframe, formatLabel, generateEmptyChartData]);
@@ -597,7 +792,9 @@ const MsmeDprDashboard = ({
     ? 'No submissions match the selected filters.'
     : 'No submissions yet.';
 
-  const tableColSpan = showDelete ? 10 : 9;
+  // Columns: expand, [checkbox], Date, Name, Gender, Mobile, Loan Type, DPR Status, Staff (+ optional Generate / Delete)
+  const tableColSpan =
+    (showDelete ? 10 : 8) + (showGenerateReport ? 1 : 0);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
@@ -648,15 +845,12 @@ const MsmeDprDashboard = ({
         />
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-1 gap-4 mb-6 max-w-sm">
         <div className="bg-white border rounded-xl p-5 shadow-sm">
           <p className="text-sm font-medium text-gray-500">Total DPR Requests received</p>
           <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalRequests}</p>
         </div>
-        <div className="bg-white border rounded-xl p-5 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">Total DPR Service Availed</p>
-          <p className="text-3xl font-bold text-teal-600 mt-1">{stats.totalServiceAvailed}</p>
-        </div>
+        {/* Service Availed stats card hidden — DPR workflow status replaces it */}
       </div>
 
       <div className="bg-white border rounded-xl shadow-sm mb-6 overflow-hidden">
@@ -753,7 +947,7 @@ const MsmeDprDashboard = ({
                 type="text"
                 value={filters.search}
                 onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-                placeholder="Search by applicant name..."
+                placeholder="Search by name, mobile, or nature of business..."
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
               />
             </div>
@@ -887,12 +1081,38 @@ const MsmeDprDashboard = ({
           <FileText className="h-5 w-5 text-orange-500" />
           Applicant wise
         </h2>
-        {pagination.total > 0 && (
-          <p className="text-sm text-gray-500">
-            Showing {(pagination.page - 1) * pagination.limit + 1}–
-            {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
-          </p>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {showDelete && selectedCount > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">
+                {selectedCount} selected
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedIds(new Set())}
+                disabled={bulkDeleting}
+                className="text-sm text-gray-500 hover:text-gray-800 underline-offset-2 hover:underline disabled:opacity-50"
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                disabled={bulkDeleting}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50 transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {bulkDeleting ? 'Deleting…' : `Delete selected (${selectedCount})`}
+              </button>
+            </div>
+          )}
+          {pagination.total > 0 && (
+            <p className="text-sm text-gray-500">
+              Showing {(pagination.page - 1) * pagination.limit + 1}–
+              {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+            </p>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -911,14 +1131,27 @@ const MsmeDprDashboard = ({
                 <thead>
                   <tr className="bg-gray-50 border-b text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     <th className="px-3 py-3 w-8" />
+                    {showDelete && (
+                      <th className="px-3 py-3 w-10">
+                        <input
+                          type="checkbox"
+                          checked={allOnPageSelected}
+                          onChange={toggleSelectAllOnPage}
+                          disabled={bulkDeleting || pageIds.length === 0}
+                          className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                          title={allOnPageSelected ? 'Deselect all on page' : 'Select all on page'}
+                          aria-label="Select all on page"
+                        />
+                      </th>
+                    )}
                     <th className="px-3 py-3">Date</th>
                     <th className="px-3 py-3">Name of Applicant</th>
                     <th className="px-3 py-3">Gender</th>
                     <th className="px-3 py-3">Mobile Number</th>
-                    <th className="px-3 py-3">Nature of Business</th>
-                    <th className="px-3 py-3">Scheme Applied Under</th>
                     <th className="px-3 py-3">Loan Type</th>
-                    <th className="px-3 py-3">Service Availed</th>
+                    <th className="px-3 py-3">DPR Status</th>
+                    <th className="px-3 py-3">Staff</th>
+                    {showGenerateReport && <th className="px-3 py-3">Generate Report</th>}
                     {showDelete && <th className="px-3 py-3 text-right">Actions</th>}
                   </tr>
                 </thead>
@@ -941,6 +1174,18 @@ const MsmeDprDashboard = ({
                               )}
                             </button>
                           </td>
+                          {showDelete && (
+                            <td className="px-3 py-3">
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.has(String(s._id))}
+                                onChange={() => toggleSelectOne(s._id)}
+                                disabled={bulkDeleting}
+                                className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                                aria-label={`Select ${s.applicantName || 'submission'}`}
+                              />
+                            </td>
+                          )}
                           <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
                             {s.createdAt
                               ? new Date(s.createdAt).toLocaleDateString('en-IN', {
@@ -955,32 +1200,35 @@ const MsmeDprDashboard = ({
                           </td>
                           <td className="px-3 py-3 text-gray-600">{s.gender}</td>
                           <td className="px-3 py-3 text-gray-600">{s.mobileNumber}</td>
-                          <td className="px-3 py-3 text-gray-600">
-                            <div>{s.natureOfBusiness}</div>
-                            {s.enterpriseType && (
-                              <div className="text-xs text-gray-400 mt-0.5">
-                                {s.enterpriseType}
-                                {s.yearOfRegistration ? ` · ${s.yearOfRegistration}` : ''}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-3 py-3 text-gray-600">
-                            {displayScheme(s.schemeAppliedUnder)}
-                          </td>
-                          <td className="px-3 py-3 text-gray-600 max-w-[140px]">{s.loanType}</td>
+                          <td className="px-3 py-3 text-gray-600 max-w-[140px] font-medium">{displayMsmeLoanType(s.loanType)}</td>
                           <td className="px-3 py-3">
-                            <ServiceAvailedCell
-                              checked={s.serviceAvailed}
-                              editable={showServiceAvailed}
-                              disabled={togglingId === s._id}
-                              onChange={(val) => handleToggleServiceAvailed(s._id, val)}
-                            />
+                            {(() => {
+                              const wf = workflowFromLead(s);
+                              return (
+                                <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${wf.badgeClass}`}>
+                                  {wf.label}
+                                </span>
+                              );
+                            })()}
                           </td>
+                          <td className="px-3 py-3">
+                              <AdminDprStaffActions
+                                requestLike={s}
+                                csAgents={csAgents}
+                                adminActions={isAdmin}
+                                onChanged={() => loadData(appliedFilters, page, timeframe)}
+                              />
+                          </td>
+                          {showGenerateReport && (
+                            <td className="px-3 py-3">
+                              <GenerateReportCell leadId={s._id} departmentRequestId={s.departmentRequestId} navigate={navigate} />
+                            </td>
+                          )}
                           {showDelete && (
                             <td className="px-3 py-3 text-right">
                               <button
                                 type="button"
-                                disabled={deletingId === s._id}
+                                disabled={deletingId === s._id || bulkDeleting}
                                 onClick={() => handleDeleteSubmission(s._id, s.applicantName)}
                                 className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-700 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
                                 title="Delete submission"
@@ -1011,11 +1259,22 @@ const MsmeDprDashboard = ({
               const expanded = expandedId === s._id;
               return (
                 <div key={s._id} className="bg-white border rounded-xl overflow-hidden shadow-sm">
-                  <button
-                    type="button"
-                    onClick={() => setExpandedId(expanded ? null : s._id)}
-                    className="w-full text-left p-4 flex items-start gap-3"
-                  >
+                  <div className="flex items-start gap-2 p-4">
+                    {showDelete && (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(String(s._id))}
+                        onChange={() => toggleSelectOne(s._id)}
+                        disabled={bulkDeleting}
+                        className="mt-1 h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500 shrink-0"
+                        aria-label={`Select ${s.applicantName || 'submission'}`}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setExpandedId(expanded ? null : s._id)}
+                      className="flex-1 text-left flex items-start gap-3 min-w-0"
+                    >
                     {expanded ? (
                       <ChevronDown className="h-5 w-5 text-gray-400 shrink-0 mt-0.5" />
                     ) : (
@@ -1042,19 +1301,25 @@ const MsmeDprDashboard = ({
                           : ''}
                       </p>
                     </div>
-                  </button>
+                    </button>
+                  </div>
                   {expanded && (
                     <div className="border-t">
                       <div className="px-4 py-3 space-y-2 text-sm text-gray-600">
+                        <p>
+                          <span className="font-medium text-orange-700">Loan Type:</span>{' '}
+                          <span className="font-semibold text-gray-900">{displayMsmeLoanType(s.loanType)}</span>
+                        </p>
+                        <p>
+                          <span className="font-medium text-orange-700">Sector:</span>{' '}
+                          <span className="font-semibold text-gray-900">{s.sector || '—'}</span>
+                        </p>
                         <p>
                           <span className="font-medium text-gray-700">Gender:</span> {s.gender}
                         </p>
                         <p>
                           <span className="font-medium text-gray-700">Scheme:</span>{' '}
                           {displayScheme(s.schemeAppliedUnder)}
-                        </p>
-                        <p>
-                          <span className="font-medium text-gray-700">Loan Type:</span> {s.loanType}
                         </p>
                         <p>
                           <span className="font-medium text-gray-700">Rural / Urban:</span>{' '}
@@ -1065,17 +1330,33 @@ const MsmeDprDashboard = ({
                           {[s.villageCity, s.mandal, s.district].filter(Boolean).join(', ')}
                         </p>
                         <p>
+                          <span className="font-medium text-gray-700">DPR Status:</span>{' '}
+                          {workflowFromLead(s).label}
+                        </p>
+                        <p>
+                          <span className="font-medium text-gray-700">Generating report:</span>{' '}
+                          {staffHandlerName(s) || '—'}
+                        </p>
+                        {isAdmin && (
+                          <div className="pt-2">
+                            <AdminDprStaffActions
+                              requestLike={s}
+                              csAgents={csAgents}
+                              adminActions={isAdmin}
+                              onChanged={() => loadData(appliedFilters, page, timeframe)}
+                            />
+                          </div>
+                        )}
+                        {/* Service Availed UI hidden
+                        <p>
                           <span className="font-medium text-gray-700">Service Availed:</span>{' '}
                           {formatServiceAvailed(s.serviceAvailed)}
                         </p>
-                        {showServiceAvailed && (
-                          <div className="flex items-center justify-between pt-2">
-                            <span className="font-medium text-gray-700">Update service availed</span>
-                            <ServiceAvailedToggle
-                              checked={parseServiceAvailed(s.serviceAvailed)}
-                              disabled={togglingId === s._id}
-                              onChange={(val) => handleToggleServiceAvailed(s._id, val)}
-                            />
+                        */}
+                        {showGenerateReport && (
+                          <div className="pt-2 border-t mt-2">
+                            <p className="font-medium text-gray-700 mb-2 text-xs uppercase tracking-wide">Generate Report</p>
+                            <GenerateReportCell leadId={s._id} departmentRequestId={s.departmentRequestId} navigate={navigate} />
                           </div>
                         )}
                         {showDelete && (
@@ -1083,7 +1364,7 @@ const MsmeDprDashboard = ({
                             <span className="font-medium text-gray-700">Delete submission</span>
                             <button
                               type="button"
-                              disabled={deletingId === s._id}
+                              disabled={deletingId === s._id || bulkDeleting}
                               onClick={() => handleDeleteSubmission(s._id, s.applicantName)}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50"
                             >

@@ -23,7 +23,7 @@ const CustomerLoginPage = () => {
   const [loadingCreds, setLoadingCreds] = useState(false);
 
   // OTP login state
-  const [otpType, setOtpType] = useState('email'); // 'email' | 'phone'
+  const [otpType, setOtpType] = useState('phone'); // 'email' | 'phone'
   const [otpValue, setOtpValue] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
@@ -161,7 +161,8 @@ const CustomerLoginPage = () => {
         toast.error(res.data.error || 'Failed to send OTP');
       }
     } catch (err) {
-      const errorMsg = err.response?.data?.error || err.message || 'Error sending OTP';
+      // apiClient rejects with a plain string; handle both cases
+      const errorMsg = typeof err === 'string' ? err : (err.response?.data?.error || err.message || 'Error sending OTP');
       toast.error(errorMsg);
     } finally {
       setLoadingOtp(false);
@@ -308,17 +309,6 @@ const CustomerLoginPage = () => {
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={() => { setOtpType('email'); setOtpValue(''); }}
-                        className={`flex-1 py-2 px-3 border rounded-xl flex items-center justify-center gap-1.5 text-xs font-medium transition-all ${
-                          otpType === 'email'
-                            ? 'border-purple-500/50 bg-purple-950/20 text-purple-200'
-                            : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-300'
-                        }`}
-                      >
-                        <Mail size={14} /> Email OTP
-                      </button>
-                      <button
-                        type="button"
                         onClick={() => { setOtpType('phone'); setOtpValue(''); }}
                         className={`flex-1 py-2 px-3 border rounded-xl flex items-center justify-center gap-1.5 text-xs font-medium transition-all ${
                           otpType === 'phone'
@@ -327,6 +317,17 @@ const CustomerLoginPage = () => {
                         }`}
                       >
                         <Phone size={14} /> WhatsApp OTP
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setOtpType('email'); setOtpValue(''); }}
+                        className={`flex-1 py-2 px-3 border rounded-xl flex items-center justify-center gap-1.5 text-xs font-medium transition-all ${
+                          otpType === 'email'
+                            ? 'border-purple-500/50 bg-purple-950/20 text-purple-200'
+                            : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-300'
+                        }`}
+                      >
+                        <Mail size={14} /> Email OTP
                       </button>
                     </div>
 

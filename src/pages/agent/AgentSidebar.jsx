@@ -19,6 +19,7 @@ import {
   InboxIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { hasApprovalRights } from '../../utils/approvalRights';
 
 const AgentSidebar = ({
   sidebarOpen,
@@ -47,6 +48,15 @@ const AgentSidebar = ({
     { name: 'Profile', href: '/agent/profile', icon: UserCircleIcon, tab: 'profile' },
     { name: 'Generate Reports', href: '/agent/generate', icon: ChartBarIcon, tab: 'generate' },
   ];
+
+  if (hasApprovalRights(user)) {
+    navigation.splice(
+      3,
+      0,
+      { name: 'Report Validation', href: '/approved/reports', icon: ClipboardDocumentCheckIcon, tab: 'approved-reports' },
+      { name: 'Banker Reports', href: '/approved/banker-reports', icon: DocumentTextIcon, tab: 'approved-banker-reports' },
+    );
+  }
 
   if (hideSidebar) return null;
 

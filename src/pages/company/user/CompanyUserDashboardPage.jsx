@@ -22,7 +22,8 @@ const CompanyUserDashboardPage = () => {
       newDraft: '1',
     });
     if (opts.presetSector) params.set('presetSector', opts.presetSector);
-    if (opts.lockSector) params.set('lockSector', '1');
+    // Sector stays editable after auto-select.
+    // if (opts.lockSector) params.set('lockSector', '1');
     navigate(`/company/user/generate?${params.toString()}`);
   };
 

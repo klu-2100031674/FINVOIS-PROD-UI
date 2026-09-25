@@ -286,7 +286,7 @@ const FRTermLoanCCForm = ({
   const defaultFormData = useMemo(() => ({
     'General Information': {
       'i7': '', 'i8': '', 'i9': '', 'i10': '', 'i11': '', 'i12': '', 'i13': '',
-      'i14': 'service sector without stock', 'i15': '', 'i16': '', 'i17': '', 'i18': '', 'i19': '', 'i20': '',
+      'i14': 'service sector without stock', 'i15': '', 'i16': '', 'residential_address': '', 'i17': '', 'i18': '', 'i19': '', 'i20': '',
       'i21': '', 'i22': '', 'i23': ''
     },
     'Prepared By': {
@@ -378,6 +378,16 @@ const FRTermLoanCCForm = ({
     return defaults;
   });
 
+  /** Working capital loan amount (Lac) — triangle with i40 requirement + k40 %. */
+  const [wcLoanAmount, setWcLoanAmount] = useState(() => {
+    const req = parseFloat(initialData?.['Cost of Project details']?.i40 || 0);
+    const pct = parseFloat(initialData?.['Cost of Project details']?.k40 || 0);
+    if (req > 0 && !Number.isNaN(pct) && pct > 0) {
+      return ((req * pct) / 100).toFixed(2);
+    }
+    return '';
+  });
+
   // Track visited asset categories
   const [visitedAssetCategories, setVisitedAssetCategories] = useState(new Set([0]));
 
@@ -388,11 +398,6 @@ const FRTermLoanCCForm = ({
   const [assetValidationErrors, setAssetValidationErrors] = useState({});
   const [generalInfoErrors, setGeneralInfoErrors] = useState({});
   const [meansOfFinanceErrors, setMeansOfFinanceErrors] = useState({});
-  // UI-only (not sent to API / Excel) — Prepared By section extras for TERM_LOAN_CC
-  const [preparedByUiOnly, setPreparedByUiOnly] = useState({
-    bankerMailId: '',
-    cibilScore: '',
-  });
 
   const [assetItems, setAssetItems] = useState(() => {
     if (initialData && initialData['Fixed Assets Schedule']) {
@@ -462,7 +467,7 @@ const FRTermLoanCCForm = ({
           newData['Schedule for Indirect Expenses'] = initialData['Schedule for Indirect Expenses'];
         }
         newData['General Information'] = normalizeSectorValue(newData['General Information']);
-        if (presetSector && lockSector) {
+        if (presetSector && !(newData['General Information'] && newData['General Information'].i14)) {
           newData['General Information'] = {
             ...(newData['General Information'] || {}),
             i14: presetSector,
@@ -477,6 +482,12 @@ const FRTermLoanCCForm = ({
       }
       if (initialData['Asset Loan Amounts']) {
         setLoanAmounts(initialData['Asset Loan Amounts']);
+      }
+
+      const req = parseFloat(initialData?.['Cost of Project details']?.i40 || 0);
+      const pct = parseFloat(initialData?.['Cost of Project details']?.k40 || 0);
+      if (req > 0 && !Number.isNaN(pct) && pct > 0) {
+        setWcLoanAmount(((req * pct) / 100).toFixed(2));
       }
     }
   }, [initialData, presetSector, lockSector]);
@@ -558,9 +569,7 @@ const FRTermLoanCCForm = ({
   }, [liveTenure]);
 
   const handleInputChange = (section, field, value) => {
-    if (lockSector && section === 'General Information' && field === 'i14') {
-      return;
-    }
+    // Sector stays editable even when a template preset is applied.
     const normalizedValue =
       section === 'General Information' && (field === 'i11' || field === 'i18')
         ? String(value || '').toUpperCase()
@@ -713,6 +722,75 @@ const FRTermLoanCCForm = ({
   const calculateLoanAmount = (category, total) => {
     const percentage = loanPercentages[category] || 0;
     return (total * percentage) / 100;
+  };
+
+  const updateCostOfProjectField = (field, value, extraFields = {}) => {
+    setFormData((prev) => {
+      const updatedData = {
+        ...prev,
+        'Cost of Project details': {
+          ...prev['Cost of Project details'],
+          [field]: value,
+          ...extraFields,
+        },
+      };
+      if (onFormDataChange) {
+        onFormDataChange(updatedData);
+      }
+      return updatedData;
+    });
+  };
+
+  /** Triangle: Requirement (i40) ↔ % (k40) ↔ Loan Amount. Edit any one; keep the other linked. */
+  const handleWcRequirementChange = (value) => {
+    updateCostOfProjectField('i40', value);
+    const req = parseFloat(value);
+    const pct = parseFloat(formData['Cost of Project details']?.k40 || 0);
+    if (!Number.isNaN(req) && req > 0 && !Number.isNaN(pct) && pct > 0) {
+      setWcLoanAmount(((req * pct) / 100).toFixed(2));
+    } else if (value === '' || Number.isNaN(req) || req <= 0) {
+      setWcLoanAmount('');
+    }
+  };
+
+  const handleWcPercentChange = (value) => {
+    if (value === '' || value === null || value === undefined) {
+      updateCostOfProjectField('k40', '');
+      setWcLoanAmount('');
+      return;
+    }
+    const numValue = parseFloat(value);
+    if (Number.isNaN(numValue)) return;
+    const percentage = Math.min(100, Math.max(0, numValue));
+    updateCostOfProjectField('k40', percentage);
+    const req = parseFloat(formData['Cost of Project details']?.i40 || 0);
+    if (!Number.isNaN(req) && req > 0) {
+      setWcLoanAmount(((req * percentage) / 100).toFixed(2));
+    } else {
+      setWcLoanAmount('');
+    }
+  };
+
+  const handleWcLoanAmountChange = (amount) => {
+    if (amount === '' || amount === null || amount === undefined) {
+      setWcLoanAmount('');
+      updateCostOfProjectField('k40', '');
+      return;
+    }
+    const numAmount = parseFloat(amount);
+    if (Number.isNaN(numAmount)) {
+      setWcLoanAmount(amount);
+      return;
+    }
+    const req = parseFloat(formData['Cost of Project details']?.i40 || 0);
+    if (!Number.isNaN(req) && req > 0) {
+      const cappedAmount = Math.min(numAmount, req);
+      const percentage = Math.min(100, Math.max(0, (cappedAmount / req) * 100));
+      setWcLoanAmount(numAmount > req ? req.toFixed(2) : amount);
+      updateCostOfProjectField('k40', Number(percentage.toFixed(4)));
+    } else {
+      setWcLoanAmount(amount);
+    }
   };
 
   /** Working capital requirement + sum of all category totals (step 3: cost of the project). */
@@ -928,6 +1006,15 @@ const FRTermLoanCCForm = ({
       }
     });
 
+    // E251–E256: blank → 0 in Excel (same as E258 default behaviour)
+    for (let row = 251; row <= 256; row += 1) {
+      const key = `e${row}`;
+      const raw = filteredIndirectExpenses[key];
+      if (raw === undefined || raw === null || String(raw).trim() === '') {
+        filteredIndirectExpenses[key] = 0;
+      }
+    }
+
     const updatedFormData = {
       ...formData,
       'Means of Finance details': {
@@ -1066,7 +1153,7 @@ const FRTermLoanCCForm = ({
 
   // Define required fields for each section
   const requiredFields = {
-    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i19', 'i20', 'i21', 'i22', 'i12', 'i13'],
+    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i19', 'i20', 'i22', 'i12', 'i13'],
     'Expected Employment Generation': ['i24', 'i25', 'i26'],
     'Means of Finance details': ['h45', 'i46', 'i47', 'i48', 'i49', 'h52', 'h53', 'i58', 'i59', 'i60', 'i63'],
     'Indirect Expenses Increment': ['h71', 'h72', 'h73', 'h74', 'h75'],
@@ -1089,7 +1176,6 @@ const FRTermLoanCCForm = ({
       i16: 'Address of office/Factory is required',
       i19: 'Education Qualification is required',
       i20: 'Project covered under scheme is required',
-      i21: 'Caste is required',
       i22: 'Unit location is required'
     };
 
@@ -1427,7 +1513,7 @@ const FRTermLoanCCForm = ({
         'i7': 'Sole Proprietorship', 'i8': 'Pratap', 'i9': '9876543210', 'i10': '123456789012',
         'bank_name': 'ICICI Bank', 'branch_name': 'Industrial Branch',
         'i11': 'ABCDE1234F', 'i12': '35', 'i13': 'Male',
-        'i14': presetSector && lockSector ? presetSector : 'service sector without stock', 'i15': 'Textile Manufacturing', 'i16': '17-3-47,thadepalli center, Vijayawada', 'i17': 'Pratap', 'i18': 'ABCDE1234F', 'i19': 'Graduate', 'i20': 'PMEGP',
+        'i14': presetSector && lockSector ? presetSector : 'service sector without stock', 'i15': 'Textile Manufacturing', 'i16': '17-3-47,thadepalli center, Vijayawada', 'residential_address': '12-5-30, Brodipet, Guntur', 'i17': 'Pratap', 'i18': 'ABCDE1234F', 'i19': 'Graduate', 'i20': 'PMEGP',
         'i21': 'OC', 'i22': 'Urban(Other than Panchayat)', 'i23': ''
       },
       'Expected Employment Generation': {
@@ -1475,6 +1561,7 @@ const FRTermLoanCCForm = ({
       ...prev,
       ...testData
     }));
+    setWcLoanAmount('0.95');
 
     setAssetItems(prev => {
       const newAssets = { ...prev };
@@ -1568,10 +1655,11 @@ const FRTermLoanCCForm = ({
                 null,
                 null,
                 false,
-                lockSector
+                false
               )}
               {renderInput('General Information', 'i15', 'Nature of Business')}
               {renderInput('General Information', 'i16', 'Address of office/Factory')}
+              {renderInput('General Information', 'residential_address', 'Residential Address')}
               {renderInput('General Information', 'i17', 'Name of firm/Company (Optional)')}
               {renderInput('General Information', 'i18', 'PAN of firm/Company (Optional)')}
               {renderInput('General Information', 'i19', 'Education Qualification', 'text', ['Below 8th', 'Above 8th', 'SSC 10th', 'intermediate +2', 'Graduate', 'Post Graduate'])}
@@ -1640,30 +1728,55 @@ const FRTermLoanCCForm = ({
         );
 
       case 'cost': {
-        const wcReq = parseFloat(formData['Cost of Project details']?.['i40'] || 0);
-        const wcPercent = parseFloat(formData['Cost of Project details']?.['k40'] || 0);
-        const wcLoanAmount = wcReq && wcPercent ? ((wcReq * wcPercent) / 100).toFixed(2) : '';
-
         return (
           <div className="space-y-6">
             <h3 className="text-lg font-medium text-gray-900">Working Capital Requirements</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {renderInput('Cost of Project details', 'i40', 'Working capital Requirement(Lac)', 'number')}
-              {renderInput('Cost of Project details', 'k40', 'Loan ContributionPercentage (%)', 'number')}
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Working capital Requirement(Lac)</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    onWheel={(e) => e.target.blur()}
+                    value={formData['Cost of Project details']?.i40 || ''}
+                    onChange={(e) => handleWcRequirementChange(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md pr-14"
+                    placeholder="Enter requirement"
+                  />
+                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">Lacs</span>
+                </div>
+              </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Working Capital Loan Amount (Auto Calculated)</label>
-              <div className="relative max-w-xl">
-                <input
-                  type="text"
-                  value={wcLoanAmount}
-                  readOnly
-                  tabIndex={-1}
-                  className="w-full p-2 border border-gray-300 rounded-md bg-gray-100"
-                  placeholder="Automatically calculated"
-                />
-                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">Lacs</span>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Loan ContributionPercentage (%)</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    onWheel={(e) => e.target.blur()}
+                    value={formData['Cost of Project details']?.k40 ?? ''}
+                    onChange={(e) => handleWcPercentChange(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md pr-8"
+                    placeholder="Enter %"
+                    min={0}
+                    max={100}
+                  />
+                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">%</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Working Capital Loan Amount</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    onWheel={(e) => e.target.blur()}
+                    value={wcLoanAmount}
+                    onChange={(e) => handleWcLoanAmountChange(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md pr-14"
+                    placeholder="Enter loan amount"
+                  />
+                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">Lacs</span>
+                </div>
               </div>
             </div>
 
@@ -1926,7 +2039,7 @@ const FRTermLoanCCForm = ({
                   value={(formData['Prepared By'] && formData['Prepared By']['j136']) || ''}
                   onChange={(e) => handleInputChange('Prepared By', 'j136', e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-                  placeholder="Enter partner name 1"
+                  placeholder="Enter partner name 1 (optional)"
                 />
               </div>
               <div className="space-y-1.5">
@@ -1938,7 +2051,7 @@ const FRTermLoanCCForm = ({
                   value={(formData['Prepared By'] && formData['Prepared By']['j137']) || ''}
                   onChange={(e) => handleInputChange('Prepared By', 'j137', e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-                  placeholder="Enter partner name 2"
+                  placeholder="Enter partner name 2 (optional)"
                 />
               </div>
               <div className="space-y-1.5">
@@ -2009,10 +2122,8 @@ const FRTermLoanCCForm = ({
                 </label>
                 <input
                   type="email"
-                  value={preparedByUiOnly.bankerMailId}
-                  onChange={(e) =>
-                    setPreparedByUiOnly((prev) => ({ ...prev, bankerMailId: e.target.value }))
-                  }
+                  value={(formData['Prepared By'] && formData['Prepared By']['banker_mail_id']) || ''}
+                  onChange={(e) => handleInputChange('Prepared By', 'banker_mail_id', e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
                   placeholder="Enter banker email"
                   autoComplete="off"
@@ -2025,10 +2136,8 @@ const FRTermLoanCCForm = ({
                 <input
                   type="text"
                   inputMode="numeric"
-                  value={preparedByUiOnly.cibilScore}
-                  onChange={(e) =>
-                    setPreparedByUiOnly((prev) => ({ ...prev, cibilScore: e.target.value }))
-                  }
+                  value={(formData['Prepared By'] && formData['Prepared By']['cibil_score']) || ''}
+                  onChange={(e) => handleInputChange('Prepared By', 'cibil_score', e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
                   placeholder="e.g. 750"
                   autoComplete="off"

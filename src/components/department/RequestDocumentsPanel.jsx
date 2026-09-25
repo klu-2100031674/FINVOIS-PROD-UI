@@ -39,6 +39,15 @@ export default function RequestDocumentsPanel({
   const canUpload = Boolean(meta.canMutate || (isCustomer && meta.canUploadWhileOpen));
   const canDelete = Boolean(meta.canMutate);
 
+  const kindCounts = docs.reduce(
+    (acc, doc) => {
+      const k = doc.kind === 'image' ? 'image' : doc.kind === 'excel' ? 'excel' : 'file';
+      acc[k] += 1;
+      return acc;
+    },
+    { image: 0, excel: 0, file: 0 }
+  );
+
   const load = useCallback(async () => {
     if (!requestId || !apiBase) return;
     try {
@@ -123,13 +132,41 @@ export default function RequestDocumentsPanel({
   return (
     <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4 border-b pb-2">
-        <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-          <Paperclip size={18} className="text-purple-700" />
-          Documents
-          <span className="text-xs font-medium text-gray-500">
-            ({docs.length}/{MAX_FILES}, max 5 MB each)
-          </span>
-        </h2>
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <Paperclip size={18} className="text-purple-700" />
+            Documents
+            <span className="text-xs font-medium text-gray-500">
+              ({docs.length}/{MAX_FILES}, max 5 MB each)
+            </span>
+          </h2>
+          {!loading && docs.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 border border-purple-100 px-2 py-0.5 text-[11px] font-semibold text-purple-800">
+                <Paperclip size={11} />
+                {docs.length} doc{docs.length === 1 ? '' : 's'} uploaded
+              </span>
+              {kindCounts.file > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 border border-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-700">
+                  <FileText size={11} className="text-purple-600" />
+                  {kindCounts.file} file{kindCounts.file === 1 ? '' : 's'}
+                </span>
+              )}
+              {kindCounts.image > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-800">
+                  <ImageIcon size={11} />
+                  {kindCounts.image} image{kindCounts.image === 1 ? '' : 's'}
+                </span>
+              )}
+              {kindCounts.excel > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800">
+                  <Table2 size={11} />
+                  {kindCounts.excel} sheet{kindCounts.excel === 1 ? '' : 's'}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <input
             ref={fileRef}

@@ -268,7 +268,8 @@ export const reportAPI = {
     bankName = null,
     branchName = null,
     assistedOptions = null,
-    requestId = null
+    requestId = null,
+    payer = null
   ) => {
     const isTheory =
       (typeof templateId === 'string' && templateId.toUpperCase().startsWith('THEORY_')) ||
@@ -285,6 +286,7 @@ export const reportAPI = {
       branch_name: branchName,
       ...(isTheory ? { content_kind: 'theory' } : {}),
       requestId,
+      ...(payer ? { payer } : {}),
       ...(assistedOptions?.assistedUserId
         ? { assisted_user_id: assistedOptions.assistedUserId }
         : {}),
@@ -298,6 +300,21 @@ export const reportAPI = {
   // Verify payment for report
   verifyReportPayment: async (reportId, paymentData) => {
     const response = await apiClient.post(`/reports/${reportId}/verify-payment`, paymentData);
+    return response.data;
+  },
+
+  sendReportPaymentRequest: async (reportId, payload = {}) => {
+    const response = await apiClient.post(`/reports/${reportId}/send-payment-request`, payload);
+    return response.data;
+  },
+
+  getReportPaymentStatus: async (reportId) => {
+    const response = await apiClient.get(`/reports/${reportId}/payment-status`);
+    return response.data;
+  },
+
+  payOnBehalf: async (reportId, payload = {}) => {
+    const response = await apiClient.post(`/reports/${reportId}/pay-on-behalf`, payload);
     return response.data;
   },
 

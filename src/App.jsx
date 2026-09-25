@@ -3,17 +3,19 @@
  * Routing and Protected Routes
  */
 
+
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useAuth } from "./hooks";
-// import { GoogleReferralPromptModal } from "./components/common"; // not in v3.12 MEMPA
+import { GoogleReferralPromptModal } from "./components/common";
 import {
   AuthPage,
   DashboardPage,
   DraftsPage,
   GeneratePage,
+  // PMEGP
   PmegpGeneratePage,
   PmegpSchemeMailPage,
   PublicPmegpSchemeMailPage,
@@ -24,6 +26,7 @@ import {
   PublicCmepSchemeMailPage,
   PublicCmepFormPage,
   PublicCmepAiChatPage,
+  // AP IDP
   ApIdpGeneratePage,
   ApIdpSchemeMailPage,
   PublicApIdpFormPage,
@@ -38,7 +41,6 @@ import {
   AdminPage,
   AdminPaymentsPage,
   PublicClientScreeningPage,
-  PublicFormPage,
   TheoryPagesHubPage,
   TheoryGeneratePage,
 } from "./pages";
@@ -78,15 +80,21 @@ import {
   ClientScreeningMailPage,
   AdminMsmeDprDashboardPage,
   AdminMepmaDprDashboardPage,
+  AdminDprRequestDashboardPage,
+  AdminCustomerSupportPage,
   AdminGovtFormsPage,
+  AdminGlobalSearchPage,
   AdminDepartmentDashboardPage,
 } from "./pages/admin";
 import DepartmentDashboardPage from "./pages/department/DepartmentDashboardPage";
 import OpenRequestsPage from "./pages/customerService/OpenRequestsPage";
+import ClaimedRequestsPage from "./pages/customerService/ClaimedRequestsPage";
 import AssignedRequestsPage from "./pages/customerService/AssignedRequestsPage";
 import DepartmentRequestsPage from "./pages/customerService/DepartmentRequestsPage";
 import RequestHistoryPage from "./pages/customerService/RequestHistoryPage";
 import CustomerServiceRequestScreen from "./pages/customerService/CustomerServiceRequestScreen";
+import CustomerServiceMsmeLeadsPage from "./pages/customerService/CustomerServiceMsmeLeadsPage";
+import PublicFormPage from "./pages/PublicFormPage";
 import CustomerLoginPage from "./customer/CustomerLoginPage";
 import CustomerDashboardPage from "./customer/CustomerDashboardPage";
 import CustomerProfilePage from "./customer/CustomerProfilePage";
@@ -112,6 +120,11 @@ import CompanyAdminDashboardPage from "./pages/company/CompanyAdminDashboardPage
 import CompanyManageCreditsPage from "./pages/company/CompanyManageCreditsPage";
 import CompanyAdminProfilePage from "./pages/company/CompanyAdminProfilePage";
 import CompanyAdminReportsPage from "./pages/company/CompanyAdminReportsPage";
+import {
+  ApprovalRightsReportsPage,
+  ApprovalRightsBankerReportsPage,
+} from "./pages/approved";
+import { hasApprovalRights } from "./utils/approvalRights";
 import CompanyAdminGeneratePage from "./pages/company/CompanyAdminGeneratePage";
 import CompanyUsersPage from "./pages/company/CompanyUsersPage";
 import CompanyUserReportsByPersonPage from "./pages/company/CompanyUserReportsByPersonPage";
@@ -144,6 +157,7 @@ import {
 } from "./pages/Executive/boi";
 import CompanyUserGeneratePage from "./pages/company/user/CompanyUserGeneratePage";
 import CompanyUserReportsPage from "./pages/company/user/CompanyUserReportsPage";
+import GoldLoanFormPage from "./pages/GoldLoanFormPage";
 import FRCC2FormPage from "./pages/FRCC2FormPage";
 import FRCC3FormPage from "./pages/FRCC3FormPage";
 import FRCC4FormPage from "./pages/FRCC4FormPage";
@@ -161,7 +175,28 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import OTPVerificationPage from "./pages/OTPVerificationPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 // Lead pages
+import LeadLoginPage from "./pages/lead/LeadLoginPage";
+import LeadResetPasswordPage from "./pages/lead/LeadResetPasswordPage";
 import LeadDashboardPage from "./pages/lead/LeadDashboardPage";
+// Sales CRM pages
+import { SalesAuthProvider, useSalesAuth } from "./context/SalesAuthContext";
+import SalesLoginPage from "./pages/sales/SalesLoginPage";
+import SalesLayout from "./pages/sales/SalesLayout";
+import SalesManagerDashboard from "./pages/sales/manager/SalesManagerDashboard";
+import SalesExecutivesPage from "./pages/sales/manager/SalesExecutivesPage";
+import SalesUploadPage from "./pages/sales/manager/SalesUploadPage";
+import SalesManagerClientsPage from "./pages/sales/manager/SalesManagerClientsPage";
+import SalesReportsPage from "./pages/sales/manager/SalesReportsPage";
+import SalesManagerFollowUpsPage from "./pages/sales/manager/SalesManagerFollowUpsPage";
+import SalesQueuePage from "./pages/sales/executive/SalesQueuePage";
+import SalesMyClientsPage from "./pages/sales/executive/SalesMyClientsPage";
+import SalesFollowUpsPage from "./pages/sales/executive/SalesFollowUpsPage";
+import SalesMyStatsPage from "./pages/sales/executive/SalesMyStatsPage";
+import AdminSalesDashboard from "./pages/sales/admin/AdminSalesDashboard";
+import AdminSalesManagersPage from "./pages/sales/admin/AdminSalesManagersPage";
+import AdminSalesReportsPage from "./pages/sales/admin/AdminSalesReportsPage";
+import AdminSalesClientsPage from "./pages/sales/admin/AdminSalesClientsPage";
+import AdminSalesUploadPage from "./pages/sales/admin/AdminSalesUploadPage";
 import AdminBanksPage from "./pages/admin/AdminBanksPage";
 import BankDPRPage from "./pages/admin/BankDPRPage";
 import LeadManagerDashboardPage from "./pages/admin/LeadManagerDashboardPage";
@@ -170,7 +205,11 @@ import ServiceDetailPage from "./pages/ServiceDetailPage";
 import ServiceLayout from "./components/layouts/ServiceLayout";
 import MsmeDprLeadFormPage from "./pages/msmeDpr/MsmeDprLeadFormPage";
 import MsmeDprDashboardPage from "./pages/msmeDpr/MsmeDprDashboardPage";
+import MsmeDprDashboard2Page from "./pages/msmeDpr/MsmeDprDashboard2Page";
+import MepmaDprLeadFormPage from "./pages/mepmaDpr/MepmaDprLeadFormPage";
 import MepmaDprDashboardPage from "./pages/mepmaDpr/MepmaDprDashboardPage";
+import DprRequestLeadFormPage from "./pages/dprRequest/DprRequestLeadFormPage";
+import DprRequestDashboardPage from "./pages/dprRequest/DprRequestDashboardPage";
 import FranchisesPage from "./pages/franchise/FranchisesPage";
 import FranchiseDetailPage from "./pages/franchise/FranchiseDetailPage";
 import FranchiseApplyPage from "./pages/franchise/FranchiseApplyPage";
@@ -215,48 +254,47 @@ const AuthCompanyStatusSync = () => {
 /**
  * After Google signup, show an optional referral-code dialog once
  * (driven by `referral_prompt_pending` from the API — cleared on apply/skip).
- * Not in v3.12 MEMPA — keep commented until that module ships.
  */
-// const GoogleReferralPromptHost = () => {
-//   const { isAuthenticated, user, updateUser } = useAuth();
-//   const [open, setOpen] = useState(false);
-//
-//   const needsPrompt =
-//     isAuthenticated &&
-//     user &&
-//     (user.needs_referral_prompt === true ||
-//       (user.referral_prompt_pending === true && !user.agent_id));
-//
-//   useEffect(() => {
-//     setOpen(Boolean(needsPrompt));
-//   }, [needsPrompt]);
-//
-//   if (!needsPrompt && !open) return null;
-//
-//   const clearPromptOnUser = (extra = {}) => {
-//     updateUser({
-//       referral_prompt_pending: false,
-//       needs_referral_prompt: false,
-//       ...extra,
-//     });
-//   };
-//
-//   return (
-//     <GoogleReferralPromptModal
-//       isOpen={open}
-//       onClose={() => {
-//         setOpen(false);
-//         clearPromptOnUser();
-//       }}
-//       onApplied={(data) => {
-//         setOpen(false);
-//         clearPromptOnUser({
-//           agent_id: data?.agent_id || true,
-//         });
-//       }}
-//     />
-//   );
-// };
+const GoogleReferralPromptHost = () => {
+  const { isAuthenticated, user, updateUser } = useAuth();
+  const [open, setOpen] = useState(false);
+
+  const needsPrompt =
+    isAuthenticated &&
+    user &&
+    (user.needs_referral_prompt === true ||
+      (user.referral_prompt_pending === true && !user.agent_id));
+
+  useEffect(() => {
+    setOpen(Boolean(needsPrompt));
+  }, [needsPrompt]);
+
+  if (!needsPrompt && !open) return null;
+
+  const clearPromptOnUser = (extra = {}) => {
+    updateUser({
+      referral_prompt_pending: false,
+      needs_referral_prompt: false,
+      ...extra,
+    });
+  };
+
+  return (
+    <GoogleReferralPromptModal
+      isOpen={open}
+      onClose={() => {
+        setOpen(false);
+        clearPromptOnUser();
+      }}
+      onApplied={(data) => {
+        setOpen(false);
+        clearPromptOnUser({
+          agent_id: data?.agent_id || true,
+        });
+      }}
+    />
+  );
+};
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -335,6 +373,18 @@ const MepmaDprViewerRoute = ({ children }) => {
   return children;
 };
 
+const DprRequestViewerRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const r = effectiveUserRole(user);
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  if (r !== 'dpr_request_viewer') {
+    return <Navigate to={dashboardHomePath(user)} replace />;
+  }
+  return children;
+};
+
 // Admin-only access to report validation (approve/reject/etc.).
 // Company admins don't get this — they are sent to /company/reports instead.
 const SuperAdminRoute = ({ children }) => {
@@ -347,6 +397,18 @@ const SuperAdminRoute = ({ children }) => {
     return <Navigate to="/company/reports" replace />;
   }
   if (normalizedRole !== 'admin') {
+    return <Navigate to={dashboardHomePath(user)} replace />;
+  }
+  return children;
+};
+
+// Channel Partner / Customer Service with Approval Rights.
+const ApprovalRightsRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  if (!hasApprovalRights(user)) {
     return <Navigate to={dashboardHomePath(user)} replace />;
   }
   return children;
@@ -553,10 +615,36 @@ const AgentRoute = ({ children }) => {
   return children;
 };
 
-// Lead authenticated route — redirects to /auth if not authenticated
+// Lead authenticated route — redirects to /lead/login if not authenticated
 const LeadRoute = ({ children }) => {
   const isAuthenticated = useSelector(state => state.leadAuth.isAuthenticated);
-  if (!isAuthenticated) return <Navigate to="/auth" replace />;
+  if (!isAuthenticated) return <Navigate to="/lead/login" replace />;
+  return children;
+};
+
+// Sales CRM route guards (separate auth system from main app)
+const SalesPublicRoute = ({ children }) => {
+  const { user, loading } = useSalesAuth();
+  if (loading) return null;
+  if (user) {
+    return <Navigate to={user.role === 'manager' ? '/crm/manager/dashboard' : '/crm/executive/queue'} replace />;
+  }
+  return children;
+};
+
+const SalesManagerRoute = ({ children }) => {
+  const { user, loading, isManager } = useSalesAuth();
+  if (loading) return null;
+  if (!user) return <Navigate to="/crm/login" replace />;
+  if (!isManager) return <Navigate to="/crm/executive/queue" replace />;
+  return children;
+};
+
+const SalesExecutiveRoute = ({ children }) => {
+  const { user, loading, isExecutive } = useSalesAuth();
+  if (loading) return null;
+  if (!user) return <Navigate to="/crm/login" replace />;
+  if (!isExecutive) return <Navigate to="/crm/manager/dashboard" replace />;
   return children;
 };
 
@@ -584,10 +672,10 @@ const PublicRoute = ({ children }) => {
     return <Navigate to="/msme-dpr-dashboard" replace />;
   } else if (normalizedRole === 'mepma_dpr_viewer') {
     return <Navigate to="/mepma-dpr-dashboard" replace />;
+  } else if (normalizedRole === 'dpr_request_viewer') {
+    return <Navigate to="/dpr-request-dashboard" replace />;
   } else if (normalizedRole === 'customer') {
     return <Navigate to="/customer/dashboard" replace />;
-  } else if (normalizedRole === 'department') {
-    return <Navigate to="/department/dashboard" replace />;
   }
   return <Navigate to="/dashboard" replace />;
 };
@@ -596,7 +684,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthCompanyStatusSync />
-      {/* <GoogleReferralPromptHost /> */}{/* not in v3.12 MEMPA */}
+      <GoogleReferralPromptHost />
       {/* Toast Notifications */}
       <Toaster
         position="top-right"
@@ -1021,54 +1109,13 @@ function App() {
             </ReportHelpUserRoute>
           }
         />
-        <Route
-          path="/generate/pmegp"
-          element={
-            <GenerateWizardRoute>
-              <PmegpGeneratePage />
-            </GenerateWizardRoute>
-          }
-        />
-        <Route
-          path="/generate/pmegp/scheme-mail"
-          element={
-            <GenerateWizardRoute>
-              <PmegpSchemeMailPage />
-            </GenerateWizardRoute>
-          }
-        />
-        <Route
-          path="/generate/pmegp/ai-chat"
-          element={
-            <GenerateWizardRoute>
-              <PublicPmegpAiChatPage />
-            </GenerateWizardRoute>
-          }
-        />
-        <Route
-          path="/generate/ap-idp"
-          element={
-            <GenerateWizardRoute>
-              <ApIdpGeneratePage />
-            </GenerateWizardRoute>
-          }
-        />
-        <Route
-          path="/generate/ap-idp/scheme-mail"
-          element={
-            <GenerateWizardRoute>
-              <ApIdpSchemeMailPage />
-            </GenerateWizardRoute>
-          }
-        />
-        <Route
-          path="/generate/ap-idp/ai-chat"
-          element={
-            <GenerateWizardRoute>
-              <PublicApIdpAiChatPage />
-            </GenerateWizardRoute>
-          }
-        />
+        {/* PMEGP / AP IDP generate routes */}
+        <Route path="/generate/pmegp" element={<GenerateWizardRoute><PmegpGeneratePage /></GenerateWizardRoute>} />
+        <Route path="/generate/pmegp/scheme-mail" element={<GenerateWizardRoute><PmegpSchemeMailPage /></GenerateWizardRoute>} />
+        <Route path="/generate/pmegp/ai-chat" element={<GenerateWizardRoute><PublicPmegpAiChatPage /></GenerateWizardRoute>} />
+        <Route path="/generate/ap-idp" element={<GenerateWizardRoute><ApIdpGeneratePage /></GenerateWizardRoute>} />
+        <Route path="/generate/ap-idp/scheme-mail" element={<GenerateWizardRoute><ApIdpSchemeMailPage /></GenerateWizardRoute>} />
+        <Route path="/generate/ap-idp/ai-chat" element={<GenerateWizardRoute><PublicApIdpAiChatPage /></GenerateWizardRoute>} />
         <Route
           path="/generate/cmep"
           element={
@@ -1196,6 +1243,22 @@ function App() {
           element={
             <ProtectedRoute>
               <AdminPaymentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/form/gold-loan"
+          element={
+            <ProtectedRoute>
+              <GoldLoanFormPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/form/GOLD_LOAN"
+          element={
+            <ProtectedRoute>
+              <GoldLoanFormPage />
             </ProtectedRoute>
           }
         />
@@ -1383,6 +1446,22 @@ function App() {
             <SuperAdminRoute>
               <AdminBankerReportsPage />
             </SuperAdminRoute>
+          }
+        />
+        <Route
+          path="/approved/reports"
+          element={
+            <ApprovalRightsRoute>
+              <ApprovalRightsReportsPage />
+            </ApprovalRightsRoute>
+          }
+        />
+        <Route
+          path="/approved/banker-reports"
+          element={
+            <ApprovalRightsRoute>
+              <ApprovalRightsBankerReportsPage />
+            </ApprovalRightsRoute>
           }
         />
         <Route
@@ -1578,6 +1657,30 @@ function App() {
           }
         />
         <Route
+          path="/admin/dpr-request-dashboard"
+          element={
+            <AdminOnlyRoute>
+              <AdminDprRequestDashboardPage />
+            </AdminOnlyRoute>
+          }
+        />
+        <Route
+          path="/admin/customer-support"
+          element={
+            <AdminOnlyRoute>
+              <AdminCustomerSupportPage />
+            </AdminOnlyRoute>
+          }
+        />
+        <Route
+          path="/admin/global-search"
+          element={
+            <AdminOnlyRoute>
+              <AdminGlobalSearchPage />
+            </AdminOnlyRoute>
+          }
+        />
+        <Route
           path="/admin/govt-forms"
           element={
             <AdminOnlyRoute>
@@ -1598,6 +1701,14 @@ function App() {
           element={
             <MsmeDprViewerRoute>
               <MsmeDprDashboardPage />
+            </MsmeDprViewerRoute>
+          }
+        />
+        <Route
+          path="/msme-dpr-dashboard-2"
+          element={
+            <MsmeDprViewerRoute>
+              <MsmeDprDashboard2Page />
             </MsmeDprViewerRoute>
           }
         />
@@ -1625,7 +1736,23 @@ function App() {
             </MepmaDprViewerRoute>
           }
         />
-
+        <Route
+          path="/dpr-request-dashboard"
+          element={
+            <DprRequestViewerRoute>
+              <DprRequestDashboardPage />
+            </DprRequestViewerRoute>
+          }
+        />
+        <Route
+          path="/dpr-request/profile"
+          element={
+            <DprRequestViewerRoute>
+              <SimpleRoleProfilePage />
+            </DprRequestViewerRoute>
+          }
+        />
+        
         {/* Department Dashboard */}
         <Route
           path="/department/dashboard"
@@ -1698,6 +1825,14 @@ function App() {
           element={
             <CustomerServiceRoute>
               <CustomerServiceRequestScreen />
+            </CustomerServiceRoute>
+          }
+        />
+        <Route
+          path="/customer-service/msme-leads"
+          element={
+            <CustomerServiceRoute>
+              <CustomerServiceMsmeLeadsPage />
             </CustomerServiceRoute>
           }
         />
@@ -1900,6 +2035,23 @@ function App() {
           }
         />
         <Route
+          path="/mempa"
+          element={
+            <ServiceLayout>
+              <MepmaDprLeadFormPage />
+            </ServiceLayout>
+          }
+        />
+        <Route path="/mepma-dpr" element={<Navigate to="/mempa" replace />} />
+        <Route
+          path="/dpr-request"
+          element={
+            <ServiceLayout>
+              <DprRequestLeadFormPage />
+            </ServiceLayout>
+          }
+        />
+        <Route
           path="/admin/client-screening/emails"
           element={
             <AdminOnlyRoute>
@@ -1908,6 +2060,7 @@ function App() {
           }
         />
         <Route path="/schemes" element={<SchemeFinder />} />
+        {/* PMEGP */}
         <Route path="/schemes/pmegp/support" element={<PublicPmegpSchemeMailPage />} />
         <Route path="/schemes/pmegp" element={<PublicPmegpFormPage />} />
         <Route path="/schemes/pmegp/ai-chat" element={<PublicPmegpAiChatPage />} />
@@ -1919,6 +2072,7 @@ function App() {
             </AdminOnlyRoute>
           }
         />
+        {/* AP IDP */}
         <Route path="/schemes/ap-idp/support" element={<PublicApIdpSchemeMailPage />} />
         <Route path="/schemes/ap-idp" element={<PublicApIdpFormPage />} />
         <Route path="/schemes/ap-idp/ai-chat" element={<PublicApIdpAiChatPage />} />
@@ -1952,7 +2106,57 @@ function App() {
         <Route path="/franchises" element={<ServiceLayout><FranchisesPage /></ServiceLayout>} />
         <Route path="/franchises/:id/apply" element={<ServiceLayout><FranchiseApplyPage /></ServiceLayout>} />
         <Route path="/franchises/:id" element={<ServiceLayout><FranchiseDetailPage /></ServiceLayout>} />
+        <Route path="/lead/login" element={<LeadLoginPage />} />
+        <Route path="/lead/reset-password" element={<LeadResetPasswordPage />} />
         <Route path="/lead/dashboard" element={<LeadRoute><LeadDashboardPage /></LeadRoute>} />
+
+        {/* Admin Sales CRM Routes — use main platform JWT (AdminRoute guard) */}
+        <Route path="/admin/sales" element={<AdminRoute><Navigate to="/admin/sales/dashboard" replace /></AdminRoute>} />
+        <Route path="/admin/sales/dashboard" element={<AdminRoute><AdminSalesDashboard /></AdminRoute>} />
+        <Route path="/admin/sales/managers"  element={<AdminRoute><AdminSalesManagersPage /></AdminRoute>} />
+        <Route path="/admin/sales/reports"   element={<AdminRoute><AdminSalesReportsPage /></AdminRoute>} />
+        <Route path="/admin/sales/clients"   element={<AdminRoute><AdminSalesClientsPage /></AdminRoute>} />
+        <Route path="/admin/sales/upload"    element={<AdminRoute><AdminSalesUploadPage /></AdminRoute>} />
+
+        {/* Sales CRM Routes — wrapped in SalesAuthProvider for isolated auth */}
+        <Route
+          path="/crm/*"
+          element={
+            <SalesAuthProvider>
+              <Routes>
+                <Route path="login" element={<SalesPublicRoute><SalesLoginPage /></SalesPublicRoute>} />
+
+                {/* Manager routes */}
+                <Route
+                  path="manager"
+                  element={<SalesManagerRoute><SalesLayout /></SalesManagerRoute>}
+                >
+                  <Route path="dashboard" element={<SalesManagerDashboard />} />
+                  <Route path="executives" element={<SalesExecutivesPage />} />
+                  <Route path="upload" element={<SalesUploadPage />} />
+                  <Route path="clients" element={<SalesManagerClientsPage />} />
+                  <Route path="reports" element={<SalesReportsPage />} />
+                  <Route path="follow-ups" element={<SalesManagerFollowUpsPage />} />
+                  <Route index element={<Navigate to="dashboard" replace />} />
+                </Route>
+
+                {/* Executive routes */}
+                <Route
+                  path="executive"
+                  element={<SalesExecutiveRoute><SalesLayout /></SalesExecutiveRoute>}
+                >
+                  <Route path="queue" element={<SalesQueuePage />} />
+                  <Route path="clients" element={<SalesMyClientsPage />} />
+                  <Route path="follow-ups" element={<SalesFollowUpsPage />} />
+                  <Route path="stats" element={<SalesMyStatsPage />} />
+                  <Route index element={<Navigate to="queue" replace />} />
+                </Route>
+
+                <Route index element={<Navigate to="login" replace />} />
+              </Routes>
+            </SalesAuthProvider>
+          }
+        />
 
         {/* 404 Route */}
         <Route

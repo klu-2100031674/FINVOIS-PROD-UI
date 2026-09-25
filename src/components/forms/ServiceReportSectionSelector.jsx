@@ -21,7 +21,7 @@ const SECTION_CONFIG = [
       { name: "proprietor_name", label: "Name of Authorised person", type: "text", required: true },
       { name: "pan_number", label: "PAN Number", type: "text" },
       { name: "aadhar_number", label: "Aadhar Number", type: "text" },
-      { name: "caste", label: "Caste/Category", type: "text" },
+      { name: "caste", label: "Caste/Category", type: "text", required: false },
       { name: "residential_address", label: "Residential Address", type: "textarea" }
     ]
   },
@@ -63,7 +63,7 @@ const SECTION_CONFIG = [
         subFields: [
           { name: "name", label: "Name", type: "text" },
           { name: "designation", label: "Designation", type: "select", options: ["Proprietor", "Partner", "Director"] },
-          { name: "caste", label: "Caste", type: "text" },
+          { name: "caste", label: "Caste", type: "text", required: false },
           { name: "share_ratio", label: "Share %", type: "text" },
           { name: "pan_number", label: "PAN", type: "text" },
           { name: "aadhar_number", label: "Aadhar", type: "text" },

@@ -186,7 +186,7 @@ const AIAssistant = ({
                     onClick={() =>
                         onSelectTemplate('TERM_LOAN_JCB_VEHICLE', {
                             presetSector: 'service sector without stock',
-                            lockSector: true,
+                            lockSector: false,
                         })
                     }
                 />
@@ -197,9 +197,15 @@ const AIAssistant = ({
                     onClick={() =>
                         onSelectTemplate('TERM_LOAN_DRONE_VEHICLE', {
                             presetSector: 'service sector without stock',
-                            lockSector: true,
+                            lockSector: false,
                         })
                     }
+                />
+                <SelectionCard
+                    icon={CurrencyDollarIcon}
+                    title="Gold Loan"
+                    description="Gold loan CMA report"
+                    onClick={() => onSelectTemplate('GOLD_LOAN')}
                 />
             </div>
         </div>
@@ -218,7 +224,7 @@ const AIAssistant = ({
                     onClick={() =>
                         onSelectTemplate('TERM_LOAN_EV_VEHICLE', {
                             presetSector: 'service sector without stock',
-                            lockSector: true,
+                            lockSector: false,
                         })
                     }
                 />
@@ -229,7 +235,7 @@ const AIAssistant = ({
                     onClick={() =>
                         onSelectTemplate('TERM_LOAN_OTHER_THAN_EV_VEHICLE', {
                             presetSector: 'service sector without stock',
-                            lockSector: true,
+                            lockSector: false,
                         })
                     }
                 />
@@ -265,12 +271,12 @@ const AIAssistant = ({
     const renderLoanTypeMfg = () =>
         renderLoanTypeSelection({
             sectorLabel: 'Manufacturing Sector',
-            selectOptions: { presetSector: 'Manufacturing sector', lockSector: true },
+            selectOptions: { presetSector: 'Manufacturing sector', lockSector: false },
         });
     const renderLoanTypeTrading = () =>
         renderLoanTypeSelection({
             sectorLabel: 'Trading Sector',
-            selectOptions: { presetSector: 'Trading sector', lockSector: true },
+            selectOptions: { presetSector: 'Trading sector', lockSector: false },
         });
 
     const renderStockCheck = () => (
@@ -292,7 +298,7 @@ const AIAssistant = ({
                     onClick={() =>
                         onSelectTemplate('TERM_LOAN_SERVICE_WITHOUT_STOCK', {
                             presetSector: 'service sector without stock',
-                            lockSector: true,
+                            lockSector: false,
                         })
                     }
                 />
@@ -313,7 +319,7 @@ const AIAssistant = ({
                     onClick={() =>
                         onSelectTemplate('TERM_LOAN_CC', {
                             presetSector: 'service sector with stock',
-                            lockSector: true,
+                            lockSector: false,
                         })
                     }
                 />
@@ -324,7 +330,7 @@ const AIAssistant = ({
                     onClick={() =>
                         onSelectTemplate('TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK', {
                             presetSector: 'service sector with stock',
-                            lockSector: true,
+                            lockSector: false,
                         })
                     }
                 />

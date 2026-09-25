@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import ClientLayout from '../components/layouts/ClientLayout';
 import DashboardAISection from '../components/dashboard/DashboardAISection';
@@ -20,13 +20,18 @@ const DashboardPage = () => {
 
   useGenerateHubPrep(dispatch);
 
+  const [searchParams] = useSearchParams();
+  const requestId = searchParams.get('requestId');
+
   const handleTemplateSelect = (templateId, opts = {}) => {
     const params = new URLSearchParams({
       templateId,
       newDraft: '1',
     });
     if (opts.presetSector) params.set('presetSector', opts.presetSector);
-    if (opts.lockSector) params.set('lockSector', '1');
+    // Sector stays editable after auto-select.
+    // if (opts.lockSector) params.set('lockSector', '1');
+    if (requestId) params.set('requestId', requestId);
     navigate(`/generate?${params.toString()}`);
   };
 

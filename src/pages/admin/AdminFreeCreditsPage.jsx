@@ -46,7 +46,7 @@ const AdminFreeCreditsPage = () => {
       const list = (res.data?.data || []).filter((u) => {
         const role = normalizeUserRole(u?.role);
         // Platform admins should not be edited from this screen.
-        return role !== 'admin';
+        return role !== 'admin' && role !== 'customer';
       });
       setUsers(list);
       setFilteredUsers(list);

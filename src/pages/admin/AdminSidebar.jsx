@@ -23,6 +23,7 @@ import {
   Store,
   Layers,
   BookOpen,
+  Headphones,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { normalizeUserRole } from '../../utils/normalizeUserRole';
@@ -123,6 +124,16 @@ const AdminSidebar = ({
         to: '/admin/mepma-dpr-dashboard',
         icon: FileText,
         label: 'MEPMA DC',
+      });
+      items.push({
+        to: '/admin/dpr-request-dashboard',
+        icon: FileText,
+        label: 'DPR Request',
+      });
+      items.push({
+        to: '/admin/customer-support',
+        icon: Headphones,
+        label: 'Customer Support',
       });
       items.push({
         to: '/admin/govt-forms',

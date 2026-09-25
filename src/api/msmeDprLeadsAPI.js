@@ -40,3 +40,8 @@ export async function deleteMsmeDprLead(id) {
   return response.data;
 }
 
+export async function fetchMsmeDprLeadById(id) {
+  const response = await apiClient.get(`/msme-dpr-leads/${id}`);
+  return response.data;
+}
+

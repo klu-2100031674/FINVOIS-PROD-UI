@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, Filter, MoreVertical, Edit2, Eye, UserPlus, ChevronRight, ChevronDown, Trash2, Check, X } from 'lucide-react';
 import { AdminLayout } from '../../components/layouts';
 import api from '../../api/apiClient';
@@ -10,6 +11,7 @@ import {
 } from '../../utils/companyMembership';
 import { resolveSignupApprovalStatus } from '../../utils/signupApproval';
 import { isTableAccessEligibleUser } from '../../utils/tableAccess';
+import { isApprovalRightsEligibleUser } from '../../utils/approvalRights';
 
 const isSignupPending = (user) => resolveSignupApprovalStatus(user) === 'pending';
 const isSignupRejected = (user) => resolveSignupApprovalStatus(user) === 'rejected';
@@ -17,6 +19,7 @@ const isSignupApproved = (user) => resolveSignupApprovalStatus(user) === 'approv
 const isSignupRestricted = (user) => !isSignupApproved(user);
 
 const canManageTableAccess = (user) => isTableAccessEligibleUser(user);
+const canManageApprovalRights = (user) => isApprovalRightsEligibleUser(user);
 
 const isUserActive = (user) => {
   if (typeof user?.is_active === 'boolean') return user.is_active;
@@ -62,6 +65,8 @@ const AdminUsersPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [actionMenu, setActionMenu] = useState(null);
+  const [actionMenuPos, setActionMenuPos] = useState(null);
+  const actionMenuRef = useRef(null);
   const [showCommissionModal, setShowCommissionModal] = useState(false);
   const [commissionRate, setCommissionRate] = useState(0);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -84,6 +89,66 @@ const AdminUsersPage = () => {
   useEffect(() => {
     filterUsers();
   }, [users, searchTerm, roleFilter, statusFilter, referralFilter]);
+
+  const closeActionMenu = useCallback(() => {
+    setActionMenu(null);
+    setActionMenuPos(null);
+  }, []);
+
+  const toggleActionMenu = useCallback((userId, event) => {
+    event.stopPropagation();
+    if (actionMenu === userId) {
+      closeActionMenu();
+      return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const estimatedHeight = 360;
+    const gap = 6;
+    const spaceBelow = window.innerHeight - rect.bottom - gap;
+    const spaceAbove = rect.top - gap;
+    const openUp = spaceBelow < 240 && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(160, Math.min(estimatedHeight, openUp ? spaceAbove : spaceBelow));
+    setActionMenuPos({
+      openUp,
+      top: openUp ? undefined : rect.bottom + gap,
+      bottom: openUp ? window.innerHeight - rect.top + gap : undefined,
+      right: Math.max(8, window.innerWidth - rect.right),
+      maxHeight,
+    });
+    setActionMenu(userId);
+  }, [actionMenu, closeActionMenu]);
+
+  useEffect(() => {
+    if (!actionMenu) return undefined;
+    const onPointerDown = (e) => {
+      if (actionMenuRef.current?.contains(e.target)) return;
+      if (e.target.closest?.('[data-user-action-trigger]')) return;
+      closeActionMenu();
+    };
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') closeActionMenu();
+    };
+    const onViewportChange = () => closeActionMenu();
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('scroll', onViewportChange, true);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', onViewportChange);
+      window.removeEventListener('scroll', onViewportChange, true);
+    };
+  }, [actionMenu, closeActionMenu]);
+
+  const actionMenuUser = useMemo(() => {
+    if (!actionMenu) return null;
+    return (
+      filteredUsers.find((u) => u._id === actionMenu) ||
+      users.find((u) => u._id === actionMenu) ||
+      null
+    );
+  }, [actionMenu, filteredUsers, users]);
 
   const pendingVrUserIds = useMemo(() => {
     const ids = new Set();
@@ -198,6 +263,17 @@ const AdminUsersPage = () => {
       fetchPendingVrRequests();
     } catch (error) {
       toast.error(error?.response?.data?.error || error?.error || 'Failed to update Validation Rights');
+    }
+    setActionMenu(null);
+  };
+
+  const handleApprovalRightsChange = async (userId, approvalRights) => {
+    try {
+      await api.patch(`/users/${userId}`, { approval_rights: approvalRights });
+      toast.success(approvalRights ? 'Approval Rights granted' : 'Approval Rights revoked');
+      fetchUsers();
+    } catch (error) {
+      toast.error(error?.response?.data?.error || error?.error || 'Failed to update Approval Rights');
     }
     setActionMenu(null);
   };
@@ -487,6 +563,7 @@ const AdminUsersPage = () => {
               <option value="department">Department</option>
               <option value="msme_dpr_viewer">MSME DPR Viewer</option>
               <option value="mepma_dpr_viewer">MEPMA DPR Viewer</option>
+              <option value="dpr_request_viewer">DPR Request Viewer</option>
               <option value="customer">Customer</option>
               <option value="user">User</option>
             </select>
@@ -553,7 +630,6 @@ const AdminUsersPage = () => {
               {filteredUsers.map((user) => {
                 const companyName = resolveCompanyDisplayName(user);
                 const inCompany = userBelongsToCompany(user);
-                const signupRestricted = isSignupRestricted(user);
                 const referred = userHasReferral(user);
                 const referredAgent = getReferredAgent(user);
                 const isExpanded = expandedRowId === user._id;
@@ -612,6 +688,11 @@ const AdminUsersPage = () => {
                               Validation Rights
                             </span>
                           )}
+                          {canManageApprovalRights(user) && user.approval_rights && (
+                            <span className="inline-block px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-100 text-emerald-800">
+                              Approval Rights
+                            </span>
+                          )}
                           {canManageTableAccess(user) && !user.table_access && pendingVrUserIds.has(String(user._id)) && (
                             <span className="inline-block px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-100 text-amber-800">
                               VR Request Pending
@@ -629,120 +710,17 @@ const AdminUsersPage = () => {
                           {user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                         </span>
                       </td>
-                      <td className="px-2 py-3 align-middle text-right relative">
+                      <td className="px-2 py-3 align-middle text-right">
                         <button
                           type="button"
-                          onClick={() => setActionMenu(actionMenu === user._id ? null : user._id)}
+                          data-user-action-trigger
+                          aria-haspopup="menu"
+                          aria-expanded={actionMenu === user._id}
+                          onClick={(e) => toggleActionMenu(user._id, e)}
                           className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                         >
                           <MoreVertical size={16} />
                         </button>
-
-                        {actionMenu === user._id && (
-                          <div className="absolute right-0 mt-1 w-52 bg-white rounded-lg shadow-lg z-20 border border-gray-100 py-1">
-                            <button
-                              type="button"
-                              onClick={() => handleViewUser(user)}
-                              className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                            >
-                              <Eye size={15} className="mr-2 shrink-0" /> View details
-                            </button>
-                            {!signupRestricted && (
-                              <>
-                                {user.role === 'agent' && (
-                                  <button
-                                    onClick={() => handleEditCommission(user)}
-                                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                  >
-                                    <Edit2 size={15} className="mr-2 shrink-0" /> Edit commission
-                                  </button>
-                                )}
-                                {canManageTableAccess(user) && (
-                                  <button
-                                    onClick={() => handleTableAccessChange(user._id, !user.table_access)}
-                                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                  >
-                                    <Edit2 size={15} className="mr-2 shrink-0" />
-                                    {user.table_access ? 'Revoke Validation Rights' : 'Grant Validation Rights'}
-                                  </button>
-                                )}
-                                {user.role === 'user' && (
-                                  <>
-                                    <button
-                                      onClick={() => handleRoleChange(user._id, 'agent')}
-                                      className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                    >
-                                      <Edit2 size={15} className="mr-2 shrink-0" />
-                                      Promote to channel partner
-                                    </button>
-                                    <button
-                                      onClick={() => handleRoleChange(user._id, 'sbi_executive')}
-                                      className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                    >
-                                      <Edit2 size={15} className="mr-2 shrink-0" />
-                                      Promote to SBI Executive
-                                    </button>
-                                    <button
-                                      onClick={() => handleRoleChange(user._id, 'boi_executive')}
-                                      className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                    >
-                                      <Edit2 size={15} className="mr-2 shrink-0" />
-                                      Promote to BOI Executive
-                                    </button>
-                                    <button
-                                      onClick={() => handleRoleChange(user._id, 'customer_service')}
-                                      className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                    >
-                                      <Edit2 size={15} className="mr-2 shrink-0" />
-                                      Promote to Customer Service
-                                    </button>
-                                  </>
-                                )}
-                                {user.role === 'customer_service' && (
-                                  <button
-                                    onClick={() => handleRoleChange(user._id, 'user')}
-                                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                  >
-                                    <Edit2 size={15} className="mr-2 shrink-0" />
-                                    Demote to user
-                                  </button>
-                                )}
-                                {user.role === 'agent' && (
-                                  <button
-                                    onClick={() => handleRoleChange(user._id, 'user')}
-                                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                  >
-                                    <Edit2 size={15} className="mr-2 shrink-0" />
-                                    Demote to user
-                                  </button>
-                                )}
-                                {(user.role === 'sbi_executive' || user.role === 'boi_executive' || user.role === 'executive') && (
-                                  <button
-                                    onClick={() => handleRoleChange(user._id, 'user')}
-                                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                  >
-                                    <Edit2 size={15} className="mr-2 shrink-0" />
-                                    Demote to user
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => handleStatusChange(user._id, !isUserActive(user))}
-                                  className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                >
-                                  <Edit2 size={15} className="mr-2 shrink-0" />
-                                  {isUserActive(user) ? 'Deactivate' : 'Activate'}
-                                </button>
-                              </>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => handleAskDeleteUser(user)}
-                              className="flex items-center w-full px-3 py-2 text-sm text-red-700 hover:bg-red-50 border-t border-gray-100 mt-1"
-                            >
-                              <Trash2 size={15} className="mr-2 shrink-0" /> Delete user
-                            </button>
-                          </div>
-                        )}
                       </td>
                     </tr>
 
@@ -787,6 +765,156 @@ const AdminUsersPage = () => {
         )}
       </div>
 
+      {actionMenuUser && actionMenuPos && createPortal(
+        <div
+          ref={actionMenuRef}
+          role="menu"
+          className="fixed w-56 bg-white rounded-lg shadow-xl z-[80] border border-gray-100 py-1 overflow-y-auto"
+          style={{
+            top: actionMenuPos.openUp ? undefined : actionMenuPos.top,
+            bottom: actionMenuPos.openUp ? actionMenuPos.bottom : undefined,
+            right: actionMenuPos.right,
+            maxHeight: actionMenuPos.maxHeight,
+          }}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => handleViewUser(actionMenuUser)}
+            className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            <Eye size={15} className="mr-2 shrink-0" /> View details
+          </button>
+          {!isSignupRestricted(actionMenuUser) && (
+            <>
+              {actionMenuUser.role === 'agent' && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => handleEditCommission(actionMenuUser)}
+                  className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  <Edit2 size={15} className="mr-2 shrink-0" /> Edit commission
+                </button>
+              )}
+              {canManageTableAccess(actionMenuUser) && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => handleTableAccessChange(actionMenuUser._id, !actionMenuUser.table_access)}
+                  className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  <Edit2 size={15} className="mr-2 shrink-0" />
+                  {actionMenuUser.table_access ? 'Revoke Validation Rights' : 'Grant Validation Rights'}
+                </button>
+              )}
+              {canManageApprovalRights(actionMenuUser) && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => handleApprovalRightsChange(actionMenuUser._id, !actionMenuUser.approval_rights)}
+                  className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  <Edit2 size={15} className="mr-2 shrink-0" />
+                  {actionMenuUser.approval_rights ? 'Revoke Approval Rights' : 'Grant Approval Rights'}
+                </button>
+              )}
+              {actionMenuUser.role === 'user' && (
+                <>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => handleRoleChange(actionMenuUser._id, 'agent')}
+                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <Edit2 size={15} className="mr-2 shrink-0" />
+                    Promote to channel partner
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => handleRoleChange(actionMenuUser._id, 'sbi_executive')}
+                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <Edit2 size={15} className="mr-2 shrink-0" />
+                    Promote to SBI Executive
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => handleRoleChange(actionMenuUser._id, 'boi_executive')}
+                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <Edit2 size={15} className="mr-2 shrink-0" />
+                    Promote to BOI Executive
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => handleRoleChange(actionMenuUser._id, 'customer_service')}
+                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <Edit2 size={15} className="mr-2 shrink-0" />
+                    Promote to Customer Service
+                  </button>
+                </>
+              )}
+              {actionMenuUser.role === 'customer_service' && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => handleRoleChange(actionMenuUser._id, 'user')}
+                  className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  <Edit2 size={15} className="mr-2 shrink-0" />
+                  Demote to user
+                </button>
+              )}
+              {actionMenuUser.role === 'agent' && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => handleRoleChange(actionMenuUser._id, 'user')}
+                  className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  <Edit2 size={15} className="mr-2 shrink-0" />
+                  Demote to user
+                </button>
+              )}
+              {(actionMenuUser.role === 'sbi_executive' || actionMenuUser.role === 'boi_executive' || actionMenuUser.role === 'executive') && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => handleRoleChange(actionMenuUser._id, 'user')}
+                  className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  <Edit2 size={15} className="mr-2 shrink-0" />
+                  Demote to user
+                </button>
+              )}
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => handleStatusChange(actionMenuUser._id, !isUserActive(actionMenuUser))}
+                className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                <Edit2 size={15} className="mr-2 shrink-0" />
+                {isUserActive(actionMenuUser) ? 'Deactivate' : 'Activate'}
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => handleAskDeleteUser(actionMenuUser)}
+            className="flex items-center w-full px-3 py-2 text-sm text-red-700 hover:bg-red-50 border-t border-gray-100 mt-1"
+          >
+            <Trash2 size={15} className="mr-2 shrink-0" /> Delete user
+          </button>
+        </div>,
+        document.body
+      )}
+
       {/* User Details Modal */}
       {showModal && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -825,6 +953,12 @@ const AdminUsersPage = () => {
                     <div>
                       <p className="text-sm text-gray-500">Validation Rights</p>
                       <p className="font-medium">{selectedUser.table_access ? 'Granted' : 'Not granted'}</p>
+                    </div>
+                  )}
+                  {canManageApprovalRights(selectedUser) && (
+                    <div>
+                      <p className="text-sm text-gray-500">Approval Rights</p>
+                      <p className="font-medium">{selectedUser.approval_rights ? 'Granted' : 'Not granted'}</p>
                     </div>
                   )}
                   <div>

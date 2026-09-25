@@ -104,7 +104,16 @@ apiClient.interceptors.response.use(
         }
       }
       if (!message) {
-        message = 'An error occurred';
+        if (typeof data === 'string' && data.trim()) {
+          message = data.trim();
+        } else if (data?.details) {
+          message = String(data.details);
+        } else {
+          const statusText = error.response.statusText || '';
+          message = `Request failed (${status}${statusText ? ` ${statusText}` : ''})`;
+        }
+      } else if (data?.details && !String(message).includes(String(data.details))) {
+        message = `${message} — ${data.details}`;
       }
 
       // Token expired or invalid — do not force login for explicitly public API calls

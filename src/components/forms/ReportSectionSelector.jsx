@@ -21,7 +21,7 @@ const SECTION_CONFIG = [
       { name: "proprietor_name", label: "Name of Authorised person", type: "text", required: true },
       { name: "pan_number", label: "PAN Number", type: "text" },
       { name: "aadhar_number", label: "Aadhar Number", type: "text" },
-      { name: "caste", label: "Caste/Category", type: "text" },
+      { name: "caste", label: "Caste/Category", type: "text", required: false },
       { name: "residential_address", label: "Residential Address", type: "textarea" }
     ]
   },
@@ -63,7 +63,7 @@ const SECTION_CONFIG = [
         subFields: [
           { name: "name", label: "Name", type: "text" },
           { name: "designation", label: "Designation", type: "select", options: ["Proprietor", "Partner", "Director"] },
-          { name: "caste", label: "Caste", type: "text" },
+          { name: "caste", label: "Caste", type: "text", required: false },
           { name: "share_ratio", label: "Share %", type: "text" },
           { name: "pan_number", label: "PAN", type: "text" },
           { name: "aadhar_number", label: "Aadhar", type: "text" },
@@ -1490,12 +1490,12 @@ const ReportSectionSelector = ({
                 Select the sections you want to include in the Detailed Project Report and provide necessary details.
               </p> */}
             </div>
-            {/* <button
+            <button
               onClick={fillTestData}
               className="px-4 py-2 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-md hover:bg-indigo-100 transition-colors text-sm font-medium"
             >
               Fill Test Data
-            </button> */}
+            </button>
           </div>
         </div>
 

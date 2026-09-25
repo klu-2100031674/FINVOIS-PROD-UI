@@ -453,8 +453,8 @@ const PublicFormPage = () => {
 
     setCustomerContact(contactObj);
 
-    // Default to email if present, otherwise phone
-    const preferredType = extractedEmail ? 'email' : 'phone';
+    // Prefer WhatsApp when a phone is present, otherwise email
+    const preferredType = extractedPhone ? 'phone' : 'email';
     setOtpType(preferredType);
 
     setStep('verify');
@@ -512,6 +512,95 @@ const PublicFormPage = () => {
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
                 Select Verification Channel
               </label>
+
+              {/* Phone / WhatsApp Card */}
+              {customerContact.phone && (
+                <div className={`p-4 rounded-2xl border transition-all ${otpType === 'phone'
+                    ? 'border-orange-500 bg-orange-50/20 shadow-sm'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}>
+                  <div className="flex items-center justify-between">
+                    <div
+                      className="flex items-center gap-3 cursor-pointer flex-1"
+                      onClick={() => {
+                        if (!editingPhone) {
+                          setOtpType('phone');
+                          setOtpSent(false);
+                          setOtpCode('');
+                        }
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        checked={otpType === 'phone'}
+                        onChange={() => {
+                          if (!editingPhone) {
+                            setOtpType('phone');
+                            setOtpSent(false);
+                            setOtpCode('');
+                          }
+                        }}
+                        className="text-orange-500 focus:ring-orange-500 h-4 w-4 border-gray-300 cursor-pointer"
+                      />
+                      <div className="flex items-center gap-2 text-gray-700">
+                        <Phone size={16} className={otpType === 'phone' ? 'text-orange-500' : 'text-gray-400'} />
+                        <span className="text-xs font-bold uppercase tracking-wider">WhatsApp Number</span>
+                      </div>
+                    </div>
+
+                    {!editingPhone && (
+                      <div className="flex items-center gap-2">
+                        {existingContacts.phone ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600">
+                            <ShieldCheck size={12} className="text-gray-500" /> Existing Account
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingPhone(true);
+                              setTempPhone(customerContact.phone);
+                            }}
+                            className="text-xs text-orange-600 hover:text-orange-500 font-bold flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-orange-50 transition-all"
+                          >
+                            <Edit2 size={12} /> Edit
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {editingPhone ? (
+                    <div className="mt-3 flex gap-2">
+                      <input
+                        type="tel"
+                        value={tempPhone}
+                        onChange={(e) => setTempPhone(e.target.value)}
+                        className="flex-1 px-3 py-1.5 rounded-xl border border-gray-200 text-sm focus:border-orange-500 outline-none"
+                        placeholder="e.g. +91 9999999999"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSavePhone}
+                        className="px-3.5 py-1.5 bg-orange-500 text-white rounded-xl text-xs font-semibold hover:bg-orange-600 shadow-sm"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingPhone(false)}
+                        className="px-3.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="mt-1.5 ml-7 text-sm font-semibold text-gray-900">
+                      {customerContact.phone}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Email Card */}
               {customerContact.email && (
@@ -597,95 +686,6 @@ const PublicFormPage = () => {
                   ) : (
                     <div className="mt-1.5 ml-7 text-sm font-semibold text-gray-900">
                       {customerContact.email}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Phone Card */}
-              {customerContact.phone && (
-                <div className={`p-4 rounded-2xl border transition-all ${otpType === 'phone'
-                    ? 'border-orange-500 bg-orange-50/20 shadow-sm'
-                    : 'border-gray-200 bg-white hover:border-gray-300'
-                  }`}>
-                  <div className="flex items-center justify-between">
-                    <div
-                      className="flex items-center gap-3 cursor-pointer flex-1"
-                      onClick={() => {
-                        if (!editingPhone) {
-                          setOtpType('phone');
-                          setOtpSent(false);
-                          setOtpCode('');
-                        }
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        checked={otpType === 'phone'}
-                        onChange={() => {
-                          if (!editingPhone) {
-                            setOtpType('phone');
-                            setOtpSent(false);
-                            setOtpCode('');
-                          }
-                        }}
-                        className="text-orange-500 focus:ring-orange-500 h-4 w-4 border-gray-300 cursor-pointer"
-                      />
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <Phone size={16} className={otpType === 'phone' ? 'text-orange-500' : 'text-gray-400'} />
-                        <span className="text-xs font-bold uppercase tracking-wider">WhatsApp Number</span>
-                      </div>
-                    </div>
-
-                    {!editingPhone && (
-                      <div className="flex items-center gap-2">
-                        {existingContacts.phone ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600">
-                            <ShieldCheck size={12} className="text-gray-500" /> Existing Account
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingPhone(true);
-                              setTempPhone(customerContact.phone);
-                            }}
-                            className="text-xs text-orange-600 hover:text-orange-500 font-bold flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-orange-50 transition-all"
-                          >
-                            <Edit2 size={12} /> Edit
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {editingPhone ? (
-                    <div className="mt-3 flex gap-2">
-                      <input
-                        type="tel"
-                        value={tempPhone}
-                        onChange={(e) => setTempPhone(e.target.value)}
-                        className="flex-1 px-3 py-1.5 rounded-xl border border-gray-200 text-sm focus:border-orange-500 outline-none"
-                        placeholder="e.g. +91 9999999999"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleSavePhone}
-                        className="px-3.5 py-1.5 bg-orange-500 text-white rounded-xl text-xs font-semibold hover:bg-orange-600 shadow-sm"
-                      >
-                        Save
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingPhone(false)}
-                        className="px-3.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="mt-1.5 ml-7 text-sm font-semibold text-gray-900">
-                      {customerContact.phone}
                     </div>
                   )}
                 </div>

@@ -52,6 +52,7 @@ const getReportCompanyName = (report) => {
 };
 
 const isFrccReport = (templateId) => {
+  if (String(templateId || '').trim().toUpperCase() === 'GOLD_LOAN') return true;
   const match = String(templateId || '').toUpperCase().match(/CC(\d+)/);
   if (match) {
     const ccNumber = parseInt(match[1], 10);
@@ -150,6 +151,8 @@ const AdminReportsPage = () => {
   const [emailInput, setEmailInput] = useState('');
   const [whatsappInput, setWhatsappInput] = useState('');
   const [activeShareType, setActiveShareType] = useState(null); // 'email', 'whatsapp', or null
+  // WhatsApp gateway health — null = loading, true = connected, false = disconnected
+  const [waConnected, setWaConnected] = useState(null);
 
   const displayStats = useMemo(() => {
     const pending = (stats.pending ?? 0) + STATS_OFFSETS.pending;
@@ -233,6 +236,19 @@ const AdminReportsPage = () => {
   useEffect(() => {
     fetchReportTypes();
   }, [fetchReportTypes]);
+
+  // Check WhatsApp gateway connection status once on mount
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/admin-reports/whatsapp-status')
+      .then((res) => {
+        if (!cancelled) setWaConnected(res.data?.connected === true);
+      })
+      .catch(() => {
+        if (!cancelled) setWaConnected(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const loadCompanies = async () => {
@@ -1608,14 +1624,39 @@ const AdminReportsPage = () => {
                       Email
                     </button>
 
-                    <button
-                      onClick={() => setActiveShareType('whatsapp')}
-                      className="flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg transition-colors shadow-sm"
-                      title="Share via WhatsApp"
-                    >
-                      <MessageCircle size={14} className="mr-1.5" />
-                      WhatsApp
-                    </button>
+                    {/* WhatsApp Option Button + connection badge */}
+                    <div className="relative inline-flex items-center">
+                      <button
+                        onClick={() => setActiveShareType('whatsapp')}
+                        className="flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg transition-colors shadow-sm"
+                        title={
+                          waConnected === null
+                            ? 'Checking WhatsApp gateway…'
+                            : waConnected
+                            ? 'WhatsApp gateway is connected'
+                            : 'WhatsApp gateway is DISCONNECTED — messages may fail'
+                        }
+                      >
+                        <MessageCircle size={14} className="mr-1.5" />
+                        WhatsApp
+                      </button>
+                      <span
+                        className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-white ${
+                          waConnected === null
+                            ? 'bg-gray-400 animate-pulse'
+                            : waConnected
+                            ? 'bg-green-500'
+                            : 'bg-red-500'
+                        }`}
+                        title={
+                          waConnected === null
+                            ? 'Checking…'
+                            : waConnected
+                            ? 'WhatsApp Connected'
+                            : 'WhatsApp Disconnected'
+                        }
+                      />
+                    </div>
                   </>
                 ) : activeShareType === 'email' ? (
                   <div className="flex items-center border border-gray-300 rounded-lg p-1 bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">

@@ -34,3 +34,8 @@ export async function deleteMepmaDprLead(id) {
   const response = await apiClient.delete(`/mepma-dpr-leads/${id}`);
   return response.data;
 }
+
+export async function fetchMepmaDprLeadById(id) {
+  const response = await apiClient.get(`/mepma-dpr-leads/${id}`);
+  return response.data;
+}

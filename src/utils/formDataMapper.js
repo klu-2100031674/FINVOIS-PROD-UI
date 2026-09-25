@@ -45,6 +45,35 @@ export const mapFRCC1FormData = (formData) => {
   };
 };
 
+export const mapGoldLoanFormData = (formData) => {
+  const excelData = {
+    i4: formData.firmName || '',
+    i5: formData.address || '',
+    i6: formData.promoterName || '',
+    i7: formData.pan || '',
+    i8: formData.constitution || '',
+    i9: formData.dateOfIncorporation || '',
+    i10: formData.natureOfBusiness || '',
+    i11: parseFloat(formData.loanAmount) || 0,
+    i12: formData.loanPurpose || '',
+    i13: parseFloat(formData.interestRate) || 0,
+    i14: parseFloat(formData.tenure) || 0,
+    i15: parseFloat(formData.sales) || 0,
+    i16: parseFloat(formData.profit) || 0,
+    i17: parseFloat(formData.netWorth) || 0,
+    i18: parseFloat(formData.currentAssets) || 0,
+    i19: parseFloat(formData.currentLiabilities) || 0,
+  };
+
+  return {
+    excelData,
+    AdditionalData: {
+      submittedAt: new Date().toISOString(),
+      formVersion: '1.0.0',
+    },
+  };
+};
+
 /**
  * Generic form data mapper
  * Maps form fields to Excel cells based on naming convention
@@ -86,6 +115,8 @@ export const mapFormDataByTemplate = (templateId, formData) => {
   switch (templateId) {
     case 'frcc1':
       return mapFRCC1FormData(formData);
+    case 'GOLD_LOAN':
+      return mapGoldLoanFormData(formData);
     
     // Add more template-specific mappers here
     default:
@@ -95,6 +126,7 @@ export const mapFormDataByTemplate = (templateId, formData) => {
 
 export default {
   mapFRCC1FormData,
+  mapGoldLoanFormData,
   mapGenericFormData,
   mapFormDataByTemplate,
 };

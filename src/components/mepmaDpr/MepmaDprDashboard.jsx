@@ -1,9 +1,11 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  ClipboardList,
   FileText,
   Mail,
   RefreshCw,
@@ -25,7 +27,11 @@ import {
   Legend,
 } from 'chart.js';
 import toast from 'react-hot-toast';
+import useAuth from '@/hooks/useAuth';
+import api from '@/api/apiClient';
 import MepmaDprEmailOverlay from '@/components/mepmaDpr/MepmaDprEmailOverlay';
+import AdminDprStaffActions from '@/components/govtForms/AdminDprStaffActions';
+import { workflowFromLead } from '@/utils/dprWorkflowStatus';
 import {
   fetchMepmaDprLeads,
   updateMepmaDprServiceAvailed,
@@ -51,6 +57,53 @@ ChartJS.register(
 );
 
 const PAGE_SIZE = 25;
+
+const TEMPLATES_LIST = [
+  { id: 'frcc1', name: 'FRCC 1' },
+  { id: 'frcc2', name: 'FRCC 2' },
+  { id: 'TERM_LOAN_SERVICE_WITHOUT_STOCK', name: 'Term Loan (Service w/o Stock)' },
+  { id: 'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK', name: 'Term Loan (With Stock)' },
+  { id: 'TERM_LOAN_CC', name: 'Term Loan CC' },
+  { id: 'TERM_LOAN_EV_VEHICLE', name: 'EV Vehicle' },
+  { id: 'TERM_LOAN_OTHER_THAN_EV_VEHICLE', name: 'Other Vehicle' },
+  { id: 'TERM_LOAN_JCB_VEHICLE', name: 'JCB Vehicle' },
+  { id: 'TERM_LOAN_DRONE_VEHICLE', name: 'Drone Vehicle' },
+  { id: 'GOLD_LOAN', name: 'Gold Loan' },
+];
+
+function GenerateReportCell({ leadId, departmentRequestId, navigate }) {
+  const [selected, setSelected] = useState('frcc1');
+  return (
+    <div className="flex items-center gap-1.5">
+      <select
+        value={selected}
+        onChange={(e) => setSelected(e.target.value)}
+        onClick={(e) => e.stopPropagation()}
+        className="text-xs border border-gray-300 rounded-lg px-2 py-1.5 bg-white focus:ring-1 focus:ring-orange-400 focus:outline-none max-w-[140px]"
+        title="Select report template"
+      >
+        {TEMPLATES_LIST.map((t) => (
+          <option key={t.id} value={t.id}>{t.name}</option>
+        ))}
+      </select>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          const params = new URLSearchParams({ templateId: selected, newDraft: '1', mepmaLeadId: leadId });
+          const requestId = departmentRequestId?._id || departmentRequestId || '';
+          if (requestId) params.set('requestId', String(requestId));
+          navigate(`/generate?${params.toString()}`);
+        }}
+        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors shrink-0"
+        title="Generate report pre-filled with this submission"
+      >
+        <ClipboardList className="h-3.5 w-3.5" />
+        Go
+      </button>
+    </div>
+  );
+}
 
 const BASE_FILTERS = {
   search: '',
@@ -227,10 +280,15 @@ function ApplicantDetailPanel({ submission }) {
 }
 
 const MepmaDprDashboard = ({
-  showServiceAvailed = false,
+  showServiceAvailed: _showServiceAvailedProp = false, // Service Availed UI hidden; DB field retained
   showEmailConfig = false,
   showDelete = false,
+  showGenerateReport = false,
 }) => {
+  const showServiceAvailed = false;
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const navigate = useNavigate();
   const initialFilters = useMemo(() => getInitialFilters(showServiceAvailed), [showServiceAvailed]);
 
   const [loading, setLoading] = useState(true);
@@ -246,6 +304,7 @@ const MepmaDprDashboard = ({
   const [timeframe, setTimeframe] = useState('1month');
   const [filters, setFilters] = useState(initialFilters);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
+  const [csAgents, setCsAgents] = useState([]);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -289,6 +348,17 @@ const MepmaDprDashboard = ({
   useEffect(() => {
     loadData(appliedFilters, page, timeframe);
   }, [appliedFilters, page, timeframe, loadData]);
+
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    let cancelled = false;
+    api.get('/govt-forms/customer-service')
+      .then((res) => {
+        if (!cancelled) setCsAgents(res.data?.data || []);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isAdmin]);
 
   const handleApplyFilters = (e) => {
     e?.preventDefault();
@@ -448,17 +518,7 @@ const MepmaDprDashboard = ({
           pointHoverRadius: 6,
           pointBackgroundColor: 'rgb(249, 115, 22)',
         },
-        {
-          label: 'Service availed',
-          data: serviceAvailed,
-          borderColor: 'rgb(20, 184, 166)',
-          backgroundColor: 'rgba(20, 184, 166, 0.12)',
-          fill: true,
-          tension: 0.35,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          pointBackgroundColor: 'rgb(20, 184, 166)',
-        },
+        // Service availed chart series hidden
       ],
     };
   }, [chartSeries, timeframe, formatLabel, generateEmptyChartData]);
@@ -467,7 +527,7 @@ const MepmaDprDashboard = ({
     ? 'No submissions match the selected filters.'
     : 'No submissions yet.';
 
-  const tableColSpan = showDelete ? 14 : 13;
+  const tableColSpan = (showDelete ? 14 : 13) + (isAdmin ? 1 : 0) + (showGenerateReport ? 1 : 0);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
@@ -510,15 +570,12 @@ const MepmaDprDashboard = ({
         />
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-1 gap-4 mb-6 max-w-sm">
         <div className="bg-white border rounded-xl p-5 shadow-sm">
           <p className="text-sm font-medium text-gray-500">Total DPR Requests received</p>
           <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalRequests}</p>
         </div>
-        <div className="bg-white border rounded-xl p-5 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">Total DPR Service Availed</p>
-          <p className="text-3xl font-bold text-teal-600 mt-1">{stats.totalServiceAvailed}</p>
-        </div>
+        {/* Service Availed stats card hidden */}
       </div>
 
       <div className="bg-white border rounded-xl shadow-sm mb-6 overflow-hidden">
@@ -615,7 +672,7 @@ const MepmaDprDashboard = ({
                 type="text"
                 value={filters.search}
                 onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-                placeholder="Search by applicant name..."
+                placeholder="Search by name, mobile, or nature of business..."
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
               />
             </div>
@@ -784,7 +841,9 @@ const MepmaDprDashboard = ({
                     <th className="px-3 py-3">Village / City</th>
                     <th className="px-3 py-3">Mandal</th>
                     <th className="px-3 py-3">District</th>
-                    <th className="px-3 py-3">Service Availed</th>
+                    <th className="px-3 py-3">DPR Status</th>
+                    {showGenerateReport && <th className="px-3 py-3">Generate Report</th>}
+                    {isAdmin && <th className="px-3 py-3">Staff</th>}
                     {showDelete && <th className="px-3 py-3">Actions</th>}
                   </tr>
                 </thead>
@@ -841,13 +900,33 @@ const MepmaDprDashboard = ({
                           <td className="px-3 py-3 text-gray-600">{s.mandal}</td>
                           <td className="px-3 py-3 text-gray-600">{s.district}</td>
                           <td className="px-3 py-3">
-                            <ServiceAvailedCell
-                              checked={s.serviceAvailed}
-                              editable={showServiceAvailed}
-                              disabled={togglingId === s._id}
-                              onChange={(val) => handleToggleServiceAvailed(s._id, val)}
-                            />
+                            {(() => {
+                              const wf = workflowFromLead(s);
+                              return (
+                                <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${wf.badgeClass}`}>
+                                  {wf.label}
+                                </span>
+                              );
+                            })()}
                           </td>
+                          {showGenerateReport && (
+                            <td className="px-3 py-3">
+                              <GenerateReportCell
+                                leadId={s._id}
+                                departmentRequestId={s.departmentRequestId}
+                                navigate={navigate}
+                              />
+                            </td>
+                          )}
+                          {isAdmin && (
+                            <td className="px-3 py-3">
+                              <AdminDprStaffActions
+                                requestLike={s}
+                                csAgents={csAgents}
+                                onChanged={() => loadData(appliedFilters, page, timeframe)}
+                              />
+                            </td>
+                          )}
                           {showDelete && (
                             <td className="px-3 py-3">
                               <button
@@ -950,24 +1029,29 @@ const MepmaDprDashboard = ({
                         <span className="font-medium text-gray-700">District:</span> {s.district}
                       </p>
                       <p>
+                        <span className="font-medium text-gray-700">DPR Status:</span>{' '}
+                        {workflowFromLead(s).label}
+                      </p>
+                      {isAdmin && (
+                        <div className="pt-2">
+                          <AdminDprStaffActions
+                            requestLike={s}
+                            csAgents={csAgents}
+                            onChanged={() => loadData(appliedFilters, page, timeframe)}
+                          />
+                        </div>
+                      )}
+                      {/* Service Availed UI hidden
+                      <p>
                         <span className="font-medium text-gray-700">Service Availed:</span>{' '}
                         {formatServiceAvailed(s.serviceAvailed)}
                       </p>
+                      */}
                       {s.description && (
                         <p>
                           <span className="font-medium text-gray-700">Description:</span>{' '}
                           {s.description}
                         </p>
-                      )}
-                      {showServiceAvailed && (
-                        <div className="flex items-center justify-between pt-2">
-                          <span className="font-medium text-gray-700">Update service availed</span>
-                          <ServiceAvailedToggle
-                            checked={parseServiceAvailed(s.serviceAvailed)}
-                            disabled={togglingId === s._id}
-                            onChange={(val) => handleToggleServiceAvailed(s._id, val)}
-                          />
-                        </div>
                       )}
                       {showDelete && (
                         <button

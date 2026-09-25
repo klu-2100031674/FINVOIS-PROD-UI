@@ -16,35 +16,35 @@ export const VEHICLE_TEMPLATE_IDS = new Set([
   'TERM_LOAN_DRONE_VEHICLE',
 ]);
 
-/** Default locked sector per template when URL / draft metadata is missing. */
+/** Default sector per template when URL / draft metadata is missing. */
 export const TEMPLATE_SECTOR_DEFAULTS = {
   TERM_LOAN_SERVICE_WITHOUT_STOCK: {
     presetSector: 'service sector without stock',
-    lockSector: true,
+    // lockSector: true,
   },
   TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK: {
     presetSector: 'service sector with stock',
-    lockSector: true,
+    // lockSector: true,
   },
   TERM_LOAN_CC: {
     presetSector: 'service sector without stock',
-    lockSector: true,
+    // lockSector: true,
   },
   TERM_LOAN_EV_VEHICLE: {
     presetSector: 'service sector without stock',
-    lockSector: true,
+    // lockSector: true,
   },
   TERM_LOAN_OTHER_THAN_EV_VEHICLE: {
     presetSector: 'service sector without stock',
-    lockSector: true,
+    // lockSector: true,
   },
   TERM_LOAN_JCB_VEHICLE: {
     presetSector: 'service sector without stock',
-    lockSector: true,
+    // lockSector: true,
   },
   TERM_LOAN_DRONE_VEHICLE: {
     presetSector: 'service sector without stock',
-    lockSector: true,
+    // lockSector: true,
   },
 };
 
@@ -77,6 +77,7 @@ export const TEMPLATE_DISPLAY_NAMES = {
   TERM_LOAN_OTHER_THAN_EV_VEHICLE: 'Other Than EV Commercial Vehicle',
   TERM_LOAN_JCB_VEHICLE: 'JCB Vehicle',
   TERM_LOAN_DRONE_VEHICLE: 'Drone Vehicle',
+  GOLD_LOAN: 'Gold Loan',
   CC1: 'Cash Credit Form 1',
   CC2: 'Cash Credit Form 2',
   CC3: 'Cash Credit Form 3',
@@ -122,12 +123,12 @@ export function resolveTemplateSector(templateId, options = {}) {
   const tid = String(templateId || '').trim();
   const defaults = TEMPLATE_SECTOR_DEFAULTS[tid] || null;
 
-  // Vehicle templates always use the locked Excel sector. Ignore URL labels like
-  // "Commercial Vehicle - EV" / "JCB Vehicle" that were historically passed by AIAssistant.
+  // Vehicle templates still auto-select the Excel sector, but stay editable.
+  // Previously: lockSector: true
   if (isVehicleTemplateId(tid) && defaults?.presetSector) {
     return {
       presetSector: defaults.presetSector,
-      lockSector: true,
+      lockSector: false,
     };
   }
 
@@ -144,16 +145,19 @@ export function resolveTemplateSector(templateId, options = {}) {
     presetSector = defaults.presetSector;
   }
 
-  // If lock is explicitly provided in URL or draft, use it. Otherwise fall back to defaults.
-  let lockSector = false;
-  if (urlLockSector !== null && urlLockSector !== undefined && urlLockSector !== '') {
-    lockSector = parseTruthyLock(urlLockSector);
-  } else if (draftLockSector !== null && draftLockSector !== undefined) {
-    lockSector = parseTruthyLock(draftLockSector);
-  } else {
-    lockSector = (isTermLoanTemplateId(tid) && Boolean(presetSector)) ||
-                 Boolean(defaults?.lockSector && presetSector);
-  }
+  // Sector is auto-selected from the template / MSME lead, but CS can change it.
+  // Previous lock logic kept for reference:
+  // let lockSector = false;
+  // if (urlLockSector !== null && urlLockSector !== undefined && urlLockSector !== '') {
+  //   lockSector = parseTruthyLock(urlLockSector);
+  // } else if (draftLockSector !== null && draftLockSector !== undefined) {
+  //   lockSector = parseTruthyLock(draftLockSector);
+  // } else {
+  //   lockSector = (isTermLoanTemplateId(tid) && Boolean(presetSector)) ||
+  //                Boolean(defaults?.lockSector && presetSector);
+  // }
+  void urlLockSector;
+  void draftLockSector;
 
-  return { presetSector, lockSector };
+  return { presetSector, lockSector: false };
 }

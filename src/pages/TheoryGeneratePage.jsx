@@ -261,7 +261,7 @@ const TheoryGeneratePage = () => {
           <TheoryGeneralInformationForm
             value={gi}
             onChange={(key, v) => setGi((prev) => ({ ...prev, [key]: v }))}
-            lockSector
+            lockSector={false}
           />
           <div className="mt-8 flex justify-end">
             <button

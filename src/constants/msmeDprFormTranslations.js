@@ -37,6 +37,7 @@ export const FORM_COPY = {
     description: 'Description',
     otherInfoRequired: 'Other Information required for preparing DPR:',
     otherInfoRequiredSub: 'Provide asset details and loan parameters for automated DPR drafting.',
+    otherInfoWorkingCapitalOnly: 'For Working capital or OD Loan, only working capital is needed here.',
     assetModel: 'Asset Model',
     assetCategory: 'Asset Category',
     selectAssetCategory: 'Select category',
@@ -46,10 +47,17 @@ export const FORM_COPY = {
     removeRow: 'Remove',
     noAssetsAdded: 'No asset items added yet. Click "+ Add Asset" above.',
     loanTermPeriod: 'Loan Term Period',
-    rateOfInterest: 'Rate of Interest',
-    processingFee: 'Processing Fee',
+    yearsUnit: 'years',
+    selectLoanTermPeriod: 'Select years',
+    rateOfInterest: 'Rate of Interest  % p.a',
+    processingFee: 'Processing Fee %',
+    moratoriumPeriod: 'Moratorium period (months)',
+    sector: 'Sector',
+    selectSector: 'Select sector',
     loanAmount: 'Total Loan Amount',
-    workingCapital: 'Working Capital (₹)',
+    workingCapital: 'Working capital loan',
+    workingCapitalMargin: 'Working capital Margin',
+    workingCapitalRateOfInterest: 'Working capital rate of interest',
     selectLoanTypeFirst: 'Please select a Loan Type before providing other DPR information.',
     submit: 'Submit',
     submitting: 'Submitting...',
@@ -70,10 +78,13 @@ export const FORM_COPY = {
     placeholderAssetModel: 'e.g. CNC Machine / 50HP Motor',
     placeholderAmount: 'e.g. 500000',
     placeholderLoanPercentage: 'e.g. 75',
-    placeholderWorkingCapital: 'Enter working capital (e.g. 500000)',
-    placeholderLoanTermPeriod: 'e.g. 5 Years / 60 Months',
-    placeholderRateOfInterest: 'e.g. 9.5%',
-    placeholderProcessingFee: 'e.g. 0.5% or ₹10,000',
+    placeholderWorkingCapital: 'Enter working capital loan (e.g. 500000)',
+    placeholderWorkingCapitalMargin: 'e.g. 25',
+    placeholderWorkingCapitalRateOfInterest: 'e.g. 11.5',
+    placeholderLoanTermPeriod: 'Select 1 to 15 years',
+    placeholderRateOfInterest: 'e.g. 9.25',
+    placeholderProcessingFee: 'e.g. 0.50',
+    placeholderMoratoriumPeriod: 'e.g. 6',
     placeholderLoanAmount: 'Auto-calculated sum of all loan amounts',
     submitError: 'Failed to submit form',
     verifyTitle: 'Verify mobile number',
@@ -123,6 +134,7 @@ export const FORM_COPY = {
     description: 'వివరణ',
     otherInfoRequired: 'DPR తయారీకి అవసరమైన ఇతర సమాచారం:',
     otherInfoRequiredSub: 'ఆటోమేటెడ్ DPR డ్రాఫ్టింగ్ కోసం ఆస్తి వివరాలు మరియు లోన్ పారామితులను అందించండి.',
+    otherInfoWorkingCapitalOnly: 'వర్కింగ్ క్యాపిటల్ లేదా ఓడి లోన్ కోసం ఇక్కడ వర్కింగ్ క్యాపిటల్ మాత్రమే అవసరం.',
     assetModel: 'ఆస్తి మోడల్ / వివరణ',
     assetCategory: 'ఆస్తి వర్గం',
     selectAssetCategory: 'వర్గాన్ని ఎంచుకోండి',
@@ -132,10 +144,17 @@ export const FORM_COPY = {
     removeRow: 'తొలగించు',
     noAssetsAdded: 'ఇంకా ఆస్తి అంశాలు జోడించబడలేదు. పైన "+ ఆస్తిని జోడించండి" క్లిక్ చేయండి.',
     loanTermPeriod: 'లోన్ కాలపరిమితి',
-    rateOfInterest: 'వడ్డీ రేటు',
-    processingFee: 'ప్రాసెసింగ్ ఫీజు',
+    yearsUnit: 'సంవత్సరాలు',
+    selectLoanTermPeriod: 'సంవత్సరాలు ఎంచుకోండి',
+    rateOfInterest: 'వడ్డీ రేటు  % p.a',
+    processingFee: 'ప్రాసెసింగ్ ఫీజు %',
+    moratoriumPeriod: 'మొరటోరియం కాలం (నెలలు)',
+    sector: 'రంగం (Sector)',
+    selectSector: 'రంగాన్ని ఎంచుకోండి',
     loanAmount: 'మొత్తం లోన్ మొత్తం',
-    workingCapital: 'వర్కింగ్ క్యాపిటల్ (₹)',
+    workingCapital: 'వర్కింగ్ క్యాపిటల్ లోన్',
+    workingCapitalMargin: 'వర్కింగ్ క్యాపిటల్ మార్జిన్',
+    workingCapitalRateOfInterest: 'వర్కింగ్ క్యాపిటల్ వడ్డీ రేటు',
     selectLoanTypeFirst: 'ఇతర DPR సమాచారాన్ని నమోదు చేసే ముందు దయచేసి లోన్ రకం ఎంచుకోండి.',
     submit: 'సమర్పించండి',
     submitting: 'సమర్పిస్తోంది...',
@@ -156,10 +175,13 @@ export const FORM_COPY = {
     placeholderAssetModel: 'ఉదా. సిఎన్‌సి మెషిన్ / 50 హెచ్‌పి మోటార్',
     placeholderAmount: 'ఉదా. 500000',
     placeholderLoanPercentage: 'ఉదా. 75',
-    placeholderWorkingCapital: 'వర్కింగ్ క్యాపిటల్ నమోదు చేయండి (ఉదా. 500000)',
+    placeholderWorkingCapital: 'వర్కింగ్ క్యాపిటల్ లోన్ నమోదు చేయండి (ఉదా. 500000)',
+    placeholderWorkingCapitalMargin: 'ఉదా. 25',
+    placeholderWorkingCapitalRateOfInterest: 'ఉదా. 11.5',
     placeholderLoanTermPeriod: 'ఉదా. 5 సంవత్సరాలు',
     placeholderRateOfInterest: 'ఉదా. 9.5%',
     placeholderProcessingFee: 'ఉదా. 0.5% లేదా ₹10,000',
+    placeholderMoratoriumPeriod: 'ఉదా. 6',
     placeholderLoanAmount: 'ఆటోమేటిక్ లెక్కింపు మొత్తం',
     submitError: 'ఫారమ్ సమర్పించడం విఫలమైంది',
     verifyTitle: 'మొబైల్ నంబర్ ధృవీకరించండి',
@@ -206,6 +228,7 @@ const LOAN_TYPE_LABELS_TE = {
   'Term Loan and working capital loan': 'టర్మ్ లోన్ మరియు వర్కింగ్ క్యాపిటల్ లోన్',
   'Working capital or OD Loan': 'వర్కింగ్ క్యాపిటల్ లేదా ఓడి లోన్',
   'Gold Loan': 'గోల్డ్ లోన్',
+  'Dropline OD': 'డ్రాప్‌లైన్ ఓడి',
 };
 
 const RURAL_URBAN_LABELS_TE = {
@@ -233,6 +256,12 @@ const ASSET_CATEGORY_LABELS_TE = {
   'Non Current Assets (Deposits , Advances etc)': 'నాన్-కరెంట్ ఆస్తులు (డిపాజిట్లు/అడ్వాన్సులు)',
 };
 
+const SECTOR_LABELS_TE = {
+  Manufacturing: 'తయారీ (Manufacturing)',
+  Trading: 'ట్రేడింగ్ (Trading)',
+  'Service Sector': 'సేవా రంగం (Service Sector)',
+};
+
 const LABEL_MAPS = {
   gender: GENDER_LABELS_TE,
   scheme: SCHEME_LABELS_TE,
@@ -240,11 +269,12 @@ const LABEL_MAPS = {
   ruralUrban: RURAL_URBAN_LABELS_TE,
   enterpriseType: ENTERPRISE_TYPE_LABELS_TE,
   assetCategory: ASSET_CATEGORY_LABELS_TE,
+  sector: SECTOR_LABELS_TE,
 };
 
 /**
  * @param {'en'|'te'} lang
- * @param {'gender'|'scheme'|'loanType'|'ruralUrban'|'enterpriseType'|'assetCategory'} group
+ * @param {'gender'|'scheme'|'loanType'|'ruralUrban'|'enterpriseType'|'assetCategory'|'sector'} group
  * @param {string} value — English enum value stored in form state
  */
 export function getOptionLabel(lang, group, value) {
@@ -260,6 +290,7 @@ export const MSME_DPR_TEST_FORM_1 = {
   mobileNumber: '9876543210',
   aadharNumber: '',
   panNumber: '',
+  sector: 'Manufacturing',
   natureOfBusiness: 'Manufacturing',
   enterpriseType: 'Existing Enterprises',
   yearOfRegistration: '2018',
@@ -275,6 +306,7 @@ export const MSME_DPR_TEST_FORM_1 = {
   loanTermPeriod: '',
   rateOfInterest: '',
   processingFee: '',
+  moratoriumPeriod: '',
   loanAmount: '',
 };
 
@@ -285,6 +317,7 @@ export const MSME_DPR_TEST_FORM_2 = {
   mobileNumber: '9848022338',
   aadharNumber: '548962314785',
   panNumber: 'ABCDE1234F',
+  sector: 'Manufacturing',
   natureOfBusiness: 'Precision Engineering & Auto Components',
   enterpriseType: 'Existing Enterprises',
   yearOfRegistration: '2019',
@@ -322,9 +355,13 @@ export const MSME_DPR_TEST_FORM_2 = {
       loanPercentage: '70',
     },
   ],
-  loanTermPeriod: '7 Years (84 Months)',
-  rateOfInterest: '9.25% p.a.',
-  processingFee: '0.50%',
+  workingCapital: '500000',
+  workingCapitalMargin: '25',
+  workingCapitalRateOfInterest: '11.5',
+  loanTermPeriod: '7',
+  rateOfInterest: '9.25',
+  processingFee: '0.50',
+  moratoriumPeriod: '6',
   loanAmount: '33,50,000',
 };
 

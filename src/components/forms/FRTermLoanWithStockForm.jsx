@@ -127,6 +127,7 @@ const FRTermLoanWithStockForm = ({
       'i14': '', // Sector
       'i15': '', // Nature of Business
       'i16': '', // Address
+      'residential_address': '', // Residential Address (named key, not an Excel cell)
       'i17': '', // Name of firm
       'i18': '', // Type of Entity
       'i19': '', // PAN of firm
@@ -266,7 +267,7 @@ const FRTermLoanWithStockForm = ({
       if (merged['General Information']) {
         merged['General Information'] = normalizeGeneralInformation(merged['General Information']);
       }
-      if (presetSector) {
+      if (presetSector && !(merged['General Information'] && merged['General Information'].i14)) {
         merged['General Information'] = {
           ...(merged['General Information'] || {}),
           i14: presetSector,
@@ -447,7 +448,7 @@ const FRTermLoanWithStockForm = ({
   };
 
   const requiredFields = {
-    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i18', 'i20', 'i21', 'i22', 'i23', 'i12', 'i13', 'i19'],
+    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i18', 'i20', 'i22', 'i23', 'i12', 'i13', 'i19'],
     'Expected Employment Generation': ['i24', 'i25', 'i26'],
     'Term Loan Details': ['h44', 'i45', 'i46', 'i47', 'i48', 'h49', 'i51', 'i52', 'i53'],
     'Indirect Expenses Increment': ['h64', 'h65', 'h66', 'h67', 'h68', 'i56'],
@@ -469,7 +470,6 @@ const FRTermLoanWithStockForm = ({
       i16: 'Address is required',
       i19: 'Education Qualification is required',
       i20: 'Scheme is required',
-      i21: 'Caste is required',
       i23: 'Unit Location is required'
     };
 
@@ -651,13 +651,7 @@ const FRTermLoanWithStockForm = ({
   }, [formData, currentStep, sections, visitedAssetCategories, categoriesWithItems, loanPercentages, validateGeneralInformation, validateMeansOfFinance]);
 
   const handleFieldChange = useCallback((sectionTitle, fieldId, value) => {
-    if (
-      lockSector &&
-      sectionTitle === 'General Information' &&
-      fieldId === 'i14'
-    ) {
-      return;
-    }
+    // Sector stays editable even when a template preset is applied.
     const normalizedValue =
       sectionTitle === 'General Information' && (fieldId === 'i11' || fieldId === 'i18')
         ? String(value || '').toUpperCase()
@@ -937,6 +931,7 @@ const FRTermLoanWithStockForm = ({
         'i14': 'Manufacturing sector',
         'i15': 'Manufacturing of Goods',
         'i16': '17-3-47,thadepalli center, Vijayawada',
+        'residential_address': '12-5-30, Brodipet, Guntur',
         'i17': 'Praveen Kumar',
         'i18': 'ABCDE1234F',
         'i19': 'Graduate',
@@ -1194,6 +1189,15 @@ const FRTermLoanWithStockForm = ({
 
     const excelData = extractCellData(updatedFormData);
 
+    // E251–E256: blank → 0 in Excel (same as E258 default behaviour)
+    for (let row = 251; row <= 256; row += 1) {
+      const key = `e${row}`;
+      const raw = excelData[key];
+      if (raw === undefined || raw === null || String(raw).trim() === '') {
+        excelData[key] = 0;
+      }
+    }
+
     const loanPercentageCells = {};
     const currentSections = getAssetSections(formData['Term Loan Details']?.['i46']);
     Object.entries(currentSections).forEach(([categoryName, config]) => {
@@ -1236,7 +1240,7 @@ const FRTermLoanWithStockForm = ({
             value={(formData['Prepared By'] && formData['Prepared By']['j136']) || ''}
             onChange={(e) => handleFieldChange('Prepared By', 'j136', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-            placeholder="Enter partner name 1"
+            placeholder="Enter partner name 1 (optional)"
           />
         </div>
         <div className="space-y-1.5">
@@ -1248,7 +1252,7 @@ const FRTermLoanWithStockForm = ({
             value={(formData['Prepared By'] && formData['Prepared By']['j137']) || ''}
             onChange={(e) => handleFieldChange('Prepared By', 'j137', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-            placeholder="Enter partner name 2"
+            placeholder="Enter partner name 2 (optional)"
           />
         </div>
         <div className="space-y-1.5">
@@ -1311,6 +1315,34 @@ const FRTermLoanWithStockForm = ({
             onChange={(e) => handleFieldChange('Prepared By', 'branch_name', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
             placeholder="Enter branch name"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            Banker Mail ID
+          </label>
+          <input
+            type="email"
+            value={(formData['Prepared By'] && formData['Prepared By']['banker_mail_id']) || ''}
+            onChange={(e) => handleFieldChange('Prepared By', 'banker_mail_id', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="Enter banker email"
+            autoComplete="off"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            CIBIL Score
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={(formData['Prepared By'] && formData['Prepared By']['cibil_score']) || ''}
+            onChange={(e) => handleFieldChange('Prepared By', 'cibil_score', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="e.g. 750"
+            autoComplete="off"
           />
         </div>
       </div>
@@ -1411,8 +1443,7 @@ const FRTermLoanWithStockForm = ({
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">Sector</label>
               <select
-                className={`w-full p-2 border border-gray-300 rounded-md ${lockSector ? 'bg-gray-100 text-gray-700 cursor-not-allowed' : ''}`}
-                disabled={lockSector}
+                className="w-full p-2 border border-gray-300 rounded-md"
                 value={formData['General Information']['i14']}
                 onChange={(e) => handleFieldChange('General Information', 'i14', e.target.value)}
               >
@@ -1438,6 +1469,15 @@ const FRTermLoanWithStockForm = ({
                 className="w-full p-2 border border-gray-300 rounded-md"
                 value={formData['General Information']['i16']}
                 onChange={(e) => handleFieldChange('General Information', 'i16', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Residential Address</label>
+              <input
+                type="text"
+                className="w-full p-2 border border-gray-300 rounded-md"
+                value={formData['General Information']['residential_address'] || ''}
+                onChange={(e) => handleFieldChange('General Information', 'residential_address', e.target.value)}
               />
             </div>
             <div className="space-y-2">

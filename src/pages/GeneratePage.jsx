@@ -22,6 +22,7 @@ import {
 import { fetchDraftByIdV2 } from '../store/slices/draftSlice';
 import { Button, Card, Loading, PaymentModal, AnalysisSheetsModal, ReportGenerationModal } from '../components/common';
 import FRCC1Form from '../components/forms/FRCC1Form';
+import GoldLoanForm from '../components/forms/GoldLoanForm';
 import FRCC2Form from '../components/forms/FRCC2Form';
 import FRCC3Form from '../components/forms/FRCC3Form';
 import FRCC4Form from '../components/forms/FRCC4Form';
@@ -61,6 +62,23 @@ import {
 } from '../utils/draftPayload';
 import { useGeneratePageDraft } from '../hooks/useGeneratePageDraft';
 import { resolveTemplateSector } from '../utils/templateSectorConfig';
+import { fetchMsmeDprLeadById } from '../api/msmeDprLeadsAPI';
+import { fetchMepmaDprLeadById } from '../api/mepmaDprLeadsAPI';
+import { fetchDprRequestLeadById } from '../api/dprRequestLeadsAPI';
+import { mapMsmeLeadToReportInitialData } from '../utils/msmeDprToReportMapper';
+import {
+  MSME_DPR_CUSTOM_ROUTE,
+  mapSubmittedDataToMsmeLead,
+} from '../constants/msmeDprSubmittedData';
+import {
+  DPR_REQUEST_CUSTOM_ROUTE,
+  mapSubmittedDataToDprRequestLead,
+} from '../constants/dprRequestSubmittedData';
+import {
+  MEPMA_DPR_CUSTOM_ROUTE,
+  mapSubmittedDataToMepmaLead,
+} from '../constants/mepmaDprSubmittedData';
+import apiClient from '../api/apiClient';
 
 const AI_TERM_LOAN_TEMPLATES = [
   'TERM_LOAN_SERVICE_WITHOUT_STOCK',
@@ -143,6 +161,7 @@ function GenerateStandaloneLayout({ children, withFonts = false }) {
 // Excel-only templates — skip AI section selector; call apply-form directly
 const NON_AI_TEMPLATES = [
   'frcc1', 'Format CC1',
+  'GOLD_LOAN',
   'frcc2', 'Format CC2',
   'frcc3', 'Format CC3',
   'frcc4', 'Format CC4',
@@ -160,10 +179,12 @@ const GeneratePage = () => {
   console.log('🎯 GeneratePage - user info:', user);
 
   const templateId = searchParams.get('templateId');
-  const { presetSector, lockSector } = resolveTemplateSector(templateId, {
+  const { presetSector } = resolveTemplateSector(templateId, {
     urlPresetSector: searchParams.get('presetSector'),
     urlLockSector: searchParams.get('lockSector'),
   });
+  // Sector is auto-selected from the template, but always editable.
+  const lockSector = false;
   // Resume-from-draft: Drafts page navigates here with ?draftId=... so we can
   // hydrate the form from the saved snapshot. When absent we start fresh.
   const draftId = searchParams.get('draftId');
@@ -173,6 +194,10 @@ const GeneratePage = () => {
   const assistedUserId = searchParams.get('assistedUserId') || '';
   const reportHelpId = searchParams.get('reportHelpId') || '';
   const deptRequestId = searchParams.get('requestId') || '';
+  const msmeLeadId = searchParams.get('msmeLeadId') || '';
+  const mepmaLeadId = searchParams.get('mepmaLeadId') || '';
+  const dprRequestLeadId = searchParams.get('dprRequestLeadId') || '';
+  const paidReportIdFromUrl = searchParams.get('paidReportId') || '';
   const isAssistedGeneration = Boolean(assistedUserId && reportHelpId);
   const template = useSelector(selectSelectedTemplate);
   const generatedExcel = useSelector(selectGeneratedExcel);
@@ -182,6 +207,9 @@ const GeneratePage = () => {
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSectionSelector, setShowSectionSelector] = useState(false);
+  const [msmeAutoFilledLabels, setMsmeAutoFilledLabels] = useState([]);
+  const [showAutoFillBanner, setShowAutoFillBanner] = useState(false);
+  const [msmePrefillComplete, setMsmePrefillComplete] = useState(!msmeLeadId && !mepmaLeadId && !dprRequestLeadId && !deptRequestId);
   const [sectionSelectorMounted, setSectionSelectorMounted] = useState(false);
   const [tempFormData, setTempFormData] = useState(null);
   const [tempSubmittedData, setTempSubmittedData] = useState(null);
@@ -194,6 +222,7 @@ const GeneratePage = () => {
   const [isGeneratingFullReport, setIsGeneratingFullReport] = useState(false);
   const hasMounted = useRef(false);
   const generationRequestedRef = useRef(false);
+  const paidResumeStartedRef = useRef(false);
   const brandingRef = useRef(null); // cache resolved company branding
   const profileSnapshotGetterRef = useRef(null);
 
@@ -433,6 +462,149 @@ const GeneratePage = () => {
       .finally(() => setDraftCheckComplete(true));
   }, [templateId, draftId, dispatch, store]);
 
+  // MSME / MEPMA auto-fill from a lead id or from a department request (Open Requests).
+  // Runs only after the draft check completes and only when no draft is being resumed.
+  useEffect(() => {
+    if (!draftCheckComplete || draftId) return;
+    if (!msmeLeadId && !mepmaLeadId && !dprRequestLeadId && !deptRequestId) return;
+    let cancelled = false;
+
+    const applyLead = (lead) => {
+      if (cancelled || !lead) return;
+      const result = mapMsmeLeadToReportInitialData(lead, templateId);
+      if (!result) return;
+      const { initialData, autoFilledLabels } = result;
+      setTempFormData(initialData);
+      dispatch(setFormData(initialData));
+      if (autoFilledLabels.length > 0) {
+        setMsmeAutoFilledLabels(autoFilledLabels);
+        setShowAutoFillBanner(true);
+      }
+    };
+
+    const enrichLeadAssets = async (lead, leadsPath) => {
+      let next = lead;
+      if (!Array.isArray(next.dprAssets) || next.dprAssets.length === 0) {
+        try {
+          const listRes = await apiClient.get(leadsPath, {
+            params: { departmentRequestId: deptRequestId, limit: 1 },
+          });
+          const rows = listRes.data?.submissions || [];
+          const fromLead = rows[0];
+          if (fromLead) {
+            next = {
+              ...next,
+              ...fromLead,
+              dprAssets: Array.isArray(fromLead.dprAssets) ? fromLead.dprAssets : next.dprAssets,
+              hasOtherDprInfo: Boolean(fromLead.hasOtherDprInfo || next.hasOtherDprInfo),
+            };
+          }
+        } catch (fallbackErr) {
+          console.warn('[GeneratePage] dprAssets fallback query failed:', fallbackErr?.message);
+        }
+      }
+      return next;
+    };
+
+    const load = async () => {
+      try {
+        if (msmeLeadId) {
+          const res = await fetchMsmeDprLeadById(msmeLeadId);
+          const lead = res?.data || res;
+          applyLead(lead);
+          const linkedRequestId =
+            lead?.departmentRequestId ||
+            lead?.departmentRequest?._id ||
+            lead?.departmentRequest?.id ||
+            null;
+          if (linkedRequestId) {
+            try {
+              await apiClient.post(`/govt-forms/requests/${linkedRequestId}/generation-started`);
+            } catch {
+              // Best-effort: status lock should not block form open.
+            }
+          }
+          return;
+        }
+
+        if (mepmaLeadId) {
+          const res = await fetchMepmaDprLeadById(mepmaLeadId);
+          const lead = res?.data || res;
+          applyLead(lead);
+          const linkedRequestId =
+            lead?.departmentRequestId ||
+            lead?.departmentRequest?._id ||
+            lead?.departmentRequest?.id ||
+            null;
+          if (linkedRequestId) {
+            try {
+              await apiClient.post(`/govt-forms/requests/${linkedRequestId}/generation-started`);
+            } catch {
+              // Best-effort
+            }
+          }
+          return;
+        }
+
+        if (dprRequestLeadId) {
+          const res = await fetchDprRequestLeadById(dprRequestLeadId);
+          const lead = res?.data || res;
+          applyLead(lead);
+          const linkedRequestId =
+            lead?.departmentRequestId ||
+            lead?.departmentRequest?._id ||
+            lead?.departmentRequest?.id ||
+            null;
+          if (linkedRequestId) {
+            try {
+              await apiClient.post(`/govt-forms/requests/${linkedRequestId}/generation-started`);
+            } catch {
+              // Best-effort
+            }
+          }
+          return;
+        }
+
+        if (deptRequestId) {
+          try {
+            await apiClient.post(`/govt-forms/requests/${deptRequestId}/generation-started`);
+          } catch {
+            // Best-effort
+          }
+        }
+
+        const res = await apiClient.get(`/govt-forms/requests/${deptRequestId}`);
+        const request = res.data?.data || res.data;
+        const customRoute = String(request?.formId?.customRoute || '').toLowerCase();
+        if (customRoute === MSME_DPR_CUSTOM_ROUTE) {
+          let lead = mapSubmittedDataToMsmeLead(request.submittedData || {});
+          lead = await enrichLeadAssets(lead, '/msme-dpr-leads');
+          applyLead(lead);
+          return;
+        }
+        if (customRoute === MEPMA_DPR_CUSTOM_ROUTE) {
+          let lead = mapSubmittedDataToMepmaLead(request.submittedData || {});
+          lead = await enrichLeadAssets(lead, '/mepma-dpr-leads');
+          applyLead(lead);
+          return;
+        }
+        if (customRoute === DPR_REQUEST_CUSTOM_ROUTE) {
+          let lead = mapSubmittedDataToDprRequestLead(request.submittedData || {});
+          lead = await enrichLeadAssets(lead, '/dpr-request-leads');
+          applyLead(lead);
+        }
+      } catch {
+        // Non-fatal: form stays blank if the lead/request cannot be fetched.
+      } finally {
+        if (!cancelled) setMsmePrefillComplete(true);
+      }
+    };
+
+    load();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [msmeLeadId, mepmaLeadId, dprRequestLeadId, deptRequestId, draftCheckComplete, draftId, templateId]);
+
   useEffect(() => {
     if (!generationRequestedRef.current || !hasMounted.current) return;
     if (!generatedExcel?.success || !generatedExcel?.data) return;
@@ -446,6 +618,9 @@ const GeneratePage = () => {
         if (assistedUserId) stageParams.set('assistedUserId', assistedUserId);
         if (reportHelpId) stageParams.set('reportHelpId', reportHelpId);
         if (deptRequestId) stageParams.set('requestId', deptRequestId);
+        if (msmeLeadId) stageParams.set('msmeLeadId', msmeLeadId);
+        if (mepmaLeadId) stageParams.set('mepmaLeadId', mepmaLeadId);
+        if (dprRequestLeadId) stageParams.set('dprRequestLeadId', dprRequestLeadId);
         navigate(`/stage1?${stageParams.toString()}`);
         generationRequestedRef.current = false;
         setIsProcessing(false);
@@ -458,10 +633,10 @@ const GeneratePage = () => {
     );
     generationRequestedRef.current = false;
     setIsProcessing(false);
-  }, [generatedExcel, navigate, templateId, searchParams, assistedUserId, reportHelpId, deptRequestId]);
+  }, [generatedExcel, navigate, templateId, searchParams, assistedUserId, reportHelpId, deptRequestId, msmeLeadId, mepmaLeadId, dprRequestLeadId]);
 
   // Check if admin mode (no credits required)
-  const isAdminMode = searchParams.get('admin') === 'true' && normalizeUserRole(user?.role) === 'admin';
+  const isAdminMode = searchParams.get('admin') === 'true';
   const userCanSeeTable = hasTableAccess(user);
 
   const startDirectPaymentFlow = useCallback((formPayload) => {
@@ -523,10 +698,10 @@ const GeneratePage = () => {
     }
   }, [relatedDocuments, dispatch]);
 
-  const generateReport = async (paidReportId = null, analysisOptions = null, sheets = null) => {
+  const generateReport = async (paidReportId = null, analysisOptions = null, sheets = null, formOverride = null) => {
     try {
       setIsGeneratingFullReport(true);
-      const formPayload = reduxFormData || tempSubmittedData || tempFormData;
+      const formPayload = formOverride || reduxFormData || tempSubmittedData || tempFormData;
       const result = await reportAPI.generateFullReport(templateId, formPayload, {
         isAdmin: isAdminMode,
         paidReportId,
@@ -570,8 +745,57 @@ const GeneratePage = () => {
       ? paymentData.selected_sheets.map((s) => s.sheet_name).filter(Boolean)
       : null;
 
-    await generateReport(paymentData.report_id, analysisData, selectedSheetNames);
+    await generateReport(
+      paymentData.report_id,
+      analysisData,
+      selectedSheetNames,
+      paymentData.form_data || null
+    );
   };
+
+  useEffect(() => {
+    if (!paidReportIdFromUrl || paidResumeStartedRef.current || !templateId) return;
+    if ((msmeLeadId || mepmaLeadId || dprRequestLeadId || deptRequestId) && !msmePrefillComplete) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await reportAPI.getReportById(paidReportIdFromUrl);
+        const report = res?.data || res;
+        if (cancelled || !report) return;
+        if (report.payment?.status === 'completed') {
+          paidResumeStartedRef.current = true;
+        } else if (
+          report.payment?.billed_to === 'customer' &&
+          report.payment?.status !== 'completed'
+        ) {
+          paidResumeStartedRef.current = true;
+        } else {
+          toast.error('Payment is not completed yet.');
+          return;
+        }
+        if (report.form_data) {
+          dispatch(setFormData(report.form_data));
+          setTempSubmittedData(report.form_data);
+        }
+        const sheets = Array.isArray(report.requested_sheets)
+          ? report.requested_sheets.map((sheet_name) => ({ sheet_name }))
+          : null;
+        await handlePaymentSuccess({
+          report_id: paidReportIdFromUrl,
+          selected_sheets: sheets,
+          form_data: report.form_data || null,
+        });
+      } catch {
+        if (!cancelled) toast.error('Could not resume paid report generation');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paidReportIdFromUrl, templateId, msmePrefillComplete, msmeLeadId, mepmaLeadId, dprRequestLeadId, deptRequestId]);
 
   const handleFormSubmit = async (formData) => {
     // Stage 1: Capture Excel Form Data
@@ -711,11 +935,11 @@ const GeneratePage = () => {
 
   const stage1InitialData = tempFormData ? stripStage2FromDraft(tempFormData) : null;
 
-  if (!draftCheckComplete) {
+  if (!draftCheckComplete || !msmePrefillComplete) {
     return (
       <GenerateStandaloneLayout>
         <div className="flex justify-center py-24">
-          <Loading text="Checking saved draft..." />
+          <Loading text={draftCheckComplete ? 'Loading submitted form data...' : 'Checking saved draft...'} />
         </div>
       </GenerateStandaloneLayout>
     );
@@ -806,6 +1030,27 @@ const GeneratePage = () => {
         {!showSectionSelector && (
           <>
 
+            {showAutoFillBanner && msmeAutoFilledLabels.length > 0 && (
+              <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-900 flex items-start gap-3">
+                <span className="text-amber-500 mt-0.5 shrink-0 text-base">✦</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-amber-800">Fields pre-filled from MSME submission</p>
+                  <p className="mt-0.5 text-amber-700">
+                    {msmeAutoFilledLabels.join(', ')}
+                  </p>
+                  <p className="mt-1 text-amber-600 text-xs">Review and edit the values below before submitting.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAutoFillBanner(false)}
+                  className="text-amber-400 hover:text-amber-600 shrink-0 text-lg leading-none"
+                  aria-label="Dismiss"
+                >
+                  ×
+                </button>
+              </div>
+            )}
+
             {isAssistedGeneration && (
               <div className="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-xl text-sm text-purple-900">
                 <p className="font-semibold">Generating for your referred client</p>
@@ -873,6 +1118,15 @@ const GeneratePage = () => {
             {/* Template Forms */}
             {(activeTemplateKey === 'frcc1') && (
               <FRCC1Form
+                onSubmit={handleFormSubmit}
+                templateId={templateId}
+                onFormDataChange={handleFormDataChange}
+                isProcessing={isProcessing}
+                initialData={stage1InitialData}
+              />
+            )}
+            {(activeTemplateKey === 'GOLD_LOAN') && (
+              <GoldLoanForm
                 onSubmit={handleFormSubmit}
                 templateId={templateId}
                 onFormDataChange={handleFormDataChange}
@@ -1028,6 +1282,7 @@ const GeneratePage = () => {
             {templateId &&
               ![
                 'frcc1', 'frcc2', 'frcc3', 'frcc4', 'frcc5', 'frcc6', 'frcc7',
+                'GOLD_LOAN',
                 'TERM_LOAN_SERVICE_WITHOUT_STOCK',
                 'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK',
                 'TERM_LOAN_CC',
@@ -1078,6 +1333,7 @@ const GeneratePage = () => {
         analysisOptions={analysisData}
         assistedUserId={assistedUserId || undefined}
         reportHelpRequestId={reportHelpId || undefined}
+        requestId={deptRequestId || undefined}
       />
 
       <AnalysisSheetsModal

@@ -24,7 +24,8 @@ const AgentGeneratePage = () => {
             newDraft: '1',
         });
         if (opts.presetSector) params.set('presetSector', opts.presetSector);
-        if (opts.lockSector) params.set('lockSector', '1');
+        // Sector stays editable after auto-select.
+        // if (opts.lockSector) params.set('lockSector', '1');
         if (assistedUserId) params.set('assistedUserId', assistedUserId);
         if (reportHelpId) params.set('reportHelpId', reportHelpId);
         navigate(`/generate?${params.toString()}`);

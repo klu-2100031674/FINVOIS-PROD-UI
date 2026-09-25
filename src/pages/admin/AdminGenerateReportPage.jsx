@@ -3,11 +3,12 @@
  * Allows admins to generate reports without payment/credits check
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTemplates, selectTemplates, selectTemplateLoading } from '../../store/slices/templateSlice';
 import { clearGeneratedExcel, clearFormData, clearRelatedDocuments } from '../../store/slices/reportSlice';
+import { getTemplateById } from '../../utils/templateMetadata';
 import { AdminLayout } from '../../components/layouts';
 import { Loading } from '../../components/common';
 import {
@@ -18,6 +19,18 @@ import {
   Zap,
   Shield
 } from 'lucide-react';
+
+const GOLD_LOAN_ID = 'GOLD_LOAN';
+
+function ensureGoldLoanTemplate(templates) {
+  const list = Array.isArray(templates) ? [...templates] : [];
+  const hasGoldLoan = list.some((t) => String(t?.id || '').toUpperCase() === GOLD_LOAN_ID);
+  if (!hasGoldLoan) {
+    const fallback = getTemplateById(GOLD_LOAN_ID);
+    if (fallback) list.push(fallback);
+  }
+  return list;
+}
 
 const AdminGenerateReportPage = () => {
   const navigate = useNavigate();
@@ -36,7 +49,7 @@ const AdminGenerateReportPage = () => {
     dispatch(clearGeneratedExcel());
     dispatch(clearFormData());
     dispatch(clearRelatedDocuments());
-    dispatch(fetchTemplates());
+    dispatch(fetchTemplates({ limit: 200 }));
   }, [dispatch]);
 
   const handleTemplateSelect = (templateId) => {
@@ -50,7 +63,9 @@ const AdminGenerateReportPage = () => {
     navigate(`/generate?${params.toString()}`);
   };
 
-  const filteredTemplates = (Array.isArray(templates) ? templates : []).filter((template) => {
+  const templatesWithGoldLoan = useMemo(() => ensureGoldLoanTemplate(templates), [templates]);
+
+  const filteredTemplates = templatesWithGoldLoan.filter((template) => {
     const matchesSearch = template.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          template.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = !selectedCategory || template.properties?.['Type of Report'] === selectedCategory;
@@ -60,7 +75,7 @@ const AdminGenerateReportPage = () => {
   // Extract unique categories for the filter dropdown
   const uniqueCategories = [
     ...new Set(
-      (Array.isArray(templates) ? templates : []).map(template => template.properties?.['Type of Report'])
+      templatesWithGoldLoan.map(template => template.properties?.['Type of Report'])
     )
   ].filter(Boolean);
 
@@ -139,7 +154,7 @@ const AdminGenerateReportPage = () => {
                 <FileText className="w-5 h-5 text-[#7e22ce]" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-800">{templates?.length || 0}</p>
+                <p className="text-2xl font-bold text-gray-800">{templatesWithGoldLoan.length}</p>
                 <p className="text-sm text-gray-500">Total Templates</p>
               </div>
             </div>

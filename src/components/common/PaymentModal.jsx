@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, CreditCard, CheckCircle2, ShieldCheck, AlertCircle, Gift } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, CreditCard, CheckCircle2, ShieldCheck, AlertCircle, Gift, Link2, Copy, Loader2, Send, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSelector } from 'react-redux';
 import { reportAPI, pricingAPI } from '../../api/endpoints';
@@ -7,6 +7,8 @@ import apiClient from '../../api/apiClient';
 import { resolveReportTitle } from '../../utils/reportTitle';
 import { isVehicleTemplateId } from '../../utils/templateSectorConfig';
 import toast from 'react-hot-toast';
+import useAuth from '../../hooks/useAuth';
+import { normalizeUserRole } from '../../utils/normalizeUserRole';
 
 const RAZORPAY_CHECKOUT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
 let razorpayScriptPromise;
@@ -72,16 +74,37 @@ const PaymentModal = ({
   analysisOptions,
   assistedUserId,
   reportHelpRequestId,
+  requestId: requestIdProp = null,
+  existingReportId = null,
+  lockPayer = null,
 }) => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [pricing, setPricing] = useState(null);
   const [loadingPricing, setLoadingPricing] = useState(true);
   const [selectedSheets, setSelectedSheets] = useState({});
   const [freeCreditsCount, setFreeCreditsCount] = useState(0);
   const [loadingFreeCredits, setLoadingFreeCredits] = useState(false);
+  const [customerOrder, setCustomerOrder] = useState(null);
+  const [paymentLinkUrl, setPaymentLinkUrl] = useState('');
+  const [waitingForCustomer, setWaitingForCustomer] = useState(false);
+  const [sendingRequest, setSendingRequest] = useState(false);
+  const [payerChoice, setPayerChoice] = useState(null);
+  const pollRef = useRef(null);
   const isBetaMode = import.meta.env.VITE_BETA_MODE === 'true';
   const savedFormData = useSelector((state) => state.report.formData);
   const isVehicleTemplate = isVehicleTemplateId(templateId);
+  const userRole = normalizeUserRole(user?.role);
+  const requestId =
+    requestIdProp ||
+    (typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('requestId') || null
+      : null);
+  const isCustomerService = userRole === 'customer_service';
+  const showPayerChooser =
+    isCustomerService && Boolean(requestId) && !isBetaMode && !payerChoice && !lockPayer;
+  const billToCustomer = payerChoice === 'customer';
+  const effectiveFreeCredits = billToCustomer ? 0 : freeCreditsCount;
 
   const extractBankDetails = () => {
     if (!savedFormData) {
@@ -106,10 +129,50 @@ const PaymentModal = ({
   useEffect(() => {
     if (isOpen && templateId) {
       fetchPricing();
-      fetchFreeCredits();
+      if (billToCustomer) {
+        setFreeCreditsCount(0);
+        setLoadingFreeCredits(false);
+      } else {
+        fetchFreeCredits();
+      }
       loadRazorpayScript();
     }
-  }, [isOpen, templateId]);
+    if (!isOpen) {
+      setWaitingForCustomer(false);
+      setPaymentLinkUrl('');
+      setCustomerOrder(null);
+      setSendingRequest(false);
+      setLoading(false);
+      setPayerChoice(null);
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    }
+  }, [isOpen, templateId, billToCustomer, lockPayer]);
+
+  useEffect(() => {
+    if (isOpen && lockPayer) {
+      setPayerChoice(lockPayer);
+    }
+  }, [isOpen, lockPayer]);
+
+  // Re-fetch free credits whenever the CS agent switches to the "CS pays" card
+  // so the count is always fresh when they see the payment screen.
+  useEffect(() => {
+    if (payerChoice === 'customer_service') {
+      fetchFreeCredits();
+    }
+  }, [payerChoice]);
+
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, []);
 
   const fetchFreeCredits = async () => {
     try {
@@ -143,6 +206,9 @@ const PaymentModal = ({
           initialSelection[sheet.sheet_name] = initialSelections?.[sheet.sheet_name] ?? (sheet.required || false);
         });
       }
+      if (isVehicleTemplate) {
+        initialSelection.IRR = true;
+      }
 
       if (pricingData.sheet_pricing) {
         pricingData.sheet_pricing.forEach(sheet => {
@@ -152,10 +218,6 @@ const PaymentModal = ({
             initialSelection[sheet.sheet_name] = sheet.is_included;
           }
         });
-      }
-
-      if (isVehicleTemplate) {
-        initialSelection.IRR = true;
       }
 
       setSelectedSheets(initialSelection);
@@ -205,9 +267,325 @@ const PaymentModal = ({
     return calcTotal;
   };
 
-  const handlePayment = async () => {
+  const buildSelectedSheetsData = () => {
+    const selectedSheetsData = [];
+    if (pricing?.analysis_sheets) {
+      pricing.analysis_sheets.forEach((s) => {
+        if (selectedSheets[s.sheet_name]) {
+          selectedSheetsData.push({
+            sheet_name: s.sheet_name,
+            display_name: s.display_name,
+            price: s.price,
+          });
+        }
+      });
+    }
+    if (pricing?.sheet_pricing) {
+      pricing.sheet_pricing.forEach((s) => {
+        const isAnalysis = pricing.analysis_sheets?.some((as) => as.sheet_name === s.sheet_name);
+        if (!isAnalysis && selectedSheets[s.sheet_name]) {
+          selectedSheetsData.push({
+            sheet_name: s.sheet_name,
+            display_name: s.display_name,
+            price: s.price,
+          });
+        }
+      });
+    }
+    return selectedSheetsData;
+  };
+
+  const finishPaid = (reportId, amount, extra = {}) => {
+    const selectedSheetsData = extra.selected_sheets || buildSelectedSheetsData();
+    onPaymentSuccess({
+      report_id: reportId,
+      amount,
+      selected_sheets: selectedSheetsData,
+      ...extra,
+    });
+    onClose();
+  };
+
+  const startPaymentPolling = (reportId, selectedSheetsData) => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
+      try {
+        const statusRes = await reportAPI.getReportPaymentStatus(reportId);
+        const status = statusRes.data || statusRes;
+        if (status.payment_status === 'completed') {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+          toast.success('Customer payment received');
+          finishPaid(reportId, status.amount, { selected_sheets: selectedSheetsData });
+        }
+      } catch {
+        // Keep polling until the modal closes.
+      }
+    }, 5000);
+  };
+
+  const createOrder = async (payer = null) => {
+    if (customerOrder?.report_id && customerOrder?.payer === payer) return customerOrder;
+    const finalAmount = isBetaMode ? 0 : calculateTotalPrice();
+    const resolvedReportTitle = resolveReportTitle({
+      formData: savedFormData,
+      reportTitle,
+      templateId,
+    });
+    const selectedSheetsData = buildSelectedSheetsData();
+    const { bankName, branchName } = extractBankDetails();
+    const assistedOptions =
+      assistedUserId && reportHelpRequestId
+        ? { assistedUserId, reportHelpRequestId }
+        : null;
+    const orderResponse = await reportAPI.createReportPaymentOrder(
+      templateId,
+      resolvedReportTitle,
+      null,
+      finalAmount,
+      selectedSheetsData,
+      analysisOptions,
+      savedFormData,
+      bankName,
+      branchName,
+      assistedOptions,
+      requestId,
+      payer
+    );
+    const data = orderResponse.data;
+    const next = {
+      ...data,
+      selected_sheets: selectedSheetsData,
+      resolvedReportTitle,
+      payer,
+    };
+    setCustomerOrder(next);
+    if (data.payment_link_url) setPaymentLinkUrl(data.payment_link_url);
+    return next;
+  };
+
+  const createCustomerBilledOrder = async () => createOrder('customer');
+
+  const openRazorpayCheckout = async (order) => {
+    const {
+      report_id,
+      amount,
+      currency,
+      razorpay_order_id,
+      razorpay_key_id,
+      selected_sheets: selectedSheetsData,
+      resolvedReportTitle,
+    } = order;
+
+    if (!razorpay_key_id || !razorpay_order_id) {
+      toast.error(
+        'Razorpay checkout is not available for this report. Check RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET, or use a free credit.'
+      );
+      setLoading(false);
+      return;
+    }
+
+    const razorpayLoaded = await loadRazorpayScript();
+    if (!razorpayLoaded || typeof window.Razorpay !== 'function') {
+      toast.error('Payment gateway is temporarily unavailable. Please try again.');
+      setLoading(false);
+      return;
+    }
+
+    const options = {
+      key: razorpay_key_id,
+      amount: amount * 100,
+      currency: currency,
+      name: 'Finvois Reports',
+      description: resolvedReportTitle,
+      order_id: razorpay_order_id,
+      handler: async function (response) {
+        try {
+          const verifyResponse = await reportAPI.verifyReportPayment(report_id, {
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_signature: response.razorpay_signature,
+          });
+          finishPaid(report_id, amount, {
+            payment_id: response.razorpay_payment_id,
+            order_id: verifyResponse.data.order_id,
+            selected_sheets: selectedSheetsData,
+          });
+        } catch {
+          toast.error('Payment verification failed.');
+          setLoading(false);
+        }
+      },
+      theme: { color: '#7C3AED' },
+      modal: {
+        ondismiss: () => {
+          setLoading(false);
+          toast.error('Payment cancelled');
+        },
+      },
+    };
+
+    let rzp;
+    try {
+      rzp = new window.Razorpay(options);
+    } catch (constructorError) {
+      console.error('Razorpay init failed:', constructorError);
+      toast.error('Payment gateway initialization failed. Please try again.');
+      setLoading(false);
+      return;
+    }
+    rzp.open();
+  };
+
+  // apiClient rejects with a plain string (see response interceptor), not always AxiosError.
+  const extractErrorMessage = (err, fallback) =>
+    typeof err === 'string' && err.trim() ? err : (err?.response?.data?.error || err?.message || fallback);
+
+  const handleSendPaymentRequest = async () => {
+    try {
+      setSendingRequest(true);
+      if (existingReportId) {
+        try {
+          const sendRes = await reportAPI.sendReportPaymentRequest(existingReportId);
+          const link = sendRes.data?.payment_link_url || '';
+          setPaymentLinkUrl(link);
+          toast.success('Payment request sent. Generating report now.');
+        } catch (sendError) {
+          toast.error(extractErrorMessage(sendError, 'Payment request could not be sent. Generating report anyway.'));
+        }
+        finishPaid(existingReportId, calculateTotalPrice(), {
+          selected_sheets: buildSelectedSheetsData(),
+          generate_without_payment: true,
+        });
+        return;
+      }
+      const order = await createCustomerBilledOrder();
+      if (order.amount === 0 || order.free_credit) {
+        const verifyResponse = await reportAPI.verifyReportPayment(order.report_id, {});
+        finishPaid(order.report_id, 0, {
+          simulated: true,
+          order_id: verifyResponse.data?.order_id,
+          selected_sheets: order.selected_sheets,
+        });
+        return;
+      }
+      if (order.payment_link_error && !order.payment_link_url) {
+        toast.error(order.payment_link_error);
+      }
+      try {
+        const sendRes = await reportAPI.sendReportPaymentRequest(order.report_id);
+        const link = sendRes.data?.payment_link_url || order.payment_link_url;
+        setPaymentLinkUrl(link || '');
+        toast.success('Payment request sent. Generating report now.');
+      } catch (sendError) {
+        toast.error(extractErrorMessage(sendError, 'Payment request could not be sent. Generating report anyway.'));
+      }
+      finishPaid(order.report_id, order.amount, {
+        selected_sheets: order.selected_sheets,
+        generate_without_payment: true,
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error(extractErrorMessage(error, 'Failed to send payment request'));
+    } finally {
+      setSendingRequest(false);
+    }
+  };
+
+  const handlePayOnBehalf = async () => {
     try {
       setLoading(true);
+      const order = await createCustomerBilledOrder();
+      await openRazorpayCheckout(order);
+    } catch (error) {
+      console.error(error);
+      toast.error(extractErrorMessage(error, 'Payment failed'));
+      setLoading(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!paymentLinkUrl) return;
+    try {
+      await navigator.clipboard.writeText(paymentLinkUrl);
+      toast.success('Payment link copied');
+    } catch {
+      toast.error('Could not copy link');
+    }
+  };
+
+  const handleUseExistingFreeCredit = async () => {
+    if (!existingReportId) return;
+    try {
+      setLoading(true);
+      const payRes = await reportAPI.payOnBehalf(existingReportId, { use_free_credit: true });
+      const data = payRes.data || {};
+      finishPaid(existingReportId, data.amount || 0, {
+        selected_sheets: buildSelectedSheetsData(),
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error(extractErrorMessage(error, 'Could not apply free credit'));
+      setLoading(false);
+    }
+  };
+
+  const handlePayExistingWithRazorpay = async () => {
+    if (!existingReportId) return;
+    try {
+      setLoading(true);
+      const payRes = await reportAPI.payOnBehalf(existingReportId, {});
+      const data = payRes.data || {};
+      if (data.already_paid || data.payment_status === 'completed') {
+        finishPaid(existingReportId, data.amount || 0, {
+          selected_sheets: buildSelectedSheetsData(),
+        });
+        return;
+      }
+      await openRazorpayCheckout({
+        report_id: existingReportId,
+        amount: data.amount,
+        currency: data.currency,
+        razorpay_order_id: data.razorpay_order_id,
+        razorpay_key_id: data.razorpay_key_id,
+        selected_sheets: buildSelectedSheetsData(),
+        resolvedReportTitle: reportTitle,
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error(extractErrorMessage(error, 'Payment failed'));
+      setLoading(false);
+    }
+  };
+
+  const handlePayment = async () => {
+    if (billToCustomer && !isBetaMode) {
+      await handleSendPaymentRequest();
+      return;
+    }
+    try {
+      setLoading(true);
+
+      if (existingReportId) {
+        const payRes = await reportAPI.payOnBehalf(existingReportId, {});
+        const data = payRes.data || {};
+        if (data.already_paid || data.payment_status === 'completed') {
+          finishPaid(existingReportId, data.amount || 0, {
+            selected_sheets: buildSelectedSheetsData(),
+          });
+          return;
+        }
+        await openRazorpayCheckout({
+          report_id: existingReportId,
+          amount: data.amount,
+          currency: data.currency,
+          razorpay_order_id: data.razorpay_order_id,
+          razorpay_key_id: data.razorpay_key_id,
+          selected_sheets: buildSelectedSheetsData(),
+          resolvedReportTitle: reportTitle,
+        });
+        return;
+      }
       const finalAmount = isBetaMode ? 0 : calculateTotalPrice();
       const resolvedReportTitle = resolveReportTitle({
         formData: savedFormData,
@@ -215,25 +593,14 @@ const PaymentModal = ({
         templateId
       });
 
-      // Prepare sheets data (logic preserved from original)
-      const selectedSheetsData = [];
-      if (pricing?.analysis_sheets) {
-        pricing.analysis_sheets.forEach(s => {
-          if (selectedSheets[s.sheet_name]) selectedSheetsData.push({ sheet_name: s.sheet_name, display_name: s.display_name, price: s.price });
-        });
-      }
-      if (pricing?.sheet_pricing) {
-        pricing.sheet_pricing.forEach(s => {
-          const isAnalysis = pricing.analysis_sheets?.some(as => as.sheet_name === s.sheet_name);
-          if (!isAnalysis && selectedSheets[s.sheet_name]) selectedSheetsData.push({ sheet_name: s.sheet_name, display_name: s.display_name, price: s.price });
-        });
-      }
+      const selectedSheetsData = buildSelectedSheetsData();
 
       const assistedOptions =
         assistedUserId && reportHelpRequestId
           ? { assistedUserId, reportHelpRequestId }
           : null;
-      const requestId = new URLSearchParams(window.location.search).get('requestId') || null;
+
+      const payer = payerChoice === 'customer_service' ? 'customer_service' : null;
 
       if (isBetaMode) {
         const { bankName, branchName } = extractBankDetails();
@@ -248,7 +615,8 @@ const PaymentModal = ({
           bankName,
           branchName,
           assistedOptions,
-          requestId
+          requestId,
+          payer
         );
         const { report_id } = orderResponse.data;
         const verifyResponse = await reportAPI.verifyReportPayment(report_id, {});
@@ -269,60 +637,26 @@ const PaymentModal = ({
         bankName,
         branchName,
         assistedOptions,
-        requestId
+        requestId,
+        payer
       );
-      const { report_id, amount, currency, razorpay_order_id, razorpay_key_id } = orderResponse.data;
-
-      if (!razorpay_key_id || !razorpay_order_id) {
-        onPaymentSuccess({ report_id, amount, simulated: true, selected_sheets: selectedSheetsData });
-        onClose();
+      if (orderResponse.data?.free_credit || orderResponse.data?.amount === 0) {
+        const verifyResponse = await reportAPI.verifyReportPayment(orderResponse.data.report_id, {});
+        finishPaid(orderResponse.data.report_id, 0, {
+          simulated: true,
+          order_id: verifyResponse.data?.order_id,
+          selected_sheets: selectedSheetsData,
+        });
         return;
       }
-
-      const razorpayLoaded = await loadRazorpayScript();
-      if (!razorpayLoaded || typeof window.Razorpay !== 'function') {
-        toast.error('Payment gateway is temporarily unavailable. Please try again.');
-        setLoading(false);
-        return;
-      }
-
-      const options = {
-        key: razorpay_key_id,
-        amount: amount * 100,
-        currency: currency,
-        name: 'Finvois Reports',
-        description: resolvedReportTitle,
-        order_id: razorpay_order_id,
-        handler: async function (response) {
-          try {
-            const verifyResponse = await reportAPI.verifyReportPayment(report_id, {
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-            onPaymentSuccess({ report_id, amount, payment_id: response.razorpay_payment_id, order_id: verifyResponse.data.order_id, selected_sheets: selectedSheetsData });
-            onClose();
-          } catch (error) {
-            toast.error('Payment verification failed.');
-          }
-        },
-        theme: { color: '#7C3AED' },
-        modal: { ondismiss: () => { setLoading(false); toast.error('Payment cancelled'); } }
-      };
-
-      let rzp;
-      try {
-        rzp = new window.Razorpay(options);
-      } catch (constructorError) {
-        console.error('Razorpay init failed:', constructorError);
-        toast.error('Payment gateway initialization failed. Please try again.');
-        setLoading(false);
-        return;
-      }
-      rzp.open();
+      await openRazorpayCheckout({
+        ...orderResponse.data,
+        selected_sheets: selectedSheetsData,
+        resolvedReportTitle,
+      });
     } catch (error) {
       console.error(error);
-      toast.error(error.response?.data?.error || 'Payment failed');
+      toast.error(extractErrorMessage(error, 'Payment failed'));
       setLoading(false);
     }
   };
@@ -345,7 +679,7 @@ const PaymentModal = ({
             initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
+            className={`relative w-full ${showPayerChooser ? 'max-w-2xl' : 'max-w-lg'} bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]`}
           >
             {/* Header */}
             <div className="bg-white p-6 text-center relative flex-shrink-0 border-b border-gray-100">
@@ -357,10 +691,10 @@ const PaymentModal = ({
               </button>
 
               <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-purple-100">
-                {isBetaMode || freeCreditsCount > 0 ? <CheckCircle2 className="w-8 h-8 text-green-600" /> : <CreditCard className="w-8 h-8 text-purple-600" />}
+                {isBetaMode || effectiveFreeCredits > 0 ? <CheckCircle2 className="w-8 h-8 text-green-600" /> : <CreditCard className="w-8 h-8 text-purple-600" />}
               </div>
 
-              <h2 className="text-2xl font-bold font-manrope text-gray-900">{isBetaMode ? "Generate Free Report" : freeCreditsCount > 0 ? "Use Free Report Credit" : "Complete Report Payment"}</h2>
+              <h2 className="text-2xl font-bold font-manrope text-gray-900">{isBetaMode ? "Generate Free Report" : showPayerChooser ? "Who will pay?" : billToCustomer ? "Forward payment to customer" : effectiveFreeCredits > 0 ? "Use Free Report Credit" : "Complete Report Payment"}</h2>
               <p className="text-gray-500 text-sm mt-1">{resolveReportTitle({ formData: savedFormData, reportTitle, templateId })}</p>
             </div>
 
@@ -374,7 +708,7 @@ const PaymentModal = ({
               ) : (
                 <div className="space-y-6">
                   {/* Free Credit Banner */}
-                  {!isBetaMode && freeCreditsCount > 0 && (
+                  {!isBetaMode && !billToCustomer && effectiveFreeCredits > 0 && (
                     <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex gap-3">
                       <div className="bg-purple-100 p-2 rounded-full h-fit">
                         <Gift className="w-5 h-5 text-purple-700" />
@@ -382,7 +716,7 @@ const PaymentModal = ({
                       <div>
                         <h4 className="font-bold text-purple-900 text-sm">Free Report Available</h4>
                         <p className="text-sm text-purple-700 mt-1">
-                          You have <strong>{freeCreditsCount}</strong> free report credit{freeCreditsCount !== 1 ? 's' : ''} remaining.
+                          You have <strong>{effectiveFreeCredits}</strong> free report credit{effectiveFreeCredits !== 1 ? 's' : ''} remaining.
                           This report will be generated at no cost.
                         </p>
                       </div>
@@ -390,6 +724,51 @@ const PaymentModal = ({
                   )}
 
                   {/* Status Banner */}
+                  {billToCustomer && !isBetaMode && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
+                      <div className="bg-amber-100 p-2 rounded-full h-fit">
+                        <AlertCircle className="w-5 h-5 text-amber-700" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-amber-900 text-sm">Customer must pay</h4>
+                        <p className="text-sm text-amber-800 mt-1">
+                          The report will be generated now. The customer unlocks it after they pay. Free credits are not used on this path.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {showPayerChooser && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setPayerChoice('customer')}
+                        className="text-left rounded-xl border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 p-4 transition-all"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center mb-3">
+                          <Send className="w-5 h-5 text-amber-700" />
+                        </div>
+                        <h4 className="font-bold text-gray-900 text-sm">Forward to customer</h4>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Send a payment request. Generate the report now; the customer sees it after paying.
+                        </p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPayerChoice('customer_service')}
+                        className="text-left rounded-xl border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 p-4 transition-all"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-purple-50 border border-purple-100 flex items-center justify-center mb-3">
+                          <User className="w-5 h-5 text-purple-700" />
+                        </div>
+                        <h4 className="font-bold text-gray-900 text-sm">Customer service pays</h4>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Use a free credit or Razorpay. The customer unlocks after this payment completes.
+                        </p>
+                      </button>
+                    </div>
+                  )}
+
                   {isBetaMode ? (
                     <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex gap-3">
                       <div className="bg-green-100 p-2 rounded-full h-fit">
@@ -485,18 +864,117 @@ const PaymentModal = ({
               <div className="flex items-center justify-between mb-4">
                 <span className="text-gray-600 font-medium">Total Amount</span>
                 <span className="text-3xl font-bold text-gray-900">
-                  {isBetaMode || freeCreditsCount > 0
+                  {isBetaMode || (!showPayerChooser && !billToCustomer && !existingReportId && effectiveFreeCredits > 0)
                     ? <span className="text-green-600">FREE</span>
                     : <>₹{calculateTotalPrice()}<span className="text-lg text-gray-400 font-medium">.00</span></>
                   }
                 </span>
               </div>
 
+              {showPayerChooser ? (
+                <p className="text-sm text-gray-500 text-center">Choose who pays to continue.</p>
+              ) : existingReportId && !billToCustomer && !isBetaMode ? (
+                <div className="space-y-3">
+                  {effectiveFreeCredits > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleUseExistingFreeCredit}
+                      disabled={loading || loadingFreeCredits}
+                      className="w-full py-3.5 rounded-xl font-bold text-lg text-white shadow-lg bg-green-600 hover:bg-green-700 shadow-green-200 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {loading ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Gift className="w-5 h-5" />
+                          Use free credit ({effectiveFreeCredits})
+                        </>
+                      )}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handlePayExistingWithRazorpay}
+                    disabled={loading || loadingPricing}
+                    className="w-full py-3.5 rounded-xl font-bold text-lg text-white shadow-lg bg-gray-900 hover:bg-gray-800 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Opening checkout...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="w-5 h-5" />
+                        Pay with Razorpay
+                      </>
+                    )}
+                  </button>
+                  {effectiveFreeCredits > 0 && (
+                    <p className="text-xs text-gray-500 text-center">
+                      If Razorpay keys are invalid, use a free credit instead. Checkout needs a matching Key ID and Secret in the API .env.
+                    </p>
+                  )}
+                </div>
+              ) : billToCustomer && !isBetaMode ? (
+                <div className="space-y-3">
+                  <button
+                    onClick={handleSendPaymentRequest}
+                    disabled={sendingRequest || loadingPricing}
+                    className="w-full py-3.5 rounded-xl font-bold text-lg text-white shadow-lg bg-gray-900 hover:bg-gray-800 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {sendingRequest ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Link2 className="w-5 h-5" />
+                        Send request and generate
+                      </>
+                    )}
+                  </button>
+                  {paymentLinkUrl && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        readOnly
+                        value={paymentLinkUrl}
+                        className="flex-1 text-xs border border-amber-200 rounded-lg px-2 py-1.5 bg-white truncate"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCopyLink}
+                        className="p-2 rounded-lg border border-amber-200 bg-white hover:bg-amber-100"
+                        title="Copy payment link"
+                      >
+                        <Copy className="w-4 h-4 text-amber-800" />
+                      </button>
+                    </div>
+                  )}
+                  {!lockPayer && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPayerChoice(null);
+                      setCustomerOrder(null);
+                    }}
+                    className="w-full py-2 text-xs font-semibold text-gray-500 hover:text-gray-800"
+                  >
+                    Change who pays
+                  </button>
+                  )}
+                </div>
+              ) : (
+              <div className="space-y-3">
               <button
                 onClick={handlePayment}
                 disabled={loading || loadingPricing || loadingFreeCredits}
                 className={`w-full py-3.5 rounded-xl font-bold text-lg text-white shadow-lg transition-all transform active:scale-[0.98] ${
-                  isBetaMode || freeCreditsCount > 0
+                  isBetaMode || effectiveFreeCredits > 0
                     ? 'bg-green-600 hover:bg-green-700 shadow-green-200'
                     : 'bg-gray-900 hover:bg-gray-800 shadow-gray-200'
                   } disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
@@ -508,10 +986,24 @@ const PaymentModal = ({
                   </>
                 ) : (
                   <>
-                    {isBetaMode ? "Generate Report Now" : freeCreditsCount > 0 ? "Use Free Credit & Generate" : "Proceed to Payment"}
+                    {isBetaMode ? "Generate Report Now" : effectiveFreeCredits > 0 ? "Use Free Credit & Generate" : "Proceed to Payment"}
                   </>
                 )}
               </button>
+              {payerChoice === 'customer_service' && !lockPayer && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPayerChoice(null);
+                    setCustomerOrder(null);
+                  }}
+                  className="w-full py-2 text-xs font-semibold text-gray-500 hover:text-gray-800"
+                >
+                  Change who pays
+                </button>
+              )}
+              </div>
+              )}
 
               {!isBetaMode && (
                 <div className="flex items-center justify-center gap-2 mt-4 text-gray-400 text-xs">

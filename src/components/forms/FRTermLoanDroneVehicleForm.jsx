@@ -154,6 +154,7 @@ const FRTermLoanDroneVehicleForm = ({
   const [formData, setFormData] = useState(() => {
     const ensureSector = (gi) => {
       if (!gi || typeof gi !== 'object') return gi;
+      if (gi.i14) return gi;
       return { ...gi, i14: DRONE_SECTOR_LABEL };
     };
 
@@ -364,7 +365,7 @@ const FRTermLoanDroneVehicleForm = ({
 
   // Define required fields for each section
   const requiredFields = {
-    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i19', 'i20', 'i21', 'i22', 'i12', 'i13'],
+    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i19', 'i20', 'i22', 'i12', 'i13'],
     'Expected Employment Generation': ['i24', 'i25', 'i26'],
     'Term Loan Details': ['h44', 'i45', 'i46', 'i47', 'i48', 'h49', 'i51', 'i52', 'i53'],
     'Indirect Expenses Increment': ['h64', 'h65', 'h66', 'h67', 'h68'],
@@ -483,13 +484,7 @@ const FRTermLoanDroneVehicleForm = ({
   }, [canProceed, currentStep, formData, sections]);
 
   const handleFieldChange = useCallback((sectionTitle, fieldId, value) => {
-    if (
-      lockSector &&
-      sectionTitle === 'General Information' &&
-      fieldId === 'i14'
-    ) {
-      return;
-    }
+    // Sector stays editable even when a template preset is applied.
     const normalizedValue =
       sectionTitle === 'General Information' && (fieldId === 'i11' || fieldId === 'i18')
         ? String(value || '').toUpperCase()
@@ -1046,10 +1041,13 @@ const FRTermLoanDroneVehicleForm = ({
           <select
             value={(formData['General Information'] && formData['General Information']['i14']) || DRONE_SECTOR_LABEL}
             onChange={(e) => handleFieldChange('General Information', 'i14', e.target.value)}
-            disabled
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-gray-100 text-gray-700 cursor-not-allowed"
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
           >
-            <option value={DRONE_SECTOR_LABEL}>{DRONE_SECTOR_LABEL}</option>
+            <option value="">Select Sector</option>
+            <option value="Manufacturing sector">Manufacturing sector</option>
+            <option value="service sector with stock">service sector with stock</option>
+            <option value="service sector without stock">service sector without stock</option>
+            <option value="Trading sector">Trading sector</option>
           </select>
         </div>
         <div className="space-y-1.5">
@@ -1933,7 +1931,7 @@ const FRTermLoanDroneVehicleForm = ({
             value={(formData['Prepared By'] && formData['Prepared By']['j136']) || ''}
             onChange={(e) => handleFieldChange('Prepared By', 'j136', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-            placeholder="Enter partner name 1"
+            placeholder="Enter partner name 1 (optional)"
           />
         </div>
         <div className="space-y-1.5">
@@ -1945,7 +1943,7 @@ const FRTermLoanDroneVehicleForm = ({
             value={(formData['Prepared By'] && formData['Prepared By']['j137']) || ''}
             onChange={(e) => handleFieldChange('Prepared By', 'j137', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-            placeholder="Enter partner name 2"
+            placeholder="Enter partner name 2 (optional)"
           />
         </div>
         <div className="space-y-1.5">

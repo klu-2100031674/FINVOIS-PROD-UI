@@ -15,6 +15,9 @@ const PUBLIC_CLIENT_SCREENING_PREFIXES = ['/client-screening'];
 /** Public MSME DPR lead form (no login). */
 const PUBLIC_MSME_DPR_PREFIXES = ['/msme-dpr-lead-data'];
 
+/** Public MEPMA + DPR Request forms (exact paths only). */
+const PUBLIC_LEAD_FORM_PATHS = ['/mempa', '/mepma-dpr', '/dpr-request'];
+
 /** Public calculator tools (no login). */
 const PUBLIC_CALCULATOR_PREFIXES = ['/calculators'];
 
@@ -49,6 +52,9 @@ export function isPublicAppPath(pathname) {
     return true;
   }
   if (PUBLIC_MSME_DPR_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`))) {
+    return true;
+  }
+  if (PUBLIC_LEAD_FORM_PATHS.some((path) => p === path)) {
     return true;
   }
   if (PUBLIC_DEPARTMENT_FORM_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`))) {

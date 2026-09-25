@@ -3,9 +3,11 @@ import ClientLayout from '../../components/layouts/ClientLayout';
 import RequestsQueueTable from '../../components/govtForms/RequestsQueueTable';
 import api from '../../api/apiClient';
 import toast from 'react-hot-toast';
+import CsQueueFiltersBar from './CsQueueFiltersBar';
 
 const DepartmentRequestsPage = () => {
   const [requests, setRequests] = useState([]);
+  const [filtered, setFiltered] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,10 +33,18 @@ const DepartmentRequestsPage = () => {
         <p className="text-gray-500 mt-1">Unified view of all dynamic form submissions across all departments</p>
       </div>
 
+      {!loading && (
+        <CsQueueFiltersBar
+          requests={requests}
+          onFilteredChange={setFiltered}
+          showQueueStatus
+        />
+      )}
+
       <RequestsQueueTable
-        requests={requests}
+        requests={loading ? [] : filtered}
         loading={loading}
-        emptyMessage="No department submissions exist yet."
+        emptyMessage="No department submissions match your filters."
       />
     </ClientLayout>
   );

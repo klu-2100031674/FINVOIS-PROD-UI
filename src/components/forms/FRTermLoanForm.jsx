@@ -368,7 +368,18 @@ const FRTermLoanForm = ({
       for (const key in initialData) {
         if (Object.hasOwn(initialData, key)) {
           if (typeof initialData[key] === 'object' && initialData[key] !== null && typeof merged[key] === 'object' && merged[key] !== null) {
-            merged[key] = { ...merged[key], ...initialData[key] };
+            if (key === 'Schedule for Indirect Expenses') {
+              // Deep-merge categories so empty MSME stubs do not wipe e251–e258 defaults
+              merged[key] = { ...merged[key] };
+              for (const category of Object.keys(initialData[key])) {
+                merged[key][category] = {
+                  ...(merged[key][category] || {}),
+                  ...(initialData[key][category] || {}),
+                };
+              }
+            } else {
+              merged[key] = { ...merged[key], ...initialData[key] };
+            }
           } else {
             merged[key] = initialData[key];
           }
@@ -377,7 +388,7 @@ const FRTermLoanForm = ({
       if (merged['General Information']) {
         merged['General Information'] = canonicalizeServiceWithoutStock(merged['General Information']);
       }
-      if (presetSector) {
+      if (presetSector && !(merged['General Information'] && merged['General Information'].i14)) {
         merged['General Information'] = {
           ...(merged['General Information'] || {}),
           i14: presetSector,
@@ -578,7 +589,7 @@ const FRTermLoanForm = ({
 
   // Define required fields for each section
   const requiredFields = {
-    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i19', 'i20', 'i21', 'i22', 'i12', 'i13'],
+    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i19', 'i20', 'i22', 'i12', 'i13'],
     'Expected Employment Generation': ['i24', 'i25', 'i26'],
     'Term Loan Details': ['h44', 'i45', 'i46', 'i47', 'i48', 'h49', 'i51', 'i52', 'i53'],
     'Indirect Expenses Increment': ['h64', 'h65', 'h66', 'h67', 'h68'],
@@ -694,13 +705,7 @@ const FRTermLoanForm = ({
   }, [canProceed, currentStep, formData, sections]);
 
   const handleFieldChange = useCallback((sectionTitle, fieldId, value) => {
-    if (
-      lockSector &&
-      sectionTitle === 'General Information' &&
-      fieldId === 'i14'
-    ) {
-      return;
-    }
+    // Sector stays editable even when a template preset is applied.
     const normalizedValue =
       sectionTitle === 'General Information' && (fieldId === 'i11' || fieldId === 'i18')
         ? String(value || '').toUpperCase()
@@ -1096,6 +1101,7 @@ const FRTermLoanForm = ({
         'i14': presetSector && lockSector ? presetSector : 'service sector without stock',
         'i15': 'IT Consulting Services',
         'i16': '17-3-47,thadepalli center, Vijayawada',
+        'residential_address': '12-5-30, Brodipet, Guntur',
         'i17': 'PARVEZ ALI NARAYANA Solutions',
         'i18': 'GHI345678',
         'i19': 'Graduate',
@@ -1125,9 +1131,9 @@ const FRTermLoanForm = ({
         'i47': 'Fixed EMI',
         'i48': 6,
         'h49': 2.0,
-        'i51': '2024-25',
-        'i52': '2025-04',
-        'i53': '2025-04',
+        'i51': '2026-27',
+        'i52': '2026-04',
+        'i53': '2026-06',
         'i56': 1.25
       },
       'Indirect Expenses Increment': {
@@ -1314,8 +1320,7 @@ const FRTermLoanForm = ({
           <select
             value={(formData['General Information'] && formData['General Information']['i14']) || ''}
             onChange={(e) => handleFieldChange('General Information', 'i14', e.target.value)}
-            disabled={lockSector}
-            className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 ${lockSector ? 'bg-gray-100 text-gray-700 cursor-not-allowed' : 'bg-white'}`}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
           >
             <option value="">Select Sector</option>
             <option value="Manufacturing sector">Manufacturing sector</option>
@@ -1346,6 +1351,18 @@ const FRTermLoanForm = ({
             onChange={(e) => handleFieldChange('General Information', 'i16', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
             placeholder="Enter address"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            Residential Address
+          </label>
+          <input
+            type="text"
+            value={(formData['General Information'] && formData['General Information']['residential_address']) || ''}
+            onChange={(e) => handleFieldChange('General Information', 'residential_address', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="Enter residential address"
           />
         </div>
         <div className="space-y-1.5">
@@ -2178,7 +2195,7 @@ const FRTermLoanForm = ({
             value={(formData['Prepared By'] && formData['Prepared By']['j136']) || ''}
             onChange={(e) => handleFieldChange('Prepared By', 'j136', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-            placeholder="Enter partner name 1"
+            placeholder="Enter partner name 1 (optional)"
           />
         </div>
         <div className="space-y-1.5">
@@ -2190,7 +2207,7 @@ const FRTermLoanForm = ({
             value={(formData['Prepared By'] && formData['Prepared By']['j137']) || ''}
             onChange={(e) => handleFieldChange('Prepared By', 'j137', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-            placeholder="Enter partner name 2"
+            placeholder="Enter partner name 2 (optional)"
           />
         </div>
         <div className="space-y-1.5">
@@ -2439,7 +2456,6 @@ const FRTermLoanForm = ({
     if (updatedFormData['Term Loan Details']?.['i52'] && updatedFormData['Term Loan Details']['i52'].includes('-')) {
       const [year, month] = updatedFormData['Term Loan Details']['i52'].split('-');
       if (year && month) {
-        // Excel expects 01-MM-YYYY (DMY day=1) so Apr-2026 → 01-04-2026
         updatedFormData['Term Loan Details']['i52'] = `01-${month.padStart(2, '0')}-${year}`;
       }
     }
@@ -2451,6 +2467,15 @@ const FRTermLoanForm = ({
     }
 
     const excelData = extractCellData(updatedFormData);
+
+    // E251–E256: blank → 0 in Excel (same as E258 default behaviour)
+    for (let row = 251; row <= 256; row += 1) {
+      const key = `e${row}`;
+      const raw = excelData[key];
+      if (raw === undefined || raw === null || String(raw).trim() === '') {
+        excelData[key] = 0;
+      }
+    }
 
     const loanPercentageCells = {};
     Object.entries(CURRENT_ASSET_SECTIONS).forEach(([categoryName, config]) => {

@@ -44,6 +44,13 @@ import useAuth from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 import finvoisLogo from '../../assets/finvois.png';
 import RequestChatPanel from './RequestChatPanel';
+import {
+  WORKFLOW_KEYS,
+  WORKFLOW_LABELS,
+  canAssignRequest,
+  canUnclaimRequest,
+  getDprWorkflowStatus,
+} from '../../utils/dprWorkflowStatus';
 
 async function fetchDeptRequestReportBlob(requestId, kind = 'pdf', inline = false) {
   const qs = kind === 'pdf' && inline ? '?inline=1' : '';
@@ -163,24 +170,12 @@ const LINE_OPTS = {
 const PAGE_SIZE = 10;
 
 function getDeptReportStatus(req) {
-  const report = req.reportId;
-  if (!report) {
-    return { label: 'Not Generated', badgeClass: 'bg-amber-100 text-amber-800', filterKey: 'not_generated' };
-  }
-  const vs = typeof report === 'object' ? report.validation_status : null;
-  if (vs === 'approved') {
-    return { label: 'Approved', badgeClass: 'bg-green-100 text-green-800', filterKey: 'generated' };
-  }
-  if (vs === 'rejected') {
-    return { label: 'Rejected', badgeClass: 'bg-red-100 text-red-800', filterKey: 'not_generated' };
-  }
-  if (vs === 'under_review' || vs === 'pending_validation') {
-    return { label: 'Under CA Review', badgeClass: 'bg-blue-100 text-blue-800', filterKey: 'in_progress' };
-  }
-  if (vs === 'pending_payment') {
-    return { label: 'Payment Pending', badgeClass: 'bg-yellow-100 text-yellow-800', filterKey: 'in_progress' };
-  }
-  return { label: 'In Progress', badgeClass: 'bg-gray-100 text-gray-800', filterKey: 'in_progress' };
+  const wf = getDprWorkflowStatus(req, req.reportId);
+  return {
+    label: wf.label,
+    badgeClass: wf.badgeClass,
+    filterKey: wf.key,
+  };
 }
 
 const BUILTIN_FIELD_IDS = {
@@ -219,8 +214,27 @@ function findFieldByKind(fields, kind) {
   return null;
 }
 
+function findNatureOfBusinessField(fields) {
+  if (!fields?.length) return null;
+  return fields.find((f) => {
+    const id = String(f.id || '').toLowerCase();
+    const label = String(f.label || '').toLowerCase();
+    return (
+      id.includes('nature_of_business') ||
+      id.includes('natureofbusiness') ||
+      label.includes('nature of business')
+    );
+  });
+}
+
 const getContactValue = (submittedData, fields, kind) => {
   const field = findFieldByKind(fields, kind);
+  if (!field || !submittedData) return '—';
+  return formatFieldValue(submittedData[field.id]);
+};
+
+const getNatureOfBusinessValue = (submittedData, fields) => {
+  const field = findNatureOfBusinessField(fields);
   if (!field || !submittedData) return '—';
   return formatFieldValue(submittedData[field.id]);
 };
@@ -515,10 +529,12 @@ function formatLabel(label) {
   }
 }
 
-const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) => {
+const DepartmentDashboard = ({ adminView = false, showServiceAvailed: _showServiceAvailedProp = false }) => {
+  const showServiceAvailed = false; // Service Availed UI hidden; DB field retained
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   const [timeframe, setTimeframe] = useState('1month');
 
@@ -666,12 +682,12 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
 
   const handleCancelAssignment = async (reqId) => {
     try {
-      await api.post(`/govt-forms/requests/${reqId}/cancel-assignment`);
-      toast.success('Assignment cancelled, request returned to Open');
+      await api.post(`/govt-forms/requests/${reqId}/admin-release`);
+      toast.success('Request returned to Pending');
       setSelectedRequest(null);
       fetchRequests();
     } catch (err) {
-      toast.error(apiErrorMessage(err, 'Failed to cancel assignment'));
+      toast.error(apiErrorMessage(err, 'Failed to unclaim request'));
     }
   };
 
@@ -691,28 +707,42 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
   // Filter requests locally
   const filteredRequests = useMemo(() => {
     return requests.filter((req) => {
-      // 1. Search filter
+      // 1. Search filter — applicant name, mobile, nature of business (also form/email/id)
       if (appliedFilters.search.trim()) {
         const query = appliedFilters.search.toLowerCase().trim();
+        const queryDigits = query.replace(/\D/g, '');
         const reqId = req._id.toLowerCase();
         const formName = (req.formId?.name || '').toLowerCase();
         const fields = req.formId?.fields || [];
         const submittedData = req.submittedData || {};
+        const name = getContactValue(submittedData, fields, 'name').toLowerCase();
         const email = getContactValue(submittedData, fields, 'email').toLowerCase();
         const phone = getContactValue(submittedData, fields, 'phone').toLowerCase();
+        const phoneDigits = phone.replace(/\D/g, '');
+        const natureOfBusiness = getNatureOfBusinessValue(submittedData, fields).toLowerCase();
         const matchesId = reqId.includes(query);
         const matchesForm = formName.includes(query);
+        const matchesName = name.includes(query);
         const matchesEmail = email.includes(query);
-        const matchesPhone = phone.includes(query);
-        if (!matchesId && !matchesForm && !matchesEmail && !matchesPhone) return false;
+        const matchesPhone =
+          phone.includes(query) || (queryDigits.length > 0 && phoneDigits.includes(queryDigits));
+        const matchesNature = natureOfBusiness.includes(query);
+        if (
+          !matchesId &&
+          !matchesForm &&
+          !matchesName &&
+          !matchesEmail &&
+          !matchesPhone &&
+          !matchesNature
+        ) {
+          return false;
+        }
       }
 
-      // 2. Report Status filter (approval-aware)
+      // 2. DPR workflow status filter
       if (appliedFilters.status) {
         const statusMeta = getDeptReportStatus(req);
-        if (appliedFilters.status === 'generated' && statusMeta.filterKey !== 'generated') return false;
-        if (appliedFilters.status === 'not_generated' && statusMeta.filterKey === 'generated') return false;
-        if (appliedFilters.status === 'in_progress' && statusMeta.filterKey !== 'in_progress') return false;
+        if (statusMeta.filterKey !== appliedFilters.status) return false;
       }
 
       // 3. Date range filter
@@ -987,12 +1017,15 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
                 value={filters.status}
                 onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
                 className="w-full lg:w-44 shrink-0 px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-200 focus:border-transparent bg-white text-sm"
-                title="Filter by Report Status"
+                title="Filter by DPR Status"
               >
                 <option value="">All Statuses</option>
-                <option value="generated">Approved</option>
-                <option value="in_progress">In Progress</option>
-                <option value="not_generated">Not Generated</option>
+                <option value={WORKFLOW_KEYS.pending}>{WORKFLOW_LABELS.pending}</option>
+                <option value={WORKFLOW_KEYS.initiated}>{WORKFLOW_LABELS.initiated}</option>
+                <option value={WORKFLOW_KEYS.preparation}>{WORKFLOW_LABELS.preparation}</option>
+                <option value={WORKFLOW_KEYS.ca_validation}>{WORKFLOW_LABELS.ca_validation}</option>
+                <option value={WORKFLOW_KEYS.generated}>{WORKFLOW_LABELS.generated}</option>
+                <option value={WORKFLOW_KEYS.rejected}>{WORKFLOW_LABELS.rejected}</option>
               </select>
               <div className="relative flex-1 min-w-0">
                 <Search
@@ -1003,7 +1036,7 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
                   type="text"
                   value={filters.search}
                   onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-                  placeholder="Search by form name, email, or phone..."
+                  placeholder="Search by name, mobile, or nature of business..."
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-200 focus:border-transparent text-sm"
                 />
               </div>
@@ -1111,7 +1144,7 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
                       <th className="px-3 py-3">Form Name</th>
                       <th className="px-3 py-3">Email</th>
                       <th className="px-3 py-3">Phone No</th>
-                      <th className="px-3 py-3">Status</th>
+                      <th className="px-3 py-3">DPR Status</th>
                       <th className="px-3 py-3">Assigned Staff</th>
                       <th className="px-3 py-3">Submitted</th>
                       {showServiceAvailed && <th className="px-3 py-3">Service Availed</th>}
@@ -1171,6 +1204,7 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
                                 <PanelRightOpen className="h-3.5 w-3.5" />
                                 View details
                               </button>
+                              {isAdmin && (canAssignRequest(req, req.reportId) || canUnclaimRequest(req, req.reportId)) && (
                               <button
                                 type="button"
                                 onClick={() => setSelectedRequest(req)}
@@ -1178,6 +1212,7 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
                               >
                                 Manage Staff
                               </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1235,6 +1270,7 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
                         <PanelRightOpen className="h-3.5 w-3.5" />
                         View details
                       </button>
+                      {isAdmin && (canAssignRequest(req, req.reportId) || canUnclaimRequest(req, req.reportId)) && (
                       <button
                         type="button"
                         onClick={() => setSelectedRequest(req)}
@@ -1242,6 +1278,7 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
                       >
                         Manage Staff
                       </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -1376,12 +1413,12 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
                 </div>
               </div>
 
-              {/* Assignment Workflow */}
-              {selectedRequest.status !== 'completed' && (
+              {/* Assignment Workflow — admin only, Pending assign / Request initiated unclaim */}
+              {isAdmin && (
                 <div className="border-t border-gray-200 pt-4 space-y-4">
                   <h4 className="text-sm font-bold text-gray-800 mb-3">Staff Owner Control</h4>
 
-                  {(selectedRequest.status === 'assigned' || selectedRequest.status === 'claimed') && (
+                  {canUnclaimRequest(selectedRequest, selectedRequest.reportId) && (
                     <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
                       <div className="text-xs text-blue-800">
                         Current Owner:{' '}
@@ -1395,38 +1432,38 @@ const DepartmentDashboard = ({ adminView = false, showServiceAvailed = false }) 
                         onClick={() => handleCancelAssignment(selectedRequest._id)}
                         className="text-xs font-bold text-red-600 hover:text-red-800"
                       >
-                        Release Staff
+                        Unclaim
                       </button>
                     </div>
                   )}
 
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">
-                        {selectedRequest.status === 'assigned' || selectedRequest.status === 'claimed'
-                          ? 'Re-assign Customer Service agent'
-                          : 'Select Customer Service agent'}
-                      </label>
-                      <select
-                        value={assigningTo}
-                        onChange={(e) => setAssigningTo(e.target.value)}
-                        className="w-full text-sm border border-gray-300 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-[#7e22ce] bg-white"
+                  {canAssignRequest(selectedRequest, selectedRequest.reportId) && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">
+                          Select Customer Service agent
+                        </label>
+                        <select
+                          value={assigningTo}
+                          onChange={(e) => setAssigningTo(e.target.value)}
+                          className="w-full text-sm border border-gray-300 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-[#7e22ce] bg-white"
+                        >
+                          <option value="">-- Choose Agent --</option>
+                          {csAgents.map((cs) => (
+                            <option key={cs._id} value={cs._id}>
+                              {cs.name} ({cs.email})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <button
+                        onClick={() => handleAssign(selectedRequest._id)}
+                        className="w-full px-4 py-2 bg-[#7e22ce] text-white rounded-lg hover:bg-[#6b21a8] text-sm font-semibold transition-colors"
                       >
-                        <option value="">-- Choose Agent --</option>
-                        {csAgents.map((cs) => (
-                          <option key={cs._id} value={cs._id}>
-                            {cs.name} ({cs.email})
-                          </option>
-                        ))}
-                      </select>
+                        Confirm Assignment
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleAssign(selectedRequest._id)}
-                      className="w-full px-4 py-2 bg-[#7e22ce] text-white rounded-lg hover:bg-[#6b21a8] text-sm font-semibold transition-colors"
-                    >
-                      Confirm Assignment
-                    </button>
-                  </div>
+                  )}
                 </div>
               )}
             </div>

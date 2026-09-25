@@ -18,6 +18,9 @@ export function isPublicAnonymousApiPath(url) {
     u.includes('/customer/google-auth') ||
     u.includes('/customer/send-otp') ||
     u.includes('/customer/verify-otp-register') ||
+    u.includes('/customer/msme-form-register') ||
+    u.includes('/customer/mepma-form-register') ||
+    u.includes('/customer/dpr-request-form-register') ||
     u.includes('/customer/check-exists') ||
     u.includes('/customer/login-send-otp') ||
     u.includes('/customer/login-verify-otp') ||
@@ -31,6 +34,7 @@ export function isPublicAnonymousApiPath(url) {
     u.includes('/form-submissions/emi-calculator/submit') ||
     u.includes('/msme-dpr-leads/submit') ||
     u.includes('/mepma-dpr-leads/submit') ||
+    u.includes('/dpr-request-leads/submit') ||
     u.includes('/scheme-forms/')
   );
 }

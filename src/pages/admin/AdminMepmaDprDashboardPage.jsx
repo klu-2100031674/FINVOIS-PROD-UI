@@ -3,7 +3,7 @@ import MepmaDprDashboard from '@/components/mepmaDpr/MepmaDprDashboard';
 
 const AdminMepmaDprDashboardPage = () => (
   <AdminLayout>
-    <MepmaDprDashboard showServiceAvailed showEmailConfig showDelete />
+    <MepmaDprDashboard showEmailConfig showDelete showGenerateReport />
   </AdminLayout>
 );
 

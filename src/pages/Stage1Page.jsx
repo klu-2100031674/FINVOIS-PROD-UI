@@ -35,6 +35,7 @@ const Stage1Page = () => {
   const templateId = searchParams.get("templateId");
   const assistedUserId = searchParams.get("assistedUserId") || "";
   const reportHelpId = searchParams.get("reportHelpId") || "";
+  const deptRequestId = searchParams.get("requestId") || "";
   const hideSidebar = true;
   const isAdminMode = searchParams.get("admin") === "true";
 
@@ -788,14 +789,19 @@ const Stage1Page = () => {
 
         toast.success("Report generated successfully!");
 
-        // Redirect to report ready page (validation message)
-        navigate("/report-ready", {
-          state: {
-            report_id: result.data.report_id,
-            validation_status: result.data.validation_status,
-            message: result.data.message,
-          },
-        });
+        const requestId = new URLSearchParams(window.location.search).get('requestId');
+        if (requestId) {
+          navigate(`/customer-service/requests/${requestId}`);
+        } else {
+          // Redirect to report ready page (validation message)
+          navigate("/report-ready", {
+            state: {
+              report_id: result.data.report_id,
+              validation_status: result.data.validation_status,
+              message: result.data.message,
+            },
+          });
+        }
 
         console.log(
           "✅ Redirected to report ready page - validation pending"
@@ -1052,6 +1058,7 @@ const Stage1Page = () => {
         analysisOptions={analysisData}
         assistedUserId={assistedUserId || undefined}
         reportHelpRequestId={reportHelpId || undefined}
+        requestId={deptRequestId || undefined}
       />
 
       <AnalysisSheetsModal

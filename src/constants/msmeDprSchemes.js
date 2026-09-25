@@ -20,6 +20,7 @@ export const MSME_DPR_LOAN_TYPE_OPTIONS = [
   'Term Loan and working capital loan',
   'Working capital or OD Loan',
   'Gold Loan',
+  'Dropline OD',
 ];
 
 export const MSME_DPR_RURAL_URBAN_OPTIONS = [
@@ -30,6 +31,12 @@ export const MSME_DPR_RURAL_URBAN_OPTIONS = [
 export const MSME_DPR_ENTERPRISE_TYPE_OPTIONS = [
   'New Enterprise',
   'Existing Enterprises',
+];
+
+export const MSME_DPR_SECTOR_OPTIONS = [
+  'Manufacturing',
+  'Trading',
+  'Service Sector',
 ];
 
 export const MSME_DPR_ASSET_CATEGORIES = [

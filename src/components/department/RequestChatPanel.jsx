@@ -6,6 +6,10 @@ import toast from 'react-hot-toast';
 const UNLOCKED = new Set(['claimed', 'assigned', 'completed']);
 const POLL_MS = 12000;
 
+function chatReadStorageKey(requestId) {
+  return `customer-dept-chat-read:${requestId}`;
+}
+
 /**
  * @param {{
  *   requestId: string,
@@ -14,6 +18,7 @@ const POLL_MS = 12000;
  *   currentUserId?: string,
  *   readOnly?: boolean,
  *   compact?: boolean,
+ *   trackUnread?: boolean,
  * }} props
  */
 export default function RequestChatPanel({
@@ -23,31 +28,83 @@ export default function RequestChatPanel({
   currentUserId,
   readOnly = false,
   compact = false,
+  trackUnread = false,
 }) {
   const [messages, setMessages] = useState([]);
   const [meta, setMeta] = useState({ collaborationUnlocked: false, canMutate: false });
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
   const listRef = useRef(null);
   const bottomRef = useRef(null);
+  const panelRef = useRef(null);
 
   const unlocked = UNLOCKED.has(String(status || ''));
   const canPost = !readOnly && Boolean(meta.canMutate);
+
+  const markRead = useCallback(() => {
+    if (!trackUnread || !requestId || !messages.length) {
+      setUnreadCount(0);
+      return;
+    }
+    const lastId = messages[messages.length - 1]?.id;
+    if (lastId) {
+      try {
+        localStorage.setItem(chatReadStorageKey(requestId), String(lastId));
+      } catch {
+        /* ignore */
+      }
+    }
+    setUnreadCount(0);
+  }, [messages, requestId, trackUnread]);
+
+  const computeUnread = useCallback(
+    (list) => {
+      if (!trackUnread || !requestId || !currentUserId) {
+        setUnreadCount(0);
+        return;
+      }
+      let lastRead = null;
+      try {
+        lastRead = localStorage.getItem(chatReadStorageKey(requestId));
+      } catch {
+        lastRead = null;
+      }
+      let count = 0;
+      let pastRead = !lastRead;
+      for (const m of list) {
+        if (!pastRead) {
+          if (String(m.id) === String(lastRead)) {
+            pastRead = true;
+          }
+          continue;
+        }
+        if (String(m.senderId) !== String(currentUserId)) count += 1;
+      }
+      if (!pastRead && lastRead) {
+        count = list.filter((m) => String(m.senderId) !== String(currentUserId)).length;
+      }
+      setUnreadCount(count);
+    },
+    [currentUserId, requestId, trackUnread]
+  );
 
   const load = useCallback(async ({ silent = false } = {}) => {
     if (!requestId || !apiBase) return;
     try {
       if (!silent) setLoading(true);
       const res = await api.get(`${apiBase}/messages`);
-      setMessages(res.data?.data || []);
+      const list = res.data?.data || [];
+      setMessages(list);
       setMeta(res.data?.meta || {});
+      computeUnread(list);
     } catch (err) {
       if (!silent) toast.error(apiErrorMessage(err, 'Failed to load chat'));
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [apiBase, requestId]);
+  }, [apiBase, computeUnread, requestId]);
 
   useEffect(() => {
     load();
@@ -59,13 +116,25 @@ export default function RequestChatPanel({
   }, [load]);
 
   useEffect(() => {
-    // Scroll only inside the message list so long threads do not jump the page.
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     } else {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }, [messages.length]);
+
+  useEffect(() => {
+    if (!trackUnread) return undefined;
+    const node = panelRef.current;
+    if (!node) return undefined;
+    const onFocusIn = () => markRead();
+    node.addEventListener('focusin', onFocusIn);
+    node.addEventListener('pointerdown', onFocusIn);
+    return () => {
+      node.removeEventListener('focusin', onFocusIn);
+      node.removeEventListener('pointerdown', onFocusIn);
+    };
+  }, [markRead, trackUnread]);
 
   const send = async (e) => {
     e.preventDefault();
@@ -81,11 +150,16 @@ export default function RequestChatPanel({
       const res = await api.post(`${apiBase}/messages`, { body });
       const created = res.data?.data;
       if (created) {
-        setMessages((prev) => [...prev, created]);
+        setMessages((prev) => {
+          const next = [...prev, created];
+          computeUnread(next);
+          return next;
+        });
       } else {
         await load({ silent: true });
       }
       setDraft('');
+      markRead();
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Failed to send message'));
     } finally {
@@ -100,11 +174,19 @@ export default function RequestChatPanel({
   const listMaxClass = compact ? 'max-h-[40vh]' : 'max-h-80';
 
   return (
-    <div className={shellClass}>
+    <div ref={panelRef} className={shellClass}>
       <div className={`${compact ? 'mb-2 pb-1' : 'mb-4 pb-2'} border-b`}>
         <h2 className={`${compact ? 'text-sm' : 'text-lg'} font-bold text-gray-800 flex items-center gap-2`}>
           <MessageSquare size={compact ? 14 : 18} className="text-purple-700" />
           Chat
+          {unreadCount > 0 && (
+            <span className="relative inline-flex items-center">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-60 animate-ping" />
+              <span className="relative inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            </span>
+          )}
           {readOnly && (
             <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
               View only
@@ -127,6 +209,9 @@ export default function RequestChatPanel({
       <div
         ref={listRef}
         className={`flex-1 overflow-y-auto ${listMaxClass} space-y-3 mb-3 pr-1 overscroll-contain`}
+        onScroll={() => {
+          if (trackUnread && unreadCount > 0) markRead();
+        }}
       >
         {loading ? (
           <div className="flex justify-center py-8">

@@ -35,7 +35,7 @@ const AuthPage = () => {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
   // Customer OTP portal state
-  const [otpType, setOtpType] = useState('email'); // 'email' | 'phone'
+  const [otpType, setOtpType] = useState('phone'); // 'email' | 'phone'
   const [otpValue, setOtpValue] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
@@ -243,6 +243,8 @@ const AuthPage = () => {
         navigate('/msme-dpr-dashboard', { replace: true });
       } else if (userRole === 'mepma_dpr_viewer') {
         navigate('/mepma-dpr-dashboard', { replace: true });
+      } else if (userRole === 'dpr_request_viewer') {
+        navigate('/dpr-request-dashboard', { replace: true });
       } else {
         navigate('/dashboard', { replace: true });
       }
@@ -518,6 +520,8 @@ const ensureVmReady = async () => {
         navigate('/msme-dpr-dashboard', { replace: true });
       } else if (userRole === 'mepma_dpr_viewer') {
         navigate('/mepma-dpr-dashboard', { replace: true });
+      } else if (userRole === 'dpr_request_viewer') {
+        navigate('/dpr-request-dashboard', { replace: true });
       } else if (userRole === 'department') {
         navigate('/department/dashboard', { replace: true });
       } else {
@@ -1136,7 +1140,7 @@ const ensureVmReady = async () => {
                 <div className="text-center mb-2">
                   <h2 className="text-xl font-bold text-gray-900 font-['Manrope']">Customer OTP Login</h2>
                   <p className="text-gray-600 text-sm font-['Inter'] mt-1">
-                    Sign in with email or WhatsApp OTP
+                    Sign in with WhatsApp or email OTP
                   </p>
                 </div>
 
@@ -1153,17 +1157,6 @@ const ensureVmReady = async () => {
                       <div className="flex gap-2">
                         <button
                           type="button"
-                          onClick={() => { setOtpType('email'); setOtpValue(''); }}
-                          className={`flex-1 py-2.5 px-3 border rounded-xl flex items-center justify-center gap-1.5 text-xs font-medium transition-all font-['Inter'] ${
-                            otpType === 'email'
-                              ? 'border-purple-500 bg-purple-50 text-purple-700'
-                              : 'border-gray-200 bg-white text-gray-500 hover:text-gray-700'
-                          }`}
-                        >
-                          <Mail size={14} /> Email OTP
-                        </button>
-                        <button
-                          type="button"
                           onClick={() => { setOtpType('phone'); setOtpValue(''); }}
                           className={`flex-1 py-2.5 px-3 border rounded-xl flex items-center justify-center gap-1.5 text-xs font-medium transition-all font-['Inter'] ${
                             otpType === 'phone'
@@ -1172,6 +1165,17 @@ const ensureVmReady = async () => {
                           }`}
                         >
                           <Phone size={14} /> WhatsApp OTP
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setOtpType('email'); setOtpValue(''); }}
+                          className={`flex-1 py-2.5 px-3 border rounded-xl flex items-center justify-center gap-1.5 text-xs font-medium transition-all font-['Inter'] ${
+                            otpType === 'email'
+                              ? 'border-purple-500 bg-purple-50 text-purple-700'
+                              : 'border-gray-200 bg-white text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          <Mail size={14} /> Email OTP
                         </button>
                       </div>
 

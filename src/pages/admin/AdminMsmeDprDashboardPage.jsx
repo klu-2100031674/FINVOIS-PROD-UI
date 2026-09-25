@@ -4,9 +4,9 @@ import MsmeDprDashboard from '@/components/msmeDpr/MsmeDprDashboard';
 const AdminMsmeDprDashboardPage = () => (
   <AdminLayout>
     <MsmeDprDashboard
-      showServiceAvailed
       showEmailConfig
-      // showDelete // Uncomment to enable option to delete a form data
+      // showServiceAvailed // hidden — DPR workflow status replaces this column
+      // showDelete // Uncomment to enable single + multi delete on form submissions
     />
   </AdminLayout>
 );

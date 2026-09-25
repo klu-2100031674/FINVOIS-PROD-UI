@@ -36,6 +36,8 @@ export { default as AdminFranchiseEditPage } from './AdminFranchiseEditPage';
 export { default as AdminFranchiseApplicationsPage } from './AdminFranchiseApplicationsPage';
 export { default as ClientScreeningMailPage } from './ClientScreeningMailPage';
 export { default as AdminMsmeDprDashboardPage } from './AdminMsmeDprDashboardPage';
+export { default as AdminDprRequestDashboardPage } from './AdminDprRequestDashboardPage';
+export { default as AdminCustomerSupportPage } from './AdminCustomerSupportPage';
 export { default as AdminMepmaDprDashboardPage } from './AdminMepmaDprDashboardPage';
 export { default as AdminGovtFormsPage } from './AdminGovtFormsPage';
 export { default as AdminDepartmentDashboardPage } from './AdminDepartmentDashboardPage';
