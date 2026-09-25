@@ -83,7 +83,7 @@ import {
   AdminDprRequestDashboardPage,
   AdminCustomerSupportPage,
   AdminGovtFormsPage,
-  AdminGlobalSearchPage,
+  // AdminGlobalSearchPage,
   AdminDepartmentDashboardPage,
 } from "./pages/admin";
 import DepartmentDashboardPage from "./pages/department/DepartmentDashboardPage";
@@ -1672,6 +1672,7 @@ function App() {
             </AdminOnlyRoute>
           }
         />
+        {/*
         <Route
           path="/admin/global-search"
           element={
@@ -1680,6 +1681,7 @@ function App() {
             </AdminOnlyRoute>
           }
         />
+        */}
         <Route
           path="/admin/govt-forms"
           element={
