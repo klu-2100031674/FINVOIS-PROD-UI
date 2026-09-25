@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
 import {
   EMPTY_CS_QUEUE_FILTERS,
   filterCsQueueRequests,
@@ -42,6 +42,7 @@ export default function CsQueueFiltersBar({
   };
 
   const activeCount = Object.values(filters).filter(Boolean).length;
+  const hasSearch = Boolean(String(filters.search || '').trim());
 
   return (
     <div className="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -56,9 +57,15 @@ export default function CsQueueFiltersBar({
           )}
         </div>
         <div className="flex items-center gap-3 text-xs text-gray-500">
-          <span>
-            Showing <strong className="text-gray-800">{filtered.length}</strong> of {requests.length}
-          </span>
+          {hasSearch ? (
+            <span className="rounded-full bg-purple-50 px-2.5 py-1 text-sm font-semibold text-purple-800">
+              {filtered.length} found
+            </span>
+          ) : (
+            <span>
+              Showing <strong className="text-gray-800">{filtered.length}</strong> of {requests.length}
+            </span>
+          )}
           <button
             type="button"
             onClick={handleReset}
@@ -68,6 +75,27 @@ export default function CsQueueFiltersBar({
           </button>
         </div>
       </div>
+
+      <label className="mb-3 block text-xs font-semibold text-gray-600">
+        Search by name, number, or email
+        <div className="relative mt-1">
+          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="search"
+            value={filters.search || ''}
+            onChange={(e) => setField('search', e.target.value)}
+            placeholder="Type a name, mobile, or email"
+            className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm text-gray-800 focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+          />
+        </div>
+      </label>
+      {hasSearch && (
+        <p className="mb-3 text-sm text-gray-600">
+          <strong className="text-gray-900">{filtered.length}</strong>
+          {filtered.length === 1 ? ' request found' : ' requests found'}
+          {' '}matching "{String(filters.search).trim()}"
+        </p>
+      )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className="block text-xs font-semibold text-gray-600">

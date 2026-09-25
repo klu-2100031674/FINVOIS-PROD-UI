@@ -7,6 +7,7 @@ import { getDprWorkflowStatus } from '../../utils/dprWorkflowStatus';
 export const CS_QUEUE_FILTER_STORAGE_KEY = 'cs-queue-filters:v1';
 
 export const EMPTY_CS_QUEUE_FILTERS = {
+  search: '',
   department: '',
   queueStatus: '', // open | claimed | assigned | completed | ''
   payment: '', // unpaid | paid | ''
@@ -26,7 +27,8 @@ export function loadCsQueueFilters() {
 
 export function saveCsQueueFilters(filters) {
   try {
-    localStorage.setItem(CS_QUEUE_FILTER_STORAGE_KEY, JSON.stringify(filters));
+    const { search: _search, ...persisted } = filters || {};
+    localStorage.setItem(CS_QUEUE_FILTER_STORAGE_KEY, JSON.stringify(persisted));
   } catch {
     /* ignore */
   }
@@ -77,6 +79,55 @@ export function getRequestApplicantText(req = {}) {
   );
 }
 
+export function getRequestApplicantContacts(req = {}) {
+  const data = req.submittedData || {};
+  const fields = req.formId?.fields || [];
+  const emailField = fields.find(
+    (f) =>
+      f.type === 'email' ||
+      f.id?.toLowerCase().includes('email') ||
+      f.label?.toLowerCase().includes('email')
+  );
+  const dynamicEmail = emailField ? data[emailField.id] : null;
+  const rawEmail =
+    req.customerId?.email ||
+    dynamicEmail ||
+    data.govt_builtin_email ||
+    data.email ||
+    data.applicantEmail ||
+    '';
+  const email =
+    typeof rawEmail === 'string' && rawEmail.endsWith('@phone.customer.finvois')
+      ? ''
+      : String(rawEmail || '').trim();
+  const phone = String(
+    req.customerId?.phone ||
+      data.govt_builtin_phone ||
+      data.phone ||
+      data.mobile ||
+      data.mobileNumber ||
+      ''
+  ).trim();
+
+  return {
+    name: String(getRequestApplicantText(req) || '').trim(),
+    email,
+    phone,
+  };
+}
+
+function requestMatchesSearch(req, search) {
+  const raw = String(search || '').trim().toLowerCase();
+  if (!raw) return true;
+  const { name, email, phone } = getRequestApplicantContacts(req);
+  if (name.toLowerCase().includes(raw)) return true;
+  if (email.toLowerCase().includes(raw)) return true;
+  if (phone.toLowerCase().includes(raw)) return true;
+  const queryDigits = raw.replace(/\D/g, '');
+  const phoneDigits = phone.replace(/\D/g, '');
+  return Boolean(queryDigits.length >= 2 && phoneDigits.includes(queryDigits));
+}
+
 export function uniqueDepartmentsFromRequests(requests = []) {
   const map = new Map();
   for (const req of requests) {
@@ -90,12 +141,14 @@ export function uniqueDepartmentsFromRequests(requests = []) {
 }
 
 export function filterCsQueueRequests(requests = [], filters = EMPTY_CS_QUEUE_FILTERS) {
+  const search = String(filters.search || '').trim();
   const department = String(filters.department || '').trim();
   const queueStatus = String(filters.queueStatus || '').trim();
   const payment = String(filters.payment || '').trim();
   const caStatus = String(filters.caStatus || '').trim();
 
   return requests.filter((req) => {
+    if (search && !requestMatchesSearch(req, search)) return false;
     if (department) {
       const id = String(req.departmentId?._id || req.departmentId || '');
       if (id !== department) return false;

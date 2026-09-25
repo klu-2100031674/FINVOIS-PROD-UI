@@ -7,10 +7,13 @@ const inputClass =
 
 /**
  * WhatsApp or email OTP gate used by MSME / MEPMA / DPR Request lead forms.
+ * One verified channel is enough. MSME no longer requires both OTPs.
  */
 export default function LeadFormOtpVerify({
   applicantName,
   mobileNumber,
+  initialEmail = '',
+  requireBoth = false,
   copy = {},
   submitting = false,
   error = '',
@@ -18,29 +21,32 @@ export default function LeadFormOtpVerify({
   onVerifiedSubmit,
 }) {
   const [otpType, setOtpType] = useState('phone');
-  const [email, setEmail] = useState('');
+  const [bothPhase, setBothPhase] = useState('phone');
+  const [email, setEmail] = useState(initialEmail || '');
   const [otpCode, setOtpCode] = useState('');
+  const [phoneOtp, setPhoneOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [localError, setLocalError] = useState('');
 
-  const activeValue = otpType === 'email' ? email.trim() : String(mobileNumber || '').trim();
+  const activeType = requireBoth ? bothPhase : otpType;
+  const activeValue = activeType === 'email' ? email.trim() : String(mobileNumber || '').trim();
   const displayError = localError || error;
 
   const handleSendOtp = async () => {
     setLocalError('');
-    if (otpType === 'email' && !email.includes('@')) {
+    if (activeType === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setLocalError(copy.emailRequired || 'Enter a valid email address.');
       return;
     }
-    if (otpType === 'phone' && activeValue.replace(/\D/g, '').length < 10) {
+    if (activeType === 'phone' && activeValue.replace(/\D/g, '').length < 10) {
       setLocalError(copy.phoneRequired || 'Enter a valid mobile number first.');
       return;
     }
     setSendingOtp(true);
     try {
       const res = await apiClient.post('/customer/send-otp', {
-        type: otpType,
+        type: activeType,
         value: activeValue,
       });
       if (res.data?.success) {
@@ -63,6 +69,26 @@ export default function LeadFormOtpVerify({
       setLocalError(copy.enterOtp || 'Enter the 6-digit OTP');
       return;
     }
+
+    if (requireBoth && bothPhase === 'phone') {
+      setPhoneOtp(otpCode.trim());
+      setBothPhase('email');
+      setOtpSent(false);
+      setOtpCode('');
+      return;
+    }
+
+    if (requireBoth) {
+      await onVerifiedSubmit({
+        phoneOtp,
+        emailOtp: otpCode.trim(),
+        email: email.trim(),
+        phone: String(mobileNumber || '').trim(),
+        name: applicantName,
+      });
+      return;
+    }
+
     await onVerifiedSubmit({
       type: otpType,
       value: activeValue,
@@ -79,61 +105,83 @@ export default function LeadFormOtpVerify({
           {copy.verifyTitle || 'Verify to submit'}
         </h2>
         <p className="text-sm text-gray-500 mt-1">
-          {copy.verifyBodyChannel ||
-            'Choose WhatsApp or email. We will send a one-time code to that channel, then submit your request.'}
+          {requireBoth
+            ? (copy.verifyBodyBoth ||
+              'Verify WhatsApp on your mobile, then verify email. Both codes are required to create your account and submit.')
+            : (copy.verifyBodyChannel ||
+              'Choose WhatsApp or email. We will send a one-time code to that channel, then submit your request.')}
         </p>
+        {requireBoth && (
+          <p className="text-xs font-semibold text-orange-700 mt-2">
+            {bothPhase === 'phone'
+              ? (copy.verifyStepWhatsapp || 'Step 1 of 2 — WhatsApp OTP')
+              : (copy.verifyStepEmail || 'Step 2 of 2 — Email OTP')}
+          </p>
+        )}
       </div>
 
       {displayError && (
         <div className="p-3 rounded-xl bg-red-50 text-red-600 text-sm">{displayError}</div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={() => {
-            setOtpType('phone');
-            setOtpSent(false);
-            setOtpCode('');
-            setLocalError('');
-          }}
-          className={`p-4 rounded-2xl border text-left transition-all ${
-            otpType === 'phone'
-              ? 'border-orange-400 bg-orange-50 ring-2 ring-orange-100'
-              : 'border-gray-200 hover:border-gray-300'
-          }`}
-        >
+      {!requireBoth && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setOtpType('phone');
+              setOtpSent(false);
+              setOtpCode('');
+              setLocalError('');
+            }}
+            className={`p-4 rounded-2xl border text-left transition-all ${
+              otpType === 'phone'
+                ? 'border-orange-400 bg-orange-50 ring-2 ring-orange-100'
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2 font-semibold text-gray-900">
+              <Phone size={16} className={otpType === 'phone' ? 'text-orange-500' : 'text-gray-400'} />
+              {copy.verifyViaWhatsapp || 'WhatsApp OTP'}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">{mobileNumber || '—'}</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOtpType('email');
+              setOtpSent(false);
+              setOtpCode('');
+              setLocalError('');
+            }}
+            className={`p-4 rounded-2xl border text-left transition-all ${
+              otpType === 'email'
+                ? 'border-orange-400 bg-orange-50 ring-2 ring-orange-100'
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2 font-semibold text-gray-900">
+              <Mail size={16} className={otpType === 'email' ? 'text-orange-500' : 'text-gray-400'} />
+              {copy.verifyViaEmail || 'Email OTP'}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {copy.emailHint || 'Code is sent to your email'}
+            </p>
+          </button>
+        </div>
+      )}
+
+      {requireBoth && bothPhase === 'phone' && (
+        <div className="p-4 rounded-2xl border border-orange-200 bg-orange-50">
           <div className="flex items-center gap-2 font-semibold text-gray-900">
-            <Phone size={16} className={otpType === 'phone' ? 'text-orange-500' : 'text-gray-400'} />
+            <Phone size={16} className="text-orange-500" />
             {copy.verifyViaWhatsapp || 'WhatsApp OTP'}
           </div>
-          <p className="text-xs text-gray-500 mt-1">{mobileNumber || '—'}</p>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setOtpType('email');
-            setOtpSent(false);
-            setOtpCode('');
-            setLocalError('');
-          }}
-          className={`p-4 rounded-2xl border text-left transition-all ${
-            otpType === 'email'
-              ? 'border-orange-400 bg-orange-50 ring-2 ring-orange-100'
-              : 'border-gray-200 hover:border-gray-300'
-          }`}
-        >
-          <div className="flex items-center gap-2 font-semibold text-gray-900">
-            <Mail size={16} className={otpType === 'email' ? 'text-orange-500' : 'text-gray-400'} />
-            {copy.verifyViaEmail || 'Email OTP'}
-          </div>
-          <p className="text-xs text-gray-500 mt-1">
-            {copy.emailHint || 'Code is sent to your email'}
-          </p>
-        </button>
-      </div>
+          <p className="text-xs text-gray-600 mt-1">{mobileNumber || '—'}</p>
+        </div>
+      )}
 
-      {otpType === 'email' && (
+      {(activeType === 'email') && (
         <div>
           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
             {copy.emailAddress || 'Email address'}
@@ -162,7 +210,7 @@ export default function LeadFormOtpVerify({
             <ShieldCheck size={18} />
             {sendingOtp
               ? copy.sendingOtp || 'Sending OTP...'
-              : otpType === 'email'
+              : activeType === 'email'
                 ? copy.sendOtpEmail || 'Send OTP via Email'
                 : copy.sendOtp || 'Send OTP via WhatsApp'}
           </button>
@@ -186,7 +234,11 @@ export default function LeadFormOtpVerify({
               disabled={submitting}
               className="w-full px-4 py-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold disabled:opacity-50"
             >
-              {submitting ? copy.verifying || 'Verifying...' : copy.verifyAndSubmit || 'Verify & Submit'}
+              {submitting
+                ? copy.verifying || 'Verifying...'
+                : requireBoth && bothPhase === 'phone'
+                  ? (copy.continueToEmailOtp || 'Continue to Email OTP')
+                  : (copy.verifyAndSubmit || 'Verify & Submit')}
             </button>
             <button
               type="button"
@@ -199,6 +251,21 @@ export default function LeadFormOtpVerify({
           </>
         )}
       </form>
+
+      {requireBoth && bothPhase === 'email' && (
+        <button
+          type="button"
+          onClick={() => {
+            setBothPhase('phone');
+            setOtpSent(Boolean(phoneOtp));
+            setOtpCode(phoneOtp);
+            setLocalError('');
+          }}
+          className="w-full text-sm text-gray-500 hover:text-gray-800"
+        >
+          {copy.backToWhatsappOtp || 'Back to WhatsApp OTP'}
+        </button>
+      )}
 
       <button
         type="button"

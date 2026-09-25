@@ -72,7 +72,7 @@ const OpenRequestsPage = () => {
       <RequestsQueueTable
         requests={loading ? [] : filtered}
         loading={loading}
-        emptyMessage="No open requests match your filters."
+        emptyMessage="No open requests match your search or filters."
       />
     </ClientLayout>
   );

@@ -17,6 +17,7 @@ export const MSME_DPR_GENDER_OPTIONS = ['Male', 'Female', 'Other'];
 
 export const MSME_DPR_LOAN_TYPE_OPTIONS = [
   'Term Loan',
+  'Commercial Vehicle',
   'Term Loan and working capital loan',
   'Working capital or OD Loan',
   'Gold Loan',

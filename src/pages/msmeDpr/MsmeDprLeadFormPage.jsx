@@ -30,6 +30,11 @@ import {
   MSME_DPR_TEST_FORM_1,
   MSME_DPR_TEST_FORM_2,
 } from '@/constants/msmeDprFormTranslations';
+import {
+  applyAssetTriangle,
+  calculateAssetLoan,
+  isAssetNumericField,
+} from '@/utils/dprAssetLoanTriangle';
 
 const LOAN_TERM_YEAR_OPTIONS = Array.from({ length: 15 }, (_, i) => String(i + 1));
 
@@ -38,6 +43,7 @@ const createEmptyAsset = () => ({
   assetCategory: '',
   amount: '',
   loanPercentage: '',
+  loanAmount: '',
 });
 
 function normalizeLoanTermYears(value) {
@@ -52,6 +58,7 @@ const INITIAL_FORM = {
   applicantName: '',
   gender: '',
   mobileNumber: '',
+  email: '',
   aadharNumber: '',
   panNumber: '',
   sector: '',
@@ -99,16 +106,6 @@ function FormField({ label, required, optional, children }) {
     </div>
   );
 }
-
-const calculateAssetLoan = (asset) => {
-  const amt = parseFloat(String(asset?.amount || '').replace(/,/g, '')) || 0;
-  const pctStr = String(asset?.loanPercentage || '').replace(/,/g, '');
-  const pct = pctStr === '' ? 0 : parseFloat(pctStr) || 0;
-  if (pct > 0) {
-    return (amt * pct) / 100;
-  }
-  return 0;
-};
 
 const MsmeDprLeadFormPage = () => {
   const [form, setForm] = useState(INITIAL_FORM);
@@ -228,12 +225,12 @@ const MsmeDprLeadFormPage = () => {
   };
 
   const handleAssetChange = (index, field, value) => {
+    if (isAssetNumericField(field) && value !== '' && !/^\d*\.?\d*$/.test(value)) {
+      return;
+    }
     setForm((prev) => {
       const updatedAssets = [...prev.dprAssets];
-      updatedAssets[index] = {
-        ...updatedAssets[index],
-        [field]: value,
-      };
+      updatedAssets[index] = applyAssetTriangle(updatedAssets[index], field, value);
       return { ...prev, dprAssets: updatedAssets };
     });
   };
@@ -291,6 +288,11 @@ const MsmeDprLeadFormPage = () => {
     const digits = form.mobileNumber.replace(/\D/g, '');
     if (digits.length < 10) {
       setError('Enter a valid mobile number (at least 10 digits).');
+      return;
+    }
+    const emailTrim = String(form.email || '').trim();
+    if (emailTrim && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
+      setError('Enter a valid email address or leave it blank.');
       return;
     }
 
@@ -463,6 +465,7 @@ const MsmeDprLeadFormPage = () => {
             <LeadFormOtpVerify
               applicantName={form.applicantName}
               mobileNumber={form.mobileNumber}
+              initialEmail={form.email}
               copy={copy}
               submitting={submitting}
               error={error}
@@ -560,6 +563,17 @@ const MsmeDprLeadFormPage = () => {
                   required
                   maxLength={10}
                   placeholder={copy.placeholderMobile}
+                  className={inputClass}
+                />
+              </FormField>
+
+              <FormField label={copy.email || 'Email'} optional>
+                <input
+                  type="email"
+                  name="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  placeholder={copy.placeholderEmail || 'yourname@example.com'}
                   className={inputClass}
                 />
               </FormField>
@@ -824,14 +838,6 @@ const MsmeDprLeadFormPage = () => {
                         <span className="text-xs font-bold uppercase tracking-wider text-gray-700">
                           Assets Breakdown
                         </span>
-                        <button
-                          type="button"
-                          onClick={handleAddAssetRow}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-orange-700 bg-orange-100 hover:bg-orange-200 rounded-lg transition-colors"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          {copy.addRow}
-                        </button>
                       </div>
 
                       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -919,10 +925,17 @@ const MsmeDprLeadFormPage = () => {
                                       );
                                     })()}
                                   </td>
-                                  <td className="p-2 font-medium text-gray-700 whitespace-nowrap">
-                                    {rowLoanAmt > 0
-                                      ? `₹${Math.round(rowLoanAmt).toLocaleString('en-IN')}`
-                                      : '₹0'}
+                                  <td className="p-2">
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={asset.loanAmount ?? (rowLoanAmt > 0 ? String(Math.round(rowLoanAmt)) : '')}
+                                      onChange={(e) =>
+                                        handleAssetChange(idx, 'loanAmount', e.target.value)
+                                      }
+                                      placeholder="0"
+                                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 bg-white focus:border-orange-500 outline-none font-medium text-gray-700"
+                                    />
                                   </td>
                                   <td className="p-2 text-center">
                                     {form.dprAssets.length > 1 && (
@@ -942,6 +955,15 @@ const MsmeDprLeadFormPage = () => {
                           </tbody>
                         </table>
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={handleAddAssetRow}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-orange-700 bg-orange-100 hover:bg-orange-200 rounded-lg transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        {copy.addRow}
+                      </button>
 
                       {/* Warning banner when any asset row has amount but missing loan % */}
                       {(form.dprAssets || []).some(
