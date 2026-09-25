@@ -92,6 +92,11 @@ export const FORM_COPY = {
     verifyTitle: 'Verify to submit',
     verifyBody: 'We will send a one-time code to your WhatsApp number to create your customer account and submit this request.',
     verifyBodyChannel: 'Choose WhatsApp or email. We send a one-time code there, then submit your request.',
+    verifyBodyBoth: 'Verify WhatsApp on your mobile, then verify email. Both codes are required to create your account and submit.',
+    verifyStepWhatsapp: 'Step 1 of 2 — WhatsApp OTP',
+    verifyStepEmail: 'Step 2 of 2 — Email OTP',
+    continueToEmailOtp: 'Continue to Email OTP',
+    backToWhatsappOtp: 'Back to WhatsApp OTP',
     verifyViaWhatsapp: 'WhatsApp OTP',
     verifyViaEmail: 'Email OTP',
     emailAddress: 'Email address',
@@ -236,10 +241,10 @@ const SCHEME_LABELS_TE = {
 
 const LOAN_TYPE_LABELS_TE = {
   'Term Loan': 'టర్మ్ లోన్',
+  'Commercial Vehicle': 'వాణిజ్య వాహనం (Commercial Vehicle)',
   'Term Loan and working capital loan': 'టర్మ్ లోన్ మరియు వర్కింగ్ క్యాపిటల్ లోన్',
   'Working capital or OD Loan': 'వర్కింగ్ క్యాపిటల్ లేదా ఓడి లోన్',
   'Gold Loan': 'గోల్డ్ లోన్',
-  'Commercial Vehicle': 'Commercial Vehicle',
   'Dropline OD': 'డ్రాప్‌లైన్ ఓడి',
 };
 
@@ -349,24 +354,28 @@ export const MSME_DPR_TEST_FORM_2 = {
       assetCategory: 'Plant and Machinery',
       amount: '1800000',
       loanPercentage: '75',
+      loanAmount: '1350000',
     },
     {
       assetModel: 'Industrial Workshop Shed 3500 Sq.ft',
       assetCategory: 'Shed Construction and Civil works',
       amount: '1200000',
       loanPercentage: '80',
+      loanAmount: '960000',
     },
     {
       assetModel: 'Commercial Electric Cargo Vehicle (3-Ton)',
       assetCategory: 'Vehicles',
       amount: '850000',
       loanPercentage: '85',
+      loanAmount: '722500',
     },
     {
       assetModel: 'HT Transformer & Industrial Cabling Setup',
       assetCategory: 'Electrical Items & plumbing items',
       amount: '450000',
       loanPercentage: '70',
+      loanAmount: '315000',
     },
   ],
   workingCapital: '500000',

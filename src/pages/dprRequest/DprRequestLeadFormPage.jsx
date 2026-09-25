@@ -930,7 +930,7 @@ const DprRequestLeadFormPage = () => {
                                         handleAssetChange(idx, 'loanAmount', e.target.value)
                                       }
                                       placeholder="0"
-                                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 bg-white focus:border-purple-500 outline-none font-medium text-gray-700"
+                                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 bg-white focus:border-orange-500 outline-none font-medium text-gray-700"
                                     />
                                   </td>
                                   <td className="p-2 text-center">
