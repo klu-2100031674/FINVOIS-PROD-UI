@@ -178,25 +178,6 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import LeadLoginPage from "./pages/lead/LeadLoginPage";
 import LeadResetPasswordPage from "./pages/lead/LeadResetPasswordPage";
 import LeadDashboardPage from "./pages/lead/LeadDashboardPage";
-// Sales CRM pages
-import { SalesAuthProvider, useSalesAuth } from "./context/SalesAuthContext";
-import SalesLoginPage from "./pages/sales/SalesLoginPage";
-import SalesLayout from "./pages/sales/SalesLayout";
-import SalesManagerDashboard from "./pages/sales/manager/SalesManagerDashboard";
-import SalesExecutivesPage from "./pages/sales/manager/SalesExecutivesPage";
-import SalesUploadPage from "./pages/sales/manager/SalesUploadPage";
-import SalesManagerClientsPage from "./pages/sales/manager/SalesManagerClientsPage";
-import SalesReportsPage from "./pages/sales/manager/SalesReportsPage";
-import SalesManagerFollowUpsPage from "./pages/sales/manager/SalesManagerFollowUpsPage";
-import SalesQueuePage from "./pages/sales/executive/SalesQueuePage";
-import SalesMyClientsPage from "./pages/sales/executive/SalesMyClientsPage";
-import SalesFollowUpsPage from "./pages/sales/executive/SalesFollowUpsPage";
-import SalesMyStatsPage from "./pages/sales/executive/SalesMyStatsPage";
-import AdminSalesDashboard from "./pages/sales/admin/AdminSalesDashboard";
-import AdminSalesManagersPage from "./pages/sales/admin/AdminSalesManagersPage";
-import AdminSalesReportsPage from "./pages/sales/admin/AdminSalesReportsPage";
-import AdminSalesClientsPage from "./pages/sales/admin/AdminSalesClientsPage";
-import AdminSalesUploadPage from "./pages/sales/admin/AdminSalesUploadPage";
 import AdminBanksPage from "./pages/admin/AdminBanksPage";
 import BankDPRPage from "./pages/admin/BankDPRPage";
 import LeadManagerDashboardPage from "./pages/admin/LeadManagerDashboardPage";
@@ -619,32 +600,6 @@ const AgentRoute = ({ children }) => {
 const LeadRoute = ({ children }) => {
   const isAuthenticated = useSelector(state => state.leadAuth.isAuthenticated);
   if (!isAuthenticated) return <Navigate to="/lead/login" replace />;
-  return children;
-};
-
-// Sales CRM route guards (separate auth system from main app)
-const SalesPublicRoute = ({ children }) => {
-  const { user, loading } = useSalesAuth();
-  if (loading) return null;
-  if (user) {
-    return <Navigate to={user.role === 'manager' ? '/crm/manager/dashboard' : '/crm/executive/queue'} replace />;
-  }
-  return children;
-};
-
-const SalesManagerRoute = ({ children }) => {
-  const { user, loading, isManager } = useSalesAuth();
-  if (loading) return null;
-  if (!user) return <Navigate to="/crm/login" replace />;
-  if (!isManager) return <Navigate to="/crm/executive/queue" replace />;
-  return children;
-};
-
-const SalesExecutiveRoute = ({ children }) => {
-  const { user, loading, isExecutive } = useSalesAuth();
-  if (loading) return null;
-  if (!user) return <Navigate to="/crm/login" replace />;
-  if (!isExecutive) return <Navigate to="/crm/manager/dashboard" replace />;
   return children;
 };
 
@@ -2111,54 +2066,6 @@ function App() {
         <Route path="/lead/login" element={<LeadLoginPage />} />
         <Route path="/lead/reset-password" element={<LeadResetPasswordPage />} />
         <Route path="/lead/dashboard" element={<LeadRoute><LeadDashboardPage /></LeadRoute>} />
-
-        {/* Admin Sales CRM Routes — use main platform JWT (AdminRoute guard) */}
-        <Route path="/admin/sales" element={<AdminRoute><Navigate to="/admin/sales/dashboard" replace /></AdminRoute>} />
-        <Route path="/admin/sales/dashboard" element={<AdminRoute><AdminSalesDashboard /></AdminRoute>} />
-        <Route path="/admin/sales/managers"  element={<AdminRoute><AdminSalesManagersPage /></AdminRoute>} />
-        <Route path="/admin/sales/reports"   element={<AdminRoute><AdminSalesReportsPage /></AdminRoute>} />
-        <Route path="/admin/sales/clients"   element={<AdminRoute><AdminSalesClientsPage /></AdminRoute>} />
-        <Route path="/admin/sales/upload"    element={<AdminRoute><AdminSalesUploadPage /></AdminRoute>} />
-
-        {/* Sales CRM Routes — wrapped in SalesAuthProvider for isolated auth */}
-        <Route
-          path="/crm/*"
-          element={
-            <SalesAuthProvider>
-              <Routes>
-                <Route path="login" element={<SalesPublicRoute><SalesLoginPage /></SalesPublicRoute>} />
-
-                {/* Manager routes */}
-                <Route
-                  path="manager"
-                  element={<SalesManagerRoute><SalesLayout /></SalesManagerRoute>}
-                >
-                  <Route path="dashboard" element={<SalesManagerDashboard />} />
-                  <Route path="executives" element={<SalesExecutivesPage />} />
-                  <Route path="upload" element={<SalesUploadPage />} />
-                  <Route path="clients" element={<SalesManagerClientsPage />} />
-                  <Route path="reports" element={<SalesReportsPage />} />
-                  <Route path="follow-ups" element={<SalesManagerFollowUpsPage />} />
-                  <Route index element={<Navigate to="dashboard" replace />} />
-                </Route>
-
-                {/* Executive routes */}
-                <Route
-                  path="executive"
-                  element={<SalesExecutiveRoute><SalesLayout /></SalesExecutiveRoute>}
-                >
-                  <Route path="queue" element={<SalesQueuePage />} />
-                  <Route path="clients" element={<SalesMyClientsPage />} />
-                  <Route path="follow-ups" element={<SalesFollowUpsPage />} />
-                  <Route path="stats" element={<SalesMyStatsPage />} />
-                  <Route index element={<Navigate to="queue" replace />} />
-                </Route>
-
-                <Route index element={<Navigate to="login" replace />} />
-              </Routes>
-            </SalesAuthProvider>
-          }
-        />
 
         {/* 404 Route */}
         <Route
