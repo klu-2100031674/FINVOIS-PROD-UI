@@ -18,7 +18,7 @@ export function isPublicAnonymousApiPath(url) {
     u.includes('/customer/google-auth') ||
     u.includes('/customer/send-otp') ||
     u.includes('/customer/verify-otp-register') ||
-    u.includes('/customer/msme-form-register') ||
+    u.includes('/customer/msme-dpr-form-register') ||
     u.includes('/customer/mepma-form-register') ||
     u.includes('/customer/dpr-request-form-register') ||
     u.includes('/customer/check-exists') ||

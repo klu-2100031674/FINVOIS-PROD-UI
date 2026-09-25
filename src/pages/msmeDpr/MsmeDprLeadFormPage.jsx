@@ -4,7 +4,7 @@
  * Submission flow:
  *  1. Customer fills form → clicks Submit → form validated
  *  2. WhatsApp or email OTP verification
- *  3. POST /customer/msme-form-register with OTP + files
+ *  3. POST /customer/msme-dpr-form-register with OTP + files
  */
 import { useState } from 'react';
 import { Send, ChevronDown, Plus, Trash2, CheckSquare, Square } from 'lucide-react';
@@ -338,7 +338,7 @@ const MsmeDprLeadFormPage = () => {
       fd.append('otp', otp);
       pendingAttachments.forEach((file) => fd.append('files', file));
 
-      const res = await apiClient.post('/customer/msme-form-register', fd, {
+      const res = await apiClient.post('/customer/msme-dpr-form-register', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
