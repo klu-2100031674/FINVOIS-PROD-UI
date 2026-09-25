@@ -14,11 +14,9 @@ const TUNNEL_ALLOWED_HOST_SUFFIXES = [
   '.trycloudflare.com',
 ]
 
-const API_PROXY_TARGET = process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:3000'
-
-function createApiProxy() {
+function createApiProxy(target) {
   return {
-    target: API_PROXY_TARGET,
+    target: target || 'http://127.0.0.1:3000',
     changeOrigin: true,
     timeout: 300000,
     proxyTimeout: 300000,
@@ -40,6 +38,9 @@ function createApiProxy() {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const ngrokHmrHost = env.VITE_NGROK_HMR_HOST || process.env.VITE_NGROK_HMR_HOST
+  const apiProxyTarget =
+    env.VITE_LOCAL_API_PROXY_TARGET ||
+    (mode === 'development' ? 'http://127.0.0.1:3000' : (env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:3000'))
 
   return {
     plugins: [react()],
@@ -69,14 +70,14 @@ export default defineConfig(({ mode }) => {
           }
         : {}),
       proxy: {
-        '/api': createApiProxy(),
+        '/api': createApiProxy(apiProxyTarget),
       },
     },
     preview: {
       host: true,
       allowedHosts: true,
       proxy: {
-        '/api': createApiProxy(),
+        '/api': createApiProxy(apiProxyTarget),
       },
     },
     build: {

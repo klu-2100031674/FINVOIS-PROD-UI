@@ -57,6 +57,36 @@ const OpenRequestsPage = () => {
     });
   };
 
+  const removeDuplicates = async () => {
+    const confirmed = window.confirm(
+      'Delete extra open copies that share the same applicant name, phone, and form? The oldest row in each group is kept. This cannot be undone.'
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      const res = await api.post('/govt-forms/requests/remove-duplicates');
+      const deletedCount = res.data?.data?.deletedIds?.length || 0;
+      setSelectedRequestIds([]);
+      await fetchRequests({ silent: true });
+      toast.success(
+        deletedCount
+          ? `${deletedCount} duplicate request(s) deleted`
+          : 'No deletable duplicates were found'
+      );
+    } catch (error) {
+      const status = error.response?.status;
+      toast.error(
+        error.response?.data?.error ||
+          (status === 404
+            ? 'Delete API is not on this backend. Restart the local Production API on port 3000.'
+            : 'Failed to remove duplicate requests')
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const deleteSelected = async () => {
     if (!selectedRequestIds.length) return;
     const confirmed = window.confirm(
@@ -70,9 +100,7 @@ const OpenRequestsPage = () => {
       let skippedCount = 0;
       for (let index = 0; index < selectedRequestIds.length; index += 500) {
         const requestIds = selectedRequestIds.slice(index, index + 500);
-        const res = await api.delete('/govt-forms/requests/bulk-delete', {
-          data: { requestIds },
-        });
+        const res = await api.post('/govt-forms/requests/bulk-delete', { requestIds });
         deletedCount += res.data?.data?.deletedIds?.length || 0;
         skippedCount += res.data?.data?.skippedIds?.length || 0;
       }
@@ -84,7 +112,13 @@ const OpenRequestsPage = () => {
           : `${deletedCount} request(s) deleted`
       );
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to delete selected requests');
+      const status = error.response?.status;
+      toast.error(
+        error.response?.data?.error ||
+          (status === 404
+            ? 'Delete API is not on this backend. Restart the local Production API on port 3000.'
+            : 'Failed to delete selected requests')
+      );
     } finally {
       setDeleting(false);
     }
@@ -108,6 +142,15 @@ const OpenRequestsPage = () => {
           <p className="text-xs text-gray-400 mt-1">Auto-refreshes every 3 minutes</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={removeDuplicates}
+            disabled={deleting || loading}
+            className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+          >
+            <Trash2 size={14} />
+            {deleting ? 'Working…' : 'Remove duplicates'}
+          </button>
           {selectedRequestIds.length > 0 && (
             <button
               type="button"

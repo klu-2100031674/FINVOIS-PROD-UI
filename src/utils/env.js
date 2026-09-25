@@ -1,5 +1,3 @@
-import { isTunnelHostname } from './tunnel';
-
 // Read a Vite env variable safely. Returns a trimmed string or '' when missing.
 // IMPORTANT: do NOT throw at module-load time — these helpers are imported from
 // api.js and apiClient.js, so a throw here prevents React from ever mounting
@@ -9,10 +7,6 @@ const readEnv = (key) => {
   if (typeof value !== 'string') return '';
   return value.trim();
 };
-
-function isLocalApiHost(hostname) {
-  return hostname === 'localhost' || hostname === '127.0.0.1';
-}
 
 const hostFallbackApiBaseMap = {
   'finvois.com': 'https://api.finvois.com/api',
@@ -43,27 +37,10 @@ function resolveHostFallbackApiBase(hostname) {
 export const getApiBaseUrl = () => {
   const configured = readEnv('VITE_API_BASE_URL');
 
-  // In local dev, use the Vite `/api` proxy (LAN, ngrok UI tunnel, etc.).
+  // In local `npm run dev`, always use the Vite `/api` proxy so the machine
+  // running this UI talks to the local backend — not a remote VM that may be
+  // missing newer routes such as bulk-delete.
   if (import.meta.env.DEV) {
-    if (configured) {
-      try {
-        const { hostname } = new URL(configured);
-        const onTunnel =
-          typeof window !== 'undefined' && isTunnelHostname(window.location.hostname);
-        if (onTunnel && isLocalApiHost(hostname)) {
-          console.warn(
-            '[Finvois] VITE_API_BASE_URL points at localhost but the app is opened via a tunnel. ' +
-              'Using /api proxy instead.',
-          );
-          return '/api';
-        }
-      } catch {
-        /* use configured below */
-      }
-      if (!configured.startsWith('/')) {
-        return configured.replace(/\/$/, '');
-      }
-    }
     return '/api';
   }
 
