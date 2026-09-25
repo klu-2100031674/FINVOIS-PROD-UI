@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Trash2 } from 'lucide-react';
 import ClientLayout from '../../components/layouts/ClientLayout';
 import RequestsQueueTable from '../../components/govtForms/RequestsQueueTable';
 import api from '../../api/apiClient';
@@ -13,13 +13,18 @@ const OpenRequestsPage = () => {
   const [filtered, setFiltered] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedRequestIds, setSelectedRequestIds] = useState([]);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchRequests = useCallback(async ({ silent = false } = {}) => {
     try {
       if (silent) setRefreshing(true);
       else setLoading(true);
       const res = await api.get('/govt-forms/requests?queue=open');
-      setRequests(res.data?.data || []);
+      const nextRequests = res.data?.data || [];
+      const availableIds = new Set(nextRequests.map((request) => request._id));
+      setRequests(nextRequests);
+      setSelectedRequestIds((current) => current.filter((id) => availableIds.has(id)));
     } catch (err) {
       toast.error('Failed to load open requests');
     } finally {
@@ -31,6 +36,59 @@ const OpenRequestsPage = () => {
   useEffect(() => {
     fetchRequests();
   }, [fetchRequests]);
+
+  const toggleRequest = (requestId, checked) => {
+    setSelectedRequestIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(requestId);
+      else next.delete(requestId);
+      return [...next];
+    });
+  };
+
+  const toggleAll = (checked, visibleRequests) => {
+    setSelectedRequestIds((current) => {
+      const next = new Set(current);
+      visibleRequests.forEach((request) => {
+        if (checked) next.add(request._id);
+        else next.delete(request._id);
+      });
+      return [...next];
+    });
+  };
+
+  const deleteSelected = async () => {
+    if (!selectedRequestIds.length) return;
+    const confirmed = window.confirm(
+      `Delete ${selectedRequestIds.length} selected open request(s)? This cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      let deletedCount = 0;
+      let skippedCount = 0;
+      for (let index = 0; index < selectedRequestIds.length; index += 500) {
+        const requestIds = selectedRequestIds.slice(index, index + 500);
+        const res = await api.delete('/govt-forms/requests/bulk-delete', {
+          data: { requestIds },
+        });
+        deletedCount += res.data?.data?.deletedIds?.length || 0;
+        skippedCount += res.data?.data?.skippedIds?.length || 0;
+      }
+      setSelectedRequestIds([]);
+      await fetchRequests({ silent: true });
+      toast.success(
+        skippedCount
+          ? `${deletedCount} deleted; ${skippedCount} protected or already changed`
+          : `${deletedCount} request(s) deleted`
+      );
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to delete selected requests');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -49,16 +107,29 @@ const OpenRequestsPage = () => {
           </p>
           <p className="text-xs text-gray-400 mt-1">Auto-refreshes every 3 minutes</p>
         </div>
-        <button
-          type="button"
-          onClick={() => fetchRequests({ silent: true })}
-          disabled={loading || refreshing}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          title="Refresh open requests"
-        >
-          <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-          Refresh
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {selectedRequestIds.length > 0 && (
+            <button
+              type="button"
+              onClick={deleteSelected}
+              disabled={deleting}
+              className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              <Trash2 size={14} />
+              {deleting ? 'Deleting…' : `Delete selected (${selectedRequestIds.length})`}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => fetchRequests({ silent: true })}
+            disabled={loading || refreshing || deleting}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            title="Refresh open requests"
+          >
+            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {!loading && (
@@ -73,6 +144,10 @@ const OpenRequestsPage = () => {
         requests={loading ? [] : filtered}
         loading={loading}
         emptyMessage="No open requests match your search or filters."
+        selectable
+        selectedRequestIds={selectedRequestIds}
+        onToggleRequest={toggleRequest}
+        onToggleAll={toggleAll}
       />
     </ClientLayout>
   );

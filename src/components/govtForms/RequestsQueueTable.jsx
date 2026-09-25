@@ -10,6 +10,10 @@ const RequestsQueueTable = ({
   hideStaffOwner = false,
   wideTable = false,
   statusMode = 'queue',
+  selectable = false,
+  selectedRequestIds = [],
+  onToggleRequest,
+  onToggleAll,
 }) => {
   if (loading) {
     return (
@@ -19,7 +23,10 @@ const RequestsQueueTable = ({
     );
   }
 
-  const colSpan = hideStaffOwner ? 6 : 7;
+  const selectedSet = new Set(selectedRequestIds);
+  const allSelected =
+    selectable && requests.length > 0 && requests.every((request) => selectedSet.has(request._id));
+  const colSpan = (hideStaffOwner ? 6 : 7) + (selectable ? 1 : 0);
 
   return (
     <div className={`bg-white rounded-lg shadow-md overflow-hidden ${wideTable ? 'w-full' : ''}`}>
@@ -27,6 +34,17 @@ const RequestsQueueTable = ({
         <table className={`divide-y divide-gray-200 ${wideTable ? 'w-full min-w-[1100px]' : 'min-w-full'}`}>
           <thead className="bg-gray-50">
             <tr>
+              {selectable && (
+                <th className="px-4 py-3 text-left">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={(event) => onToggleAll?.(event.target.checked, requests)}
+                    aria-label="Select all visible requests"
+                    className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                  />
+                </th>
+              )}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Form Request</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applicant Info</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
@@ -70,6 +88,17 @@ const RequestsQueueTable = ({
 
                 return (
                   <tr key={req._id} className="hover:bg-gray-50">
+                    {selectable && (
+                      <td className="px-4 py-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedSet.has(req._id)}
+                          onChange={(event) => onToggleRequest?.(req._id, event.target.checked)}
+                          aria-label={`Select request ${req._id}`}
+                          className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                        />
+                      </td>
+                    )}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                       {formName}
                     </td>
