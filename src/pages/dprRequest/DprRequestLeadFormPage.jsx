@@ -1,15 +1,15 @@
 /**
  * DPR Request Lead Submission Form
  *
- * Submission flow (no WhatsApp OTP for now):
+ * Submission flow:
  *  1. Customer fills form → clicks Submit → form validated
- *  2. POST /customer/dpr-request-form-register creates customer + DepartmentRequest
- *     + dual-writes MsmeDprLeadSubmission (multipart files included)
- *  3. Success message — no login step
+ *  2. WhatsApp or email OTP verification
+ *  3. POST /customer/dpr-request-form-register with OTP + files
  */
 import { useState } from 'react';
 import { Send, ChevronDown, Plus, Trash2, CheckSquare, Square } from 'lucide-react';
 import apiClient, { apiErrorMessage } from '@/api/apiClient';
+import LeadFormOtpVerify from '@/components/common/LeadFormOtpVerify';
 import { mapDprRequestFormToSubmittedData, DPR_REQUEST_CUSTOM_ROUTE } from '@/constants/dprRequestSubmittedData';
 import faqData from '../../data/FAQ.json';
 import OptionalDocumentUpload from '@/components/common/OptionalDocumentUpload';
@@ -119,8 +119,9 @@ const DprRequestLeadFormPage = () => {
   const [pendingAttachments, setPendingAttachments] = useState([]);
   const [testDataClickCount, setTestDataClickCount] = useState(0);
 
-  // step: 'form' | 'done'
+  // step: 'form' | 'verify' | 'done'
   const [step, setStep] = useState('form');
+  const [pendingPayload, setPendingPayload] = useState(null);
   const [submittedRequestId, setSubmittedRequestId] = useState(null);
 
   const toggleFAQ = (index) => {
@@ -316,11 +317,26 @@ const DprRequestLeadFormPage = () => {
         : [],
     });
 
+    setPendingPayload(payload);
+    setError('');
+    setStep('verify');
+  };
+
+  const handleVerifiedSubmit = async ({ type, value, otp, email }) => {
+    if (!pendingPayload) return;
     setSubmitting(true);
+    setError('');
     try {
+      const payload = {
+        ...pendingPayload,
+        govt_builtin_email: type === 'email' ? email : pendingPayload.govt_builtin_email || '',
+      };
       const fd = new FormData();
       fd.append('customRoute', DPR_REQUEST_CUSTOM_ROUTE);
       fd.append('submittedData', JSON.stringify(payload));
+      fd.append('otpType', type);
+      fd.append('otpValue', value);
+      fd.append('otp', otp);
       pendingAttachments.forEach((file) => fd.append('files', file));
 
       const res = await apiClient.post('/customer/dpr-request-form-register', fd, {
@@ -354,6 +370,7 @@ const DprRequestLeadFormPage = () => {
     setTestDataClickCount(0);
     setStep('form');
     setSubmittedRequestId(null);
+    setPendingPayload(null);
   };
 
   return (
@@ -445,7 +462,20 @@ const DprRequestLeadFormPage = () => {
           </p>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">{copy.formTitle}</h1>
 
-          {step === 'done' ? (
+          {step === 'verify' ? (
+            <LeadFormOtpVerify
+              applicantName={form.applicantName}
+              mobileNumber={form.mobileNumber}
+              copy={copy}
+              submitting={submitting}
+              error={error}
+              onBack={() => {
+                setError('');
+                setStep('form');
+              }}
+              onVerifiedSubmit={handleVerifiedSubmit}
+            />
+          ) : step === 'done' ? (
             /* ── Success screen ── */
             <div className="text-center py-8">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center text-3xl text-green-600">

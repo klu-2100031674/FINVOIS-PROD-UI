@@ -26,7 +26,7 @@ export const MEPMA_FIELD_IDS = {
 export function mapMepmaFormToSubmittedData(form = {}) {
   return {
     [MEPMA_BUILTIN_FIELD_IDS.name]: String(form.applicantName || '').trim(),
-    [MEPMA_BUILTIN_FIELD_IDS.email]: '',
+    [MEPMA_BUILTIN_FIELD_IDS.email]: String(form.email || '').trim(),
     [MEPMA_BUILTIN_FIELD_IDS.phone]: String(form.mobileNumber || '').trim(),
     aadharNumber: String(form.aadharNumber || '').trim(),
     panNumber: String(form.panNumber || '').trim(),

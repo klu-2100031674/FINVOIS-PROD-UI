@@ -26,7 +26,7 @@ export const MSME_FIELD_IDS = {
 export function mapMsmeFormToSubmittedData(form = {}) {
   return {
     [BUILTIN_FIELD_IDS.name]: String(form.applicantName || '').trim(),
-    [BUILTIN_FIELD_IDS.email]: '',
+    [BUILTIN_FIELD_IDS.email]: String(form.email || '').trim(),
     [BUILTIN_FIELD_IDS.phone]: String(form.mobileNumber || '').trim(),
     aadharNumber: String(form.aadharNumber || '').trim(),
     panNumber: String(form.panNumber || '').trim(),

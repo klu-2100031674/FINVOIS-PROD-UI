@@ -1,15 +1,15 @@
 /**
  * MEPMA DPR Lead Submission Form
  *
- * Submission flow (no WhatsApp OTP):
+ * Submission flow:
  *  1. Customer fills form → clicks Submit → form validated
- *  2. POST /customer/mepma-form-register creates customer + DepartmentRequest
- *     + dual-writes MepmaDprLeadSubmission (multipart files included)
- *  3. Success message — customer logs in later via WhatsApp OTP to view reports
+ *  2. WhatsApp or email OTP verification
+ *  3. POST /customer/mepma-form-register with OTP + files
  */
 import { useState } from 'react';
 import { Send, ChevronDown, Plus, Trash2, CheckSquare, Square } from 'lucide-react';
 import apiClient, { apiErrorMessage } from '@/api/apiClient';
+import LeadFormOtpVerify from '@/components/common/LeadFormOtpVerify';
 import { mapMepmaFormToSubmittedData, MEPMA_DPR_CUSTOM_ROUTE } from '@/constants/mepmaDprSubmittedData';
 import faqData from '../../data/FAQ.json';
 import OptionalDocumentUpload from '@/components/common/OptionalDocumentUpload';
@@ -120,8 +120,9 @@ const MepmaDprLeadFormPage = () => {
   const [pendingAttachments, setPendingAttachments] = useState([]);
   const [testDataClickCount, setTestDataClickCount] = useState(0);
 
-  // step: 'form' | 'done'
+  // step: 'form' | 'verify' | 'done'
   const [step, setStep] = useState('form');
+  const [pendingPayload, setPendingPayload] = useState(null);
   const [submittedRequestId, setSubmittedRequestId] = useState(null);
 
   const toggleFAQ = (index) => {
@@ -326,11 +327,26 @@ const MepmaDprLeadFormPage = () => {
         : [],
     });
 
+    setPendingPayload(payload);
+    setError('');
+    setStep('verify');
+  };
+
+  const handleVerifiedSubmit = async ({ type, value, otp, email }) => {
+    if (!pendingPayload) return;
     setSubmitting(true);
+    setError('');
     try {
+      const payload = {
+        ...pendingPayload,
+        govt_builtin_email: type === 'email' ? email : pendingPayload.govt_builtin_email || '',
+      };
       const fd = new FormData();
       fd.append('customRoute', MEPMA_DPR_CUSTOM_ROUTE);
       fd.append('submittedData', JSON.stringify(payload));
+      fd.append('otpType', type);
+      fd.append('otpValue', value);
+      fd.append('otp', otp);
       pendingAttachments.forEach((file) => fd.append('files', file));
 
       const res = await apiClient.post('/customer/mepma-form-register', fd, {
@@ -364,6 +380,7 @@ const MepmaDprLeadFormPage = () => {
     setTestDataClickCount(0);
     setStep('form');
     setSubmittedRequestId(null);
+    setPendingPayload(null);
   };
 
   return (
@@ -455,7 +472,20 @@ const MepmaDprLeadFormPage = () => {
           </p>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">MEPMA AI DPR PREPARATION</h1>
 
-          {step === 'done' ? (
+          {step === 'verify' ? (
+            <LeadFormOtpVerify
+              applicantName={form.applicantName}
+              mobileNumber={form.mobileNumber}
+              copy={copy}
+              submitting={submitting}
+              error={error}
+              onBack={() => {
+                setError('');
+                setStep('form');
+              }}
+              onVerifiedSubmit={handleVerifiedSubmit}
+            />
+          ) : step === 'done' ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center text-3xl text-green-600">
                 ✓
