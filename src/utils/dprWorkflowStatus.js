@@ -88,8 +88,7 @@ export function canAssignRequest(request, report) {
   return getDprWorkflowStatus(request, report).key === WORKFLOW_KEYS.pending;
 }
 
-/** Admin can unassign even after claim, assignment, or report generation. */
-export function canAdminUnassignRequest(request) {
+function requestIsStaffed(request) {
   if (!request) return false;
   const staffed =
     request.status === 'claimed' ||
@@ -98,10 +97,22 @@ export function canAdminUnassignRequest(request) {
   return staffed && request.status !== 'open';
 }
 
+/** Unassign is hidden after the report is with CA or already generated. */
+export function isAdminUnassignLocked(request, report) {
+  const key = getDprWorkflowStatus(request, report).key;
+  return key === WORKFLOW_KEYS.ca_validation || key === WORKFLOW_KEYS.generated;
+}
+
+/** Admin can unassign while a CS owns the request, until CA validation or generated. */
+export function canAdminUnassignRequest(request, report) {
+  if (!request || isAdminUnassignLocked(request, report)) return false;
+  return requestIsStaffed(request);
+}
+
 /** Admin can assign any request that currently has no CS owner. */
-export function canAdminAssignRequest(request) {
-  if (!request) return false;
-  return !canAdminUnassignRequest(request);
+export function canAdminAssignRequest(request, report) {
+  if (!request || isAdminUnassignLocked(request, report)) return false;
+  return !requestIsStaffed(request);
 }
 
 /** Display name of the CS agent assigned to / claiming a request. */

@@ -4,7 +4,10 @@ import api, { apiErrorMessage } from '../../api/apiClient';
 import {
   canAdminAssignRequest,
   canAdminUnassignRequest,
+  isAdminUnassignLocked,
   staffHandlerName,
+  workflowFromLead,
+  WORKFLOW_KEYS,
 } from '../../utils/dprWorkflowStatus';
 
 function resolveRequest(requestLike) {
@@ -77,8 +80,12 @@ const AdminDprStaffActions = ({ requestLike, csAgents = [], onChanged, adminActi
     }
   };
 
-  const showAssign = adminActions && canAdminAssignRequest(request);
-  const showUnassign = adminActions && canAdminUnassignRequest(request);
+  const leadWf = workflowFromLead(requestLike);
+  const lockedByLead =
+    leadWf.key === WORKFLOW_KEYS.ca_validation || leadWf.key === WORKFLOW_KEYS.generated;
+  const locked = lockedByLead || isAdminUnassignLocked(request, report);
+  const showAssign = adminActions && !locked && canAdminAssignRequest(request, report);
+  const showUnassign = adminActions && !locked && canAdminUnassignRequest(request, report);
 
   return (
     <div className="flex flex-col gap-1 min-w-[160px]" onClick={(e) => e.stopPropagation()}>

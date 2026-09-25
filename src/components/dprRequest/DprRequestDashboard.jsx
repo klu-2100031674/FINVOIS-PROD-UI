@@ -36,6 +36,7 @@ import useAuth from '@/hooks/useAuth';
 import api from '@/api/apiClient';
 import DprRequestEmailOverlay from '@/components/dprRequest/DprRequestEmailOverlay';
 import AdminDprStaffActions from '@/components/govtForms/AdminDprStaffActions';
+import DprLeadReportActions from '@/components/govtForms/DprLeadReportActions';
 import { staffHandlerName, workflowFromLead } from '@/utils/dprWorkflowStatus';
 import {
   deleteDprRequestLead,
@@ -792,9 +793,9 @@ const DprRequestDashboard = ({
     ? 'No submissions match the selected filters.'
     : 'No submissions yet.';
 
-  // Columns: expand, [checkbox], Date, Name, Gender, Mobile, Loan Type, DPR Status, Staff (+ optional Generate / Delete)
+  // Columns: expand, [checkbox], Date, Name, Gender, Mobile, Loan Type, DPR Status, Staff, Report (+ optional Generate / Delete)
   const tableColSpan =
-    (showDelete ? 10 : 8) + (showGenerateReport ? 1 : 0);
+    (showDelete ? 11 : 9) + (showGenerateReport ? 1 : 0);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
@@ -1151,7 +1152,8 @@ const DprRequestDashboard = ({
                     <th className="px-3 py-3">Loan Type</th>
                     <th className="px-3 py-3">DPR Status</th>
                     <th className="px-3 py-3">Staff</th>
-                    {showGenerateReport && <th className="px-3 py-3">Generate Report</th>}
+                    <th className="px-3 py-3">Report</th>
+                    {/* {showGenerateReport && <th className="px-3 py-3">Generate Report</th>} */}
                     {showDelete && <th className="px-3 py-3 text-right">Actions</th>}
                   </tr>
                 </thead>
@@ -1219,11 +1221,14 @@ const DprRequestDashboard = ({
                                 onChanged={() => loadData(appliedFilters, page, timeframe)}
                               />
                           </td>
-                          {showGenerateReport && (
+                          <td className="px-3 py-3">
+                            <DprLeadReportActions lead={s} />
+                          </td>
+                          {/* {showGenerateReport && (
                             <td className="px-3 py-3">
                               <GenerateReportCell leadId={s._id} departmentRequestId={s.departmentRequestId} navigate={navigate} />
                             </td>
-                          )}
+                          )} */}
                           {showDelete && (
                             <td className="px-3 py-3 text-right">
                               <button
@@ -1353,12 +1358,16 @@ const DprRequestDashboard = ({
                           {formatServiceAvailed(s.serviceAvailed)}
                         </p>
                         */}
-                        {showGenerateReport && (
+                        <div className="pt-2 border-t mt-2">
+                          <p className="font-medium text-gray-700 mb-2 text-xs uppercase tracking-wide">Report</p>
+                          <DprLeadReportActions lead={s} />
+                        </div>
+                        {/* {showGenerateReport && (
                           <div className="pt-2 border-t mt-2">
                             <p className="font-medium text-gray-700 mb-2 text-xs uppercase tracking-wide">Generate Report</p>
                             <GenerateReportCell leadId={s._id} departmentRequestId={s.departmentRequestId} navigate={navigate} />
                           </div>
-                        )}
+                        )} */}
                         {showDelete && (
                           <div className="flex items-center justify-between pt-2 border-t mt-2">
                             <span className="font-medium text-gray-700">Delete submission</span>

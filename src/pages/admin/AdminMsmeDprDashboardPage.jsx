@@ -5,8 +5,8 @@ const AdminMsmeDprDashboardPage = () => (
   <AdminLayout>
     <MsmeDprDashboard
       showEmailConfig
-      // showServiceAvailed // hidden — DPR workflow status replaces this column
-      // showDelete // Uncomment to enable single + multi delete on form submissions
+      // showDelete // single + multi select/delete
+      // showGenerateReport
     />
   </AdminLayout>
 );
