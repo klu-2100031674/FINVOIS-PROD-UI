@@ -10,11 +10,16 @@ const RequestsQueueTable = ({
   hideStaffOwner = false,
   wideTable = false,
   statusMode = 'queue',
-  selectable = false,
-  selectedRequestIds = [],
-  onToggleRequest,
-  onToggleAll,
+  // Multi-select of rows (disabled)
+  // selectable = false,
+  // selectedRequestIds = [],
+  // onToggleRequest,
+  // onToggleAll,
 }) => {
+  const selectable = false;
+  const selectedRequestIds = [];
+  const onToggleRequest = undefined;
+  const onToggleAll = undefined;
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
