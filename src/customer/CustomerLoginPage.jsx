@@ -15,7 +15,7 @@ const CustomerLoginPage = () => {
   const dispatch = useDispatch();
   const { login } = useAuth();
 
-  // Tabs: 'credentials' or 'customer-otp'
+  // Tabs: 'credentials' or 'customer-otps' (OTP = One-Time Password)
   const [activeTab, setActiveTab] = useState('credentials');
   
   // Credentials login state
