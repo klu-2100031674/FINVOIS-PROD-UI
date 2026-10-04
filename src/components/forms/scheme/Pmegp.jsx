@@ -1,7 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PMEGP_SCHEME_MAIL_PATH } from './pmegpSchemeMailConstants';
-import { saveSchemeFormSession } from '../../../utils/schemeFormSession';
+import {
+  ensureFreshSchemeSessionOnFormEntry,
+  saveSchemeFormSession,
+  withSchemeSessionId,
+} from '../../../utils/schemeFormSession';
 import { saveSchemeFormProgress } from '../../../api/schemeFormsAPI';
 
 const SPECIAL_CATEGORIES = [
@@ -248,6 +252,10 @@ const PmegpSectionAForm = ({
   const navigate = useNavigate();
   const [data, setData] = useState(() => ({ ...initialState, ...(initialData || {}) }));
 
+  useEffect(() => {
+    ensureFreshSchemeSessionOnFormEntry('pmegpForm');
+  }, []);
+
   const specialCategoryEnabled = data.specialCategoryYesNo === 'Yes';
   const isAlreadyStarted = data.projectStage === 'Already started and under upgradation / expansion stage';
   const loanAvailedEnabled = isAlreadyStarted && data.alreadyStartedAvailedLoan === 'Yes';
@@ -394,10 +402,10 @@ const PmegpSectionAForm = ({
       );
       return;
     }
-    const payload = {
+    const payload = withSchemeSessionId('pmegpForm', {
       ...data,
       ageYears: data.ageYears === '' ? '' : Number(data.ageYears),
-    };
+    });
     onSubmit?.(payload);
     saveSchemeFormSession('pmegpForm', payload);
     try {

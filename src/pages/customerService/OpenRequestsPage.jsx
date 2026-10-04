@@ -137,9 +137,9 @@ const OpenRequestsPage = () => {
     <ClientLayout>
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Open Requests Queue</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Open Requests</h1>
           <p className="text-gray-500 mt-1">
-            Incoming public form submissions that are ready to be claimed or processed
+            Incoming form submissions ready to claim or process
           </p>
           <p className="text-xs text-gray-400 mt-1">Auto-refreshes every 3 minutes</p>
         </div>
@@ -191,6 +191,7 @@ const OpenRequestsPage = () => {
         requests={loading ? [] : filtered}
         loading={loading}
         emptyMessage="No open requests match your search or filters."
+        hideStaffOwner
         // selectable
         // selectedRequestIds={selectedRequestIds}
         // onToggleRequest={toggleRequest}

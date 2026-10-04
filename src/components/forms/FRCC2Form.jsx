@@ -214,13 +214,23 @@ const FRCC2Form = ({
   onFormDataChange = null,
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
-  const [formData, setFormData] = useState(initialData || {
-    "General Information": {
-      "i3": "", "i4": "", "i5": "", "i6": "", "i7": "", "i8": "", "i9": ""
-    },
-    "Means of Finance": {
-      "i11": "No", "i12": "", "h13": "", "h14": "", "h15": ""
-    },
+  const [formData, setFormData] = useState(() => {
+    if (initialData && Object.keys(initialData).length > 0) {
+      return {
+        ...initialData,
+        "Means of Finance": {
+          ...(initialData["Means of Finance"] || {}),
+          "i11": "No",
+        },
+      };
+    }
+    return {
+      "General Information": {
+        "i3": "", "i4": "", "i5": "", "i6": "", "i7": "", "i8": "", "i9": ""
+      },
+      "Means of Finance": {
+        "i11": "No", "i12": "", "h13": "", "h14": "", "h15": ""
+      },
     "Financial Years": {
       "i17": "", "i18": "", "k18": ""
     },
@@ -260,7 +270,8 @@ const FRCC2Form = ({
       "banker_mail_id": "",
       "cibil_score": "",
     }
-  });
+  };
+});
 
   const [showResult, setShowResult] = useState(false);
   const [finalJson, setFinalJson] = useState(null);
@@ -271,6 +282,10 @@ const FRCC2Form = ({
     if (initialData && isEditMode) {
       setFormData({
         ...initialData,
+        "Means of Finance": {
+          ...(initialData["Means of Finance"] || {}),
+          "i11": "No",
+        },
         "Projection Assumptions": {
           ...DEFAULT_ASSUMPTIONS,
           ...(initialData["Projection Assumptions"] || {}),

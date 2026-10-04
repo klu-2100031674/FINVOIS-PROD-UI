@@ -153,13 +153,23 @@ const FRCC3Form = ({
   onFormDataChange = null,
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
-  const [formData, setFormData] = useState(initialData || {
-    'General Information': {
-      'i4': '', 'i5': '', 'i6': '', 'i7': '', 'i8': '', 'i9': '', 'i10': ''
-    },
-    'Means of Finance': {
-      'i12': 'No', 'i13': '', 'h14': '', 'h15': '', 'h16': ''
-    },
+  const [formData, setFormData] = useState(() => {
+    if (initialData && Object.keys(initialData).length > 0) {
+      return {
+        ...initialData,
+        'Means of Finance': {
+          ...(initialData['Means of Finance'] || {}),
+          'i12': 'No',
+        },
+      };
+    }
+    return {
+      'General Information': {
+        'i4': '', 'i5': '', 'i6': '', 'i7': '', 'i8': '', 'i9': '', 'i10': ''
+      },
+      'Means of Finance': {
+        'i12': 'No', 'i13': '', 'h14': '', 'h15': '', 'h16': ''
+      },
     'Financial Years': {
       'i18': '', 'i19': '', 'i20': '', 'i21': ''
     },
@@ -193,7 +203,8 @@ const FRCC3Form = ({
       'banker_mail_id': '',
       'cibil_score': '',
     }
-  });
+  };
+});
 
   const [activeAssetTab, setActiveAssetTab] = useState(0);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -202,6 +213,10 @@ const FRCC3Form = ({
     if (initialData && isEditMode) {
       setFormData({
         ...initialData,
+        'Means of Finance': {
+          ...(initialData['Means of Finance'] || {}),
+          'i12': 'No',
+        },
         'Prepared By': {
           required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
       banker_mail_id: '',
@@ -267,7 +282,7 @@ const FRCC3Form = ({
         'i7': 'Innovation Hub, Tech City - 560001', 'i8': '9876543210',
         'i9': 'Service sector (with stock)', 'i10': 'IT Services and Consulting'
       },
-      'Means of Finance': { 'i12': 'Yes', 'i13': 18000000, 'h14': 10.5, 'h15': 0.5, 'h16': 20 },
+      'Means of Finance': { 'i12': 'No', 'i13': 18000000, 'h14': 10.5, 'h15': 0.5, 'h16': 20 },
       'Financial Years': { 'i18': '2024-25', 'i19': '2025-26', 'i20': '2026-27', 'i21': '2027-28' },
       'Financial Statements': {
         'i23': 18000000, 'i24': 15000000, 'i25': 50000000, 'i26': 18000000,

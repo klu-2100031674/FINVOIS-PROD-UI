@@ -17,6 +17,7 @@ import { normalizeRoleFromUser, normalizeUserRole } from '../utils/normalizeUser
 import { resolveSignupApprovalStatus } from '../utils/signupApproval';
 import { getVmStartUrl } from '../utils/env';
 import { shouldSkipVmOnLogin } from '../utils/tunnel';
+import { clearMsmeSetupDismissed } from './msmeService/MsmeSetupModal';
 
 const AuthPage = () => {
   const navigate = useNavigate();
@@ -133,7 +134,12 @@ const AuthPage = () => {
         toast.error(res.data.error || 'Failed to send OTP');
       }
     } catch (err) {
-      const errorMsg = err.response?.data?.error || err.message || 'Error sending OTP';
+      const errorMsg =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        (typeof err.response?.data === 'string' ? err.response.data : null) ||
+        err.message ||
+        'Error sending OTP';
       toast.error(errorMsg);
     } finally {
       setLoadingOtp(false);
@@ -162,7 +168,12 @@ const AuthPage = () => {
         toast.error(res.data.error || 'Invalid verification code');
       }
     } catch (err) {
-      const errorMsg = err.response?.data?.error || err.message || 'Verification failed';
+      const errorMsg =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        (typeof err.response?.data === 'string' ? err.response.data : null) ||
+        err.message ||
+        'Verification failed';
       toast.error(errorMsg);
     } finally {
       setLoadingOtp(false);
@@ -245,6 +256,9 @@ const AuthPage = () => {
         navigate('/mepma-dpr-dashboard', { replace: true });
       } else if (userRole === 'dpr_request_viewer') {
         navigate('/dpr-request-dashboard', { replace: true });
+      } else if (userRole === 'msme_service') {
+        clearMsmeSetupDismissed();
+        navigate('/msme-service/requests', { replace: true });
       } else {
         navigate('/dashboard', { replace: true });
       }
@@ -522,6 +536,9 @@ const ensureVmReady = async () => {
         navigate('/mepma-dpr-dashboard', { replace: true });
       } else if (userRole === 'dpr_request_viewer') {
         navigate('/dpr-request-dashboard', { replace: true });
+      } else if (userRole === 'msme_service') {
+        clearMsmeSetupDismissed();
+        navigate('/msme-service/requests', { replace: true });
       } else if (userRole === 'department') {
         navigate('/department/dashboard', { replace: true });
       } else {

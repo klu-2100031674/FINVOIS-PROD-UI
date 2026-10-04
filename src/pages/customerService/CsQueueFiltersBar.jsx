@@ -15,6 +15,9 @@ export default function CsQueueFiltersBar({
   requests = [],
   onFilteredChange,
   showQueueStatus = true,
+  showPaymentFilter = true,
+  showCaStatusFilter = true,
+  showDepartmentFilter = true,
 }) {
   const [filters, setFilters] = useState(() => loadCsQueueFilters());
 
@@ -98,21 +101,23 @@ export default function CsQueueFiltersBar({
       )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="block text-xs font-semibold text-gray-600">
-          Department
-          <select
-            value={filters.department}
-            onChange={(e) => setField('department', e.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-2.5 py-2 text-sm text-gray-800 focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-          >
-            <option value="">All departments</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {showDepartmentFilter && (
+          <label className="block text-xs font-semibold text-gray-600">
+            Department
+            <select
+              value={filters.department}
+              onChange={(e) => setField('department', e.target.value)}
+              className="mt-1 w-full rounded-lg border border-gray-300 px-2.5 py-2 text-sm text-gray-800 focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+            >
+              <option value="">All departments</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         {showQueueStatus && (
           <label className="block text-xs font-semibold text-gray-600">
@@ -131,34 +136,38 @@ export default function CsQueueFiltersBar({
           </label>
         )}
 
-        <label className="block text-xs font-semibold text-gray-600">
-          Payment
-          <select
-            value={filters.payment}
-            onChange={(e) => setField('payment', e.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-2.5 py-2 text-sm text-gray-800 focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-          >
-            <option value="">All</option>
-            <option value="unpaid">Unpaid</option>
-            <option value="paid">Paid</option>
-          </select>
-        </label>
+        {showPaymentFilter && (
+          <label className="block text-xs font-semibold text-gray-600">
+            Payment
+            <select
+              value={filters.payment}
+              onChange={(e) => setField('payment', e.target.value)}
+              className="mt-1 w-full rounded-lg border border-gray-300 px-2.5 py-2 text-sm text-gray-800 focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+            >
+              <option value="">All</option>
+              <option value="unpaid">Unpaid</option>
+              <option value="paid">Paid</option>
+            </select>
+          </label>
+        )}
 
-        <label className="block text-xs font-semibold text-gray-600">
-          CA status
-          <select
-            value={filters.caStatus}
-            onChange={(e) => setField('caStatus', e.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-2.5 py-2 text-sm text-gray-800 focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-          >
-            <option value="">All</option>
-            <option value="none">No report yet</option>
-            <option value="pending">CA Pending</option>
-            <option value="under_review">Under CA</option>
-            <option value="approved">Validated</option>
-            <option value="rejected">Queried / Rejected</option>
-          </select>
-        </label>
+        {showCaStatusFilter && (
+          <label className="block text-xs font-semibold text-gray-600">
+            CA status
+            <select
+              value={filters.caStatus}
+              onChange={(e) => setField('caStatus', e.target.value)}
+              className="mt-1 w-full rounded-lg border border-gray-300 px-2.5 py-2 text-sm text-gray-800 focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+            >
+              <option value="">All</option>
+              <option value="none">No report yet</option>
+              <option value="pending">CA Pending</option>
+              <option value="under_review">Under CA</option>
+              <option value="approved">Validated</option>
+              <option value="rejected">Queried / Rejected</option>
+            </select>
+          </label>
+        )}
       </div>
     </div>
   );

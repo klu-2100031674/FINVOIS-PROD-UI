@@ -15,6 +15,12 @@ import {
   getDprWorkflowStatus,
 } from '../../utils/dprWorkflowStatus';
 import { displayMsmeLoanType } from '../../utils/msmeLoanTypeDisplay';
+import { isGoldLoanType, isWorkingCapitalOdLoanType, reportTemplatesForLoanType } from '../../utils/partnerLeadLoanTypes';
+import {
+  resolveWcOdChartTemplate,
+  wcOdChartTemplateLabel,
+  WC_OD_CC_TEMPLATE_IDS,
+} from '../../utils/wcOdTypeChart';
 
 async function fetchCsRequestReportBlob(requestId, kind = 'pdf', inline = false) {
   const qs = kind === 'pdf' && inline ? '?inline=1' : '';
@@ -142,6 +148,12 @@ const MSME_EXTRA_FIELDS = [
   { id: 'processingFee', label: 'Processing Fee (%)', aliases: ['processingFee'] },
   { id: 'moratoriumPeriod', label: 'Moratorium period (months)', aliases: ['moratoriumPeriod'] },
   { id: 'loanAmount', label: 'Loan Amount', aliases: ['loanAmount'] },
+  { id: 'hasWorkingCapitalLimitPresent', label: 'Working Capital Limit at Present', chartKey: 'hasWorkingCapitalLimitPresent', aliases: [] },
+  { id: 'alsoNewTermLoanForAsset', label: 'Also going for New Term Loan for purchase of an Asset', chartKey: 'alsoNewTermLoanForAsset', aliases: [] },
+  { id: 'wcLimitTopup', label: 'WC limit Topup from present limit', chartKey: 'wcLimitTopup', aliases: [] },
+  { id: 'hasAuditedLastFy', label: 'Audited FS for last FY', chartKey: 'hasAuditedLastFy', aliases: [] },
+  { id: 'hasProvisionalCurrentFy', label: 'Provisional FS for current FY', chartKey: 'hasProvisionalCurrentFy', aliases: [] },
+  { id: 'suggestedTemplateId', label: 'Template Name', chartKey: 'suggestedTemplateId', aliases: [] },
 ];
 
 const MSME_ALWAYS_SHOW_IDS = new Set([
@@ -159,7 +171,7 @@ const MSME_ALWAYS_SHOW_IDS = new Set([
   'loanAmount',
   'hasOtherDprInfo',
 ]);
-const MSME_HIGHLIGHT_IDS = ['loanType', 'sector'];
+const MSME_HIGHLIGHT_IDS = ['loanType', 'sector', 'suggestedTemplateId'];
 
 const isMsmeRequest = (request) =>
   String(request?.formId?.customRoute || '').toLowerCase() === 'msme-dpr';
@@ -196,6 +208,12 @@ const MEPMA_EXTRA_FIELDS = [
   { id: 'processingFee', label: 'Processing Fee (%)', aliases: ['processingFee'] },
   { id: 'moratoriumPeriod', label: 'Moratorium period (months)', aliases: ['moratoriumPeriod'] },
   { id: 'loanAmount', label: 'Loan Amount', aliases: ['loanAmount'] },
+  { id: 'hasWorkingCapitalLimitPresent', label: 'Working Capital Limit at Present', chartKey: 'hasWorkingCapitalLimitPresent', aliases: [] },
+  { id: 'alsoNewTermLoanForAsset', label: 'Also going for New Term Loan for purchase of an Asset', chartKey: 'alsoNewTermLoanForAsset', aliases: [] },
+  { id: 'wcLimitTopup', label: 'WC limit Topup from present limit', chartKey: 'wcLimitTopup', aliases: [] },
+  { id: 'hasAuditedLastFy', label: 'Audited FS for last FY', chartKey: 'hasAuditedLastFy', aliases: [] },
+  { id: 'hasProvisionalCurrentFy', label: 'Provisional FS for current FY', chartKey: 'hasProvisionalCurrentFy', aliases: [] },
+  { id: 'suggestedTemplateId', label: 'Template Name', chartKey: 'suggestedTemplateId', aliases: [] },
 ];
 
 const MEPMA_ALWAYS_SHOW_IDS = new Set([
@@ -213,7 +231,7 @@ const MEPMA_ALWAYS_SHOW_IDS = new Set([
   'loanAmount',
   'hasOtherDprInfo',
 ]);
-const MEPMA_HIGHLIGHT_IDS = ['loanType', 'sector'];
+const MEPMA_HIGHLIGHT_IDS = ['loanType', 'sector', 'suggestedTemplateId'];
 
 const firstNonEmpty = (data, keys) => {
   for (const key of keys) {
@@ -223,11 +241,83 @@ const firstNonEmpty = (data, keys) => {
   return undefined;
 };
 
+const extraFieldValue = (data, field) => {
+  if (field?.id === 'suggestedTemplateId' || field?.chartKey === 'suggestedTemplateId') {
+    return suggestedTemplateIdFromData(data);
+  }
+  if (field?.chartKey) {
+    const chart = data?.wcOdTypeChart;
+    if (!chart || typeof chart !== 'object') return undefined;
+    const val = chart[field.chartKey];
+    if (val !== undefined && val !== null && String(val).trim() !== '') return val;
+    return undefined;
+  }
+  return firstNonEmpty(data, field?.aliases || [field?.id]);
+};
+
+const suggestedTemplateIdFromData = (data) => {
+  const chart = data?.wcOdTypeChart;
+  if (!chart || typeof chart !== 'object') return undefined;
+  const stored = String(chart.suggestedTemplateId || '').trim().toLowerCase();
+  if (WC_OD_CC_TEMPLATE_IDS.includes(stored)) return stored;
+  return resolveWcOdChartTemplate(chart) || undefined;
+};
+
+const templateNameForId = (templateId) => {
+  const id = String(templateId || '').trim();
+  if (!id) return '';
+  const found = TEMPLATES_LIST.find((item) => String(item.id).toLowerCase() === id.toLowerCase());
+  if (found?.name) return found.name;
+  return wcOdChartTemplateLabel(id) || id;
+};
+
+const requestLoanType = (request) =>
+  firstNonEmpty(request?.submittedData, [
+    'msme_loan_type',
+    'mepma_loan_type',
+    'dpr_request_loan_type',
+    'loanType',
+  ]);
+
+const templatesForRequest = (request) =>
+  reportTemplatesForLoanType(TEMPLATES_LIST, requestLoanType(request));
+
+const isCsHiddenStampField = (field) => {
+  const id = String(field?.id || '').toLowerCase();
+  const label = String(field?.label || '').toLowerCase();
+  return (
+    id.includes('need_ca_stamp') ||
+    id.includes('needcastamp') ||
+    label.includes('need ca stamp') ||
+    label.includes('stamp required')
+  );
+};
+
+const extraFieldDisplayLabel = (field, loanType) => {
+  if (field?.id === 'workingCapitalMargin' && isWorkingCapitalOdLoanType(loanType)) {
+    return 'Processing Fee (%)';
+  }
+  return field?.label || field?.id || '';
+};
+
+const submittedFieldDisplayLabel = (field, extra, loanType) => {
+  if (extra) return extraFieldDisplayLabel(extra, loanType);
+  if (isWorkingCapitalOdLoanType(loanType) && /working capital margin/i.test(String(field?.label || ''))) {
+    return 'Processing Fee (%)';
+  }
+  return field?.label || field?.id || '';
+};
+
+/** WC/OD stores the fee on workingCapitalMargin and copies it to processingFee — show one row. */
+const isDuplicateWcOdProcessingFeeField = (fieldId, loanType) =>
+  fieldId === 'processingFee' && isWorkingCapitalOdLoanType(loanType);
+
 const formatSubmittedValue = (val, fieldId) => {
   if (val === undefined || val === null || val === '') return '—';
   if (typeof val === 'boolean') return val ? 'Yes' : 'No';
   if (Array.isArray(val)) return val.length ? val.map((item) => String(item)).join(', ') : '—';
   if (fieldId === 'loanType') return displayMsmeLoanType(val);
+  if (fieldId === 'suggestedTemplateId') return templateNameForId(val) || '—';
   return String(val);
 };
 
@@ -321,6 +411,7 @@ const CustomerServiceRequestScreen = () => {
                     : [],
               aadharNumber: reqData.submittedData?.aadharNumber || lead.aadharNumber || '',
               panNumber: reqData.submittedData?.panNumber || lead.panNumber || '',
+              wcOdTypeChart: reqData.submittedData?.wcOdTypeChart || lead.wcOdTypeChart,
             };
           }
         } catch {
@@ -358,6 +449,7 @@ const CustomerServiceRequestScreen = () => {
                     : [],
               aadharNumber: reqData.submittedData?.aadharNumber || lead.aadharNumber || '',
               panNumber: reqData.submittedData?.panNumber || lead.panNumber || '',
+              wcOdTypeChart: reqData.submittedData?.wcOdTypeChart || lead.wcOdTypeChart,
             };
           }
         } catch {
@@ -397,6 +489,7 @@ const CustomerServiceRequestScreen = () => {
               panNumber: reqData.submittedData?.panNumber || lead.panNumber || '',
               mepma_sector: reqData.submittedData?.mepma_sector || lead.sector || '',
               sector: reqData.submittedData?.sector || lead.sector || '',
+              wcOdTypeChart: reqData.submittedData?.wcOdTypeChart || lead.wcOdTypeChart,
             };
           }
         } catch {
@@ -453,6 +546,30 @@ const CustomerServiceRequestScreen = () => {
   useEffect(() => {
     fetchRequestDetails();
   }, [fetchRequestDetails]);
+
+  const autoSelectRequestKeyRef = useRef(null);
+
+  useEffect(() => {
+    if (!request) return;
+    const visible = templatesForRequest(request);
+    const loanType = requestLoanType(request);
+    const suggestedRaw = String(suggestedTemplateIdFromData(request?.submittedData) || '')
+      .trim()
+      .toLowerCase();
+    const suggestedMatch = visible.find((item) => String(item.id).toLowerCase() === suggestedRaw);
+    const fallback =
+      visible[0]?.id || (isGoldLoanType(loanType) ? 'GOLD_LOAN' : 'frcc1');
+    const requestKey = String(request._id || request.id || id || '');
+
+    if (autoSelectRequestKeyRef.current !== requestKey) {
+      autoSelectRequestKeyRef.current = requestKey;
+      setSelectedTemplate(suggestedMatch ? suggestedMatch.id : fallback);
+      return;
+    }
+    if (!visible.some((item) => item.id === selectedTemplate)) {
+      setSelectedTemplate(suggestedMatch ? suggestedMatch.id : fallback);
+    }
+  }, [request, selectedTemplate, id]);
 
   useEffect(() => {
     const validationStatus = request?.reportId?.validation_status;
@@ -796,10 +913,10 @@ const CustomerServiceRequestScreen = () => {
             <h2 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Submitted Form Responses</h2>
             <div className="space-y-4">
               {isMsmeLikeRequest(request) && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl border border-purple-200 bg-purple-50/60">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-xl border border-purple-200 bg-purple-50/60">
                   {MSME_HIGHLIGHT_IDS.map((fieldId) => {
                     const field = MSME_EXTRA_FIELDS.find((f) => f.id === fieldId);
-                    const val = firstNonEmpty(request.submittedData, field?.aliases || [fieldId]);
+                    const val = extraFieldValue(request.submittedData, field);
                     return (
                       <div key={`highlight-${fieldId}`}>
                         <span className="block text-[10px] font-bold uppercase tracking-wider text-purple-700 mb-1">
@@ -815,10 +932,10 @@ const CustomerServiceRequestScreen = () => {
               )}
 
               {isMepmaRequest(request) && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl border border-teal-200 bg-teal-50/60">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-xl border border-teal-200 bg-teal-50/60">
                   {MEPMA_HIGHLIGHT_IDS.map((fieldId) => {
                     const field = MEPMA_EXTRA_FIELDS.find((f) => f.id === fieldId);
-                    const val = firstNonEmpty(request.submittedData, field?.aliases || [fieldId]);
+                    const val = extraFieldValue(request.submittedData, field);
                     return (
                       <div key={`mepma-highlight-${fieldId}`}>
                         <span className="block text-[10px] font-bold uppercase tracking-wider text-teal-700 mb-1">
@@ -834,11 +951,14 @@ const CustomerServiceRequestScreen = () => {
               )}
 
               {request.formId?.fields?.map(field => {
+                if (isCsHiddenStampField(field)) return null;
                 const extra = (isMepmaRequest(request) ? MEPMA_EXTRA_FIELDS : MSME_EXTRA_FIELDS).find(
                   (item) => item.aliases?.includes(field.id) || item.id === field.id
                 );
                 const highlightIds = isMepmaRequest(request) ? MEPMA_HIGHLIGHT_IDS : MSME_HIGHLIGHT_IDS;
                 if (extra && highlightIds.includes(extra.id)) return null;
+                const loanType = requestLoanType(request);
+                if (extra && isDuplicateWcOdProcessingFeeField(extra.id, loanType)) return null;
                 const val = extra
                   ? firstNonEmpty(request.submittedData, extra.aliases)
                   : request.submittedData?.[field.id];
@@ -847,7 +967,7 @@ const CustomerServiceRequestScreen = () => {
                   const fileData = val || {};
                   return (
                     <div key={field.id} className="border-b border-gray-100 pb-3 last:border-0">
-                      <span className="block text-xs font-semibold text-gray-500 mb-1">{field.label}:</span>
+                      <span className="block text-xs font-semibold text-gray-500 mb-1">{submittedFieldDisplayLabel(field, extra, loanType)}:</span>
                       {fileData.base64 ? (
                         <div className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
                           <span className="text-sm font-medium text-purple-700 truncate max-w-xs">{fileData.fileName}</span>
@@ -868,7 +988,7 @@ const CustomerServiceRequestScreen = () => {
 
                 return (
                   <div key={field.id} className="border-b border-gray-100 pb-3 last:border-0">
-                    <span className="block text-xs font-semibold text-gray-500 mb-1">{field.label}:</span>
+                    <span className="block text-xs font-semibold text-gray-500 mb-1">{submittedFieldDisplayLabel(field, extra, loanType)}:</span>
                     <span className="text-sm text-gray-800 break-all whitespace-pre-wrap">{formatSubmittedValue(val, extra?.id || field.id)}</span>
                   </div>
                 );
@@ -876,17 +996,19 @@ const CustomerServiceRequestScreen = () => {
 
               {isMsmeLikeRequest(request) && MSME_EXTRA_FIELDS.map((field) => {
                 if (MSME_HIGHLIGHT_IDS.includes(field.id)) return null;
+                const loanType = requestLoanType(request);
+                if (isDuplicateWcOdProcessingFeeField(field.id, loanType)) return null;
                 const alreadyShown = (request.formId?.fields || []).some(
-                  (f) => field.aliases.includes(f.id) || f.id === field.id
+                  (f) => (field.aliases || []).includes(f.id) || f.id === field.id
                 );
                 if (alreadyShown) return null;
-                const val = firstNonEmpty(request.submittedData, field.aliases);
+                const val = extraFieldValue(request.submittedData, field);
                 if (!MSME_ALWAYS_SHOW_IDS.has(field.id) && (val === undefined || val === null || val === '')) {
                   return null;
                 }
                 return (
                   <div key={field.id} className="border-b border-gray-100 pb-3 last:border-0">
-                    <span className="block text-xs font-semibold text-gray-500 mb-1">{field.label}:</span>
+                    <span className="block text-xs font-semibold text-gray-500 mb-1">{extraFieldDisplayLabel(field, loanType)}:</span>
                     <span className="text-sm text-gray-800 break-all whitespace-pre-wrap">{formatSubmittedValue(val, field.id)}</span>
                   </div>
                 );
@@ -894,17 +1016,19 @@ const CustomerServiceRequestScreen = () => {
 
               {isMepmaRequest(request) && MEPMA_EXTRA_FIELDS.map((field) => {
                 if (MEPMA_HIGHLIGHT_IDS.includes(field.id)) return null;
+                const loanType = requestLoanType(request);
+                if (isDuplicateWcOdProcessingFeeField(field.id, loanType)) return null;
                 const alreadyShown = (request.formId?.fields || []).some(
-                  (f) => field.aliases.includes(f.id) || f.id === field.id
+                  (f) => (field.aliases || []).includes(f.id) || f.id === field.id
                 );
                 if (alreadyShown) return null;
-                const val = firstNonEmpty(request.submittedData, field.aliases);
+                const val = extraFieldValue(request.submittedData, field);
                 if (!MEPMA_ALWAYS_SHOW_IDS.has(field.id) && (val === undefined || val === null || val === '')) {
                   return null;
                 }
                 return (
                   <div key={`mepma-${field.id}`} className="border-b border-gray-100 pb-3 last:border-0">
-                    <span className="block text-xs font-semibold text-gray-500 mb-1">{field.label}:</span>
+                    <span className="block text-xs font-semibold text-gray-500 mb-1">{extraFieldDisplayLabel(field, loanType)}:</span>
                     <span className="text-sm text-gray-800 break-all whitespace-pre-wrap">{formatSubmittedValue(val, field.id)}</span>
                   </div>
                 );
@@ -1073,16 +1197,25 @@ const CustomerServiceRequestScreen = () => {
                     onChange={(e) => setSelectedTemplate(e.target.value)}
                     className="w-full text-sm border border-gray-300 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-[#7e22ce]"
                   >
-                    {TEMPLATES_LIST.map(t => (
+                    {templatesForRequest(request).map(t => (
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                   </select>
+                  {templateNameForId(suggestedTemplateIdFromData(request?.submittedData)) ? (
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      Auto-selected from form:{' '}
+                      <span className="font-semibold text-gray-700">
+                        {templateNameForId(suggestedTemplateIdFromData(request.submittedData))}
+                      </span>
+                      {' '}(you can change this)
+                    </p>
+                  ) : null}
                 </div>
                 <button
                   onClick={handleGenerateReport}
                   className="w-full px-4 py-2.5 bg-[#7e22ce] text-white rounded-lg hover:bg-[#6b21a8] text-sm font-semibold transition-colors flex items-center justify-center gap-2"
                 >
-                  <Plus size={16} /> {request.reportId ? 'Generate Again' : 'Open Generation Wizard'}
+                  <Plus size={16} /> {request.reportId ? 'Generate Again' : 'Open Generation'}
                 </button>
               </div>
             )}

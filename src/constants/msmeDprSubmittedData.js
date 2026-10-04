@@ -1,4 +1,6 @@
 /** Field ids must match API `msmeDprDepartmentForm.js` / builtin fields. */
+import { serializeWcOdTypeChart } from '@/utils/wcOdTypeChart';
+
 export const MSME_DPR_CUSTOM_ROUTE = 'msme-dpr';
 
 export const BUILTIN_FIELD_IDS = {
@@ -24,6 +26,7 @@ export const MSME_FIELD_IDS = {
 };
 
 export function mapMsmeFormToSubmittedData(form = {}) {
+  const wcOdTypeChart = serializeWcOdTypeChart(form.wcOdTypeChart);
   return {
     [BUILTIN_FIELD_IDS.name]: String(form.applicantName || '').trim(),
     [BUILTIN_FIELD_IDS.email]: String(form.email || '').trim(),
@@ -53,6 +56,11 @@ export function mapMsmeFormToSubmittedData(form = {}) {
     processingFee: form.processingFee || '',
     moratoriumPeriod: form.moratoriumPeriod || '',
     loanAmount: form.loanAmount || '',
+    referredByBankName: String(form.referredByBankName || '').trim(),
+    referredByBranchName: String(form.referredByBranchName || '').trim(),
+    referredByBankMobile: String(form.referredByBankMobile || '').trim(),
+    referredByBankEmail: String(form.referredByBankEmail || '').trim(),
+    ...(wcOdTypeChart ? { wcOdTypeChart } : {}),
   };
 }
 
@@ -82,8 +90,13 @@ export function mapSubmittedDataToMsmeLead(submittedData = {}) {
     processingFee: String(submittedData.processingFee || '').trim(),
     moratoriumPeriod: String(submittedData.moratoriumPeriod || '').trim(),
     loanAmount: String(submittedData.loanAmount || '').trim(),
+    referredByBankName: String(submittedData.referredByBankName || '').trim(),
+    referredByBranchName: String(submittedData.referredByBranchName || '').trim(),
+    referredByBankMobile: String(submittedData.referredByBankMobile || '').trim(),
+    referredByBankEmail: String(submittedData.referredByBankEmail || '').trim(),
     description: String(submittedData[MSME_FIELD_IDS.description] || '').trim(),
     hasOtherDprInfo: Boolean(submittedData.hasOtherDprInfo),
     dprAssets: Array.isArray(submittedData.dprAssets) ? submittedData.dprAssets : [],
+    wcOdTypeChart: submittedData.wcOdTypeChart || undefined,
   };
 }

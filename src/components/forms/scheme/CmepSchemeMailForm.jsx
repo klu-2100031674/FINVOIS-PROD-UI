@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { REPORT_HEAVY_TIMEOUT } from '../../../api/apiClient';
-import { postSchemeMail } from '../../../api/schemeUnifiedApi';
-import { resolveSchemeFormData, saveSchemeFormSession } from '../../../utils/schemeFormSession';
+import api, { REPORT_HEAVY_TIMEOUT } from '../../../api/apiClient';
+import { resolveSchemeFormData, saveSchemeFormSession, markSchemeJourneySubmitted } from '../../../utils/schemeFormSession';
 import {
-  CHALLENGE_OPTIONS,
   optionNameForMail,
+  topicsForStage,
   CMEP_AI_CHAT_PATH,
   CMEP_GENERATE_PATH,
 } from './cmepSchemeMailConstants';
+import EstablishmentSupportChecklist from '../EstablishmentSupportChecklist';
 
 /**
  * Follow-up support checklist + submit for CMEP flow (`/generate/cmep/scheme-mail`).
@@ -23,6 +23,7 @@ const CmepSchemeMailForm = ({
 }) => {
   const [selected, setSelected] = useState(() => ({}));
   const [otherText, setOtherText] = useState('');
+  const [establishmentStage, setEstablishmentStage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [cmepForm, setCmepForm] = useState(() => resolveSchemeFormData('cmepForm', linkState));
 
@@ -46,8 +47,8 @@ const CmepSchemeMailForm = ({
   const hasFormPayload = hasCmepFormPayload || !!cmepForm;
 
   const selectedEntries = useMemo(() => {
-    return CHALLENGE_OPTIONS.filter((o) => selected[o.id]);
-  }, [selected]);
+    return topicsForStage(establishmentStage).filter((o) => selected[o.id]);
+  }, [selected, establishmentStage]);
 
   const toggle = (id) => {
     setSelected((p) => {
@@ -57,9 +58,19 @@ const CmepSchemeMailForm = ({
     });
   };
 
+  const handleStageChange = (stage) => {
+    setEstablishmentStage(stage);
+    setSelected({});
+    setOtherText('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const otherOn = selected.other;
+    if (!establishmentStage) {
+      window.alert('Please select Pre-Establishment or Post-Establishment.');
+      return;
+    }
     if (!selectedEntries.length) {
       window.alert('Please select at least one option.');
       return;
@@ -76,21 +87,28 @@ const CmepSchemeMailForm = ({
 
     setIsSending(true);
     try {
-      await postSchemeMail(
-        'cmep',
+      // Unified scheme route: schemeKey now lives in the URL, action selects the operation.
+      await api.post(
+        '/schemes/cmep',
         {
+          action: 'mail',
           fullName: displayName,
+          establishmentStage,
           selectedOptions: optionNames,
           selectedOptionIds: optionIds,
           otherText: otherOn ? otherText : '',
           source: supportSource,
-          formData: formData || null,
+          formData: formData
+            ? { ...formData, establishmentStage }
+            : { establishmentStage },
         },
         { timeout: REPORT_HEAVY_TIMEOUT },
       );
       window.alert('Your message was sent successfully.');
+      markSchemeJourneySubmitted('cmepForm');
       setSelected({});
       setOtherText('');
+      setEstablishmentStage('');
     } catch (err) {
       window.alert(String(err || 'Failed to send message'));
     } finally {
@@ -113,28 +131,13 @@ const CmepSchemeMailForm = ({
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-xl p-6 space-y-6">
-        <div>
-          <p className="text-base font-semibold text-gray-900 mb-4">
-            What is your main challenge or doubt right now?
-          </p>
-          <div className="space-y-3">
-            {CHALLENGE_OPTIONS.map((opt) => (
-              <label
-                key={opt.id}
-                className={`flex items-start gap-3 cursor-pointer select-none rounded-lg border p-3 transition
-                    ${selected[opt.id] ? 'border-purple-300 bg-purple-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}
-              >
-                <input
-                  type="checkbox"
-                  className="mt-1 h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                  checked={!!selected[opt.id]}
-                  onChange={() => toggle(opt.id)}
-                />
-                <span className="text-sm text-gray-800 leading-snug">{opt.label}</span>
-              </label>
-            ))}
-          </div>
-        </div>
+        <EstablishmentSupportChecklist
+          stage={establishmentStage}
+          onStageChange={handleStageChange}
+          selected={selected}
+          onToggle={toggle}
+          heading="What is your main challenge or doubt right now?"
+        />
 
         {selected.other && (
           <div className="space-y-2">

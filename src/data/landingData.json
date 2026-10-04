@@ -71,10 +71,10 @@
     }
   },
   "hero": {
-    "badge": "AI-Powered DPR Generation",
+    "badge": "AI-Powered DPR Generation with CA on the Loop solution",
     "title": "Generate Professional DPRs in",
     "titleHighlight": "Minutes",
-    "subtitle": "Identify schemes, auto-generate financials & get bank Compliant DPRs",
+    "subtitle": "CA Validates, auto-generate financials & get bank Compliant DPRs",
     "primaryCTA": "Challenge or Doubt your MSME is facing now",
     "primaryLink": "/client-screening",
     "secondaryCTA": "Contact Sales",
@@ -108,6 +108,7 @@
   "trustedBy": [
     "MSME",
     "Startup India",
+    "Govt Industries Departments",
     "SIDBI",
     "Mudra",
     "Banks"
@@ -164,13 +165,23 @@
       },
       {
         "step": "3",
+        "title": "Financials prepared",
+        "desc": "Proprietary financial model calculation & statements"
+      },
+      {
+        "step": "4",
+        "title": "CA Validates and generates DPR",
+        "desc": "Professional CA review and validation of DPR"
+      },
+      {
+        "step": "5",
         "title": "Review & Pay",
         "desc": "Confirm projections and choose payment"
       },
       {
-        "step": "4",
-        "title": "Download PDF",
-        "desc": "Get your professional DPR instantly"
+        "step": "6",
+        "title": "Download DPR",
+        "desc": "Get your professional bank-compliant DPR instantly"
       }
     ]
   },
@@ -244,10 +255,34 @@
       "illustration": "ca-verified"
     },
     {
+      "badge": "Govt Empanelled",
+      "title": "Empanelled with Govt depts",
+      "color": "purple",
+      "illustration": "gov-empanelled"
+    },
+    {
+      "badge": "Bank Appraisals",
+      "title": "Performance appraisal letter letters from Nationalised Banks",
+      "color": "purple",
+      "illustration": "bank-appraisal"
+    },
+    {
+      "badge": "Innovation Excellence",
+      "title": "Certificate of appreciation from RATAN TATA INNOVATION HUB for innovation,entrepreneurial excellence and valuable contribution to India's startup eco system.",
+      "color": "purple",
+      "illustration": "ratan-tata"
+    },
+    {
       "badge": "Bank Acceptable Format",
       "title": "OUR DPR's Accepted By All Banks",
       "color": "blue",
       "illustration": "payments"
+    },
+    {
+      "badge": "Govt Validation Support",
+      "title": "Validation support provided by Govt Departments for every DPR",
+      "color": "blue",
+      "illustration": "govt-validation"
     },
     {
       "badge": "Security",
@@ -317,9 +352,9 @@
     }
   ],
   "cta": {
-    "title": "Ready to create your professional DPR?",
-    "subtitle": "Join thousands of entrepreneurs who have successfully generated DPRs with Finvois",
-    "primaryCTA": "Generate DPR's",
+    "title": "Does your MSME need Help or support ?",
+    "subtitle": "To clear any Challenge or Doubt your MSME is facing right now please click below",
+    "primaryCTA": "Solve Now",
     "primaryLink": "/dpr-request",
     "secondaryCTA": "Contact Sales",
     "secondaryLink": "/contact",

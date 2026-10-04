@@ -216,14 +216,25 @@ const authSlice = createSlice({
       localStorage.setItem(userKey, JSON.stringify(state.user));
     },
     setAuthData: (state, action) => {
-      state.user = action.payload.user;
-      state.token = action.payload.token;
-      state.isAuthenticated = true;
+      const token = action.payload.token;
+      const rawUser = action.payload.user;
+      const userData = normalizeStoredRole({
+        ...rawUser,
+        mobile: rawUser?.phone || rawUser?.mobile,
+      });
+      state.user = userData;
+      state.token = token;
+      state.isAuthenticated = Boolean(token && userData);
       state.error = null;
       const userKey = import.meta.env.VITE_USER_STORAGE_KEY || 'ca_user_data';
       const tokenKey = import.meta.env.VITE_TOKEN_STORAGE_KEY || 'ca_auth_token';
-      localStorage.setItem(userKey, JSON.stringify(action.payload.user));
-      localStorage.setItem(tokenKey, action.payload.token);
+      if (userData) {
+        localStorage.setItem(userKey, JSON.stringify(userData));
+      }
+      if (token) {
+        localStorage.setItem(tokenKey, token);
+        setAuthToken(token);
+      }
     },
   },
   extraReducers: (builder) => {

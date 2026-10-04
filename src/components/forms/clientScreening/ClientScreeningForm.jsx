@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react';
 import api from '../../../api/apiClient';
-import { TOPIC_OPTIONS, optionNameForMail } from './clientScreeningConstants';
+import EstablishmentStagePicker from '../EstablishmentStagePicker';
+import {
+  optionNameForMail,
+  topicsForStage,
+} from './clientScreeningConstants';
 
 const NAME_MIN_LETTERS = 5;
 
@@ -14,15 +18,17 @@ function countAlphabeticLetters(name) {
 const ClientScreeningForm = ({ supportSource = 'ui:client-screening-public' }) => {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [natureOfBusiness, setNatureOfBusiness] = useState('');
+  const [establishmentStage, setEstablishmentStage] = useState('');
   const [selected, setSelected] = useState(() => ({}));
   const [otherText, setOtherText] = useState('');
-  const [rawMaterialText, setRawMaterialText] = useState('');
-  const [machineryText, setMachineryText] = useState('');
   const [isSending, setIsSending] = useState(false);
 
+  const topicOptions = useMemo(() => topicsForStage(establishmentStage), [establishmentStage]);
+
   const selectedEntries = useMemo(() => {
-    return TOPIC_OPTIONS.filter((o) => selected[o.id]);
-  }, [selected]);
+    return topicOptions.filter((o) => selected[o.id]);
+  }, [selected, topicOptions]);
 
   const nameTrimmedLive = String(fullName || '').trim();
   const nameLetterCount = countAlphabeticLetters(nameTrimmedLive);
@@ -33,17 +39,19 @@ const ClientScreeningForm = ({ supportSource = 'ui:client-screening-public' }) =
     setSelected((p) => {
       const next = { ...p, [id]: !p[id] };
       if (id === 'other' && !next.other) setOtherText('');
-      if (id === 'raw-material' && !next['raw-material']) setRawMaterialText('');
-      if (id === 'machinery' && !next.machinery) setMachineryText('');
       return next;
     });
+  };
+
+  const handleStageChange = (stage) => {
+    setEstablishmentStage(stage);
+    setSelected({});
+    setOtherText('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const otherOn = selected.other;
-    const rawMaterialOn = selected['raw-material'];
-    const machineryOn = selected.machinery;
     const nameTrimmed = String(fullName || '').trim();
     if (!nameTrimmed) {
       window.alert('Please enter your name.');
@@ -58,6 +66,15 @@ const ClientScreeningForm = ({ supportSource = 'ui:client-screening-public' }) =
       window.alert('Phone number must be exactly 10 digits (numbers only).');
       return;
     }
+    const natureTrimmed = String(natureOfBusiness || '').trim();
+    if (!natureTrimmed) {
+      window.alert('Please enter nature of business.');
+      return;
+    }
+    if (!establishmentStage) {
+      window.alert('Please select Pre-Establishment or Post-Establishment.');
+      return;
+    }
     if (!selectedEntries.length) {
       window.alert('Please select at least one topic.');
       return;
@@ -67,16 +84,9 @@ const ClientScreeningForm = ({ supportSource = 'ui:client-screening-public' }) =
       return;
     }
     const otherDetail = otherOn ? otherText : '';
-    const rawMaterialDetail = rawMaterialOn ? rawMaterialText : '';
-    const machineryDetail = machineryOn ? machineryText : '';
 
     const optionNames = selectedEntries.map((o) =>
-      optionNameForMail(
-        o,
-        o.id === 'other' ? otherDetail : '',
-        o.id === 'raw-material' ? rawMaterialDetail : '',
-        o.id === 'machinery' ? machineryDetail : '',
-      ),
+      optionNameForMail(o, o.id === 'other' ? otherDetail : ''),
     );
     const optionIds = selectedEntries.map((o) => o.id);
 
@@ -85,18 +95,20 @@ const ClientScreeningForm = ({ supportSource = 'ui:client-screening-public' }) =
       await api.post('/client-screening', {
         fullName: nameTrimmed,
         phone: phoneDigits,
+        natureOfBusiness: natureTrimmed,
+        establishmentStage,
         selectedOptions: optionNames,
         selectedOptionIds: optionIds,
         otherText: otherOn ? otherText : '',
-        rawMaterialText: rawMaterialOn ? rawMaterialText : '',
-        machineryText: machineryOn ? machineryText : '',
         source: supportSource,
       });
       window.alert('Your message was sent. We will get back to you soon.');
       setSelected({});
       setOtherText('');
-      setRawMaterialText('');
-      setMachineryText('');
+      setNatureOfBusiness('');
+      setEstablishmentStage('');
+      setFullName('');
+      setPhone('');
     } catch (err) {
       window.alert(String(err || 'Failed to send message'));
     } finally {
@@ -201,9 +213,26 @@ const ClientScreeningForm = ({ supportSource = 'ui:client-screening-public' }) =
                     ) : null}
                   </div>
                 </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label htmlFor="cs-nature" className="block text-sm font-semibold text-gray-800">
+                    Nature of business <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    id="cs-nature"
+                    type="text"
+                    value={natureOfBusiness}
+                    onChange={(e) => setNatureOfBusiness(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50/40 px-3.5 py-2.5 text-sm transition-colors placeholder:text-gray-400 focus:border-purple-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-200/80"
+                    placeholder="e.g. Food processing, retail trading, manufacturing…"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <EstablishmentStagePicker value={establishmentStage} onChange={handleStageChange} />
+                </div>
               </div>
             </section>
 
+            {establishmentStage ? (
             <section aria-labelledby="cs-section-topics">
               <div className="mb-4 flex items-end gap-3">
                 <h2
@@ -215,7 +244,7 @@ const ClientScreeningForm = ({ supportSource = 'ui:client-screening-public' }) =
                 <span className="mb-0.5 h-px min-w-[2rem] flex-1 bg-gradient-to-r from-purple-200 to-transparent" />
               </div>
               <div className="space-y-2.5">
-                {TOPIC_OPTIONS.map((opt) => (
+                {topicOptions.map((opt) => (
                   <label
                     key={opt.id}
                     className={`group flex cursor-pointer select-none items-start gap-3 rounded-xl border p-3.5 transition-all duration-150 sm:p-4 ${
@@ -237,43 +266,6 @@ const ClientScreeningForm = ({ supportSource = 'ui:client-screening-public' }) =
                 ))}
               </div>
             </section>
-
-            {selected['raw-material'] ? (
-              <div className="rounded-xl border border-purple-100 bg-purple-50/30 p-4 sm:p-5">
-                <label
-                  htmlFor="cs-raw-material-detail"
-                  className="mb-2 block text-sm font-semibold text-gray-800"
-                >
-                  What kind of raw material do you require? (Optional)
-                </label>
-                <textarea
-                  id="cs-raw-material-detail"
-                  value={rawMaterialText}
-                  onChange={(e) => setRawMaterialText(e.target.value)}
-                  rows={3}
-                  className="w-full resize-y rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm shadow-inner placeholder:text-gray-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200/80"
-                  placeholder="Describe the raw material requirement"
-                />
-              </div>
-            ) : null}
-
-            {selected.machinery ? (
-              <div className="rounded-xl border border-purple-100 bg-purple-50/30 p-4 sm:p-5">
-                <label
-                  htmlFor="cs-machinery-detail"
-                  className="mb-2 block text-sm font-semibold text-gray-800"
-                >
-                  What kind of machinery support do you require? (Optional)
-                </label>
-                <textarea
-                  id="cs-machinery-detail"
-                  value={machineryText}
-                  onChange={(e) => setMachineryText(e.target.value)}
-                  rows={3}
-                  className="w-full resize-y rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm shadow-inner placeholder:text-gray-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200/80"
-                  placeholder="Describe the machinery support requirement"
-                />
-              </div>
             ) : null}
 
             {selected.other ? (

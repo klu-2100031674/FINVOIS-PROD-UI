@@ -139,6 +139,66 @@ export function claimExpiresAt(request) {
   return new Date(claimedAt.getTime() + CLAIM_TTL_MS);
 }
 
+function reportFromRequestLocal(request, report) {
+  if (report && typeof report === 'object' && report.validation_status !== undefined) return report;
+  const nested = request?.reportId;
+  if (nested && typeof nested === 'object' && nested.validation_status !== undefined) return nested;
+  return report || request?.report || null;
+}
+
+function isReportPaid(reportDoc) {
+  const payment = reportDoc?.payment || {};
+  return (
+    payment.status === 'completed' ||
+    payment.is_free_credit === true ||
+    payment.is_beta_free === true
+  );
+}
+
+function csWorkStarted(request, report) {
+  const reportDoc = reportFromRequestLocal(request, report);
+  return Boolean(
+    request?.generationStartedAt ||
+    hasPersistedRef(request?.draftId) ||
+    hasPersistedRef(request?.reportId) ||
+    reportDoc
+  );
+}
+
+/** Exclusive CS work-queue bucket: open | assigned | awaiting (in progress) | ready (completed) */
+export function classifyCsWorkQueueBucket(request, report) {
+  const status = String(request?.status || '');
+  if (status === 'open') return 'open';
+
+  const reportDoc = reportFromRequestLocal(request, report);
+  const vs = String(reportDoc?.validation_status || '');
+  const paid = isReportPaid(reportDoc);
+
+  if (vs === 'approved' && paid) return 'ready';
+  if (csWorkStarted(request, reportDoc)) return 'awaiting';
+  if (status === 'completed') return 'awaiting';
+  return 'assigned';
+}
+
+/** Sub-kind for In Progress filters: preparation | payment | ca | rejected */
+export function awaitingActionKind(request, report) {
+  const reportDoc = reportFromRequestLocal(request, report);
+  const vs = String(reportDoc?.validation_status || '');
+  const paid = isReportPaid(reportDoc);
+
+  if (vs === 'rejected') return 'rejected';
+  if (vs === 'pending_validation' || vs === 'under_review') return 'ca';
+  if (
+    vs === 'pending_payment' ||
+    vs === 'draft' ||
+    (vs === 'approved' && !paid)
+  ) {
+    return 'payment';
+  }
+  if (csWorkStarted(request, reportDoc)) return 'preparation';
+  return null;
+}
+
 export function workflowFromLead(lead) {
   if (lead?.workflow?.key) {
     return {

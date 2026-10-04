@@ -1,11 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { UserPlus, Search, FileEdit, Cpu, CreditCard, Download, CheckCircle2 } from 'lucide-react';
+import { UserPlus, Cpu, BarChart3, ShieldCheck, CreditCard, Download, CheckCircle2 } from 'lucide-react';
 import landingData from '../../../data/landingData.json';
 
 const iconMap = [
   UserPlus,
   Cpu,
+  BarChart3,
+  ShieldCheck,
   CreditCard,
   Download
 ];

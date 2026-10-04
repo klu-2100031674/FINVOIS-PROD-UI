@@ -144,13 +144,23 @@ const FRCC1Form = ({
   onFormDataChange = null,
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
-  const [formData, setFormData] = useState(initialData || {
-    "General Information": {
-      "i4": "", "i5": "", "i6": "", "i7": "", "i8": "", "i9": "", "i10": ""
-    },
-    "Means of Finance": {
-      "i12": "No", "i13": "", "h14": "", "h15": "", "h16": ""
-    },
+  const [formData, setFormData] = useState(() => {
+    if (initialData && Object.keys(initialData).length > 0) {
+      return {
+        ...initialData,
+        "Means of Finance": {
+          ...(initialData["Means of Finance"] || {}),
+          "i12": "No",
+        },
+      };
+    }
+    return {
+      "General Information": {
+        "i4": "", "i5": "", "i6": "", "i7": "", "i8": "", "i9": "", "i10": ""
+      },
+      "Means of Finance": {
+        "i12": "No", "i13": "", "h14": "", "h15": "", "h16": ""
+      },
     "Financial Years": {
       "i18": "", "i19": "", "i20": "", "i21": "", "i22": ""
     },
@@ -178,7 +188,8 @@ const FRCC1Form = ({
       "j97": "9014221011",
       "required_stamp": FRCC_REQUIRED_STAMP_DEFAULT,
     }
-  });
+  };
+});
 
   const [finalJson, setFinalJson] = useState(null);
   const [showResult, setShowResult] = useState(false);
@@ -190,7 +201,10 @@ const FRCC1Form = ({
       console.log('📝 [FRCC1Form] Loading initial data for edit mode:', initialData);
       setFormData(prev => ({
         "General Information": initialData["General Information"] || {},
-        "Means of Finance": initialData["Means of Finance"] || {},
+        "Means of Finance": {
+          ...(initialData["Means of Finance"] || {}),
+          "i12": "No",
+        },
         "Financial Years": initialData["Financial Years"] || {},
         "Indirect Expenses": initialData["Indirect Expenses"] || {
           "i24": "", "H25": "", "i26": "", "h27": "", "h28": "", "i29": "", "i30": ""

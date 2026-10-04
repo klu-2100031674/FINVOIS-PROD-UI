@@ -78,7 +78,11 @@ const FRCC5Form = ({
 }) => {
   const [formData, setFormData] = useState({
     'General Information': initialData?.['General Information'] || {},
-    'Means of Finance': initialData?.['Means of Finance'] || { i11: 'Yes', i12: 'Yes' },
+    'Means of Finance': {
+      ...(initialData?.['Means of Finance'] || {}),
+      i11: 'Yes',
+      i12: 'Yes',
+    },
     'Financial Years': initialData?.['Financial Years'] || {},
     'Audited Financial Statements': initialData?.['Audited Financial Statements'] || {},
     'Fixed Assets Schedule': initialData?.['Fixed Assets Schedule'] || {
@@ -210,6 +214,11 @@ const FRCC5Form = ({
       console.log('📝 Loading initial data for edit mode');
       setFormData({
         ...initialData,
+        'Means of Finance': {
+          ...(initialData?.['Means of Finance'] || {}),
+          i11: 'Yes',
+          i12: 'Yes',
+        },
         'Prepared By': {
           required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
       banker_mail_id: '',
@@ -301,7 +310,7 @@ const FRCC5Form = ({
       },
       'Means of Finance': {
         'i11': 'Yes',
-        'i12': 'No',
+        'i12': 'Yes',
         'i13': 150000000,
         'i14': 500000,
         'h15': 10.5,

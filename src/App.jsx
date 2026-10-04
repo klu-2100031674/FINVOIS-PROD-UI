@@ -78,6 +78,7 @@ import {
   AdminFranchiseEditPage,
   AdminFranchiseApplicationsPage,
   ClientScreeningMailPage,
+  AdminClientScreeningRequestsPage,
   AdminMsmeDprDashboardPage,
   AdminMepmaDprDashboardPage,
   AdminDprRequestDashboardPage,
@@ -90,6 +91,8 @@ import DepartmentDashboardPage from "./pages/department/DepartmentDashboardPage"
 import OpenRequestsPage from "./pages/customerService/OpenRequestsPage";
 import ClaimedRequestsPage from "./pages/customerService/ClaimedRequestsPage";
 import AssignedRequestsPage from "./pages/customerService/AssignedRequestsPage";
+import AwaitingActionPage from "./pages/customerService/AwaitingActionPage";
+import ReadyToSendPage from "./pages/customerService/ReadyToSendPage";
 import DepartmentRequestsPage from "./pages/customerService/DepartmentRequestsPage";
 import RequestHistoryPage from "./pages/customerService/RequestHistoryPage";
 import CustomerServiceRequestScreen from "./pages/customerService/CustomerServiceRequestScreen";
@@ -187,6 +190,9 @@ import ServiceLayout from "./components/layouts/ServiceLayout";
 import MsmeDprLeadFormPage from "./pages/msmeDpr/MsmeDprLeadFormPage";
 import MsmeDprDashboardPage from "./pages/msmeDpr/MsmeDprDashboardPage";
 import MsmeDprDashboard2Page from "./pages/msmeDpr/MsmeDprDashboard2Page";
+import MsmeServiceRequestsPage from "./pages/msmeService/MsmeServiceRequestsPage";
+import MsmeServiceRequestDetailPage from "./pages/msmeService/MsmeServiceRequestDetailPage";
+import MsmeServiceFollowPage from "./pages/msmeService/MsmeServiceFollowPage";
 import MepmaDprLeadFormPage from "./pages/mepmaDpr/MepmaDprLeadFormPage";
 import MepmaDprDashboardPage from "./pages/mepmaDpr/MepmaDprDashboardPage";
 import DprRequestLeadFormPage from "./pages/dprRequest/DprRequestLeadFormPage";
@@ -285,7 +291,9 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/auth" replace state={{ signupApprovalBlocked: true }} />;
   }
   // Force password change before accessing any other page
-  if (user?.must_change_password) return <Navigate to="/change-password" replace />;
+  if (user?.must_change_password && effectiveUserRole(user) !== 'msme_service') {
+    return <Navigate to="/change-password" replace />;
+  }
   return children;
 };
 
@@ -361,6 +369,18 @@ const DprRequestViewerRoute = ({ children }) => {
     return <Navigate to="/auth" replace />;
   }
   if (r !== 'dpr_request_viewer') {
+    return <Navigate to={dashboardHomePath(user)} replace />;
+  }
+  return children;
+};
+
+const MsmeServiceRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const r = effectiveUserRole(user);
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  if (r !== 'msme_service') {
     return <Navigate to={dashboardHomePath(user)} replace />;
   }
   return children;
@@ -629,6 +649,8 @@ const PublicRoute = ({ children }) => {
     return <Navigate to="/mepma-dpr-dashboard" replace />;
   } else if (normalizedRole === 'dpr_request_viewer') {
     return <Navigate to="/dpr-request-dashboard" replace />;
+  } else if (normalizedRole === 'msme_service') {
+    return <Navigate to="/msme-service/requests" replace />;
   } else if (normalizedRole === 'customer') {
     return <Navigate to="/customer/dashboard" replace />;
   }
@@ -1709,6 +1731,34 @@ function App() {
             </DprRequestViewerRoute>
           }
         />
+        <Route
+          path="/msme-service/follow/:token"
+          element={<MsmeServiceFollowPage />}
+        />
+        <Route
+          path="/msme-service/requests"
+          element={
+            <MsmeServiceRoute>
+              <MsmeServiceRequestsPage />
+            </MsmeServiceRoute>
+          }
+        />
+        <Route
+          path="/msme-service/requests/:id"
+          element={
+            <MsmeServiceRoute>
+              <MsmeServiceRequestDetailPage />
+            </MsmeServiceRoute>
+          }
+        />
+        <Route
+          path="/msme-service/profile"
+          element={
+            <MsmeServiceRoute>
+              <SimpleRoleProfilePage />
+            </MsmeServiceRoute>
+          }
+        />
         
         {/* Department Dashboard */}
         <Route
@@ -1760,6 +1810,30 @@ function App() {
               <AssignedRequestsPage />
             </CustomerServiceRoute>
           }
+        />
+        <Route
+          path="/customer-service/in-progress"
+          element={
+            <CustomerServiceRoute>
+              <AwaitingActionPage />
+            </CustomerServiceRoute>
+          }
+        />
+        <Route
+          path="/customer-service/awaiting-action"
+          element={<Navigate to="/customer-service/in-progress" replace />}
+        />
+        <Route
+          path="/customer-service/completed"
+          element={
+            <CustomerServiceRoute>
+              <ReadyToSendPage />
+            </CustomerServiceRoute>
+          }
+        />
+        <Route
+          path="/customer-service/ready-to-send"
+          element={<Navigate to="/customer-service/completed" replace />}
         />
         <Route
           path="/customer-service/department-requests"
@@ -2016,6 +2090,14 @@ function App() {
             </AdminOnlyRoute>
           }
         />
+        <Route
+          path="/admin/client-screening/requests"
+          element={
+            <AdminOnlyRoute>
+              <AdminClientScreeningRequestsPage />
+            </AdminOnlyRoute>
+          }
+        />
         <Route path="/schemes" element={<SchemeFinder />} />
         {/* PMEGP */}
         <Route path="/schemes/pmegp/support" element={<PublicPmegpSchemeMailPage />} />
@@ -2023,11 +2105,7 @@ function App() {
         <Route path="/schemes/pmegp/ai-chat" element={<PublicPmegpAiChatPage />} />
         <Route
           path="/schemes/mail"
-          element={
-            <AdminOnlyRoute>
-              <SchemeMailManagePage />
-            </AdminOnlyRoute>
-          }
+          element={<Navigate to="/admin/client-screening/emails" replace />}
         />
         {/* AP IDP */}
         <Route path="/schemes/ap-idp/support" element={<PublicApIdpSchemeMailPage />} />

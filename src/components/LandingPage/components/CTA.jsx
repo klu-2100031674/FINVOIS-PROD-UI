@@ -37,19 +37,6 @@ const CTA = () => {
       </div>
 
       <div className="max-w-4xl mx-auto text-center relative z-10">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full mb-8 border border-white/10"
-        >
-          <Sparkles className="w-4 h-4 text-purple-300" />
-          <span className="text-sm font-medium text-white font-inter">
-            Start AI Generation Now
-          </span>
-        </motion.div>
-
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}

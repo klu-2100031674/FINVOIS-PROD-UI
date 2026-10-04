@@ -92,7 +92,17 @@ const FRCC6Form = ({
   });
 
   const [formData, setFormData] = useState(() => {
-    if (initialData && Object.keys(initialData).length > 0) return initialData;
+    if (initialData && Object.keys(initialData).length > 0) {
+      return {
+        ...initialData,
+        'Means of Finance': {
+          ...(initialData['Means of Finance'] || {}),
+          i11: 'Yes',
+          i12: 'No',
+          h17: 'Yes',
+        },
+      };
+    }
     return buildEmptyState();
   });
 
@@ -265,6 +275,12 @@ const FRCC6Form = ({
             merged[sectionKey] = incoming;
           }
         }
+        merged['Means of Finance'] = {
+          ...(merged['Means of Finance'] || {}),
+          i11: 'Yes',
+          i12: 'No',
+          h17: 'Yes',
+        };
         return merged;
       });
     }

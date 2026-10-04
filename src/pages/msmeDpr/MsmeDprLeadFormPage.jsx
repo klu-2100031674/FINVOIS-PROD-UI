@@ -7,9 +7,13 @@
  *  3. POST /customer/msme-dpr-form-register with OTP + files
  */
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { Send, ChevronDown, Plus, Trash2, CheckSquare, Square } from 'lucide-react';
 import apiClient, { apiErrorMessage } from '@/api/apiClient';
+import { persistCustomerLeadSession } from '@/utils/persistCustomerLeadSession';
 import LeadFormOtpVerify from '@/components/common/LeadFormOtpVerify';
+import WcOdTypeChart from '@/components/common/WcOdTypeChart';
 import { mapMsmeFormToSubmittedData, MSME_DPR_CUSTOM_ROUTE } from '@/constants/msmeDprSubmittedData';
 import faqData from '../../data/FAQ.json';
 import OptionalDocumentUpload from '@/components/common/OptionalDocumentUpload';
@@ -35,6 +39,14 @@ import {
   calculateAssetLoan,
   isAssetNumericField,
 } from '@/utils/dprAssetLoanTriangle';
+import {
+  isGoldLoanType,
+  isWorkingCapitalLoanType,
+  isWorkingCapitalOdLoanType,
+  hidesOrganisationType,
+  hidesSchemeAndRuralUrban,
+} from '@/utils/partnerLeadLoanTypes';
+import { emptyWcOdTypeChartAnswers, resolveWcOdChartTemplate } from '@/utils/wcOdTypeChart';
 
 const LOAN_TERM_YEAR_OPTIONS = Array.from({ length: 15 }, (_, i) => String(i + 1));
 
@@ -82,6 +94,11 @@ const INITIAL_FORM = {
   processingFee: '',
   moratoriumPeriod: '',
   loanAmount: '',
+  referredByBankName: '',
+  referredByBranchName: '',
+  referredByBankMobile: '',
+  referredByBankEmail: '',
+  wcOdTypeChart: emptyWcOdTypeChartAnswers(),
 };
 
 const labelClass =
@@ -108,6 +125,8 @@ function FormField({ label, required, optional, children }) {
 }
 
 const MsmeDprLeadFormPage = () => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [form, setForm] = useState(INITIAL_FORM);
   const [language, setLanguage] = useState('en');
   const [submitting, setSubmitting] = useState(false);
@@ -128,12 +147,14 @@ const MsmeDprLeadFormPage = () => {
 
   const copy = FORM_COPY[language] || FORM_COPY.en;
 
-  const isWorkingCapitalOdLoan = form.loanType === 'Working capital or OD Loan';
-  const isWorkingCapitalLoan =
-    isWorkingCapitalOdLoan ||
-    form.loanType === 'Term Loan and working capital loan';
-  const isGoldLoan = form.loanType === 'Gold Loan';
-  const showAssetAndLoanParams = Boolean(form.hasOtherDprInfo && form.loanType && !isWorkingCapitalOdLoan);
+  const isWorkingCapitalOdLoan = isWorkingCapitalOdLoanType(form.loanType);
+  const isWorkingCapitalLoan = isWorkingCapitalLoanType(form.loanType);
+  const isGoldLoan = isGoldLoanType(form.loanType);
+  const hideOrganisation = hidesOrganisationType(form.loanType);
+  const hideSchemeRural = hidesSchemeAndRuralUrban(form.loanType);
+  const showAssetAndLoanParams = Boolean(
+    form.hasOtherDprInfo && form.loanType && !isWorkingCapitalOdLoan && !isGoldLoan
+  );
 
   const totalAssetLoan = (form.dprAssets || []).reduce(
     (sum, asset) => sum + calculateAssetLoan(asset),
@@ -152,6 +173,7 @@ const MsmeDprLeadFormPage = () => {
         next.yearOfRegistration = '';
       }
       if (name === 'loanType') {
+        next.wcOdTypeChart = emptyWcOdTypeChartAnswers();
         if (!value) {
           next.hasOtherDprInfo = false;
           next.workingCapital = '';
@@ -165,11 +187,24 @@ const MsmeDprLeadFormPage = () => {
           next.workingCapitalMargin = '';
           next.workingCapitalRateOfInterest = '';
         }
-        if (value === 'Gold Loan') {
+        if (hidesOrganisationType(value)) {
+          next.enterpriseType = '';
+          next.yearOfRegistration = '';
+        }
+        if (hidesSchemeAndRuralUrban(value)) {
           next.schemeAppliedUnder = '';
           next.ruralUrbanCategory = '';
         }
-        if (value === 'Working capital or OD Loan') {
+        if (isGoldLoanType(value)) {
+          next.hasOtherDprInfo = true;
+          next.dprAssets = [createEmptyAsset()];
+          next.workingCapital = '';
+          next.workingCapitalMargin = '';
+          next.workingCapitalRateOfInterest = '';
+          next.loanTermPeriod = '';
+          next.moratoriumPeriod = '';
+        }
+        if (isWorkingCapitalOdLoanType(value)) {
           next.dprAssets = [createEmptyAsset()];
           next.loanTermPeriod = '';
           next.rateOfInterest = '';
@@ -261,6 +296,7 @@ const MsmeDprLeadFormPage = () => {
         workingCapitalMargin: '',
         workingCapitalRateOfInterest: '',
         dprAssets: [createEmptyAsset()],
+        wcOdTypeChart: emptyWcOdTypeChartAnswers(),
       });
     } else {
       // 2nd click: Extended test data with Asset Table and Loan parameters
@@ -271,6 +307,7 @@ const MsmeDprLeadFormPage = () => {
         workingCapitalRateOfInterest: MSME_DPR_TEST_FORM_2.workingCapitalRateOfInterest || '',
         dprAssets: MSME_DPR_TEST_FORM_2.dprAssets.map((a) => ({ ...a })),
         moratoriumPeriod: MSME_DPR_TEST_FORM_2.moratoriumPeriod || '',
+        wcOdTypeChart: emptyWcOdTypeChartAnswers(),
       });
     }
     setTestDataClickCount((prev) => prev + 1);
@@ -284,6 +321,10 @@ const MsmeDprLeadFormPage = () => {
     if (!form.applicantName.trim()) { setError('Name of Applicant is required'); return; }
     if (!form.mobileNumber.trim()) { setError('Mobile Number is required'); return; }
     if (!form.loanType) { setError('Loan Type is required'); return; }
+    if (isWorkingCapitalOdLoan && !resolveWcOdChartTemplate(form.wcOdTypeChart)) {
+      setError(copy.typeChartRequired || 'Please complete the type-chart questions.');
+      return;
+    }
 
     const digits = form.mobileNumber.replace(/\D/g, '');
     if (digits.length < 10) {
@@ -299,21 +340,32 @@ const MsmeDprLeadFormPage = () => {
     const resolvedLoanAmount =
       totalCalculatedLoan > 0 ? String(totalCalculatedLoan) : form.loanAmount || '';
 
+    const wcProcessingFee = isWorkingCapitalOdLoan
+      ? (form.workingCapitalMargin || form.processingFee || '')
+      : form.processingFee;
+
     const payload = mapMsmeFormToSubmittedData({
       ...form,
-      loanAmount: isWorkingCapitalOdLoan
-        ? String(workingCapitalNum || form.workingCapital || resolvedLoanAmount || '')
-        : resolvedLoanAmount,
+      loanAmount: isGoldLoan
+        ? form.loanAmount
+        : isWorkingCapitalOdLoan
+          ? String(workingCapitalNum || form.workingCapital || resolvedLoanAmount || '')
+          : resolvedLoanAmount,
       workingCapital: isWorkingCapitalLoan ? form.workingCapital : '',
       workingCapitalMargin: isWorkingCapitalLoan ? form.workingCapitalMargin : '',
       workingCapitalRateOfInterest: isWorkingCapitalLoan ? form.workingCapitalRateOfInterest : '',
-      loanTermPeriod: isWorkingCapitalOdLoan ? '' : form.loanTermPeriod,
-      rateOfInterest: isWorkingCapitalOdLoan ? '' : form.rateOfInterest,
-      processingFee: isWorkingCapitalOdLoan ? '' : form.processingFee,
-      moratoriumPeriod: isWorkingCapitalOdLoan ? '' : form.moratoriumPeriod,
-      dprAssets: (form.hasOtherDprInfo && !isWorkingCapitalOdLoan && Array.isArray(form.dprAssets))
+      loanTermPeriod: isWorkingCapitalOdLoan || isGoldLoan ? '' : form.loanTermPeriod,
+      rateOfInterest: isWorkingCapitalOdLoan
+        ? form.workingCapitalRateOfInterest || form.rateOfInterest
+        : form.rateOfInterest,
+      processingFee: isWorkingCapitalOdLoan ? wcProcessingFee : form.processingFee,
+      moratoriumPeriod: isWorkingCapitalOdLoan || isGoldLoan ? '' : form.moratoriumPeriod,
+      dprAssets: (form.hasOtherDprInfo && !isWorkingCapitalOdLoan && !isGoldLoan && Array.isArray(form.dprAssets))
         ? form.dprAssets
         : [],
+      enterpriseType: hideOrganisation ? '' : form.enterpriseType,
+      schemeAppliedUnder: hideSchemeRural ? '' : form.schemeAppliedUnder,
+      ruralUrbanCategory: hideSchemeRural ? '' : form.ruralUrbanCategory,
     });
 
     setPendingPayload(payload);
@@ -321,14 +373,17 @@ const MsmeDprLeadFormPage = () => {
     setStep('verify');
   };
 
-  const handleVerifiedSubmit = async ({ type, value, otp, email }) => {
+  const handleVerifiedSubmit = async ({ type, value, otp, email, phone }) => {
     if (!pendingPayload) return;
     setSubmitting(true);
     setError('');
     try {
       const payload = {
         ...pendingPayload,
-        govt_builtin_email: type === 'email' ? email : pendingPayload.govt_builtin_email || '',
+        govt_builtin_email: type === 'email' ? email : (pendingPayload.govt_builtin_email || email || ''),
+        email: email || pendingPayload.email || '',
+        mobileNumber: type === 'phone' ? value : (phone || pendingPayload.mobileNumber || ''),
+        govt_builtin_phone: type === 'phone' ? value : (phone || pendingPayload.govt_builtin_phone || ''),
       };
       const fd = new FormData();
       fd.append('customRoute', MSME_DPR_CUSTOM_ROUTE);
@@ -343,6 +398,7 @@ const MsmeDprLeadFormPage = () => {
       });
 
       if (res.data?.success) {
+        persistCustomerLeadSession(dispatch, res.data);
         setSubmittedRequestId(res.data.requestId || null);
         setSuccess(true);
         setStep('done');
@@ -466,6 +522,7 @@ const MsmeDprLeadFormPage = () => {
               applicantName={form.applicantName}
               mobileNumber={form.mobileNumber}
               initialEmail={form.email}
+              otpPurpose="msme-form"
               copy={copy}
               submitting={submitting}
               error={error}
@@ -490,6 +547,13 @@ const MsmeDprLeadFormPage = () => {
                   className="px-4 py-2 border rounded-lg hover:bg-gray-50 text-sm"
                 >
                   {copy.submitAnother}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/customer/dashboard', { replace: true })}
+                  className="px-4 py-2 text-sm text-white bg-orange-600 rounded-lg hover:bg-orange-700"
+                >
+                  {copy.takeMeToDashboard}
                 </button>
                 <a
                   href={MSME_WEBSITE_URL}
@@ -635,12 +699,13 @@ const MsmeDprLeadFormPage = () => {
                 />
               </FormField>
 
+              {!hideOrganisation && (
               <FormField label={copy.enterpriseType} required>
                 <select
                   name="enterpriseType"
                   value={form.enterpriseType}
                   onChange={handleChange}
-                  required
+                  required={!hideOrganisation}
                   className={selectClass}
                 >
                   <option value="">{copy.selectEnterpriseType}</option>
@@ -651,6 +716,7 @@ const MsmeDprLeadFormPage = () => {
                   ))}
                 </select>
               </FormField>
+              )}
 
               {form.enterpriseType === 'Existing Enterprises' && (
                 <FormField label={copy.yearOfRegistration} required>
@@ -668,13 +734,13 @@ const MsmeDprLeadFormPage = () => {
                 </FormField>
               )}
 
-              {!isGoldLoan && (
+              {!hideSchemeRural && (
                 <FormField label={copy.schemeAppliedUnder} required>
                   <select
                     name="schemeAppliedUnder"
                     value={form.schemeAppliedUnder}
                     onChange={handleChange}
-                    required
+                    required={!hideSchemeRural}
                     className={selectClass}
                   >
                     <option value="">{copy.selectScheme}</option>
@@ -687,13 +753,13 @@ const MsmeDprLeadFormPage = () => {
                 </FormField>
               )}
 
-              {!isGoldLoan && (
+              {!hideSchemeRural && (
                 <FormField label={copy.ruralUrbanCategory} required>
                   <select
                     name="ruralUrbanCategory"
                     value={form.ruralUrbanCategory}
                     onChange={handleChange}
-                    required
+                    required={!hideSchemeRural}
                     className={selectClass}
                   >
                     <option value="">{copy.selectCategory}</option>
@@ -780,6 +846,8 @@ const MsmeDprLeadFormPage = () => {
                         <span className="text-orange-600 font-medium">
                           {copy.selectLoanTypeFirst}
                         </span>
+                      ) : isGoldLoan ? (
+                        <span className="text-gray-500">{copy.otherInfoGoldLoanOnly}</span>
                       ) : isWorkingCapitalOdLoan ? (
                         <span className="text-gray-500">{copy.otherInfoWorkingCapitalOnly}</span>
                       ) : (
@@ -792,6 +860,44 @@ const MsmeDprLeadFormPage = () => {
                 {form.hasOtherDprInfo && form.loanType && (
                   <div className="pt-3 border-t border-orange-200/80 space-y-4 animate-in fade-in duration-200">
                     {/* Working Capital question above table when working capital loan is selected */}
+                    {isGoldLoan && (
+                      <div className="bg-white p-4 rounded-xl border border-orange-200/80 shadow-xs grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <FormField label={copy.loanAmount} optional>
+                          <input
+                            type="text"
+                            name="loanAmount"
+                            value={form.loanAmount}
+                            onChange={handleChange}
+                            inputMode="numeric"
+                            placeholder={copy.placeholderAmount}
+                            className={inputClass}
+                          />
+                        </FormField>
+                        <FormField label={copy.rateOfInterest} optional>
+                          <input
+                            type="text"
+                            name="rateOfInterest"
+                            value={form.rateOfInterest}
+                            onChange={handleDecimalChange}
+                            inputMode="decimal"
+                            placeholder={copy.placeholderRateOfInterest}
+                            className={inputClass}
+                          />
+                        </FormField>
+                        <FormField label={copy.processingFee} optional>
+                          <input
+                            type="text"
+                            name="processingFee"
+                            value={form.processingFee}
+                            onChange={handleDecimalChange}
+                            inputMode="decimal"
+                            placeholder={copy.placeholderProcessingFee}
+                            className={inputClass}
+                          />
+                        </FormField>
+                      </div>
+                    )}
+
                     {isWorkingCapitalLoan && (
                       <div className="bg-white p-4 rounded-xl border border-orange-200/80 shadow-xs space-y-3">
                         <FormField label={copy.workingCapital} optional>
@@ -805,14 +911,18 @@ const MsmeDprLeadFormPage = () => {
                             className={inputClass}
                           />
                         </FormField>
-                        <FormField label={copy.workingCapitalMargin} optional>
+                        <FormField label={isWorkingCapitalOdLoan ? copy.processingFee : copy.workingCapitalMargin} optional>
                           <input
                             type="text"
                             name="workingCapitalMargin"
                             value={form.workingCapitalMargin}
                             onChange={handleDecimalChange}
                             inputMode="decimal"
-                            placeholder={copy.placeholderWorkingCapitalMargin}
+                            placeholder={
+                              isWorkingCapitalOdLoan
+                                ? copy.placeholderWcOdProcessingFee
+                                : copy.placeholderWorkingCapitalMargin
+                            }
                             className={inputClass}
                           />
                         </FormField>
@@ -959,7 +1069,7 @@ const MsmeDprLeadFormPage = () => {
                       <button
                         type="button"
                         onClick={handleAddAssetRow}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-orange-700 bg-orange-100 hover:bg-orange-200 rounded-lg transition-colors"
+                        className="inline-flex items-center gap-1 self-start px-3 py-1.5 text-xs font-semibold text-orange-700 bg-orange-100 hover:bg-orange-200 rounded-lg transition-colors"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         {copy.addRow}
@@ -1067,6 +1177,65 @@ const MsmeDprLeadFormPage = () => {
                     )}
                   </div>
                 )}
+              </div>
+
+              {isWorkingCapitalOdLoan && (
+                <WcOdTypeChart
+                  answers={form.wcOdTypeChart}
+                  copy={copy}
+                  onChange={(nextChart) =>
+                    setForm((prev) => ({ ...prev, wcOdTypeChart: nextChart }))
+                  }
+                />
+              )}
+
+              <div className="border rounded-2xl p-4 sm:p-5 border-gray-200 bg-gray-50/60 space-y-4">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">{copy.referredByBank}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{copy.referredByBankSub}</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField label={copy.referredByBankName} optional>
+                    <input
+                      type="text"
+                      name="referredByBankName"
+                      value={form.referredByBankName}
+                      onChange={handleChange}
+                      placeholder={copy.placeholderReferredByBankName}
+                      className={inputClass}
+                    />
+                  </FormField>
+                  <FormField label={copy.referredByBranchName} optional>
+                    <input
+                      type="text"
+                      name="referredByBranchName"
+                      value={form.referredByBranchName}
+                      onChange={handleChange}
+                      placeholder={copy.placeholderReferredByBranchName}
+                      className={inputClass}
+                    />
+                  </FormField>
+                  <FormField label={copy.referredByBankMobile} optional>
+                    <input
+                      type="tel"
+                      name="referredByBankMobile"
+                      value={form.referredByBankMobile}
+                      onChange={handleChange}
+                      placeholder={copy.placeholderReferredByBankMobile}
+                      className={inputClass}
+                    />
+                  </FormField>
+                  <FormField label={copy.referredByBankEmail} optional>
+                    <input
+                      type="email"
+                      name="referredByBankEmail"
+                      value={form.referredByBankEmail}
+                      onChange={handleChange}
+                      placeholder={copy.placeholderReferredByBankEmail}
+                      className={inputClass}
+                    />
+                  </FormField>
+                </div>
               </div>
 
               <FormField label={copy.description}>

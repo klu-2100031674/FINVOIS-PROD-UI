@@ -30,8 +30,10 @@ const AssignedRequestsPage = () => {
     <ClientLayout wideContent>
       <div className="p-6 w-full">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Assigned & Claimed Requests</h1>
-          <p className="text-gray-500 mt-1">Form requests assigned directly to you or claimed by you</p>
+          <h1 className="text-2xl font-bold text-gray-800">Assigned</h1>
+          <p className="text-gray-500 mt-1">
+            Claimed by you or assigned by admin — not started yet
+          </p>
         </div>
 
         {!loading && (
@@ -39,6 +41,8 @@ const AssignedRequestsPage = () => {
             requests={requests}
             onFilteredChange={setFiltered}
             showQueueStatus
+            showPaymentFilter={false}
+            showCaStatusFilter={false}
           />
         )}
 

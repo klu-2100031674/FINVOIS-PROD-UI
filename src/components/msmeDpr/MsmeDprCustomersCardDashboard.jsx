@@ -13,6 +13,7 @@ import {
   staffHandlerName,
 } from '@/utils/dprWorkflowStatus';
 import { displayMsmeLoanType } from '@/utils/msmeLoanTypeDisplay';
+import { reportTemplatesForLoanType } from '@/utils/partnerLeadLoanTypes';
 
 const PAGE_LIMIT = 100;
 
@@ -77,7 +78,8 @@ function industryLabel(lead) {
 
 function DetailDrawer({ lead, showGenerateReport, onClose }) {
   const navigate = useNavigate();
-  const [templateId, setTemplateId] = useState('frcc1');
+  const templates = reportTemplatesForLoanType(TEMPLATES_LIST, lead?.loanType);
+  const [templateId, setTemplateId] = useState(templates[0]?.id || 'frcc1');
   const workflow = workflowFromLead(lead);
   const stage = stageFromWorkflow(workflow.key);
   const docs = Array.isArray(lead?.documents) ? lead.documents : [];
@@ -144,7 +146,6 @@ function DetailDrawer({ lead, showGenerateReport, onClose }) {
               ['Rate of interest', lead.rateOfInterest],
               ['Processing fee', lead.processingFee],
               ['Moratorium (months)', lead.moratoriumPeriod],
-              ['Need CA stamp', lead.needCaStamp],
             ]
               .filter(([, v]) => v)
               .map(([label, value]) => (
@@ -195,7 +196,7 @@ function DetailDrawer({ lead, showGenerateReport, onClose }) {
                   onChange={(e) => setTemplateId(e.target.value)}
                   className="flex-1 text-xs border border-gray-300 rounded-lg px-2 py-2 bg-white focus:ring-1 focus:ring-purple-400 focus:outline-none"
                 >
-                  {TEMPLATES_LIST.map((t) => (
+                  {templates.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name}
                     </option>

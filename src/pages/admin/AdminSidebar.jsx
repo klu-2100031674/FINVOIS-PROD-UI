@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks';
 import {
   LayoutDashboard,
@@ -40,7 +40,13 @@ const AdminSidebar = ({
   mobileSidebarRef,
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
+
+  const isNavItemActive = (item, isActive) => {
+    if (item.matchPrefix) return location.pathname.startsWith(item.matchPrefix);
+    return isActive;
+  };
 
   const handleLogout = () => {
     logout();
@@ -106,9 +112,10 @@ const AdminSidebar = ({
         label: 'Schemes',
       });
       items.push({
-        to: '/admin/client-screening/emails',
-        icon: UserCheck,
-        label: 'Client Screening',
+        to: '/admin/client-screening/requests',
+        icon: Inbox,
+        label: 'Screening Requests',
+        matchPrefix: '/admin/client-screening',
       });
       items.push({
         to: '/admin/franchises',
@@ -236,15 +243,16 @@ const AdminSidebar = ({
                   <NavLink
                     to={item.to}
                     onClick={saveSidebarScrollBeforeNavigate}
-                    className={({ isActive }) =>
-                      `flex items-center rounded-lg transition-colors ${
+                    className={({ isActive }) => {
+                      const active = isNavItemActive(item, isActive);
+                      return `flex items-center rounded-lg transition-colors ${
                         item.indent ? 'px-2 py-2 ml-2' : 'px-3 py-2.5'
                       } ${
-                        isActive
+                        active
                           ? 'bg-purple-50 text-purple-700 font-medium'
                           : 'text-gray-700 hover:bg-gray-100'
-                      }`
-                    }
+                      }`;
+                    }}
                   >
                     <item.icon size={item.indent ? 16 : 20} className="flex-shrink-0" />
                     {sidebarOpen && (
@@ -325,15 +333,16 @@ const AdminSidebar = ({
                           saveSidebarScrollBeforeNavigate();
                           setMobileMenuOpen(false);
                         }}
-                        className={({ isActive }) =>
-                          `flex items-center rounded-lg transition-colors ${
+                        className={({ isActive }) => {
+                          const active = isNavItemActive(item, isActive);
+                          return `flex items-center rounded-lg transition-colors ${
                             item.indent ? 'px-2 py-2 ml-2' : 'px-3 py-2.5'
                           } ${
-                            isActive
+                            active
                               ? 'bg-purple-50 text-purple-700 font-medium'
                               : 'text-gray-700 hover:bg-gray-100'
-                          }`
-                        }
+                          }`;
+                        }}
                       >
                         <item.icon size={item.indent ? 16 : 20} />
                         <span className={`ml-3 ${item.indent ? 'text-sm' : ''}`}>{item.label}</span>

@@ -9,7 +9,8 @@ import {
   FileStack,
   Briefcase,
   ClipboardCheck,
-  // ClipboardList,
+  Clock,
+  Send,
   LogOut,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -31,11 +32,10 @@ const workQueueLinkClass = ({ isActive }) =>
   }`;
 
 const WORK_QUEUE_ITEMS = [
-  { to: '/customer-service/open', icon: Inbox, label: 'Open', countKey: 'open' },
+  { to: '/customer-service/open', icon: Inbox, label: 'Open Requests', countKey: 'open' },
   { to: '/customer-service/assigned', icon: User, label: 'Assigned', countKey: 'assigned' },
-  { to: '/customer-service/department-requests', icon: FileText, label: 'Dept', countKey: 'department' },
-  { to: '/customer-service/history', icon: FileStack, label: 'History', countKey: 'completed' },
-  // { to: '/customer-service/msme-leads', icon: ClipboardList, label: 'MSME', countKey: null },
+  { to: '/customer-service/in-progress', icon: Clock, label: 'In Progress', countKey: 'awaiting' },
+  { to: '/customer-service/completed', icon: Send, label: 'Completed', countKey: 'ready' },
 ];
 
 const CustomerServiceSidebar = ({
@@ -49,8 +49,8 @@ const CustomerServiceSidebar = ({
   const [queueCounts, setQueueCounts] = useState({
     open: 0,
     assigned: 0,
-    department: 0,
-    completed: 0,
+    awaiting: 0,
+    ready: 0,
   });
 
   useEffect(() => {
@@ -60,7 +60,7 @@ const CustomerServiceSidebar = ({
       const payload = body?.data && typeof body.data === 'object' ? body.data : body;
       if (!payload || typeof payload !== 'object') return null;
       const next = {};
-      ['open', 'assigned', 'department', 'completed'].forEach((key) => {
+      ['open', 'assigned', 'awaiting', 'ready'].forEach((key) => {
         const n = Number(payload[key]);
         if (Number.isFinite(n)) next[key] = n;
       });
@@ -131,7 +131,7 @@ const CustomerServiceSidebar = ({
                 <span className="ml-2 text-sm truncate">{item.label}</span>
               )}
             </span>
-            {(item.countKey) && (
+            {item.countKey && (
               <span className="ml-auto shrink-0 min-w-[1.5rem] text-center text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-white text-purple-700 border border-purple-200">
                 {queueCounts[item.countKey] ?? 0}
               </span>

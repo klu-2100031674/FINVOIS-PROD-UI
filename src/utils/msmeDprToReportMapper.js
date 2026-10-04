@@ -11,6 +11,10 @@
  */
 
 import { FRCC_REQUIRED_STAMP_DEFAULT } from './frccFormUi';
+import {
+  isGoldLoanType,
+  isWorkingCapitalOdLoanType,
+} from './partnerLeadLoanTypes';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -222,7 +226,7 @@ function displayScheme(value) {
 function resolveFamily(templateKey) {
   if (!templateKey) return null;
   const k = String(templateKey).toLowerCase().trim();
-  if (k === 'gold_loan') return 'frcc';
+  if (k === 'gold_loan') return 'gold_loan';
   if (/^frcc[1-7]$/.test(k) || /^format\s*cc[1-7]$/i.test(k) || /^cc[1-7]$/.test(k)) {
     return 'frcc';
   }
@@ -230,6 +234,38 @@ function resolveFamily(templateKey) {
     return 'term_loan';
   }
   return null;
+}
+
+function resolveProcessingFee(lead) {
+  const fee = String(lead?.processingFee || '').trim();
+  if (fee) return fee;
+  if (isWorkingCapitalOdLoanType(lead?.loanType)) {
+    return String(lead?.workingCapitalMargin || '').trim();
+  }
+  return '';
+}
+
+function applyReferredByBankToPreparedBy(data, lead, labels) {
+  if (!data['Prepared By']) data['Prepared By'] = {};
+  const pb = data['Prepared By'];
+  let filled = false;
+  if (lead.referredByBankName) {
+    pb.bank_name = lead.referredByBankName;
+    filled = true;
+  }
+  if (lead.referredByBranchName) {
+    pb.branch_name = lead.referredByBranchName;
+    filled = true;
+  }
+  if (lead.referredByBankMobile) {
+    pb.banker_mobile = lead.referredByBankMobile;
+    filled = true;
+  }
+  if (lead.referredByBankEmail) {
+    pb.banker_mail_id = lead.referredByBankEmail;
+    filled = true;
+  }
+  if (filled) labels.push('Prepared By (Referred by Bank)');
 }
 
 function getLeadAssets(lead) {
@@ -378,13 +414,41 @@ function mapAssetsToFrccFixedSchedule(lead, labels) {
 // FRCC family (frcc1 – frcc7)
 // ---------------------------------------------------------------------------
 
-function buildFrccDefaultStructure() {
+function resolveFrccFixedMeansOfFinance(templateKey) {
+  const k = String(templateKey || '').toLowerCase().trim();
+  if (k === 'frcc1' || k === 'format cc1' || k === 'cc1' || k === 'gold_loan') {
+    return { i12: 'No' };
+  }
+  if (k === 'frcc2' || k === 'format cc2' || k === 'cc2') {
+    return { i11: 'No' };
+  }
+  if (k === 'frcc3' || k === 'format cc3' || k === 'cc3') {
+    return { i12: 'No' };
+  }
+  if (k === 'frcc4' || k === 'format cc4' || k === 'cc4') {
+    return { i11: 'Yes', i12: 'No' };
+  }
+  if (k === 'frcc5' || k === 'format cc5' || k === 'cc5') {
+    return { i11: 'Yes', i12: 'Yes' };
+  }
+  if (k === 'frcc6' || k === 'format cc6' || k === 'cc6') {
+    return { i11: 'Yes', i12: 'No', h17: 'Yes' };
+  }
+  if (k === 'frcc7' || k === 'format cc7' || k === 'cc7') {
+    return { i11: 'Yes', i12: 'Yes', i18: 'Yes' };
+  }
+  return { i11: 'Yes', i12: 'No' };
+}
+
+function buildFrccDefaultStructure(templateKey = '') {
+  const fixedMeans = resolveFrccFixedMeansOfFinance(templateKey);
   return {
     'General Information': {
       i4: '', i5: '', i6: '', i7: '', i8: '', i9: '', i10: '',
     },
     'Means of Finance': {
-      i12: 'No', i13: '', h14: '', h15: '', h16: '',
+      ...fixedMeans,
+      i13: '', h14: '', h15: '', h16: '',
     },
     'Financial Years': {
       i18: '', i19: '', i20: '', i21: '', i22: '',
@@ -409,6 +473,8 @@ function buildFrccDefaultStructure() {
     'Prepared By': {
       bank_name: '',
       branch_name: '',
+      banker_mobile: '',
+      banker_mail_id: '',
       j94: 'PARVEZ AND NARAYANA',
       j95: 'Chartered Accountants',
       j96: 'Vijayawada',
@@ -458,7 +524,7 @@ function resolveFrccTermLoanFinanceCells(templateKey) {
 }
 
 function mapMsmeLeadToFrccInitialData(lead, templateKey) {
-  const data = buildFrccDefaultStructure();
+  const data = buildFrccDefaultStructure(templateKey);
   const labels = [];
   const cells = resolveFrccMeansOfFinanceCells(templateKey);
   const termCells = resolveFrccTermLoanFinanceCells(templateKey);
@@ -498,8 +564,9 @@ function mapMsmeLeadToFrccInitialData(lead, templateKey) {
     data['Means of Finance'][cells.roi] = lead.rateOfInterest;
     labels.push('Rate of Interest');
   }
-  if (lead.processingFee && cells.processing) {
-    data['Means of Finance'][cells.processing] = lead.processingFee;
+  const processingFeeValue = resolveProcessingFee(lead);
+  if (processingFeeValue && cells.processing) {
+    data['Means of Finance'][cells.processing] = processingFeeValue;
     labels.push('Processing Fee');
   }
 
@@ -518,8 +585,8 @@ function mapMsmeLeadToFrccInitialData(lead, templateKey) {
       term[termCells.moratorium] = lead.moratoriumPeriod;
       labels.push('Moratorium Period');
     }
-    if (lead.processingFee && termCells.processing) {
-      term[termCells.processing] = lead.processingFee;
+    if (processingFeeValue && termCells.processing) {
+      term[termCells.processing] = processingFeeValue;
     }
     if (Object.keys(term).length > 0) {
       data['Term Loan Finance Details'] = term;
@@ -531,6 +598,8 @@ function mapMsmeLeadToFrccInitialData(lead, templateKey) {
   if (fixedSchedule) {
     data['Fixed Assets Schedule'] = fixedSchedule;
   }
+
+  applyReferredByBankToPreparedBy(data, lead, labels);
 
   return { initialData: data, autoFilledLabels: labels };
 }
@@ -551,6 +620,7 @@ function buildTermLoanDefaultStructure() {
       j139: '9014221011',
       required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
       banker_mail_id: '',
+      banker_mobile: '',
       cibil_score: '',
       bank_name: '',
       branch_name: '',
@@ -648,8 +718,9 @@ function mapMsmeLeadToTermLoanInitialData(lead, templateKey) {
       means.i49 = lead.moratoriumPeriod;
       labels.push('Moratorium Period');
     }
-    if (lead.processingFee) {
-      means.h53 = lead.processingFee;
+    const processingFeeValue = resolveProcessingFee(lead);
+    if (processingFeeValue) {
+      means.h53 = processingFeeValue;
       labels.push('Processing Fee');
     }
     if (Object.keys(means).length > 0) {
@@ -662,12 +733,6 @@ function mapMsmeLeadToTermLoanInitialData(lead, templateKey) {
     if (wcLakhs > 0) {
       costDetails.i40 = wcLakhs;
       labels.push('Working Capital Requirement (Lac)');
-    }
-    const marginRaw = parseFloat(String(lead.workingCapitalMargin || '').replace(/,/g, ''));
-    if (Number.isFinite(marginRaw)) {
-      // Form stores margin % (x); Term Loan CC Loan Contribution % = (100 - x).
-      costDetails.k40 = Math.max(0, Math.min(100, 100 - marginRaw));
-      labels.push('Loan Contribution Percentage (%)');
     }
     if (Object.keys(costDetails).length > 0) {
       data['Cost of Project details'] = costDetails;
@@ -688,8 +753,9 @@ function mapMsmeLeadToTermLoanInitialData(lead, templateKey) {
       termLoan.i48 = lead.moratoriumPeriod;
       labels.push('Moratorium Period');
     }
-    if (lead.processingFee) {
-      termLoan.h49 = lead.processingFee;
+    const processingFeeValue = resolveProcessingFee(lead);
+    if (processingFeeValue) {
+      termLoan.h49 = processingFeeValue;
       labels.push('Processing Fee');
     }
     if (Object.keys(termLoan).length > 0) {
@@ -719,6 +785,41 @@ function mapMsmeLeadToTermLoanInitialData(lead, templateKey) {
     data['Fixed Assets Schedule'] = fixedAssetsSchedule;
   }
 
+  applyReferredByBankToPreparedBy(data, lead, labels);
+
+  return { initialData: data, autoFilledLabels: labels };
+}
+
+function mapMsmeLeadToGoldLoanInitialData(lead) {
+  const data = buildFrccDefaultStructure('gold_loan');
+  const labels = [];
+  const cells = resolveFrccMeansOfFinanceCells('gold_loan');
+
+  if (lead.loanAmount && cells.amount) {
+    data['Means of Finance'][cells.amount] = lead.loanAmount;
+    labels.push('Loan Amount');
+  }
+  if (lead.rateOfInterest && cells.roi) {
+    data['Means of Finance'][cells.roi] = lead.rateOfInterest;
+    labels.push('Rate of Interest');
+  }
+  const processingFeeValue = resolveProcessingFee(lead);
+  if (processingFeeValue && cells.processing) {
+    data['Means of Finance'][cells.processing] = processingFeeValue;
+    labels.push('Processing Fee');
+  }
+  if (lead.applicantName) {
+    data['General Information'].i4 = lead.applicantName;
+    data['General Information'].i6 = lead.applicantName;
+    labels.push('Name of Firm', 'Name of Authorised Person');
+  }
+  if (lead.mobileNumber) {
+    data['General Information'].i8 = lead.mobileNumber;
+    labels.push('Contact No.');
+  }
+
+  applyReferredByBankToPreparedBy(data, lead, labels);
+
   return { initialData: data, autoFilledLabels: labels };
 }
 
@@ -738,6 +839,10 @@ export function mapMsmeLeadToReportInitialData(lead, templateKey) {
 
   const family = resolveFamily(templateKey);
   if (!family) return null;
+
+  if (family === 'gold_loan') {
+    return mapMsmeLeadToGoldLoanInitialData(lead);
+  }
 
   if (family === 'frcc') {
     return mapMsmeLeadToFrccInitialData(lead, templateKey);

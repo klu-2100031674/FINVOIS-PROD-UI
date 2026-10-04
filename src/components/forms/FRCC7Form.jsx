@@ -94,7 +94,17 @@ const FRCC7Form = ({
   });
 
   const [formData, setFormData] = useState(() => {
-    if (initialData && Object.keys(initialData).length > 0) return initialData;
+    if (initialData && Object.keys(initialData).length > 0) {
+      return {
+        ...initialData,
+        'Means of Finance': {
+          ...(initialData['Means of Finance'] || {}),
+          i11: 'Yes',
+          i12: 'Yes',
+          i18: 'Yes',
+        },
+      };
+    }
     return buildEmptyState();
   });
 
@@ -249,6 +259,12 @@ const FRCC7Form = ({
             merged[sectionKey] = incoming;
           }
         }
+        merged['Means of Finance'] = {
+          ...(merged['Means of Finance'] || {}),
+          i11: 'Yes',
+          i12: 'Yes',
+          i18: 'Yes',
+        };
         return merged;
       });
     }
@@ -351,7 +367,7 @@ const FRCC7Form = ({
         bank_name: 'ICICI Bank', branch_name: 'Industrial Branch'
       },
       'Means of Finance': {
-        i11: 'Yes', i12: 'No', i13: 10000000, i14: 25000000,
+        i11: 'Yes', i12: 'Yes', i13: 10000000, i14: 25000000,
         h15: 9.5, h16: 0.3, h17: 22, i18: 'Yes'
       },
       'Financial Years': {

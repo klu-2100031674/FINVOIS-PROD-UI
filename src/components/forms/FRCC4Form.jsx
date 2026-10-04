@@ -57,8 +57,11 @@ const FRCC4Form = ({
     'General Information': initialData['General Information'] || {
       i3: '', i4: '', i5: '', i6: '', i7: '', i8: '', i9: ''
     },
-    'Means of Finance': initialData['Means of Finance'] || {
-      i11: 'Yes', i12: 'No', i13: 0, h14: 0, h15: 0, h16: 0
+    'Means of Finance': {
+      i13: 0, h14: 0, h15: 0, h16: 0,
+      ...(initialData['Means of Finance'] || {}),
+      i11: 'Yes',
+      i12: 'No',
     },
     'Financial Years': initialData['Financial Years'] || {
       i18: '', i19: '', i20: '', i21: ''
@@ -196,6 +199,11 @@ const FRCC4Form = ({
       setFormData(prev => ({
         ...prev,
         ...initialData,
+        'Means of Finance': {
+          ...(initialData['Means of Finance'] || {}),
+          i11: 'Yes',
+          i12: 'No',
+        },
         'Financial Statements': initialData['Financial Statements'] || initialData['Audited Statements'] || prev['Financial Statements']
       }));
     }
@@ -274,7 +282,7 @@ const FRCC4Form = ({
         i9: 'Manufacturing of Industrial Equipment'
       },
       'Means of Finance': {
-        i11: 'No', i12: 'No', i13: 15000000, h14: 11, h15: 1.0, h16: 18
+        i11: 'Yes', i12: 'No', i13: 15000000, h14: 11, h15: 1.0, h16: 18
       },
       'Financial Years': {
         i18: '2024-25', i19: '2025-26', i20: '2026-27', i21: '2027-28'

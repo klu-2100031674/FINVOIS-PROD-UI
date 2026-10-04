@@ -1,7 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AP_IDP_SCHEME_MAIL_PATH } from './apIdpSchemeMailConstants';
-import { saveSchemeFormSession } from '../../../utils/schemeFormSession';
+import {
+  ensureFreshSchemeSessionOnFormEntry,
+  saveSchemeFormSession,
+  withSchemeSessionId,
+} from '../../../utils/schemeFormSession';
 import { saveSchemeFormProgress } from '../../../api/schemeFormsAPI';
 
 const LEGAL_STRUCTURE_OPTIONS = [
@@ -445,6 +449,10 @@ const ApIdpSectionAForm = ({
   const navigate = useNavigate();
   const [data, setData] = useState(() => ({ ...initialState, ...(initialData || {}) }));
 
+  useEffect(() => {
+    ensureFreshSchemeSessionOnFormEntry('apIdpForm');
+  }, []);
+
   const isSoleProprietorship = data.legalStructure === 'Sole Proprietorship';
   const isOtherStructure = data.legalStructure === 'Others';
   const needsPartners = !!data.legalStructure && !isSoleProprietorship;
@@ -745,7 +753,7 @@ const ApIdpSectionAForm = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const payload = {
+    const payload = withSchemeSessionId('apIdpForm', {
       ...data,
       ownerAge: data.ownerAge === '' ? '' : Number(data.ownerAge),
       partners: (data.partners || []).map((p) => ({
@@ -756,7 +764,7 @@ const ApIdpSectionAForm = ({
             ? ''
             : Number(p.shareholding),
       })),
-    };
+    });
     onSubmit?.(payload);
     saveSchemeFormSession('apIdpForm', payload);
     try {

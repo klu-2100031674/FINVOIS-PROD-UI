@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Filter, MoreVertical, Edit2, Eye, UserPlus, ChevronRight, ChevronDown, Check, X } from 'lucide-react';
+import { Search, Filter, MoreVertical, Edit2, Eye, UserPlus, ChevronRight, ChevronDown, Check, X, Key, Trash2, Phone } from 'lucide-react';
 import { AdminLayout } from '../../components/layouts';
 import api from '../../api/apiClient';
 import toast from 'react-hot-toast';
@@ -18,15 +18,32 @@ function isPlaceholderEmail(email) {
   return typeof email === 'string' && email.endsWith('@phone.customer.finvois');
 }
 
+function isPhoneVerifiedCustomer(user) {
+  return user?.role === 'customer' && isPlaceholderEmail(user?.email);
+}
+
 /**
  * Human-readable contact for a user.
  * Phone-verified customers store a placeholder email — show their phone instead.
  */
 function displayUserContact(user) {
-  if (user?.role === 'customer' && isPlaceholderEmail(user?.email)) {
-    return user?.phone ? `📱 ${user.phone}` : '—';
+  if (isPhoneVerifiedCustomer(user)) {
+    return user?.phone || '—';
   }
   return user?.email || '—';
+}
+
+function UserContactText({ user, className = '' }) {
+  const text = displayUserContact(user);
+  const showPhoneIcon = isPhoneVerifiedCustomer(user) && Boolean(user?.phone);
+  return (
+    <span className={`inline-flex items-center gap-1 min-w-0 ${className}`}>
+      {showPhoneIcon && (
+        <Phone size={12} strokeWidth={2} className="shrink-0 text-gray-400" aria-hidden />
+      )}
+      <span className="truncate">{text}</span>
+    </span>
+  );
 }
 
 /** Resolved phone number (User model stores it in `phone`, not `mobile`). */
@@ -101,6 +118,8 @@ const AdminUsersPage = () => {
   const [newUser, setNewUser] = useState(EMPTY_NEW_USER);
   const [pendingVrRequests, setPendingVrRequests] = useState([]);
   const [vrActionId, setVrActionId] = useState(null);
+  const [tempPasswordModal, setTempPasswordModal] = useState(null);
+  const [tempPasswordLoading, setTempPasswordLoading] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -382,7 +401,11 @@ const AdminUsersPage = () => {
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
-    if (!newUser.name.trim() || !newUser.email.trim() || !newUser.password.trim()) {
+    const password =
+      newUser.role === 'msme_service' && !newUser.password.trim()
+        ? 'ABcd@0000'
+        : newUser.password;
+    if (!newUser.name.trim() || !newUser.email.trim() || !password.trim()) {
       toast.error('Name, email and password are required');
       return;
     }
@@ -391,11 +414,15 @@ const AdminUsersPage = () => {
       await api.post('/users/create-admin', {
         name: newUser.name.trim(),
         email: newUser.email.trim(),
-        password: newUser.password,
+        password,
         role: newUser.role,
         phone: newUser.phone.trim() || undefined,
       });
-      toast.success(`User "${newUser.name}" created successfully`);
+      toast.success(
+        newUser.role === 'msme_service'
+          ? `MSME Service Provider created (temp password: ABcd@0000)`
+          : `User "${newUser.name}" created successfully`
+      );
       setShowCreateModal(false);
       setNewUser(EMPTY_NEW_USER);
       fetchUsers();
@@ -412,6 +439,39 @@ const AdminUsersPage = () => {
     setActionMenu(null);
   };
 
+  const handleViewTempPassword = async (user) => {
+    setTempPasswordLoading(true);
+    setActionMenu(null);
+    try {
+      const res = await api.get(`/users/${user._id}/temp-password`);
+      setTempPasswordModal({
+        user,
+        tempPassword: res?.data?.data?.tempPassword || null,
+        mustChangePassword: res?.data?.data?.mustChangePassword,
+      });
+    } catch (err) {
+      toast.error(typeof err === 'string' ? err : 'Failed to load temp password');
+    } finally {
+      setTempPasswordLoading(false);
+    }
+  };
+
+  const handleAdminResetPassword = async (user) => {
+    setActionMenu(null);
+    if (!window.confirm(`Reset password for ${user.email} to ABcd@0000?`)) return;
+    try {
+      await api.post(`/users/${user._id}/admin-reset-password`);
+      setTempPasswordModal((current) => (
+        current?.user?._id === user._id
+          ? { ...current, tempPassword: 'ABcd@0000', mustChangePassword: false }
+          : current
+      ));
+      toast.success('Password reset to ABcd@0000');
+    } catch (err) {
+      toast.error(typeof err === 'string' ? err : 'Failed to reset password');
+    }
+  };
+
   const getRoleBadgeColor = (role) => {
     switch (role) {
       case 'admin':
@@ -424,6 +484,8 @@ const AdminUsersPage = () => {
         return 'bg-blue-100 text-blue-800';
       case 'department':
         return 'bg-green-100 text-green-800';
+      case 'msme_service':
+        return 'bg-teal-100 text-teal-800';
       default:
         return 'bg-purple-100 text-purple-800';
     }
@@ -588,6 +650,7 @@ const AdminUsersPage = () => {
               <option value="msme_dpr_viewer">MSME DPR Viewer</option>
               <option value="mepma_dpr_viewer">MEPMA DPR Viewer</option>
               <option value="dpr_request_viewer">DPR Request Viewer</option>
+              <option value="msme_service">MSME Service Provider</option>
               <option value="customer">Customer</option>
               <option value="user">User</option>
             </select>
@@ -692,7 +755,9 @@ const AdminUsersPage = () => {
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500 truncate mt-0.5">{displayUserContact(user)}</p>
+                          <p className="text-xs text-gray-500 truncate mt-0.5">
+                            <UserContactText user={user} />
+                          </p>
                         </div>
                       </td>
                       <td className="px-3 py-3 align-middle hidden md:table-cell min-w-0">
@@ -883,6 +948,17 @@ const AdminUsersPage = () => {
                   </button>
                 </>
               )}
+              {actionMenuUser.role === 'msme_service' && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => handleViewTempPassword(actionMenuUser)}
+                  className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  <Eye size={15} className="mr-2 shrink-0" />
+                  View temp password
+                </button>
+              )}
               {actionMenuUser.role === 'customer_service' && (
                 <button
                   type="button"
@@ -927,7 +1003,22 @@ const AdminUsersPage = () => {
               </button>
             </>
           )}
-          {/* Delete user is disabled — deactivate the account instead so their MSME / MEPMA / DPR requests stay hidden. */}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => handleAdminResetPassword(actionMenuUser)}
+            className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-100 mt-1"
+          >
+            <Key size={15} className="mr-2 shrink-0" /> Reset password
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => handleAskDeleteUser(actionMenuUser)}
+            className="flex items-center w-full px-3 py-2 text-sm text-red-700 hover:bg-red-50 border-t border-gray-100 mt-1"
+          >
+            <Trash2 size={15} className="mr-2 shrink-0" /> Delete user
+          </button>
         </div>,
         document.body
       )}
@@ -951,7 +1042,10 @@ const AdminUsersPage = () => {
                 <div>
                   <h3 className="text-lg font-semibold text-gray-800">{selectedUser.name}</h3>
                   {isPlaceholderEmail(selectedUser.email) ? (
-                    <p className="text-gray-500">📱 Phone-verified customer — {selectedUser.phone || '—'}</p>
+                    <p className="text-gray-500 inline-flex items-center gap-1.5">
+                      <Phone size={14} strokeWidth={2} className="shrink-0 text-gray-400" aria-hidden />
+                      Phone-verified customer — {selectedUser.phone || '—'}
+                    </p>
                   ) : (
                     <p className="text-gray-500">{selectedUser.email}</p>
                   )}
@@ -1156,12 +1250,18 @@ const AdminUsersPage = () => {
 
               {/* Password */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Password {newUser.role === 'msme_service' ? '' : '*'}
+                </label>
                 <input
                   type="password"
                   value={newUser.password}
                   onChange={(e) => setNewUser(u => ({ ...u, password: e.target.value }))}
-                  placeholder="Min 8 characters"
+                  placeholder={
+                    newUser.role === 'msme_service'
+                      ? 'Defaults to ABcd@0000 if empty'
+                      : 'Min 8 characters'
+                  }
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent"
                 />
               </div>
@@ -1176,6 +1276,7 @@ const AdminUsersPage = () => {
                 >
                   <option value="user">User</option>
                   <option value="agent">Channel Partner</option>
+                  <option value="msme_service">MSME Service Provider</option>
                   <option value="sbi_executive">SBI Executive</option>
                   <option value="boi_executive">BOI Executive</option>
                   <option value="lead_manager">Service Manager</option>
@@ -1251,6 +1352,47 @@ const AdminUsersPage = () => {
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
               >
                 {deleting ? 'Deleting...' : 'Delete permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tempPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="text-lg font-bold text-gray-800 mb-2">Temporary password</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              {tempPasswordModal.user?.name} ({tempPasswordModal.user?.email})
+            </p>
+            {tempPasswordLoading ? (
+              <p className="text-sm text-gray-500">Loading…</p>
+            ) : tempPasswordModal.tempPassword ? (
+              <div className="rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 mb-4">
+                <p className="text-xs text-teal-800 mb-1">Visible until the user changes it</p>
+                <p className="font-mono text-lg font-semibold text-teal-950 tracking-wide">
+                  {tempPasswordModal.tempPassword}
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-4">
+                Password was changed by the user. Use Reset to reissue ABcd@0000.
+              </p>
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => handleAdminResetPassword(tempPasswordModal.user)}
+                className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Reset to ABcd@0000
+              </button>
+              <button
+                type="button"
+                onClick={() => setTempPasswordModal(null)}
+                className="px-4 py-2 text-sm font-medium bg-[#7e22ce] text-white rounded-lg hover:bg-[#6b21a8]"
+              >
+                Close
               </button>
             </div>
           </div>

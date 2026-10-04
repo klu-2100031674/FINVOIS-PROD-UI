@@ -40,6 +40,7 @@ export function dashboardHomePath(roleOrUser) {
   if (r === 'msme_dpr_viewer') return '/msme-dpr-dashboard';
   if (r === 'mepma_dpr_viewer') return '/mepma-dpr-dashboard';
   if (r === 'dpr_request_viewer') return '/dpr-request-dashboard';
+  if (r === 'msme_service') return '/msme-service/requests';
   if (r === 'agent') return '/agent/dashboard';
   if (isExecutiveRole(r)) return executiveDashboardPath(roleOrUser);
   if (r === 'department') return '/department/dashboard';
@@ -53,6 +54,7 @@ export function profilePathForRole(roleOrUser) {
   if (r === 'msme_dpr_viewer') return '/msme-dpr/profile';
   if (r === 'mepma_dpr_viewer') return '/mepma-dpr/profile';
   if (r === 'dpr_request_viewer') return '/dpr-request/profile';
+  if (r === 'msme_service') return '/msme-service/profile';
   if (r === 'department') return '/department/profile';
   if (r === 'company_admin') return '/company/profile';
   if (r === 'company_user') return '/company/user/profile';

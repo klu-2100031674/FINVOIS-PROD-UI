@@ -1,7 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CMEP_SCHEME_MAIL_PATH } from './cmepSchemeMailConstants';
-import { saveSchemeFormSession } from '../../../utils/schemeFormSession';
+import {
+  ensureFreshSchemeSessionOnFormEntry,
+  saveSchemeFormSession,
+  withSchemeSessionId,
+} from '../../../utils/schemeFormSession';
 import { saveSchemeFormProgress } from '../../../api/schemeFormsAPI';
 
 const SPECIAL_CATEGORIES = [
@@ -265,6 +269,10 @@ const CmepSectionAForm = ({
   const navigate = useNavigate();
   const [data, setData] = useState(() => ({ ...initialState, ...(initialData || {}) }));
 
+  useEffect(() => {
+    ensureFreshSchemeSessionOnFormEntry('cmepForm');
+  }, []);
+
   const specialCategoryEnabled = data.specialCategoryYesNo === 'Yes';
   const hasPwd = (data.specialCategories || []).includes('Person with Disability (PwD)');
   const hasExServicemen = (data.specialCategories || []).includes('Ex-Servicemen');
@@ -377,12 +385,14 @@ const CmepSectionAForm = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const payload = {
+    const payload = withSchemeSessionId('cmepForm', {
       ...data,
       ageYears: data.ageYears === '' ? '' : Number(data.ageYears),
       numberOfDependents:
         data.numberOfDependents === '' ? '' : Number(data.numberOfDependents),
-    };
+      totalFixedAssets,
+      estimatedTotalProjectCost,
+    });
     onSubmit?.(payload);
     saveSchemeFormSession('cmepForm', payload);
     try {
@@ -1047,7 +1057,7 @@ const CmepSectionAForm = ({
           {leasedEnabled && (
             <>
               <div className="space-y-1.5">
-                <FieldLabel>35. If Leased, lease agreement is</FieldLabel>
+                <FieldLabel>If rented / leased, lease agreement is</FieldLabel>
                 <RadioGroup
                   name="leaseAgreementType"
                   value={data.leaseAgreementType}
@@ -1085,7 +1095,7 @@ const CmepSectionAForm = ({
           )}
 
           <div className="space-y-1.5">
-            <FieldLabel>36. Expected monthly sales / turnover after 1 year? (Rough estimate ₹)</FieldLabel>
+            <FieldLabel>35. Expected monthly sales / turnover after 1 year? (Rough estimate ₹)</FieldLabel>
             <TextInput
               type="number"
               value={data.expectedMonthlySales}
@@ -1104,7 +1114,7 @@ const CmepSectionAForm = ({
 
         <div className="grid grid-cols-1 gap-4">
           <div className="space-y-1.5">
-            <FieldLabel>37. Have you identified a bank for the loan?</FieldLabel>
+            <FieldLabel>36. Have you identified a bank for the loan?</FieldLabel>
             <RadioGroup
               name="identifiedBank"
               value={data.identifiedBank}
@@ -1183,7 +1193,7 @@ const CmepSectionAForm = ({
 
           <div className="space-y-1.5">
             <FieldLabel>
-              38. In case of relation with existing banker, how old is your relationship with this bank?
+              37. In case of relation with existing banker, how old is your relationship with this bank?
             </FieldLabel>
             <RadioGroup
               name="bankRelationshipAge"
@@ -1200,7 +1210,7 @@ const CmepSectionAForm = ({
 
           <div className="space-y-1.5">
             <FieldLabel>
-              39. Have you availed any previous government subsidy / loan under PMEGP / PMFME / MUDRA / any other scheme?
+              38. Have you availed any previous government subsidy / loan under PMEGP / PMFME / MUDRA / any other scheme?
             </FieldLabel>
             <RadioGroup
               name="previousGovtSubsidyLoan"
@@ -1216,7 +1226,7 @@ const CmepSectionAForm = ({
           <TwoQuestionRow
             left={
               <>
-                <FieldLabel>40. What is your CIBIL score (For Bank loan purpose)</FieldLabel>
+                <FieldLabel>39. What is your CIBIL score (For Bank loan purpose)</FieldLabel>
                 <TextInput
                   type="number"
                   value={data.cibilScore}
@@ -1227,7 +1237,7 @@ const CmepSectionAForm = ({
             }
             right={
               <>
-                <FieldLabel>41. What is your Net worth as on date (For Bank loan purpose)</FieldLabel>
+                <FieldLabel>40. What is your Net worth as on date (For Bank loan purpose)</FieldLabel>
                 <TextInput
                   type="number"
                   value={data.netWorth}
@@ -1239,7 +1249,7 @@ const CmepSectionAForm = ({
           />
 
           <div className="space-y-1.5">
-            <FieldLabel>42. Are you filing Income Tax returns?</FieldLabel>
+            <FieldLabel>41. Are you filing Income Tax returns?</FieldLabel>
             <RadioGroup
               name="filingIncomeTaxReturns"
               value={data.filingIncomeTaxReturns}
@@ -1252,7 +1262,7 @@ const CmepSectionAForm = ({
           </div>
 
           <div className="space-y-1.5">
-            <FieldLabel>43. Do you have any other source of income (spouse job, agriculture, etc.)?</FieldLabel>
+            <FieldLabel>42. Do you have any other source of income (spouse job, agriculture, etc.)?</FieldLabel>
             <RadioGroup
               name="otherIncomeYes"
               value={data.otherIncomeYes}
@@ -1279,7 +1289,7 @@ const CmepSectionAForm = ({
           )}
           <div className="space-y-1.5">
             <FieldLabel>
-              44. Do you have any Life Insurance policy? (PMJJBY, PMSBY, APY, or any other)
+              43. Do you have any Life Insurance policy? (PMJJBY, PMSBY, APY, or any other)
             </FieldLabel>
             <RadioGroup
               name="lifeInsuranceYes"
@@ -1311,7 +1321,7 @@ const CmepSectionAForm = ({
       {/* Section H: Document Readiness */}
       <div className="mt-8 pt-6 border-t border-gray-200">
         <div className="mb-5">
-          <h2 className="text-lg font-bold text-gray-900">Section H: Document Readiness</h2>
+          <h2 className="text-lg font-bold text-gray-900">44. Document Readiness</h2>
           <p className="text-sm text-gray-600 mt-1">Please tick which documents you already have:</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1333,7 +1343,7 @@ const CmepSectionAForm = ({
           <h2 className="text-lg font-bold text-gray-900">Additional Information</h2>
         </div>
         <div className="space-y-1.5">
-          <FieldLabel>Any other information you would like to share</FieldLabel>
+          <FieldLabel>45. Any other information you would like to share</FieldLabel>
           <TextArea
             value={data.additionalInfo}
             onChange={(v) => update('additionalInfo', v)}

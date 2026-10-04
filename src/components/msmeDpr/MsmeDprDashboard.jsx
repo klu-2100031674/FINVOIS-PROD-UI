@@ -38,6 +38,8 @@ import MsmeDprEmailOverlay from '@/components/msmeDpr/MsmeDprEmailOverlay';
 import AdminDprStaffActions from '@/components/govtForms/AdminDprStaffActions';
 import DprLeadReportActions from '@/components/govtForms/DprLeadReportActions';
 import { staffHandlerName, workflowFromLead } from '@/utils/dprWorkflowStatus';
+import { displayMsmeLoanType } from '@/utils/msmeLoanTypeDisplay';
+import { reportTemplatesForLoanType } from '@/utils/partnerLeadLoanTypes';
 import {
   deleteMsmeDprLead,
   fetchMsmeDprLeads,
@@ -49,7 +51,6 @@ import {
   MSME_DPR_RURAL_URBAN_OPTIONS,
   MSME_DPR_SCHEMES,
 } from '@/constants/msmeDprSchemes';
-import { displayMsmeLoanType } from '@/utils/msmeLoanTypeDisplay';
 
 ChartJS.register(
   CategoryScale,
@@ -426,8 +427,9 @@ const TEMPLATES_LIST = [
  * Inline template-selector + "Generate" button rendered per lead row.
  * Visible only when `showGenerateReport` is true.
  */
-function GenerateReportCell({ leadId, departmentRequestId, navigate }) {
-  const [selected, setSelected] = useState('frcc1');
+function GenerateReportCell({ leadId, departmentRequestId, navigate, loanType }) {
+  const templates = reportTemplatesForLoanType(TEMPLATES_LIST, loanType);
+  const [selected, setSelected] = useState(templates[0]?.id || 'frcc1');
   return (
     <div className="flex items-center gap-1.5">
       <select
@@ -437,7 +439,7 @@ function GenerateReportCell({ leadId, departmentRequestId, navigate }) {
         className="text-xs border border-gray-300 rounded-lg px-2 py-1.5 bg-white focus:ring-1 focus:ring-orange-400 focus:outline-none max-w-[140px]"
         title="Select report template"
       >
-        {TEMPLATES_LIST.map((t) => (
+        {templates.map((t) => (
           <option key={t.id} value={t.id}>{t.name}</option>
         ))}
       </select>
@@ -1226,7 +1228,7 @@ const MsmeDprDashboard = ({
                           </td>
                           {/* {showGenerateReport && (
                             <td className="px-3 py-3">
-                              <GenerateReportCell leadId={s._id} departmentRequestId={s.departmentRequestId} navigate={navigate} />
+                              <GenerateReportCell leadId={s._id} departmentRequestId={s.departmentRequestId} loanType={s.loanType} navigate={navigate} />
                             </td>
                           )} */}
                           {showDelete && (
@@ -1365,7 +1367,7 @@ const MsmeDprDashboard = ({
                         {/* {showGenerateReport && (
                           <div className="pt-2 border-t mt-2">
                             <p className="font-medium text-gray-700 mb-2 text-xs uppercase tracking-wide">Generate Report</p>
-                            <GenerateReportCell leadId={s._id} departmentRequestId={s.departmentRequestId} navigate={navigate} />
+                            <GenerateReportCell leadId={s._id} departmentRequestId={s.departmentRequestId} loanType={s.loanType} navigate={navigate} />
                           </div>
                         )} */}
                         {showDelete && (
