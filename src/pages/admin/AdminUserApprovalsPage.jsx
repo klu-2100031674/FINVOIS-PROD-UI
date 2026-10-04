@@ -10,6 +10,8 @@ import {
   Ban,
   MoreVertical,
   RefreshCw,
+  Bell,
+  Phone,
 } from 'lucide-react';
 import { AdminLayout } from '../../components/layouts';
 import api from '../../api/apiClient';
@@ -288,6 +290,27 @@ const AdminUserApprovalsPage = () => {
   const [userToReregister, setUserToReregister] = useState(null);
   const [actionMenuId, setActionMenuId] = useState(null);
   const [processingId, setProcessingId] = useState(null);
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [reminderPhone, setReminderPhone] = useState('');
+  const [reminderEmail, setReminderEmail] = useState('');
+  const [reminderLoading, setReminderLoading] = useState(false);
+  const [reminderSaving, setReminderSaving] = useState(false);
+  const [reminderTesting, setReminderTesting] = useState(false);
+
+  const fetchReminderConfig = async () => {
+    try {
+      setReminderLoading(true);
+      const res = await api.get('/users/approval-reminder-config');
+      if (res.data?.success && res.data?.data) {
+        setReminderPhone(res.data.data.phone || '');
+        setReminderEmail(res.data.data.email || '');
+      }
+    } catch (err) {
+      console.error('Failed to load approval reminder config:', err);
+    } finally {
+      setReminderLoading(false);
+    }
+  };
 
   const fetchAll = async () => {
     try {
@@ -308,7 +331,63 @@ const AdminUserApprovalsPage = () => {
 
   useEffect(() => {
     fetchAll();
+    fetchReminderConfig();
   }, []);
+
+  const handleSaveReminder = async (e) => {
+    if (e) e.preventDefault();
+    if (!reminderPhone.trim()) {
+      toast.error('Please enter a phone number');
+      return;
+    }
+    try {
+      setReminderSaving(true);
+      await api.put('/users/approval-reminder-config', {
+        phone: reminderPhone.trim(),
+        email: reminderEmail.trim(),
+        enabled: true,
+      });
+      toast.success('Approval remainder settings saved');
+      setShowReminderModal(false);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to save approval remainder');
+    } finally {
+      setReminderSaving(false);
+    }
+  };
+
+  const handleTestReminder = async () => {
+    if (!reminderPhone.trim()) {
+      toast.error('Please enter a phone number to test');
+      return;
+    }
+    try {
+      setReminderTesting(true);
+      const res = await api.post('/users/approval-reminder-test', {
+        phone: reminderPhone.trim(),
+        email: reminderEmail.trim(),
+      });
+      if (res.data?.success) {
+        const waSuccess = res.data.data?.whatsapp?.success;
+        const emailSuccess = res.data.data?.email?.success;
+        if (waSuccess && emailSuccess) {
+          toast.success('Test WhatsApp message and Email sent!');
+        } else if (waSuccess) {
+          toast.success('Test WhatsApp sent successfully!');
+        } else if (emailSuccess) {
+          toast.success('Test Email sent successfully!');
+        } else {
+          toast.error(res.data.data?.whatsapp?.error || 'Failed to dispatch test reminder');
+        }
+      } else {
+        toast.error(res.data?.error || 'Failed to send test reminder');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to send test reminder');
+    } finally {
+      setReminderTesting(false);
+    }
+  };
 
   const filterBySearch = (list) => {
     if (!searchTerm.trim()) return list;
@@ -398,11 +477,27 @@ const AdminUserApprovalsPage = () => {
 
   return (
     <AdminLayout>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">User Approvals</h1>
-        <p className="text-gray-500 mt-1">
-          Review self-service signups: email verification, admin approval, and rejected accounts
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">User Approvals</h1>
+          <p className="text-gray-500 mt-1">
+            Review self-service signups: email verification, admin approval, and rejected accounts
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setShowReminderModal(true);
+            fetchReminderConfig();
+          }}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-sm font-semibold rounded-lg shadow-sm transition-all self-start sm:self-auto"
+        >
+          <Bell size={16} />
+          Approval Remainder
+          {reminderPhone && (
+            <span className="w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-white ml-0.5" />
+          )}
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -483,15 +578,37 @@ const AdminUserApprovalsPage = () => {
       </section>
 
       <section className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-            <UserCheck size={18} className="text-yellow-600" />
-            Pending admin approval
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Email verified (including Google signups) — approve or reject to grant or deny platform
-            access.
-          </p>
+        <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <UserCheck size={18} className="text-yellow-600" />
+              Pending admin approval
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Email verified (including Google signups) — approve or reject to grant or deny platform
+              access.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setShowReminderModal(true);
+              fetchReminderConfig();
+            }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 border border-purple-200 text-purple-700 bg-purple-50 hover:bg-purple-100 text-xs font-semibold rounded-md transition-all self-start sm:self-auto"
+          >
+            <Bell size={14} />
+            Approval Remainder
+            {reminderPhone ? (
+              <span className="text-[10px] bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded font-medium">
+                {reminderPhone}
+              </span>
+            ) : (
+              <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-medium">
+                Add phone
+              </span>
+            )}
+          </button>
         </div>
         <UserApprovalsTable
           users={readyForReviewUsers}
@@ -719,6 +836,93 @@ const AdminUserApprovalsPage = () => {
                   : 'Delete & allow re-registration'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {showReminderModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-fadeIn">
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
+                  <Bell size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Approval Remainder</h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReminderModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition"
+              >
+                <XCircle size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveReminder} className="space-y-4 mt-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                  WhatsApp Phone Number <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 919014221011 or 9014221011"
+                    value={reminderPhone}
+                    onChange={(e) => setReminderPhone(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                  Notification Email
+                </label>
+                <div className="relative">
+                  <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="email"
+                    placeholder="e.g. admin@finvois.com"
+                    value={reminderEmail}
+                    onChange={(e) => setReminderEmail(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-transparent outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={handleTestReminder}
+                  disabled={reminderTesting || reminderSaving}
+                  className="px-3 py-2 border border-gray-300 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+                  title="Test sending WhatsApp and Email immediately"
+                >
+                  {reminderTesting ? 'Sending test...' : 'Send test now'}
+                </button>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowReminderModal(false)}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={reminderSaving}
+                    className="px-4 py-2 bg-[#7e22ce] hover:bg-[#6b21a8] text-white text-xs font-semibold rounded-lg shadow-sm transition disabled:opacity-50"
+                  >
+                    {reminderSaving ? 'Saving...' : 'Save Settings'}
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       )}

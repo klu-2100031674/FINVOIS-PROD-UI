@@ -111,7 +111,7 @@ export const ContactPage = () => {
         {
             icon: <MapPin className="w-5 h-5" />,
             label: 'Our Office',
-            value: 'Finvois Open Business Solutions LLP, Rata Tata Innovation Hub Building, Vijayawada, Andhra Pradesh',
+            value: 'Finvois Open Business Solutions LLP, Vijayawada, Andhrapradesh',
         },
         {
             icon: <Mail className="w-5 h-5" />,
