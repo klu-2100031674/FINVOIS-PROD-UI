@@ -771,7 +771,7 @@ const PaymentModal = ({
                 {isBetaMode || effectiveFreeCredits > 0 ? <CheckCircle2 className="w-8 h-8 text-green-600" /> : <CreditCard className="w-8 h-8 text-purple-600" />}
               </div>
 
-              <h2 className="text-2xl font-bold font-manrope text-gray-900">{isBetaMode ? "Generate Free Report" : showPayerChooser ? "Who will pay?" : billToCustomer ? "Forward payment to customer" : billToBankManager ? "Forward payment to Bank Manager" : effectiveFreeCredits > 0 ? "Use Free Report Credit" : "Complete Report Payment"}</h2>
+              <h2 className="text-2xl font-bold font-manrope text-gray-900">{isBetaMode ? "Generate Free Report" : cpPayAtDownload ? "Submit Report" : showPayerChooser ? "Who will pay?" : billToCustomer ? "Forward payment to customer" : billToBankManager ? "Forward payment to Bank Manager" : effectiveFreeCredits > 0 ? "Use Free Report Credit" : "Complete Report Payment"}</h2>
               <p className="text-gray-500 text-sm mt-1">{resolveReportTitle({ formData: savedFormData, reportTitle, templateId })}</p>
             </div>
 
@@ -967,9 +967,11 @@ const PaymentModal = ({
             {/* Footer */}
             <div className="border-t border-gray-100 p-6 bg-gray-50">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-gray-600 font-medium">Total Amount</span>
+                <span className="text-gray-600 font-medium">{cpPayAtDownload ? 'Pay now' : 'Total Amount'}</span>
                 <span className="text-3xl font-bold text-gray-900">
-                  {isBetaMode || (!showPayerChooser && !billToCustomer && !existingReportId && effectiveFreeCredits > 0)
+                  {cpPayAtDownload
+                    ? <span className="text-green-600">₹0</span>
+                    : isBetaMode || (!showPayerChooser && !billToCustomer && !existingReportId && effectiveFreeCredits > 0)
                     ? <span className="text-green-600">FREE</span>
                     : <>₹{calculateTotalPrice()}<span className="text-lg text-gray-400 font-medium">.00</span></>
                   }
@@ -1157,7 +1159,7 @@ const PaymentModal = ({
               </div>
               )}
 
-              {!isBetaMode && (
+              {!isBetaMode && !cpPayAtDownload && (
                 <div className="flex items-center justify-center gap-2 mt-4 text-gray-400 text-xs">
                   <ShieldCheck className="w-3 h-3" />
                   <span>Payments secured by Razorpay </span>
