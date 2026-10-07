@@ -105,13 +105,13 @@ const AgentReportsPage = () => {
           toast.error('PDF is not available for this report');
           return;
         }
-        await downloadUserReportFile(report, 'pdf');
+        if ((await downloadUserReportFile(report, 'pdf')) === false) return; // payment closed
       } else {
         if (!report.excel_file_url) {
           toast.error('Excel is not available for this report');
           return;
         }
-        await downloadUserReportFile(report, 'excel');
+        if ((await downloadUserReportFile(report, 'excel')) === false) return;
       }
       toast.success(`${type === 'pdf' ? 'PDF' : 'Excel'} downloaded successfully`);
     } catch (error) {
@@ -319,19 +319,30 @@ const AgentReportsPage = () => {
                       </div>
                     </div>
                     <div className="flex items-center space-x-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(report.validation_status)}`}>
-                        {getStatusLabel(report.validation_status)}
-                      </span>
+                      {(() => {
+                        // pay-at-download reports: locked until approved, then paid once on first download
+                        const payLater = report.payment?.collect_on_download === true;
+                        const unpaid = payLater && report.payment?.status !== 'completed';
+                        const approved = report.validation_status === 'approved';
+                        const amount = Number(report.payment?.amount || 0);
+                        return (
+                          <>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(report.validation_status)}`}>
+                              {payLater && approved ? 'Ready to Download' : getStatusLabel(report.validation_status)}
+                            </span>
+                            {report.pdf_file_url && (!unpaid || approved) && (
+                              <button
+                                onClick={() => handleDownload(report, 'pdf')}
+                                className="px-3 py-1 text-sm text-[#7e22ce] hover:text-purple-800 hover:bg-purple-50 rounded-md transition-colors"
+                              >
+                                {unpaid && amount > 0 ? `Pay ₹${amount.toLocaleString('en-IN')} & Download PDF` : 'PDF'}
+                              </button>
+                            )}
+                          </>
+                        );
+                      })()}
                       <div className="flex space-x-2">
-                        {report.pdf_file_url && (
-                          <button
-                            onClick={() => handleDownload(report, 'pdf')}
-                            className="px-3 py-1 text-sm text-[#7e22ce] hover:text-purple-800 hover:bg-purple-50 rounded-md transition-colors"
-                          >
-                            PDF
-                          </button>
-                        )}
-                        {report.json_file_url && (
+                        {report.json_file_url && !(report.payment?.collect_on_download && report.payment?.status !== 'completed') && (
                           <button
                             onClick={() => handleDownload(report, 'json')}
                             className="px-3 py-1 text-sm text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded-md transition-colors"

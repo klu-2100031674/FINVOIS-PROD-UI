@@ -95,6 +95,8 @@ const PaymentModal = ({
   const savedFormData = useSelector((state) => state.report.formData);
   const isVehicleTemplate = isVehicleTemplateId(templateId);
   const userRole = normalizeUserRole(user?.role);
+  // channel partners submit without paying; they pay the admin-set amount at download
+  const cpPayAtDownload = userRole === 'agent';
   const requestId =
     requestIdProp ||
     (typeof window !== 'undefined'
@@ -706,6 +708,15 @@ const PaymentModal = ({
         requestId,
         payer
       );
+      // Channel partner: no payment now — admin sets the amount at approval, CP pays at download
+      if (orderResponse.data?.pay_at_download) {
+        toast.success('Report submitted. You can pay and download it once admin approves.');
+        finishPaid(orderResponse.data.report_id, 0, {
+          selected_sheets: selectedSheetsData,
+          generate_without_payment: true,
+        });
+        return;
+      }
       if (orderResponse.data?.free_credit || orderResponse.data?.amount === 0) {
         const verifyResponse = await reportAPI.verifyReportPayment(orderResponse.data.report_id, {});
         finishPaid(orderResponse.data.report_id, 0, {
@@ -1112,7 +1123,7 @@ const PaymentModal = ({
                   </>
                 ) : (
                   <>
-                    {isBetaMode ? "Generate Report Now" : effectiveFreeCredits > 0 ? "Use Free Credit & Generate" : "Proceed to Payment"}
+                    {isBetaMode ? "Generate Report Now" : cpPayAtDownload ? "Submit Report" : effectiveFreeCredits > 0 ? "Use Free Credit & Generate" : "Proceed to Payment"}
                   </>
                 )}
               </button>
@@ -1125,6 +1136,11 @@ const PaymentModal = ({
                   <Share2 className="w-4 h-4 text-blue-600" />
                   Forward payment to Bank Manager instead
                 </button>
+              )}
+              {cpPayAtDownload && (
+                <p className="text-xs text-gray-500 text-center">
+                  No payment now. After admin approval you'll pay the amount set by admin when downloading.
+                </p>
               )}
               {payerChoice === 'customer_service' && !lockPayer && (
                 <button

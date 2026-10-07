@@ -43,6 +43,7 @@ import toast from 'react-hot-toast';
 import { reportRequiresCaStamp } from '../../utils/frccFormUi';
 import caIndiaStamp from '../../assets/CA_INDIA.jpg';
 import { buildDedupedReportTypeOptions } from '../../utils/reportTypeOptions';
+import { needsCpAmount, isValidAmount } from '../../utils/cpDownloadPayment';
 
 const getReportCompanyName = (report) => {
   if (report?.companyId?.companyName) return report.companyId.companyName;
@@ -122,6 +123,7 @@ const AdminReportsPage = () => {
   
   // Modals
   const [showApproveModal, setShowApproveModal] = useState(false);
+  const [amountToCollect, setAmountToCollect] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showPdfViewer, setShowPdfViewer] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -354,12 +356,14 @@ const AdminReportsPage = () => {
       setActionLoading(true);
       await api.patch(`/admin-reports/${selectedReport._id}/approve`, {
         validation_notes: approvalNotes,
-        send_email: sendEmail
+        send_email: sendEmail,
+        ...(needsCpAmount(selectedReport) ? { amount_to_collect: Number(amountToCollect) } : {})
       });
       
       toast.success('Report approved successfully');
       setShowApproveModal(false);
       setApprovalNotes('');
+      setAmountToCollect('');
       setSelectedReport(null);
       fetchReports();
       fetchStats();
@@ -1486,6 +1490,23 @@ const AdminReportsPage = () => {
             
             <div className="p-6 space-y-4">
               <div>
+                {needsCpAmount(selectedReport) && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Amount to Collect (₹) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={amountToCollect}
+                      onChange={(e) => setAmountToCollect(e.target.value)}
+                      placeholder="e.g. 1000, 2500, 5000"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Channel partner report — they pay this when downloading. Enter 0 for free download.</p>
+                  </div>
+                )}
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Notes (Optional)
                 </label>
@@ -1533,14 +1554,14 @@ const AdminReportsPage = () => {
             
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
               <button
-                onClick={() => { setShowApproveModal(false); setSelectedReport(null); setApprovalNotes(''); }}
+                onClick={() => { setShowApproveModal(false); setSelectedReport(null); setApprovalNotes(''); setAmountToCollect(''); }}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800"
               >
                 Cancel
               </button>
               <button
                 onClick={handleApprove}
-                disabled={actionLoading}
+                disabled={actionLoading || (needsCpAmount(selectedReport) && !isValidAmount(amountToCollect))}
                 className="flex items-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
               >
                 {actionLoading ? <Loader2 className="animate-spin mr-2" size={16} /> : <Check size={16} className="mr-2" />}
