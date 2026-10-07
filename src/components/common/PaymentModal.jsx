@@ -161,6 +161,20 @@ const PaymentModal = ({
     }
   }, [isOpen, lockPayer]);
 
+  // CP: skip this modal entirely and submit for generation once sheet data is loaded
+  const cpAutoSubmitted = useRef(false);
+  const cpSubmitDone = useRef(false);
+  useEffect(() => {
+    if (!isOpen) { cpAutoSubmitted.current = false; cpSubmitDone.current = false; return; }
+    if (!cpPayAtDownload || cpAutoSubmitted.current || loadingPricing || loadingFreeCredits) return;
+    cpAutoSubmitted.current = true;
+    handlePayment().finally(() => {
+      // on success finishPaid() already closed the modal; on error close the overlay too
+      if (!cpSubmitDone.current) onClose();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, cpPayAtDownload, loadingPricing, loadingFreeCredits]);
+
   // Re-fetch free credits whenever the CS agent switches to the "CS pays" card
   // so the count is always fresh when they see the payment screen.
   useEffect(() => {
@@ -300,6 +314,7 @@ const PaymentModal = ({
   };
 
   const finishPaid = (reportId, amount, extra = {}) => {
+    cpSubmitDone.current = true;
     const selectedSheetsData = extra.selected_sheets || buildSelectedSheetsData();
     onPaymentSuccess({
       report_id: reportId,
@@ -739,6 +754,18 @@ const PaymentModal = ({
   };
 
   if (!isOpen) return null;
+
+  // CP: nothing to choose or pay here — just a short "submitting" overlay while the effect submits
+  if (cpPayAtDownload) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="bg-white rounded-xl px-6 py-4 flex items-center gap-3 shadow-lg">
+          <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
+          <span className="text-sm font-medium text-gray-800">Submitting report...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AnimatePresence>
