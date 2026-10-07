@@ -258,7 +258,11 @@ const ReportsPage = () => {
   const handleDownloadExcel = async (report, type) => {
     try {
       const kind = type === 'pdf' ? 'pdf' : 'excel';
-      await downloadUserReportFile(report, kind);
+      // false = channel partner closed the payment checkout; nothing was downloaded
+      if ((await downloadUserReportFile(report, kind)) === false) {
+        toast('Payment cancelled. Report not downloaded.');
+        return;
+      }
       toast.success(`${kind === 'pdf' ? 'PDF' : 'Excel'} file downloaded successfully`);
     } catch (error) {
       console.error(`Error downloading ${type} file:`, error);
