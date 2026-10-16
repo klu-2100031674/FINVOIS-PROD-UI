@@ -1234,7 +1234,7 @@ const AdminReportsPage = () => {
                       {report.validation_status === 'under_review' && (
                         <>
                           <button
-                            onClick={() => { setSelectedReport(report); setShowApproveModal(true); }}
+                            onClick={() => { setSelectedReport(report); setAmountToCollect(String(report.payment?.template_amount ?? '')); setShowApproveModal(true); }}
                             className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors shrink-0"
                             title="Approve"
                           >
@@ -1504,7 +1504,7 @@ const AdminReportsPage = () => {
                       placeholder="e.g. 1000, 2500, 5000"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Channel partner report — they pay this when downloading. Enter 0 for free download.</p>
+                    <p className="text-xs text-gray-500 mt-1">Customer support report — prefilled with the template price. They pay this when downloading. Enter 0 for free download.</p>
                   </div>
                 )}
                 <label className="block text-sm font-medium text-gray-700 mb-1">
