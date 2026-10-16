@@ -96,7 +96,7 @@ const PaymentModal = ({
   const isVehicleTemplate = isVehicleTemplateId(templateId);
   const userRole = normalizeUserRole(user?.role);
   // channel partners submit without paying; they pay the admin-set amount at download
-  const cpPayAtDownload = userRole === 'agent';
+  const cpPayAtDownload = userRole === 'customer_service';
   const requestId =
     requestIdProp ||
     (typeof window !== 'undefined'

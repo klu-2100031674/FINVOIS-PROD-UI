@@ -30,7 +30,7 @@ const AnalysisSheetsModal = ({
 }) => {
   const { user } = useAuth();
   // channel partners don't pay at submission (they pay at download after admin approval)
-  const cpPayAtDownload = normalizeUserRole(user?.role) === 'agent';
+  const cpPayAtDownload = normalizeUserRole(user?.role) === 'customer_service';
   const [loading, setLoading] = useState(true);
   const [analysisSheets, setAnalysisSheets] = useState([]);
   const [selections, setSelections] = useState({});
