@@ -21,7 +21,7 @@ function buildMarkdownComponents(isUser) {
 
   const strong = isUser ? 'font-semibold text-white' : 'font-semibold text-slate-900';
   const em = isUser ? 'italic text-white/90' : 'italic text-slate-600';
-  const listMarker = isUser ? 'marker:text-white/70' : 'marker:text-slate-500';
+  const listMarker = isUser ? 'marker:text-white/70' : 'marker:text-purple-500';
 
   const codeClass = isUser
     ? 'bg-white/15 text-white px-1.5 py-0.5 rounded text-[0.75rem] font-mono'
@@ -32,7 +32,7 @@ function buildMarkdownComponents(isUser) {
 
   const blockquoteClass = isUser
     ? 'border-l-4 border-white/50 bg-white/10 pl-4 pr-3 py-2.5 my-3 rounded-r-lg text-white/95'
-    : 'border-l-4 border-slate-800 bg-slate-50 pl-4 pr-3 py-2.5 my-3 rounded-r-lg text-slate-700';
+    : 'border-l-4 border-purple-500 bg-purple-50/60 pl-4 pr-3 py-2.5 my-3 rounded-r-lg text-slate-700';
 
   return {
     p: ({ children }) => (
@@ -50,7 +50,7 @@ function buildMarkdownComponents(isUser) {
     h3: ({ children }) => (
       <h3
         className={`${heading3} mt-3.5 mb-1.5 first:mt-0 ${
-          isUser ? '' : 'pl-2.5 border-l-[3px] border-slate-800'
+          isUser ? '' : 'pl-2.5 border-l-[3px] border-purple-600'
         }`}
       >
         {children}

@@ -6,7 +6,7 @@
 /** Admin-only; must not be treated as anonymous public app routes. */
 const PROTECTED_SCHEME_PATHS = ['/schemes/mail'];
 
-/** Public scheme form flows (disabled in routing but kept for re-enable). */
+/** Public scheme form flows — CMEP only (PMEGP / AP IDP disabled). */
 const PUBLIC_SCHEME_PREFIXES = ['/schemes/pmegp', '/schemes/ap-idp', '/schemes/cmep'];
 
 /** Public client screening intake (standalone). */
@@ -17,6 +17,9 @@ const PUBLIC_MSME_DPR_PREFIXES = ['/msme-dpr-lead-data'];
 
 /** Public MEPMA + DPR Request forms (exact paths only). */
 const PUBLIC_LEAD_FORM_PATHS = ['/mempa', '/mepma-dpr', '/dpr-request'];
+
+/** Finvois Genie scheme assistant (no login). */
+const PUBLIC_GENIE_PREFIXES = ['/genie'];
 
 /** Public calculator tools (no login). */
 const PUBLIC_CALCULATOR_PREFIXES = ['/calculators'];
@@ -42,6 +45,9 @@ export function isPublicAppPath(pathname) {
     return false;
   }
   if (p === '/schemes') return true;
+  if (PUBLIC_GENIE_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`))) {
+    return true;
+  }
   if (PUBLIC_CALCULATOR_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`))) {
     return true;
   }

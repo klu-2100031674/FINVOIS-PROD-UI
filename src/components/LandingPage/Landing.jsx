@@ -14,6 +14,7 @@ import AppDownload from "./components/AppDownload";
 import Testimonials from "./components/Testimonials";
 import CTA from "./components/CTA";
 import Footer from "./components/Footer";
+import GenieLauncher from "../genie/GenieLauncher";
 import useAuth from "../../hooks/useAuth";
 
 const Landing = () => {
@@ -86,6 +87,7 @@ const Landing = () => {
       <AppDownload />
       <Testimonials />
       <Footer />
+      <GenieLauncher />
     </div>
   );
 };

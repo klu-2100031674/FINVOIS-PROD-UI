@@ -1,6 +1,17 @@
 /**
  * Backend routes that are intentionally public — no Bearer token and no 401 → /auth redirect.
  */
+/** Logged-in customers submit these without a second OTP, so the Bearer token must be kept. */
+export function shouldAttachCustomerSession(url) {
+  const u = String(url || '');
+  return (
+    u.includes('/customer/msme-dpr-form-register') ||
+    u.includes('/customer/msme-form-register') ||
+    u.includes('/customer/mepma-form-register') ||
+    u.includes('/customer/dpr-request-form-register')
+  );
+}
+
 export function isPublicAnonymousApiPath(url) {
   const u = String(url || '');
   const isClientScreeningSubmit =
@@ -35,6 +46,10 @@ export function isPublicAnonymousApiPath(url) {
     u.includes('/msme-dpr-leads/submit') ||
     u.includes('/mepma-dpr-leads/submit') ||
     u.includes('/dpr-request-leads/submit') ||
-    u.includes('/scheme-forms/')
+    u.includes('/scheme-forms/') ||
+    // Public Scheme Finder (/schemes) eligibility check
+    u.includes('/scheme-eligibility/') ||
+    // Finvois Genie (public scheme list, details, banners, chat)
+    u.includes('/genie/')
   );
 }

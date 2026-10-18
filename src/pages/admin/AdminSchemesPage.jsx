@@ -1,4 +1,4 @@
-import { ExternalLink, FileUp, Mail } from 'lucide-react';
+import { ExternalLink, FileUp, Mail, Sparkles } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AdminLayout } from '../../components/layouts';
 import registry from '../../data/schemeFormsRegistry.json';
@@ -21,13 +21,22 @@ const AdminSchemesPage = () => {
       <div className="space-y-6">
         <div className="flex items-start justify-between gap-4">
           <h1 className="text-2xl font-bold text-gray-900">Schemes</h1>
-          <Link
-            to="/schemes/mail"
-            className="inline-flex items-center gap-2 px-3.5 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition text-sm font-semibold shadow-sm"
-          >
-            <Mail className="w-4 h-4" />
-            Manage Emails
-          </Link>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Link
+              to="/admin/schemes/ai-knowledge"
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-purple-700 text-white rounded-lg hover:bg-purple-800 transition text-sm font-semibold shadow-sm"
+            >
+              <Sparkles className="w-4 h-4" />
+              AI Knowledge Base
+            </Link>
+            <Link
+              to="/admin/client-screening/emails"
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition text-sm font-semibold shadow-sm"
+            >
+              <Mail className="w-4 h-4" />
+              Manage Emails
+            </Link>
+          </div>
         </div>
 
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">

@@ -4,15 +4,43 @@ import { Menu, X, ArrowRight, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import finvoisLogo from "../../../assets/finvois.png";
 import landingData from "../../../data/landingData.json";
+import { listGenieSchemes } from "../../../api/genieAPI";
+
+const SCHEMES_LABEL = "Schemes";
 
 const Navbar = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const [desktopDropdownIdx, setDesktopDropdownIdx] = useState(null);
     const [mobileDropdownIdx, setMobileDropdownIdx] = useState(null);
+    const [genieSchemes, setGenieSchemes] = useState(null);
     const { navigation } = landingData;
     const navigate = useNavigate();
     const location = useLocation();
+
+    // Published schemes come from admin (Finvois Genie); the static list is only a fallback
+    useEffect(() => {
+        let cancelled = false;
+        listGenieSchemes()
+            .then((schemes) => {
+                if (!cancelled) setGenieSchemes(schemes);
+            })
+            .catch(() => {});
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    const navLinks = navigation.links.map((link) => {
+        if (link.label !== SCHEMES_LABEL || !genieSchemes?.length) return link;
+        return {
+            ...link,
+            dropdown: [
+                ...genieSchemes.map((scheme) => ({ label: scheme.name, href: `/genie/${scheme.slug}` })),
+                { label: "All schemes", href: "/genie" },
+            ],
+        };
+    });
 
     useEffect(() => {
         const handleScroll = () => {
@@ -218,7 +246,7 @@ const Navbar = () => {
 
                 {/* Desktop Nav */}
                 <div className="hidden md:flex items-center gap-8">
-                    {navigation.links.map((link, idx) =>
+                    {navLinks.map((link, idx) =>
                         renderNavEntry(link, idx, "desktop"),
                     )}
                     <div className="flex items-center gap-4 pl-4 border-l border-gray-200">
@@ -257,7 +285,7 @@ const Navbar = () => {
                         className="md:hidden bg-white border-b border-gray-100 overflow-hidden"
                     >
                         <div className="px-6 py-8 space-y-4 flex flex-col">
-                            {navigation.links.map((link, idx) =>
+                            {navLinks.map((link, idx) =>
                                 renderNavEntry(link, idx, "mobile"),
                             )}
                             <hr className="border-gray-100 my-4" />
