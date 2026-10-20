@@ -171,11 +171,17 @@ function SchemePicker() {
             <Sparkles className="h-3.5 w-3.5" /> Your government scheme assistant
           </span>
           <h1 className="mt-4 font-['Manrope'] text-3xl font-bold text-gray-900 sm:text-4xl">
-            Hi, I&apos;m Finvois Genie. <span className="text-purple-700">Which scheme are you looking for?</span>
+            Hi, I&apos;m Finvois Genie!{' '}
+            <span role="img" aria-label="waving hand">
+              👋
+            </span>
           </h1>
+          <p className="mt-3 font-['Manrope'] text-lg font-semibold text-purple-700 sm:text-xl">
+            Your smart assistant for discovering MSME government schemes.
+          </p>
           <p className="mt-3 text-gray-600">
-            Pick a scheme, answer a few quick questions about you and your business, and I&apos;ll explain eligibility,
-            subsidy and documents from the official guidelines.
+            Choose a scheme or tell me about your business. I&apos;ll guide you through eligibility, subsidies, benefits,
+            and required documents based on official guidelines.
           </p>
         </div>
 
@@ -446,11 +452,11 @@ function SchemeSession({ slug }) {
                   className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-purple-700 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-purple-800"
                 >
                   <Sparkles className="h-4 w-4" />
-                  {hasQuestions ? (Object.keys(answers).length ? 'Continue your answers' : 'Get started') : 'Start chatting'}
+                  {hasQuestions ? (Object.keys(answers).length ? 'Continue your answers' : 'Fill form. Get started') : 'Start chatting'}
                 </button>
                 {hasQuestions && (
                   <button type="button" onClick={startChat} className="mt-2 w-full rounded-xl px-5 py-2.5 text-sm font-semibold text-purple-700 hover:bg-purple-50">
-                    Skip questions, just ask
+                    Skip form, just ask
                   </button>
                 )}
               </div>
