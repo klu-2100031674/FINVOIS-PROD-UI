@@ -168,7 +168,7 @@ function SchemePicker() {
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-10 sm:px-6">
         <div className="mx-auto max-w-2xl text-center">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-800">
-            <Sparkles className="h-3.5 w-3.5" /> Your government scheme assistant
+            <Sparkles className="h-3.5 w-3.5" /> Your MSME scheme assistant
           </span>
           <h1 className="mt-4 font-['Manrope'] text-3xl font-bold text-gray-900 sm:text-4xl">
             Hi, I&apos;m Finvois Genie!{' '}
