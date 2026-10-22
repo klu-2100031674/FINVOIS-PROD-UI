@@ -205,7 +205,7 @@ import Landing from "./components/LandingPage/Landing";
 import EmiCalculatorPage from "./components/calculators/EmiCalculatorPage";
 import Pricing from "./components/Pricing/Pricing";
 import SchemeFinder from "./components/schemeFinder/SchemeFinder";
-import GeniePage from "./pages/genie/GeniePage";
+import GeniePage, { GenieTestPage } from "./pages/genie/GeniePage";
 import EligibilityResult from "./components/schemeFinder/EligibilityResult";
 import FAQ from "./components/FAQ/FQA";
 import TemplatesPage from "./components/LandingPage/pages/TemplatesPage";
@@ -1462,6 +1462,14 @@ function App() {
           element={
             <AdminOnlyRoute>
               <AdminGenieSchemeEditorPage />
+            </AdminOnlyRoute>
+          }
+        />
+        <Route
+          path="/admin/genie-schemes/:id/test"
+          element={
+            <AdminOnlyRoute>
+              <GenieTestPage />
             </AdminOnlyRoute>
           }
         />

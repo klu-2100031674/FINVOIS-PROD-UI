@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   ExternalLink,
   FileText,
+  FlaskConical,
   ImagePlus,
   ListChecks,
   Loader2,
@@ -227,6 +228,20 @@ export default function AdminGenieSchemeEditorPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <a
+                href={`/admin/genie-schemes/${id}/test`}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(event) => {
+                  if (dirty && !window.confirm('You have unsaved changes. Testing uses the last saved version. Open the test anyway?')) {
+                    event.preventDefault();
+                  }
+                }}
+                title="Try the questions, prompts and answers as a user would, before publishing"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100"
+              >
+                <FlaskConical className="h-4 w-4" /> Test Genie
+              </a>
               {published && (
                 <a
                   href={`/genie/${scheme.slug}`}

@@ -1,5 +1,8 @@
 import apiClient from './apiClient';
 import { getApiBaseUrl } from '../utils/env';
+import { getTunnelRequestHeaders } from '../utils/tunnel';
+
+const TOKEN_KEY = import.meta.env.VITE_TOKEN_STORAGE_KEY || 'ca_auth_token';
 
 /** Must match the API's RAG question limit (RAG QueryRequest.question max_length). */
 export const GENIE_QUESTION_MAX_LENGTH = 1000;
@@ -96,14 +99,30 @@ export async function sendGenieMessage(slug, { message, history, answers, prompt
  * Streams Genie's answer: onDelta(text) is called for each piece as it is written; resolves with
  * the full answer. The API sends newline-delimited JSON: delta… then done (or error).
  */
-export async function streamGenieMessage(slug, { message, history, answers, promptIndex }, { signal, onDelta }) {
+export function streamGenieMessage(slug, payload, options) {
+  return streamChat(`/genie/schemes/${encodeURIComponent(slug)}/chat/stream`, payload, options);
+}
+
+/** Admin test mode: same as streamGenieMessage, for a scheme that may still be a draft. */
+export function streamAdminGenieMessage(id, payload, options) {
+  return streamChat(`/admin/genie-schemes/${id}/chat/stream`, payload, { ...options, admin: true });
+}
+
+async function streamChat(path, { message, history, answers, promptIndex }, { signal, onDelta, admin = false }) {
   const fallback = 'Failed to get an answer. Please try again.';
+  const url = `${apiBase()}${path}`;
+  const headers = { 'Content-Type': 'application/json', Accept: 'application/x-ndjson' };
+  if (admin) {
+    Object.assign(headers, getTunnelRequestHeaders(url));
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
   let response;
   try {
-    response = await fetch(`${apiBase()}/genie/schemes/${encodeURIComponent(slug)}/chat/stream`, {
+    response = await fetch(url, {
       method: 'POST',
-      credentials: 'omit',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/x-ndjson' },
+      credentials: admin ? 'include' : 'omit',
+      headers,
       body: JSON.stringify({ message, history, answers, promptIndex }),
       signal,
     });
@@ -164,6 +183,9 @@ async function adminCall(promise, fallback) {
 export const adminGenieAPI = {
   list: () => adminCall(apiClient.get('/admin/genie-schemes'), 'Could not load schemes').then((d) => d.schemes || []),
   get: (id) => adminCall(apiClient.get(`/admin/genie-schemes/${id}`), 'Could not load scheme').then((d) => d.scheme),
+  /** Test mode: the scheme as Genie shows it to users, drafts included. */
+  preview: (id) =>
+    adminCall(apiClient.get(`/admin/genie-schemes/${id}/preview`), 'Could not load this scheme').then((d) => d.scheme),
   create: (payload) =>
     adminCall(apiClient.post('/admin/genie-schemes', payload), 'Could not create scheme').then((d) => d.scheme),
   update: (id, payload) =>

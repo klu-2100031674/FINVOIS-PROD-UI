@@ -21,9 +21,11 @@ import GenieChat from '../../components/genie/GenieChat';
 import GenieIntakeForm from '../../components/genie/GenieIntakeForm';
 import { visibleAnswers, visibleQuestionKeys } from '../../components/genie/genieQuestionLogic';
 import {
+  adminGenieAPI,
   GENIE_QUESTION_MAX_LENGTH,
   getGenieScheme,
   listGenieSchemes,
+  streamAdminGenieMessage,
   streamGenieMessage,
 } from '../../api/genieAPI';
 import { saveSchemeFormProgress } from '../../api/schemeFormsAPI';
@@ -86,7 +88,7 @@ const formatAnswer = (value) => {
 };
 
 /** `fitScreen`: exactly the window height (chat), so only the panels inside scroll, not the page. */
-function GenieShell({ children, wide = false, fitScreen = false }) {
+function GenieShell({ children, wide = false, fitScreen = false, testBar = null }) {
   return (
     <div
       className={`flex flex-col bg-gradient-to-b from-purple-50/70 via-white to-white font-inter ${
@@ -109,12 +111,13 @@ function GenieShell({ children, wide = false, fitScreen = false }) {
           </Link>
         </div>
       </header>
+      {testBar}
       {children}
     </div>
   );
 }
 
-function ErrorState({ message, onRetry }) {
+function ErrorState({ message, onRetry, exitPath = '/genie', exitLabel = 'All schemes' }) {
   return (
     <div className="mx-auto mt-16 max-w-md rounded-2xl border border-red-200 bg-white p-6 text-center shadow-sm">
       <AlertCircle className="mx-auto h-8 w-8 text-red-500" />
@@ -125,8 +128,8 @@ function ErrorState({ message, onRetry }) {
             <RefreshCw className="h-4 w-4" /> Try again
           </button>
         )}
-        <Link to="/genie" className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-          All schemes
+        <Link to={exitPath} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+          {exitLabel}
         </Link>
       </div>
     </div>
@@ -235,8 +238,25 @@ function SchemePicker() {
 /* Steps 2–4: intro → questions → chat                                 */
 /* ------------------------------------------------------------------ */
 
-function SchemeSession({ slug }) {
+/**
+ * `previewId`: admin test mode. Loads the scheme by id even while it is a draft, chats through the
+ * admin API and does not save answers as scheme-form progress.
+ */
+function SchemeSession({ slug, previewId = null }) {
   const navigate = useNavigate();
+  const preview = !!previewId;
+  const sessionKey = preview ? `preview_${previewId}` : slug;
+  const exitPath = preview ? `/admin/genie-schemes/${previewId}` : '/genie';
+  const exitLabel = preview ? 'Back to editor' : 'All schemes';
+  const testBar = preview ? (
+    <div className="shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs text-amber-900">
+      <span className="font-semibold">Test mode</span> · only admins can open this, published or draft. Genie uses the
+      last saved questions, prompts and documents.{' '}
+      <Link to={exitPath} className="font-semibold underline">
+        Back to editor
+      </Link>
+    </div>
+  ) : null;
   const [scheme, setScheme] = useState(null);
   const [error, setError] = useState('');
   const [stage, setStage] = useState('intro');
@@ -250,8 +270,8 @@ function SchemeSession({ slug }) {
     setError('');
     setScheme(null);
     try {
-      const data = await getGenieScheme(slug);
-      const saved = loadSession(slug);
+      const data = preview ? await adminGenieAPI.preview(previewId) : await getGenieScheme(slug);
+      const saved = loadSession(sessionKey);
       setScheme(data);
       setAnswers(saved?.answers || {});
       setMessages(saved?.messages || []);
@@ -259,7 +279,7 @@ function SchemeSession({ slug }) {
     } catch (err) {
       setError(err.status === 404 ? 'This scheme is not available.' : err.message);
     }
-  }, [slug]);
+  }, [slug, preview, previewId, sessionKey]);
 
   useEffect(() => {
     load();
@@ -270,9 +290,9 @@ function SchemeSession({ slug }) {
   useEffect(() => {
     if (scheme) {
       const settled = messages.filter((m) => !m.isError && !m.streaming && !m.interrupted);
-      saveSession(slug, { stage, answers, messages: settled });
+      saveSession(sessionKey, { stage, answers, messages: settled });
     }
-  }, [slug, scheme, stage, answers, messages]);
+  }, [sessionKey, scheme, stage, answers, messages]);
 
   const hasQuestions = (scheme?.intakeQuestions?.length || 0) > 0;
   const suggestions = useMemo(
@@ -293,8 +313,8 @@ function SchemeSession({ slug }) {
     let started = false;
     setLoading(true);
     try {
-      const response = await streamGenieMessage(
-        slug,
+      const response = await (preview ? streamAdminGenieMessage : streamGenieMessage)(
+        preview ? previewId : slug,
         {
           message: prompt,
           answers,
@@ -365,7 +385,7 @@ function SchemeSession({ slug }) {
   const startChat = () => setStage('chat');
 
   const completeQuestions = (finalAnswers) => {
-    saveLegacyFormAnswers(scheme, finalAnswers);
+    if (!preview) saveLegacyFormAnswers(scheme, finalAnswers);
     startChat();
   };
 
@@ -377,21 +397,21 @@ function SchemeSession({ slug }) {
   };
 
   const resetAll = () => {
-    clearSession(slug);
-    navigate('/genie');
+    clearSession(sessionKey);
+    navigate(exitPath);
   };
 
   if (error) {
     return (
-      <GenieShell>
-        <ErrorState message={error} onRetry={load} />
+      <GenieShell testBar={testBar}>
+        <ErrorState message={error} onRetry={load} exitPath={exitPath} exitLabel={exitLabel} />
       </GenieShell>
     );
   }
 
   if (!scheme) {
     return (
-      <GenieShell>
+      <GenieShell testBar={testBar}>
         <SchemeIntroSkeleton />
       </GenieShell>
     );
@@ -401,10 +421,10 @@ function SchemeSession({ slug }) {
   if (stage === 'intro') {
     const minutes = Math.max(1, Math.round((scheme.intakeQuestions.length * 15) / 60));
     return (
-      <GenieShell>
+      <GenieShell testBar={testBar}>
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-16 pt-8 sm:px-6">
-          <button type="button" onClick={() => navigate('/genie')} className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900">
-            <ArrowLeft className="h-4 w-4" /> Choose a different scheme
+          <button type="button" onClick={() => navigate(exitPath)} className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900">
+            <ArrowLeft className="h-4 w-4" /> {preview ? 'Back to editor' : 'Choose a different scheme'}
           </button>
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
             <div className="lg:col-span-3">
@@ -470,7 +490,7 @@ function SchemeSession({ slug }) {
   /* ---------------- Questions ---------------- */
   if (stage === 'questions') {
     return (
-      <GenieShell>
+      <GenieShell testBar={testBar}>
         <main className="w-full flex-1 px-4 pb-16 pt-8 sm:px-6">
           <div className="mx-auto mb-6 flex max-w-2xl items-center gap-3">
             <SchemeBanner bannerUrl={scheme.bannerUrl} name={scheme.name} compact className="w-24 shrink-0" rounded="rounded-lg" />
@@ -534,7 +554,7 @@ function SchemeSession({ slug }) {
   );
 
   return (
-    <GenieShell wide fitScreen>
+    <GenieShell wide fitScreen testBar={testBar}>
       <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 gap-4 px-0 sm:px-4 sm:py-4">
         <section className="flex min-w-0 flex-1 flex-col overflow-hidden bg-white sm:rounded-2xl sm:border sm:border-gray-200 sm:shadow-sm">
           <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3">
@@ -559,7 +579,7 @@ function SchemeSession({ slug }) {
                 <RotateCcw className="h-3.5 w-3.5" /> New chat
               </button>
               <button type="button" onClick={resetAll} className="hidden rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 sm:block">
-                Change scheme
+                {preview ? 'Back to editor' : 'Change scheme'}
               </button>
             </div>
           </div>
@@ -608,4 +628,10 @@ function SchemeSession({ slug }) {
 export default function GeniePage() {
   const { slug } = useParams();
   return slug ? <SchemeSession key={slug} slug={slug} /> : <SchemePicker />;
+}
+
+/** /admin/genie-schemes/:id/test → the same Genie flow for one scheme, drafts included (admins only). */
+export function GenieTestPage() {
+  const { id } = useParams();
+  return <SchemeSession key={id} previewId={id} />;
 }

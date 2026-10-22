@@ -30,9 +30,9 @@ export default function GenieLauncher() {
           >
             <X className="h-3.5 w-3.5" />
           </button>
-          <p className="text-sm font-bold text-gray-900">Looking for a government scheme?</p>
+          <p className="text-sm font-bold text-gray-900">Discover the best business incentive for your MSME</p>
           <p className="mt-1 text-xs text-gray-600">
-            Ask Finvois Genie about eligibility, subsidy and documents, in plain language.
+            Ask Finvois Genie about eligibility, subsidy and documents, in simple and easy language.
           </p>
           <button type="button" onClick={open} className="mt-2 text-xs font-semibold text-purple-700 hover:text-purple-900">
             Start now →
