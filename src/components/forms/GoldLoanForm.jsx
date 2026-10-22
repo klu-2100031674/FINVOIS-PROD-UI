@@ -15,7 +15,8 @@ import {
 } from '@heroicons/react/24/outline';
 
 import SaveDraftButton from '../common/SaveDraftButton';
-import { FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD } from '../../utils/frccFormUi';
+
+import { FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_BANKER_MOBILE_FIELD, PREPARED_BY_CIBIL_FIELD } from '../../utils/frccFormUi';
 
 // Generate financial year options in 2024-25 format, current year to +20 years
 const generateFinancialYearOptions = () => {
@@ -108,13 +109,16 @@ const sections = [
     title: 'Prepared By',
     icon: UsersIcon,
     fields: [
-      { id: 'j94',         label: 'Partner Name 1',              type: 'text', required: true,  note: 'Enter partner name 1' },
+      { id: 'j94',         label: 'Partner Name 1',              type: 'text', required: false, note: 'Enter partner name 1 (optional)' },
       { id: 'j95',         label: 'Partner Name 2',              type: 'text', required: false, note: 'Enter partner name 2 (optional)' },
       { id: 'j96',         label: 'Address',                     type: 'text', required: true,  note: 'Enter address' },
       { id: 'j97',         label: 'Mobile Number',               type: 'text', required: true,  note: 'Enter mobile number' },
       FRCC_REQUIRED_STAMP_FIELD,
       { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text', required: false, note: 'Enter bank or department name' },
       { id: 'branch_name', label: 'Branch Name',                 type: 'text', required: false, note: 'Enter branch name' },
+      PREPARED_BY_BANKER_MOBILE_FIELD,
+      PREPARED_BY_BANKER_MAIL_FIELD,
+      PREPARED_BY_CIBIL_FIELD,
     ]
   }
 ];
@@ -143,8 +147,7 @@ const GoldLoanForm = ({
   isProcessing = false,
   onFormDataChange = null,
 }) => {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [formData, setFormData] = useState(initialData || {
+  const buildEmptyState = () => ({
     "General Information": {
       "i4": "", "i5": "", "i6": "", "i7": "", "i8": "", "i9": "", "i10": ""
     },
@@ -177,7 +180,26 @@ const GoldLoanForm = ({
       "j96": "Vijayawada",
       "j97": "9014221011",
       "required_stamp": FRCC_REQUIRED_STAMP_DEFAULT,
+      "banker_mobile": "",
+      "banker_mail_id": "",
+      "cibil_score": "",
     }
+  });
+
+  const [currentStep, setCurrentStep] = useState(0);
+  const [formData, setFormData] = useState(() => {
+    const base = buildEmptyState();
+    if (!initialData || Object.keys(initialData).length === 0) return base;
+    return {
+      ...base,
+      ...initialData,
+      "General Information": { ...base["General Information"], ...(initialData["General Information"] || {}) },
+      "Means of Finance": { ...base["Means of Finance"], ...(initialData["Means of Finance"] || {}), "i12": "No" },
+      "Financial Years": { ...base["Financial Years"], ...(initialData["Financial Years"] || {}) },
+      "Indirect Expenses": { ...base["Indirect Expenses"], ...(initialData["Indirect Expenses"] || {}) },
+      "Fixed Assets Schedule": initialData["Fixed Assets Schedule"] || base["Fixed Assets Schedule"],
+      "Prepared By": { ...base["Prepared By"], ...(initialData["Prepared By"] || {}) },
+    };
   });
 
   const [finalJson, setFinalJson] = useState(null);
@@ -186,36 +208,40 @@ const GoldLoanForm = ({
 
   // Initialize form with initialData if provided
   useEffect(() => {
-    if (initialData && isEditMode) {
-      console.log('📝 [GoldLoanForm] Loading initial data for edit mode:', initialData);
+    if (initialData && Object.keys(initialData).length > 0) {
+      console.log('📝 [GoldLoanForm] Loading initial data:', initialData);
       setFormData(prev => ({
-        "General Information": initialData["General Information"] || {},
-        "Means of Finance": initialData["Means of Finance"] || {},
-        "Financial Years": initialData["Financial Years"] || {},
-        "Indirect Expenses": initialData["Indirect Expenses"] || {
-          "i24": "", "H25": "", "i26": "", "h27": "", "h28": "", "i29": "", "i30": ""
+        ...prev,
+        ...initialData,
+        "General Information": {
+          ...(prev["General Information"] || {}),
+          ...(initialData["General Information"] || {})
         },
-        "Fixed Assets Schedule": initialData["Fixed Assets Schedule"] || {
-          "Plant and Machinery":                         { items: [], total: 0 },
-          "Service Equipment":                           { items: [], total: 0 },
-          "Shed, Construction and Civil works":          { items: [], total: 0 },
-          "Land":                                        { items: [], total: 0 },
-          "Electrical and Plumbing Items":               { items: [], total: 0 },
-          "Electronic Items":                            { items: [], total: 0 },
-          "Furniture and Fittings":                      { items: [], total: 0 },
-          "Vehicles":                                    { items: [], total: 0 },
-          "Live stock":                                  { items: [], total: 0 },
-          "Other Assets (Including Amortisable Assets)": { items: [], total: 0 },
-          "Other Assets (Nil Depreciation)":             { items: [], total: 0 }
+        "Means of Finance": {
+          ...(prev["Means of Finance"] || {}),
+          ...(initialData["Means of Finance"] || {}),
+          "i12": "No",
         },
+        "Financial Years": {
+          ...(prev["Financial Years"] || {}),
+          ...(initialData["Financial Years"] || {})
+        },
+        "Indirect Expenses": {
+          ...(prev["Indirect Expenses"] || {}),
+          ...(initialData["Indirect Expenses"] || {})
+        },
+        "Fixed Assets Schedule": initialData["Fixed Assets Schedule"] || prev["Fixed Assets Schedule"] || buildEmptyState()["Fixed Assets Schedule"],
         "Prepared By": {
           required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
+          banker_mobile: '',
+          banker_mail_id: '',
+          cibil_score: '',
+          ...(prev["Prepared By"] || {}),
           ...(initialData["Prepared By"] || {}),
-        },
-        ...initialData
+        }
       }));
     }
-  }, [initialData, isEditMode]);
+  }, [initialData]);
 
   // Validate current section
   const validateCurrentSection = useCallback(() => {
@@ -358,6 +384,9 @@ const GoldLoanForm = ({
         "j96": "Hyderabad, Telangana",
         "j97": "9014221011",
         "required_stamp": FRCC_REQUIRED_STAMP_DEFAULT,
+      "banker_mobile": "",
+      "banker_mail_id": "",
+      "cibil_score": "",
       }
     });
   }, []);

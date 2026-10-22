@@ -40,6 +40,14 @@ export const PREPARED_BY_BANKER_MAIL_FIELD = {
   required: false,
 };
 
+export const PREPARED_BY_BANKER_MOBILE_FIELD = {
+  id: 'banker_mobile',
+  label: 'Bank Mobile No',
+  type: 'text',
+  required: false,
+  note: 'Enter bank mobile number',
+};
+
 export const PREPARED_BY_CIBIL_FIELD = {
   id: 'cibil_score',
   label: 'CIBIL Score',
@@ -61,7 +69,9 @@ export function isFrccTemplateId(templateId) {
     'TERM_LOAN_EV_VEHICLE',
     'TERM_LOAN_OTHER_THAN_EV_VEHICLE',
     'TERM_LOAN_JCB_VEHICLE',
-    'TERM_LOAN_DRONE_VEHICLE'
+    'TERM_LOAN_DRONE_VEHICLE',
+    'TERM_LOAN_TRACTOR_VEHICLE',
+    'TERM_LOAN_TIPPER_VEHICLE'
   ].includes(String(templateId).trim().toUpperCase());
 }
 
@@ -127,3 +137,4 @@ export function reportRequiresCaStamp(report) {
 
   return String(preparedBy?.required_stamp || '').trim().toLowerCase() === 'yes';
 }
+

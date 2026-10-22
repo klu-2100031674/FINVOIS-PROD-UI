@@ -15,7 +15,7 @@ export function getSbiOfficeTestData(user) {
     office_floor: 'Ground+1st Flr',
     field_executive_intro: 'VISITED THE GIVEN ADDRESS AND MET THE APPLICANT.',
     office_department: 'IN TOWN PLANNING SECTION, FOR THE PAST 1 YEAR 6 MONTHS.',
-    net_salary: '₹ 33,400 PER MONTH.',
+    net_salary: 'NET SALARY OF ₹  88,000 PER MONTH.',
     salary_credited_bank: 'SBI BANK (SNP -BRANCH)',
     employment_confirmed_by: 'MR. RAMBABU',
     employment_confirmed_relationship: 'ATTENDER',

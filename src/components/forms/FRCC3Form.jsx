@@ -15,7 +15,7 @@ import {
 
 import SaveDraftButton from '../common/SaveDraftButton';
 
-import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_CIBIL_FIELD } from '../../utils/frccFormUi';
+import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_BANKER_MOBILE_FIELD, PREPARED_BY_CIBIL_FIELD } from '../../utils/frccFormUi';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -116,13 +116,14 @@ const sections = [
     title: 'Prepared By',
     icon: UsersIcon,
     fields: [
-      { id: 'j96',         label: 'Partner Name 1',              type: 'text', required: true  },
+      { id: 'j96',         label: 'Partner Name 1',              type: 'text', required: false },
       { id: 'j97',         label: 'Partner Name 2',              type: 'text', required: false },
       { id: 'j98',         label: 'Address',                     type: 'text', required: true  },
       { id: 'j99',         label: 'Mobile Number',               type: 'text', required: true  },
       FRCC_REQUIRED_STAMP_FIELD,
       { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text', required: false },
       { id: 'branch_name', label: 'Branch Name',                 type: 'text', required: false },
+      PREPARED_BY_BANKER_MOBILE_FIELD,
       PREPARED_BY_BANKER_MAIL_FIELD,
       PREPARED_BY_CIBIL_FIELD,
     ]
@@ -152,24 +153,13 @@ const FRCC3Form = ({
   isProcessing = false,
   onFormDataChange = null,
 }) => {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [formData, setFormData] = useState(() => {
-    if (initialData && Object.keys(initialData).length > 0) {
-      return {
-        ...initialData,
-        'Means of Finance': {
-          ...(initialData['Means of Finance'] || {}),
-          'i12': 'No',
-        },
-      };
-    }
-    return {
-      'General Information': {
-        'i4': '', 'i5': '', 'i6': '', 'i7': '', 'i8': '', 'i9': '', 'i10': ''
-      },
-      'Means of Finance': {
-        'i12': 'No', 'i13': '', 'h14': '', 'h15': '', 'h16': ''
-      },
+  const buildEmptyState = () => ({
+    'General Information': {
+      'i4': '', 'i5': '', 'i6': '', 'i7': '', 'i8': '', 'i9': '', 'i10': ''
+    },
+    'Means of Finance': {
+      'i12': 'No', 'i13': '', 'h14': '', 'h15': '', 'h16': ''
+    },
     'Financial Years': {
       'i18': '', 'i19': '', 'i20': '', 'i21': ''
     },
@@ -200,32 +190,65 @@ const FRCC3Form = ({
       'bank_name': '',
       'branch_name': '',
       'required_stamp': FRCC_REQUIRED_STAMP_DEFAULT,
+      'banker_mobile': '',
       'banker_mail_id': '',
       'cibil_score': '',
     }
-  };
-});
+  });
+
+  const [currentStep, setCurrentStep] = useState(0);
+  const [formData, setFormData] = useState(() => {
+    const base = buildEmptyState();
+    if (!initialData || Object.keys(initialData).length === 0) return base;
+    return {
+      ...base,
+      ...initialData,
+      'General Information': { ...base['General Information'], ...(initialData['General Information'] || {}) },
+      'Means of Finance': { ...base['Means of Finance'], ...(initialData['Means of Finance'] || {}), 'i12': 'No' },
+      'Financial Years': { ...base['Financial Years'], ...(initialData['Financial Years'] || {}) },
+      'Financial Statements': { ...base['Financial Statements'], ...(initialData['Financial Statements'] || {}) },
+      'Fixed Assets Schedule': initialData['Fixed Assets Schedule'] || base['Fixed Assets Schedule'],
+      'Prepared By': { ...base['Prepared By'], ...(initialData['Prepared By'] || {}) },
+    };
+  });
 
   const [activeAssetTab, setActiveAssetTab] = useState(0);
   const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
-    if (initialData && isEditMode) {
-      setFormData({
+    if (initialData && Object.keys(initialData).length > 0) {
+      setFormData(prev => ({
+        ...prev,
         ...initialData,
+        'General Information': {
+          ...(prev['General Information'] || {}),
+          ...(initialData['General Information'] || {})
+        },
         'Means of Finance': {
+          ...(prev['Means of Finance'] || {}),
           ...(initialData['Means of Finance'] || {}),
           'i12': 'No',
         },
+        'Financial Years': {
+          ...(prev['Financial Years'] || {}),
+          ...(initialData['Financial Years'] || {})
+        },
+        'Financial Statements': {
+          ...(prev['Financial Statements'] || {}),
+          ...(initialData['Financial Statements'] || {})
+        },
+        'Fixed Assets Schedule': initialData['Fixed Assets Schedule'] || prev['Fixed Assets Schedule'] || buildEmptyState()['Fixed Assets Schedule'],
         'Prepared By': {
           required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
-      banker_mail_id: '',
-      cibil_score: '',
+          banker_mobile: '',
+          banker_mail_id: '',
+          cibil_score: '',
+          ...(prev['Prepared By'] || {}),
           ...(initialData['Prepared By'] || {}),
         },
-      });
+      }));
     }
-  }, [initialData, isEditMode]);
+  }, [initialData]);
 
   useEffect(() => {
     if (onFormDataChange) {
@@ -309,6 +332,7 @@ const FRCC3Form = ({
         'j98': 'Hyderabad, Telangana', 'j99': '9014221011',
         'bank_name': 'State Bank of India', 'branch_name': 'Main Branch',
         'required_stamp': FRCC_REQUIRED_STAMP_DEFAULT,
+      'banker_mobile': '',
       'banker_mail_id': '',
       'cibil_score': '',
       }
@@ -575,7 +599,7 @@ const FRCC3Form = ({
           </div>
 
           <div className="space-y-2 max-h-72 overflow-y-auto custom-scrollbar pr-1">
-            {categoryData.items.map((item, idx) => (
+            {(Array.isArray(categoryData?.items) ? categoryData.items : []).map((item, idx) => (
               <div key={idx} className="grid grid-cols-12 gap-3">
                 <input
                   type="text"

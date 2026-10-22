@@ -18,7 +18,7 @@ import toast from 'react-hot-toast';
 import useAuth from '../hooks/useAuth';
 import RequestDocumentsPanel from '../components/department/RequestDocumentsPanel';
 import RequestChatPanel from '../components/department/RequestChatPanel';
-import CustomerPayNowButton from './CustomerPayNowButton';
+import CustomerPayNowButton, { ForwardToBankManagerButton } from './CustomerPayNowButton';
 import {
   canDownloadPdf,
   celebrationStorageKey,
@@ -343,11 +343,17 @@ const CustomerDepartmentRequestDetailPage = () => {
                 {/* Desktop primary CTA only — mobile uses sticky bar */}
                 <div className="hidden md:block">
                   {showPay ? (
-                    <CustomerPayNowButton
-                      request={request}
-                      onPaid={() => loadRequest({ silent: true })}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-yellow-600 hover:bg-yellow-700 rounded-lg disabled:opacity-60"
-                    />
+                    <div className="flex items-center gap-2">
+                      <ForwardToBankManagerButton
+                        request={request}
+                        onForwarded={() => loadRequest({ silent: true })}
+                      />
+                      <CustomerPayNowButton
+                        request={request}
+                        onPaid={() => loadRequest({ silent: true })}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-yellow-600 hover:bg-yellow-700 rounded-lg disabled:opacity-60"
+                      />
+                    </div>
                   ) : showPdf ? (
                     <button
                       type="button"
@@ -389,12 +395,31 @@ const CustomerDepartmentRequestDetailPage = () => {
                 Pay ₹{Number(request.reportId?.payment?.amount || 0).toLocaleString('en-IN')} to unlock
                 your report. Customer Service can still work on it while payment is pending.
               </p>
+              {(request.isPaymentForwardedToBankManager || request.paymentForwardedToBankManagerAt) && (
+                <p className="text-xs font-semibold text-emerald-800 mt-2 flex items-center gap-1.5 bg-emerald-100/70 border border-emerald-300/60 rounded-md px-2.5 py-1 w-fit">
+                  <CheckCircle size={14} className="text-emerald-700" />
+                  Payment forwarded to Bank Manager
+                  {request.paymentForwardedToBankManagerAt
+                    ? ` on ${new Date(request.paymentForwardedToBankManagerAt).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}`
+                    : ''}
+                </p>
+              )}
             </div>
-            <CustomerPayNowButton
-              request={request}
-              onPaid={() => loadRequest({ silent: true })}
-              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-yellow-600 hover:bg-yellow-700 rounded-lg disabled:opacity-60"
-            />
+            <div className="flex items-center gap-2.5">
+              <ForwardToBankManagerButton
+                request={request}
+                onForwarded={() => loadRequest({ silent: true })}
+              />
+              <CustomerPayNowButton
+                request={request}
+                onPaid={() => loadRequest({ silent: true })}
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-yellow-600 hover:bg-yellow-700 rounded-lg disabled:opacity-60"
+              />
+            </div>
           </div>
         )}
 
@@ -469,11 +494,17 @@ const CustomerDepartmentRequestDetailPage = () => {
                   ₹{Number(request.reportId?.payment?.amount || 0).toLocaleString('en-IN')}
                 </p>
               </div>
-              <CustomerPayNowButton
-                request={request}
-                onPaid={() => loadRequest({ silent: true })}
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-yellow-600 hover:bg-yellow-700 rounded-lg disabled:opacity-60 shrink-0"
-              />
+              <div className="flex items-center gap-2">
+                <ForwardToBankManagerButton
+                  request={request}
+                  onForwarded={() => loadRequest({ silent: true })}
+                />
+                <CustomerPayNowButton
+                  request={request}
+                  onPaid={() => loadRequest({ silent: true })}
+                  className="inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold text-white bg-yellow-600 hover:bg-yellow-700 rounded-lg disabled:opacity-60 shrink-0"
+                />
+              </div>
             </div>
           ) : (
             <button

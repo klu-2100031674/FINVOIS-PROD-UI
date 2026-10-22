@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, CreditCard, CheckCircle2, ShieldCheck, AlertCircle, Gift, Link2, Copy, Loader2, Send, User } from 'lucide-react';
+import { X, CreditCard, CheckCircle2, ShieldCheck, AlertCircle, Gift, Link2, Copy, Loader2, Send, User, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSelector } from 'react-redux';
 import { reportAPI, pricingAPI } from '../../api/endpoints';
@@ -101,10 +101,12 @@ const PaymentModal = ({
       ? new URLSearchParams(window.location.search).get('requestId') || null
       : null);
   const isCustomerService = userRole === 'customer_service';
+  const canChoosePayer = isCustomerService || ['admin', 'super_admin', 'company_admin'].includes(userRole);
   const showPayerChooser =
-    isCustomerService && Boolean(requestId) && !isBetaMode && !payerChoice && !lockPayer;
+    canChoosePayer && Boolean(requestId) && !isBetaMode && !payerChoice && !lockPayer;
   const billToCustomer = payerChoice === 'customer';
-  const effectiveFreeCredits = billToCustomer ? 0 : freeCreditsCount;
+  const billToBankManager = payerChoice === 'bank_manager';
+  const effectiveFreeCredits = (billToCustomer || billToBankManager) ? 0 : freeCreditsCount;
 
   const extractBankDetails = () => {
     if (!savedFormData) {
@@ -449,7 +451,7 @@ const PaymentModal = ({
           const sendRes = await reportAPI.sendReportPaymentRequest(existingReportId);
           const link = sendRes.data?.payment_link_url || '';
           setPaymentLinkUrl(link);
-          toast.success('Payment request sent. Generating report now.');
+          toast.success(sendRes.data?.warning || 'Shareable payment link is ready. Anyone can pay it without logging in.');
         } catch (sendError) {
           toast.error(extractErrorMessage(sendError, 'Payment request could not be sent. Generating report anyway.'));
         }
@@ -476,7 +478,7 @@ const PaymentModal = ({
         const sendRes = await reportAPI.sendReportPaymentRequest(order.report_id);
         const link = sendRes.data?.payment_link_url || order.payment_link_url;
         setPaymentLinkUrl(link || '');
-        toast.success('Payment request sent. Generating report now.');
+        toast.success(sendRes.data?.warning || 'Shareable payment link is ready. Anyone can pay it without logging in.');
       } catch (sendError) {
         toast.error(extractErrorMessage(sendError, 'Payment request could not be sent. Generating report anyway.'));
       }
@@ -487,6 +489,66 @@ const PaymentModal = ({
     } catch (error) {
       console.error(error);
       toast.error(extractErrorMessage(error, 'Failed to send payment request'));
+    } finally {
+      setSendingRequest(false);
+    }
+  };
+
+  const handleSendBankManagerPaymentRequest = async () => {
+    try {
+      setSendingRequest(true);
+      if (existingReportId) {
+        if (requestId) {
+          try {
+            const sendRes = await apiClient.post(`/customer/department-requests/${requestId}/forward-to-bank-manager`, {});
+            if (sendRes.data?.payment_link_url) setPaymentLinkUrl(sendRes.data.payment_link_url);
+            toast.success(sendRes.data?.message || 'Payment link forwarded to Bank Manager. Anyone can pay it without logging in.');
+          } catch (sendError) {
+            toast.error(extractErrorMessage(sendError, 'Payment request could not be sent to Bank Manager. Generating report anyway.'));
+          }
+        }
+        finishPaid(existingReportId, calculateTotalPrice(), {
+          selected_sheets: buildSelectedSheetsData(),
+          generate_without_payment: true,
+        });
+        return;
+      }
+
+      const order = await createCustomerBilledOrder();
+      if (order.amount === 0 || order.free_credit) {
+        const verifyResponse = await reportAPI.verifyReportPayment(order.report_id, {});
+        finishPaid(order.report_id, 0, {
+          simulated: true,
+          order_id: verifyResponse.data?.order_id,
+          selected_sheets: order.selected_sheets,
+        });
+        return;
+      }
+
+      if (requestId) {
+        try {
+          const sendRes = await apiClient.post(`/customer/department-requests/${requestId}/forward-to-bank-manager`, {});
+          if (sendRes.data?.payment_link_url) setPaymentLinkUrl(sendRes.data.payment_link_url);
+          toast.success(sendRes.data?.message || 'Payment link forwarded to Bank Manager. Anyone can pay it without logging in.');
+        } catch (sendError) {
+          toast.error(extractErrorMessage(sendError, 'Payment request could not be sent to Bank Manager. Generating report anyway.'));
+        }
+      } else {
+        try {
+          await reportAPI.sendReportPaymentRequest(order.report_id);
+          toast.success('Payment request forwarded. Generating report now.');
+        } catch (sendError) {
+          toast.error(extractErrorMessage(sendError, 'Payment request could not be sent. Generating report anyway.'));
+        }
+      }
+
+      finishPaid(order.report_id, order.amount, {
+        selected_sheets: order.selected_sheets,
+        generate_without_payment: true,
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error(extractErrorMessage(error, 'Failed to forward payment request to Bank Manager'));
     } finally {
       setSendingRequest(false);
     }
@@ -561,6 +623,10 @@ const PaymentModal = ({
   const handlePayment = async () => {
     if (billToCustomer && !isBetaMode) {
       await handleSendPaymentRequest();
+      return;
+    }
+    if (billToBankManager && !isBetaMode) {
+      await handleSendBankManagerPaymentRequest();
       return;
     }
     try {
@@ -694,7 +760,7 @@ const PaymentModal = ({
                 {isBetaMode || effectiveFreeCredits > 0 ? <CheckCircle2 className="w-8 h-8 text-green-600" /> : <CreditCard className="w-8 h-8 text-purple-600" />}
               </div>
 
-              <h2 className="text-2xl font-bold font-manrope text-gray-900">{isBetaMode ? "Generate Free Report" : showPayerChooser ? "Who will pay?" : billToCustomer ? "Forward payment to customer" : effectiveFreeCredits > 0 ? "Use Free Report Credit" : "Complete Report Payment"}</h2>
+              <h2 className="text-2xl font-bold font-manrope text-gray-900">{isBetaMode ? "Generate Free Report" : showPayerChooser ? "Who will pay?" : billToCustomer ? "Forward payment to customer" : billToBankManager ? "Forward payment to Bank Manager" : effectiveFreeCredits > 0 ? "Use Free Report Credit" : "Complete Report Payment"}</h2>
               <p className="text-gray-500 text-sm mt-1">{resolveReportTitle({ formData: savedFormData, reportTitle, templateId })}</p>
             </div>
 
@@ -732,14 +798,29 @@ const PaymentModal = ({
                       <div>
                         <h4 className="font-bold text-amber-900 text-sm">Customer must pay</h4>
                         <p className="text-sm text-amber-800 mt-1">
-                          The report will be generated now. The customer unlocks it after they pay. Free credits are not used on this path.
+                          The report will be generated now. A Razorpay link is sent that anyone can pay without logging in. Free credits are not used on this path.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bank Manager Banner */}
+                  {billToBankManager && !isBetaMode && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
+                      <div className="bg-blue-100 p-2 rounded-full h-fit">
+                        <Share2 className="w-5 h-5 text-blue-700" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-blue-900 text-sm">Forward to Bank Manager</h4>
+                        <p className="text-sm text-blue-800 mt-1">
+                          The report will be generated now. A Razorpay link is sent to the Bank Manager. Anyone with that link can pay without logging in.
                         </p>
                       </div>
                     </div>
                   )}
 
                   {showPayerChooser && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <button
                         type="button"
                         onClick={() => setPayerChoice('customer')}
@@ -750,7 +831,20 @@ const PaymentModal = ({
                         </div>
                         <h4 className="font-bold text-gray-900 text-sm">Forward to customer</h4>
                         <p className="text-xs text-gray-500 mt-1">
-                          Send a payment request. Generate the report now; the customer sees it after paying.
+                          Send a payment request. Customer sees it after paying.
+                        </p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPayerChoice('bank_manager')}
+                        className="text-left rounded-xl border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 p-4 transition-all"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center mb-3">
+                          <Share2 className="w-5 h-5 text-blue-700" />
+                        </div>
+                        <h4 className="font-bold text-gray-900 text-sm">Forward to Bank Manager</h4>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Send payment link to Bank Manager via WhatsApp.
                         </p>
                       </button>
                       <button
@@ -763,7 +857,7 @@ const PaymentModal = ({
                         </div>
                         <h4 className="font-bold text-gray-900 text-sm">Customer service pays</h4>
                         <p className="text-xs text-gray-500 mt-1">
-                          Use a free credit or Razorpay. The customer unlocks after this payment completes.
+                          Use a free credit or Razorpay. Customer unlocks immediately.
                         </p>
                       </button>
                     </div>
@@ -968,6 +1062,38 @@ const PaymentModal = ({
                   </button>
                   )}
                 </div>
+              ) : billToBankManager && !isBetaMode ? (
+                <div className="space-y-3">
+                  <button
+                    onClick={handleSendBankManagerPaymentRequest}
+                    disabled={sendingRequest || loadingPricing}
+                    className="w-full py-3.5 rounded-xl font-bold text-lg text-white shadow-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {sendingRequest ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Forwarding...
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="w-5 h-5" />
+                        Forward to Bank Manager & Generate
+                      </>
+                    )}
+                  </button>
+                  {!lockPayer && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPayerChoice(null);
+                        setCustomerOrder(null);
+                      }}
+                      className="w-full py-2 text-xs font-semibold text-gray-500 hover:text-gray-800"
+                    >
+                      Change who pays
+                    </button>
+                  )}
+                </div>
               ) : (
               <div className="space-y-3">
               <button
@@ -990,6 +1116,16 @@ const PaymentModal = ({
                   </>
                 )}
               </button>
+              {userRole === 'customer' && Boolean(requestId) && !isBetaMode && !payerChoice && (
+                <button
+                  type="button"
+                  onClick={() => setPayerChoice('bank_manager')}
+                  className="w-full py-2.5 text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2"
+                >
+                  <Share2 className="w-4 h-4 text-blue-600" />
+                  Forward payment to Bank Manager instead
+                </button>
+              )}
               {payerChoice === 'customer_service' && !lockPayer && (
                 <button
                   type="button"

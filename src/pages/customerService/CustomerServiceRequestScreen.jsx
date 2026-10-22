@@ -120,6 +120,8 @@ const TEMPLATES_LIST = [
   { id: 'TERM_LOAN_EV_VEHICLE', name: 'EV Commercial Vehicle' },
   { id: 'TERM_LOAN_OTHER_THAN_EV_VEHICLE', name: 'Other Than EV Commercial Vehicle' },
   { id: 'TERM_LOAN_JCB_VEHICLE', name: 'JCB Vehicle' },
+  { id: 'TERM_LOAN_TRACTOR_VEHICLE', name: 'Tractor Vehicle' },
+  { id: 'TERM_LOAN_TIPPER_VEHICLE', name: 'Tipper Vehicle' },
   { id: 'TERM_LOAN_DRONE_VEHICLE', name: 'Drone Vehicle' },
   { id: 'GOLD_LOAN', name: 'Gold Loan' },
 ];

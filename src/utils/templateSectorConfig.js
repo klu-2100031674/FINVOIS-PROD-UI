@@ -6,6 +6,8 @@ const TERM_LOAN_TEMPLATE_IDS = new Set([
   'TERM_LOAN_OTHER_THAN_EV_VEHICLE',
   'TERM_LOAN_JCB_VEHICLE',
   'TERM_LOAN_DRONE_VEHICLE',
+  'TERM_LOAN_TRACTOR_VEHICLE',
+  'TERM_LOAN_TIPPER_VEHICLE',
 ]);
 
 /** Vehicle term-loan templates — analytics modal shows IRR only. */
@@ -14,6 +16,8 @@ export const VEHICLE_TEMPLATE_IDS = new Set([
   'TERM_LOAN_OTHER_THAN_EV_VEHICLE',
   'TERM_LOAN_JCB_VEHICLE',
   'TERM_LOAN_DRONE_VEHICLE',
+  'TERM_LOAN_TRACTOR_VEHICLE',
+  'TERM_LOAN_TIPPER_VEHICLE',
 ]);
 
 /** Default sector per template when URL / draft metadata is missing. */
@@ -43,6 +47,14 @@ export const TEMPLATE_SECTOR_DEFAULTS = {
     // lockSector: true,
   },
   TERM_LOAN_DRONE_VEHICLE: {
+    presetSector: 'service sector without stock',
+    // lockSector: true,
+  },
+  TERM_LOAN_TRACTOR_VEHICLE: {
+    presetSector: 'service sector without stock',
+    // lockSector: true,
+  },
+  TERM_LOAN_TIPPER_VEHICLE: {
     presetSector: 'service sector without stock',
     // lockSector: true,
   },
@@ -77,6 +89,8 @@ export const TEMPLATE_DISPLAY_NAMES = {
   TERM_LOAN_OTHER_THAN_EV_VEHICLE: 'Other Than EV Commercial Vehicle',
   TERM_LOAN_JCB_VEHICLE: 'JCB Vehicle',
   TERM_LOAN_DRONE_VEHICLE: 'Drone Vehicle',
+  TERM_LOAN_TRACTOR_VEHICLE: 'Tractor Vehicle',
+  TERM_LOAN_TIPPER_VEHICLE: 'Tipper Vehicle',
   GOLD_LOAN: 'Gold Loan',
   CC1: 'Cash Credit Form 1',
   CC2: 'Cash Credit Form 2',

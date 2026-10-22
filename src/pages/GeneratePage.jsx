@@ -35,6 +35,8 @@ import FRTermLoanCCForm from '../components/forms/FRTermLoanCCForm';
 import FRTermLoanEVVehicleForm from '../components/forms/FRTermLoanEVVehicleForm';
 import FRTermLoanOtherThanEVVehicleForm from '../components/forms/FRTermLoanOtherThanEVVehicleForm';
 import FRTermLoanJCBVehicleForm from '../components/forms/FRTermLoanJCBVehicleForm';
+import FRTermLoanTractorVehicleForm from '../components/forms/FRTermLoanTractorVehicleForm';
+import FRTermLoanTipperVehicleForm from '../components/forms/FRTermLoanTipperVehicleForm';
 import FRTermLoanDroneVehicleForm from '../components/forms/FRTermLoanDroneVehicleForm';
 import ManufacturingSectionSelector from '../components/forms/ManufacturingSectionSelector';
 import TradingSectionSelector from '../components/forms/TradingSectionSelector';
@@ -87,6 +89,8 @@ const AI_TERM_LOAN_TEMPLATES = [
   'TERM_LOAN_EV_VEHICLE',
   'TERM_LOAN_OTHER_THAN_EV_VEHICLE',
   'TERM_LOAN_JCB_VEHICLE',
+  'TERM_LOAN_TRACTOR_VEHICLE',
+  'TERM_LOAN_TIPPER_VEHICLE',
   'TERM_LOAN_DRONE_VEHICLE',
 ];
 
@@ -992,7 +996,20 @@ const GeneratePage = () => {
             if (s.includes('trading')) return 'trading';
             if (s.includes('without stock')) return 'service_without_stock';
             if (s.includes('with stock')) return 'service_with_stock';
-            if (s.includes('commercial vehicle') || s.includes('jcb') || s.includes('drone') || t.includes('EV_VEHICLE') || t.includes('JCB_VEHICLE') || t.includes('DRONE_VEHICLE')) return 'service_without_stock';
+            if (
+              s.includes('commercial vehicle') ||
+              s.includes('vehicle') ||
+              s.includes('jcb') ||
+              s.includes('tractor') ||
+              s.includes('tipper') ||
+              s.includes('drone') ||
+              t.includes('EV_VEHICLE') ||
+              t.includes('OTHER_THAN_EV_VEHICLE') ||
+              t.includes('JCB_VEHICLE') ||
+              t.includes('TRACTOR_VEHICLE') ||
+              t.includes('TIPPER_VEHICLE') ||
+              t.includes('DRONE_VEHICLE')
+            ) return 'service_without_stock';
             if (t.includes('MANUFACTURING')) return 'manufacturing';
             if (t.includes('WITHOUT_STOCK')) return 'service_without_stock';
             return 'service_without_stock';
@@ -1266,6 +1283,32 @@ const GeneratePage = () => {
                 savingDraft={savingDraft}
               />
             )}
+            {(activeTemplateKey === 'TERM_LOAN_TRACTOR_VEHICLE') && (
+              <FRTermLoanTractorVehicleForm
+                onSubmit={handleFormSubmit}
+                templateId={templateId}
+                onFormDataChange={handleFormDataChange}
+                isProcessing={isProcessing}
+                initialData={stage1InitialData}
+                presetSector={presetSector}
+                lockSector={lockSector}
+                onSaveDraft={handleSaveDraftFromForm}
+                savingDraft={savingDraft}
+              />
+            )}
+            {(activeTemplateKey === 'TERM_LOAN_TIPPER_VEHICLE') && (
+              <FRTermLoanTipperVehicleForm
+                onSubmit={handleFormSubmit}
+                templateId={templateId}
+                onFormDataChange={handleFormDataChange}
+                isProcessing={isProcessing}
+                initialData={stage1InitialData}
+                presetSector={presetSector}
+                lockSector={lockSector}
+                onSaveDraft={handleSaveDraftFromForm}
+                savingDraft={savingDraft}
+              />
+            )}
             {(activeTemplateKey === 'TERM_LOAN_DRONE_VEHICLE') && (
               <FRTermLoanDroneVehicleForm
                 onSubmit={handleFormSubmit}
@@ -1289,6 +1332,8 @@ const GeneratePage = () => {
                 'TERM_LOAN_EV_VEHICLE',
                 'TERM_LOAN_OTHER_THAN_EV_VEHICLE',
                 'TERM_LOAN_JCB_VEHICLE',
+                'TERM_LOAN_TRACTOR_VEHICLE',
+                'TERM_LOAN_TIPPER_VEHICLE',
                 'TERM_LOAN_DRONE_VEHICLE'
               ].includes(activeTemplateKey) && (
                 <Card className="mb-6">

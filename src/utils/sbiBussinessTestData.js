@@ -18,8 +18,10 @@ export function getSbiBussinessTestData(user) {
     nature_of_business: 'GOLD & SILVER SHOP',
     nature_of_business_detail:
       'V R JEWELLERS IS A PARTNERSHIP FIRM, AND THE APPLICANT IS ONE OF THE PARTNERS- (OUT OF FOUR PARTNERS) THE FIRM IS SELLING ALL TYPES OF GOLD ORNAMENTS AND- SILVER ARTICLES)',
-    business_experience: '7 YEARS',
     business_activities_seen: 'YES',
+    doing_business_since: '7 YEARS',
+    as_per_gst_days: '2555',
+    business_experience: '7 YEARS',
     business_name_board_seen: 'YES',
     turnover_declared: '15 CRORES',
     business_transaction_account: 'SBI OD  ACCOUNT  NO :  38755740706',

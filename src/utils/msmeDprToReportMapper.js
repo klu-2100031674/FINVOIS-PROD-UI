@@ -47,6 +47,22 @@ function parseAmount(value) {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** Forms require exactly 10 digits. Lead phones often include +91. */
+function last10Digits(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (digits.length < 10) return '';
+  return digits.slice(-10);
+}
+
+function aadhaarDigits(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits.length === 12 ? digits : '';
+}
+
+function normalizePan(value) {
+  return String(value || '').trim().toUpperCase();
+}
+
 function parsePercent(value) {
   const n = parseFloat(String(value || '').replace(/,/g, '').replace(/%/g, ''));
   return Number.isFinite(n) ? n : 0;
@@ -179,6 +195,22 @@ function isTermLoanWithStockTemplate(templateKey) {
   );
 }
 
+function isVehicleTemplate(templateKey) {
+  const k = String(templateKey || '').toLowerCase().trim();
+  return (
+    k.includes('vehicle') ||
+    k.includes('jcb') ||
+    k.includes('tractor') ||
+    k.includes('tipper') ||
+    k.includes('drone')
+  );
+}
+
+function isEvVehicleTemplate(templateKey) {
+  const k = String(templateKey || '').toLowerCase().trim();
+  return k.includes('ev_vehicle') || k.includes('ev vehicle');
+}
+
 function getTermLoanAssetSections(tenureYears, templateKey) {
   const gt7 = tenureYears > 7;
   if (isTermLoanCcTemplate(templateKey)) {
@@ -186,6 +218,13 @@ function getTermLoanAssetSections(tenureYears, templateKey) {
   }
   if (isTermLoanWithStockTemplate(templateKey)) {
     return gt7 ? TERM_LOAN_WITH_STOCK_ASSET_SECTIONS_GT7 : TERM_LOAN_WITH_STOCK_ASSET_SECTIONS;
+  }
+  if (isEvVehicleTemplate(templateKey) || isVehicleTemplate(templateKey)) {
+    return {
+      'Commercial Vehicles': { start: 185, end: 194, loanCell: 'k35' },
+      'Commercial Vehicle': { start: 185, end: 194, loanCell: 'k35' },
+      Vehicles: { start: 185, end: 194, loanCell: 'k35' },
+    };
   }
   return gt7 ? TERM_LOAN_ASSET_SECTIONS_GT7 : TERM_LOAN_ASSET_SECTIONS;
 }
@@ -295,7 +334,16 @@ function mapAssetsToTermLoanSections(lead, labels, tenureYears = 0, templateKey 
 
   const byCategory = {};
   assets.forEach((asset) => {
-    const category = String(asset.assetCategory || '').trim();
+    let category = String(asset.assetCategory || '').trim();
+    if (!category) return;
+    if (!sectionMap[category]) {
+      if (['Vehicles', 'Commercial Vehicles', 'Commercial Vehicle'].includes(category)) {
+        const matchingKey = Object.keys(sectionMap).find((k) =>
+          ['Commercial Vehicles', 'Commercial Vehicle', 'Vehicles'].includes(k)
+        );
+        if (matchingKey) category = matchingKey;
+      }
+    }
     if (!category || !sectionMap[category]) return;
     if (!byCategory[category]) byCategory[category] = [];
     byCategory[category].push(asset);
@@ -343,10 +391,21 @@ function mapAssetsToTermLoanSections(lead, labels, tenureYears = 0, templateKey 
     assetLoanPercentages[category] = avgPct;
     const loanAmtLakhs =
       avgPct > 0 ? Math.round(((categoryTotalLakhs * avgPct) / 100) * 10000) / 10000 : 0;
-    assetLoanAmounts[category] = loanAmtLakhs ? String(loanAmtLakhs) : '';
-    // Cost of Project loan cells are always in Lakhs (same unit as Schedule for Assets).
-    if (section.loanCell && loanAmtLakhs > 0) {
-      costOfProject[section.loanCell] = loanAmtLakhs;
+    const loanAmtStr = loanAmtLakhs ? String(loanAmtLakhs) : '';
+    assetLoanAmounts[category] = loanAmtStr;
+
+    // Provide vehicle aliases so any form variant (Vehicles / Commercial Vehicles / Commercial Vehicle) finds its data
+    if (category === 'Vehicles' || category === 'Commercial Vehicles' || category === 'Commercial Vehicle') {
+      ['Vehicles', 'Commercial Vehicles', 'Commercial Vehicle'].forEach((alias) => {
+        assetLoanPercentages[alias] = avgPct;
+        assetLoanAmounts[alias] = loanAmtStr;
+        fixedAssetsSchedule[alias] = categoryRows;
+      });
+    }
+
+    // Cost of Project loan percentage cells (K28-K39) expect the loan percentage (e.g. 75 or 0), NOT the amount in Lakhs!
+    if (section.loanCell && avgPct !== undefined && avgPct !== null) {
+      costOfProject[section.loanCell] = avgPct;
     }
 
     fixedAssetsSchedule[category] = categoryRows;
@@ -440,12 +499,91 @@ function resolveFrccFixedMeansOfFinance(templateKey) {
   return { i11: 'Yes', i12: 'No' };
 }
 
+function resolveFrccGeneralInfoCells(templateKey) {
+  const k = String(templateKey || '').toLowerCase().trim();
+  if (
+    k === 'frcc1' ||
+    k === 'format cc1' ||
+    k === 'cc1' ||
+    k === 'frcc3' ||
+    k === 'format cc3' ||
+    k === 'cc3' ||
+    k === 'gold_loan'
+  ) {
+    return { firm: 'i4', status: 'i5', authPerson: 'i6', address: 'i7', phone: 'i8', sector: 'i9', nature: 'i10' };
+  }
+  if (k === 'frcc6' || k === 'format cc6' || k === 'cc6') {
+    return { firm: 'i3', status: 'i4', authPerson: 'i5', address: 'i6', sector: 'i7', nature: 'i8', phone: 'i9' };
+  }
+  // frcc2, frcc4, frcc5, frcc7
+  return { firm: 'i3', status: 'i4', authPerson: 'i5', address: 'i6', phone: 'i7', sector: 'i8', nature: 'i9' };
+}
+
 function buildFrccDefaultStructure(templateKey = '') {
+  const k = String(templateKey || '').toLowerCase().trim();
   const fixedMeans = resolveFrccFixedMeansOfFinance(templateKey);
+  const giCells = resolveFrccGeneralInfoCells(templateKey);
+  const giDefault = {};
+  Object.values(giCells).forEach((cell) => {
+    if (cell) giDefault[cell] = '';
+  });
+
+  const isCc6Or7 = k === 'frcc6' || k === 'format cc6' || k === 'cc6' || k === 'frcc7' || k === 'format cc7' || k === 'cc7';
+  if (isCc6Or7) {
+    const isCc7 = k === 'frcc7' || k === 'format cc7' || k === 'cc7';
+    return {
+      'General Information': giDefault,
+      'Means of Finance': {
+        ...fixedMeans,
+        ...(isCc7
+          ? { i13: '', i14: '', h15: '', h16: '', h17: '' }
+          : { i13: '', h14: '', h15: '', h16: '' }),
+      },
+      'Financial Years': {},
+      'Financial Statements': {},
+      'New Asset Schedule': {
+        'Plant and Machinery':                         { items: [], total: 0, loanPct: 0 },
+        'Service Equipment':                           { items: [], total: 0, loanPct: 0 },
+        'Shed, Construction and Civil Works':          { items: [], total: 0, loanPct: 0 },
+        'Land':                                        { items: [], total: 0, loanPct: 0 },
+        'Electrical and Plumbing Items':               { items: [], total: 0, loanPct: 0 },
+        'Electronic Items':                            { items: [], total: 0, loanPct: 0 },
+        'Furniture and Fittings':                      { items: [], total: 0, loanPct: 0 },
+        'Vehicles':                                    { items: [], total: 0, loanPct: 0 },
+        'Live Stock':                                  { items: [], total: 0, loanPct: 0 },
+        'Other Assets (Including Amortisable Assets)': { items: [], total: 0, loanPct: 0 },
+        'Other Assets (Nil Depreciation)':             { items: [], total: 0, loanPct: 0 },
+      },
+      'Gross Assets Opening Balance': {
+        'Plant and Machinery':                         { items: [], total: 0 },
+        'Service Equipment':                           { items: [], total: 0 },
+        'Shed, Construction and Civil Works':          { items: [], total: 0 },
+        'Land':                                        { items: [], total: 0 },
+        'Electrical and Plumbing Items':               { items: [], total: 0 },
+        'Electronic Items':                            { items: [], total: 0 },
+        'Furniture and Fittings':                      { items: [], total: 0 },
+        'Vehicles':                                    { items: [], total: 0 },
+        'Live Stock':                                  { items: [], total: 0 },
+        'Other Assets (Including Amortisable Assets)': { items: [], total: 0 },
+        'Other Assets (Nil Depreciation)':             { items: [], total: 0 },
+      },
+      'Term Loan Finance Details': {},
+      'Prepared By': {
+        bank_name: '',
+        branch_name: '',
+        banker_mobile: '',
+        banker_mail_id: '',
+        cibil_score: '',
+        ...(isCc7
+          ? { i159: 'PARVEZ AND NARAYANA', i160: 'Chartered Accountants', i161: 'Vijayawada', i162: '9014221011' }
+          : { i158: 'PARVEZ AND NARAYANA', i159: 'Chartered Accountants', i160: 'Vijayawada', i161: '9014221011' }),
+        required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
+      },
+    };
+  }
+
   return {
-    'General Information': {
-      i4: '', i5: '', i6: '', i7: '', i8: '', i9: '', i10: '',
-    },
+    'General Information': giDefault,
     'Means of Finance': {
       ...fixedMeans,
       i13: '', h14: '', h15: '', h16: '',
@@ -488,7 +626,7 @@ function buildFrccDefaultStructure(templateKey = '') {
  * FRCC Means of Finance cell layout differs by template:
  *  - frcc1/3/4/6/gold: i13 amount, h14 ROI, h15 processing, h16 %turnover
  *  - frcc2:             i12 amount, h13 ROI, h14 processing, h15 %turnover
- *  - frcc5/7:           i13 amount, h15 ROI, h16 processing (no %turnover cell in same place)
+ *  - frcc5/7:           i14 amount (required top-up requirement), h15 ROI, h16 processing
  *
  * MSME `workingCapital` is a ₹ amount (requirement), NOT "% of turnover".
  * Prefer workingCapital → loan-requirement cell; never put ₹ into the % cell.
@@ -502,10 +640,10 @@ function resolveFrccMeansOfFinanceCells(templateKey) {
     return { amount: 'i12', roi: 'h13', processing: 'h14', turnoverPct: 'h15' };
   }
   if (k === 'frcc5' || k === 'format cc5' || k === 'cc5') {
-    return { amount: 'i13', roi: 'h15', processing: 'h16', turnoverPct: null };
+    return { amount: 'i14', roi: 'h15', processing: 'h16', turnoverPct: null };
   }
   if (k === 'frcc7' || k === 'format cc7' || k === 'cc7') {
-    return { amount: 'i13', roi: 'h15', processing: 'h16', turnoverPct: null };
+    return { amount: 'i14', roi: 'h15', processing: 'h16', turnoverPct: null };
   }
   // frcc1, frcc3, frcc4, frcc6, gold_loan (and unknown FRCC)
   return { amount: 'i13', roi: 'h14', processing: 'h15', turnoverPct: null };
@@ -528,29 +666,35 @@ function mapMsmeLeadToFrccInitialData(lead, templateKey) {
   const labels = [];
   const cells = resolveFrccMeansOfFinanceCells(templateKey);
   const termCells = resolveFrccTermLoanFinanceCells(templateKey);
+  const gi = resolveFrccGeneralInfoCells(templateKey);
 
   const address = buildAddress(lead);
+  const firmName = lead.enterpriseName || lead.applicantName;
 
-  if (lead.applicantName) {
-    data['General Information'].i4 = lead.applicantName;
-    data['General Information'].i6 = lead.applicantName;
-    labels.push('Name of Firm', 'Name of Authorised Person');
+  if (firmName && gi.firm) {
+    data['General Information'][gi.firm] = firmName;
+    labels.push('Name of Firm');
   }
-  if (address) {
-    data['General Information'].i7 = address;
+  if (lead.applicantName && gi.authPerson) {
+    data['General Information'][gi.authPerson] = lead.applicantName;
+    labels.push('Name of Authorised Person');
+  }
+  if (address && gi.address) {
+    data['General Information'][gi.address] = address;
     labels.push('Business Address');
   }
-  if (lead.mobileNumber) {
-    data['General Information'].i8 = lead.mobileNumber;
+  const phone10 = last10Digits(lead.mobileNumber);
+  if (phone10 && gi.phone) {
+    data['General Information'][gi.phone] = phone10;
     labels.push('Contact No.');
   }
-  if (lead.natureOfBusiness) {
-    data['General Information'].i10 = lead.natureOfBusiness;
+  if (lead.natureOfBusiness && gi.nature) {
+    data['General Information'][gi.nature] = lead.natureOfBusiness;
     labels.push('Nature of Business');
   }
   const frccSector = mapMsmeSectorToFrcc(lead.sector);
-  if (frccSector) {
-    data['General Information'].i9 = frccSector;
+  if (frccSector && gi.sector) {
+    data['General Information'][gi.sector] = frccSector;
     labels.push('Sector');
   }
 
@@ -597,6 +741,10 @@ function mapMsmeLeadToFrccInitialData(lead, templateKey) {
   const fixedSchedule = mapAssetsToFrccFixedSchedule(lead, labels);
   if (fixedSchedule) {
     data['Fixed Assets Schedule'] = fixedSchedule;
+    const k = String(templateKey || '').toLowerCase().trim();
+    if (k === 'frcc6' || k === 'format cc6' || k === 'cc6' || k === 'frcc7' || k === 'format cc7' || k === 'cc7') {
+      data['New Asset Schedule'] = fixedSchedule;
+    }
   }
 
   applyReferredByBankToPreparedBy(data, lead, labels);
@@ -653,16 +801,19 @@ function mapMsmeLeadToTermLoanInitialData(lead, templateKey) {
     gi.i17 = lead.applicantName;
     labels.push('Name of Authorised Person', 'Name of Firm');
   }
-  if (lead.mobileNumber) {
-    gi.i9 = lead.mobileNumber;
+  const phone10 = last10Digits(lead.mobileNumber);
+  if (phone10) {
+    gi.i9 = phone10;
     labels.push('Mobile Number');
   }
-  if (lead.aadharNumber) {
-    gi.i10 = lead.aadharNumber;
+  const aadhaar = aadhaarDigits(lead.aadharNumber);
+  if (aadhaar) {
+    gi.i10 = aadhaar;
     labels.push('Aadhaar Number');
   }
-  if (lead.panNumber) {
-    gi.i11 = lead.panNumber;
+  const pan = normalizePan(lead.panNumber);
+  if (pan) {
+    gi.i11 = pan;
     labels.push('PAN Number');
   }
   if (lead.gender) {
@@ -813,8 +964,9 @@ function mapMsmeLeadToGoldLoanInitialData(lead) {
     data['General Information'].i6 = lead.applicantName;
     labels.push('Name of Firm', 'Name of Authorised Person');
   }
-  if (lead.mobileNumber) {
-    data['General Information'].i8 = lead.mobileNumber;
+  const phone10 = last10Digits(lead.mobileNumber);
+  if (phone10) {
+    data['General Information'].i8 = phone10;
     labels.push('Contact No.');
   }
 

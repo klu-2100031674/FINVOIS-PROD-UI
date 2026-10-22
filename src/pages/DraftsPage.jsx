@@ -81,6 +81,8 @@ const DraftsPage = () => {
     'TERM_LOAN_EV_VEHICLE',
     'TERM_LOAN_OTHER_THAN_EV_VEHICLE',
     'TERM_LOAN_JCB_VEHICLE',
+    'TERM_LOAN_TRACTOR_VEHICLE',
+    'TERM_LOAN_TIPPER_VEHICLE',
     'TERM_LOAN_DRONE_VEHICLE',
     'GOLD_LOAN',
   ]), []);
@@ -103,6 +105,8 @@ const DraftsPage = () => {
       TERM_LOAN_EV_VEHICLE: 'EV Commercial Vehicle',
       TERM_LOAN_OTHER_THAN_EV_VEHICLE: 'Other Than EV Commercial Vehicle',
       TERM_LOAN_JCB_VEHICLE: 'JCB Vehicle',
+      TERM_LOAN_TRACTOR_VEHICLE: 'Tractor Vehicle',
+      TERM_LOAN_TIPPER_VEHICLE: 'Tipper Vehicle',
       TERM_LOAN_DRONE_VEHICLE: 'Drone Vehicle',
       GOLD_LOAN: 'Gold Loan',
     };

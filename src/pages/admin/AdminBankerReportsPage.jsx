@@ -32,7 +32,8 @@ const TEMPLATE_OPTIONS = [
   { value: 'SBI_House', label: 'SBI House' },
   { value: 'SBI_Office', label: 'SBI Office' },
   { value: 'SBI_Bussiness', label: 'SBI Business' },
-  { value: 'SBI_IncomeTax', label: 'Income Tax (ITR)' }
+  { value: 'SBI_IncomeTax', label: 'Income Tax (ITR)' },
+  { value: 'BOI_Housing', label: 'BOI Housing' }
 ];
 
 const templateLabel = (code) =>
@@ -235,23 +236,6 @@ const AdminBankerReportsPage = () => {
     }
   };
 
-  const handleBulkReview = async () => {
-    if (selectedIds.length === 0) return;
-    try {
-      setBulkActionLoading(true);
-      const res = await adminExecutiveReportsAPI.bulkReview(selectedIds);
-      const data = res.data?.data;
-      toast.success(res.data?.message || `Moved ${data?.success ?? 0} report(s) to under review`);
-      setSelectedIds([]);
-      fetchReports(pagination.current_page);
-      fetchStats();
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Bulk review failed');
-    } finally {
-      setBulkActionLoading(false);
-    }
-  };
-
   const handleViewPdf = async (report) => {
     setSelectedReport(report);
     setShowPdfViewer(true);
@@ -270,6 +254,23 @@ const AdminBankerReportsPage = () => {
       setShowPdfViewer(false);
     } finally {
       setLoadingPdf(false);
+    }
+  };
+
+  const handleBulkReview = async () => {
+    if (selectedIds.length === 0) return;
+    try {
+      setBulkActionLoading(true);
+      const res = await adminExecutiveReportsAPI.bulkReview(selectedIds);
+      const data = res.data?.data;
+      toast.success(res.data?.message || `Moved ${data?.success ?? 0} report(s) to under review`);
+      setSelectedIds([]);
+      fetchReports(pagination.current_page);
+      fetchStats();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Bulk review failed');
+    } finally {
+      setBulkActionLoading(false);
     }
   };
 
@@ -529,6 +530,7 @@ const AdminBankerReportsPage = () => {
                   Move to Under Review
                 </button>
               )}
+
               {activeTab === 'under_review' && (
                 <>
                   <button
@@ -706,6 +708,7 @@ const AdminBankerReportsPage = () => {
                           {report.is_re_review || report.validation_status === 'rejected' ? 'Re-Review' : 'Start Review'}
                         </button>
                       )}
+
                       <button
                         type="button"
                         onClick={() =>

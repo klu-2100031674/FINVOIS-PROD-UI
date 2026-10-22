@@ -33,10 +33,11 @@ export const fetchDraftByIdV2 = createAsyncThunk(
 
 export const saveDraftV2 = createAsyncThunk(
   'drafts/saveDraftV2',
-  async ({ formType, formData, draftId, currentStep }, { rejectWithValue }) => {
+  async ({ formType, formData, draftId, currentStep, requestId }, { rejectWithValue }) => {
     try {
       const body = { formType, formData };
       if (currentStep !== undefined) body.currentStep = currentStep;
+      if (requestId !== undefined) body.requestId = requestId;
 
       if (draftId) {
         const response = await api.draft.updateDraft(draftId, body);

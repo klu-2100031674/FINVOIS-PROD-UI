@@ -39,7 +39,7 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
     const isAgent = role === 'agent';
     const isExec = isExecutiveRole(role);
 
-    const dash = role === 'customer'
+    const dash = role === 'customer' || role === 'bank_manager'
       ? '/customer/dashboard'
       : isCompanyUser
         ? '/company/user/dashboard'
@@ -152,6 +152,7 @@ const ClientLayout = ({ children, shellClassName = '', shellStyle, wideContent =
                 />
               );
             case 'customer':
+            case 'bank_manager':
               return (
                 <CustomerSidebar
                   sidebarOpen={sidebarOpen}

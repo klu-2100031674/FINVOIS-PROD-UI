@@ -192,6 +192,28 @@ const AIAssistant = ({
                 />
                 <SelectionCard
                     icon={TruckIcon}
+                    title="Tractor Vehicle"
+                    description="Agricultural and commercial tractor vehicles"
+                    onClick={() =>
+                        onSelectTemplate('TERM_LOAN_TRACTOR_VEHICLE', {
+                            presetSector: 'service sector without stock',
+                            lockSector: false,
+                        })
+                    }
+                />
+                <SelectionCard
+                    icon={TruckIcon}
+                    title="Tipper Vehicle"
+                    description="Tipper and heavy haulage vehicles"
+                    onClick={() =>
+                        onSelectTemplate('TERM_LOAN_TIPPER_VEHICLE', {
+                            presetSector: 'service sector without stock',
+                            lockSector: false,
+                        })
+                    }
+                />
+                <SelectionCard
+                    icon={TruckIcon}
                     title="Drone Vehicle"
                     description="Agricultural and commercial drones"
                     onClick={() =>

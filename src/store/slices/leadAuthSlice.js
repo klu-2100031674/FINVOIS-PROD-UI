@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import apiClient, { setAuthToken } from '@/api/api';
+import { apiClient } from '@/api/api';
 
 /**
  * Lead Auth Slice - Lead authentication state
@@ -38,7 +38,7 @@ export const resetLeadPassword = createAsyncThunk(
   'leadAuth/resetPassword',
   async ({ token, newPassword }, { rejectWithValue }) => {
     try {
-      const response = await apiClient.post('/users/reset-password', { resetToken: token, newPassword });
+      const response = await apiClient.post('/leads/reset-password', { token, newPassword });
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || 'Reset failed');
@@ -50,7 +50,7 @@ export const forgotLeadPassword = createAsyncThunk(
   'leadAuth/forgotPassword',
   async ({ email }, { rejectWithValue }) => {
     try {
-      const response = await apiClient.post('/users/forgot-password', { email });
+      const response = await apiClient.post('/leads/forgot-password', { email });
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || 'Request failed');

@@ -45,7 +45,7 @@ export function dashboardHomePath(roleOrUser) {
   if (isExecutiveRole(r)) return executiveDashboardPath(roleOrUser);
   if (r === 'department') return '/department/dashboard';
   if (r === 'customer_service') return '/dashboard';
-  if (r === 'customer') return '/customer/dashboard';
+  if (r === 'customer' || r === 'bank_manager') return '/customer/dashboard';
   return '/dashboard';
 }
 
@@ -62,7 +62,7 @@ export function profilePathForRole(roleOrUser) {
   if (r === 'lead_manager') return '/admin/profile';
   if (r === 'agent') return '/agent/profile';
   if (isExecutiveRole(r)) return `${executiveBasePath(roleOrUser)}/profile`;
-  if (r === 'customer') return '/customer/profile';
+  if (r === 'customer' || r === 'bank_manager') return '/customer/profile';
   return '/profile';
 }
 
@@ -73,7 +73,7 @@ export function myReportsPathForRole(roleOrUser) {
   if (r === 'admin') return '/admin/reports';
   if (r === 'agent') return '/agent/reports';
   if (isExecutiveRole(r)) return executiveReportsPath(roleOrUser);
-  if (r === 'customer') return '/customer/reports';
+  if (r === 'customer' || r === 'bank_manager') return '/customer/reports';
   return '/reports';
 }
 

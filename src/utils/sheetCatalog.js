@@ -12,6 +12,8 @@ const TERM_LOAN_TEMPLATE_IDS = new Set([
   'TERM_LOAN_OTHER_THAN_EV_VEHICLE',
   'TERM_LOAN_JCB_VEHICLE',
   'TERM_LOAN_DRONE_VEHICLE',
+  'TERM_LOAN_TRACTOR_VEHICLE',
+  'TERM_LOAN_TIPPER_VEHICLE',
 ]);
 
 const SHARED_ALIAS_MAP = {
@@ -85,6 +87,20 @@ const TEMPLATE_ALIAS_OVERRIDES = {
     plbs: 'PL BS',
     bep: 'BEP',
   },
+  TERM_LOAN_TRACTOR_VEHICLE: {
+    exp: 'Exp sheet',
+    expsheet: 'Exp sheet',
+    expenses: 'Exp sheet',
+    plbs: 'PL BS',
+    bep: 'BEP',
+  },
+  TERM_LOAN_TIPPER_VEHICLE: {
+    exp: 'Exp sheet',
+    expsheet: 'Exp sheet',
+    expenses: 'Exp sheet',
+    plbs: 'PL BS',
+    bep: 'BEP',
+  },
 };
 
 export const normalizeSheetKey = (name) => {
@@ -106,7 +122,7 @@ const getAliasMap = (templateId) => {
 
 export const isLoanTierIndexSheet = (sheetName) => {
   if (!sheetName || typeof sheetName !== 'string') return false;
-  const normalized = sheetName.trim().toLowerCase().replace(/[\s_\-]+/g, '');
+  const normalized = sheetName.trim().toLowerCase().replace(/[\s_-]+/g, '');
   if (!normalized.startsWith('index')) return false;
   if (normalized.includes('piindex') || normalized.includes('profitability')) return false;
   return true;

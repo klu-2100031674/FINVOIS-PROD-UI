@@ -297,6 +297,8 @@ const FRTermLoanCCForm = ({
       'required_stamp': FRCC_REQUIRED_STAMP_DEFAULT,
       'bank_name': '',
       'branch_name': '',
+      'banker_mobile': '',
+      'banker_mail_id': '',
     },
     'Expected Employment Generation': {
       'i24': '', 'j24': '', // Skilled
@@ -885,7 +887,7 @@ const FRTermLoanCCForm = ({
       let hasItems = false;
       for (const itemKey in categoryItems) {
         const item = categoryItems[itemKey];
-        if (item.description && item.description.trim() !== '' || (item.amount && item.amount !== '' && item.amount !== 0 && item.amount !== '0')) {
+        if (String(item?.description || '').trim() !== '' || (item.amount && item.amount !== '' && item.amount !== 0 && item.amount !== '0')) {
           hasItems = true;
           break;
         }
@@ -921,7 +923,7 @@ const FRTermLoanCCForm = ({
       let hasItems = false;
       for (const itemKey in categoryItems) {
         const item = categoryItems[itemKey];
-        if (item.description && item.description.trim() !== '' || (item.amount && item.amount !== '' && item.amount !== 0 && item.amount !== '0')) {
+        if (String(item?.description || '').trim() !== '' || (item.amount && item.amount !== '' && item.amount !== 0 && item.amount !== '0')) {
           hasItems = true;
           break;
         }
@@ -1386,7 +1388,7 @@ const FRTermLoanCCForm = ({
         if (!hasAmountEntered) return false;
 
         const loanPercentage = loanPercentages[categoryName];
-        return loanPercentage === undefined || loanPercentage === null || String(loanPercentage).trim() === '' || Number(loanPercentage) <= 0;
+        return loanPercentage === undefined || loanPercentage === null || String(loanPercentage).trim() === '' || Number(loanPercentage) < 0 || isNaN(Number(loanPercentage));
       });
 
       if (categoriesMissingLoanPercentage.length > 0) {
@@ -1583,10 +1585,10 @@ const FRTermLoanCCForm = ({
       return (item?.description?.trim() !== '') || (item?.amount && item.amount !== 0);
     });
 
-    // If current category has items, validate loan percentage
+    // If current category has items, validate loan percentage (0% is allowed)
     if (hasItems) {
       const loanPercentage = loanPercentages[currentCategoryName];
-      if (loanPercentage === undefined || loanPercentage === null || loanPercentage === '' || loanPercentage === 0) {
+      if (loanPercentage === undefined || loanPercentage === null || String(loanPercentage).trim() === '' || Number(loanPercentage) < 0 || isNaN(Number(loanPercentage))) {
         setAssetValidationErrors(prev => ({
           ...prev,
           [currentCategoryName]: 'Please enter Loan Percentage (%) before switching to another category.'
@@ -2009,7 +2011,7 @@ const FRTermLoanCCForm = ({
                         <span className="font-semibold text-gray-900">₹{categoryTotal.toLocaleString('en-IN')} Lakhs</span>
                       </div>
                       <div className="flex justify-between items-center text-sm mt-1">
-                        <span className="text-gray-600">Loan Required ({(loanPercentages[activeCategoryName] || 0).toFixed(1)}%):</span>
+                        <span className="text-gray-600">Loan Required ({(parseFloat(loanPercentages[activeCategoryName]) || 0).toFixed(1)}%):</span>
                         <span className="font-bold text-purple-700">
                           ₹{loanAmounts[activeCategoryName] && loanAmounts[activeCategoryName] !== ''
                             ? parseFloat(loanAmounts[activeCategoryName]).toLocaleString('en-IN', { maximumFractionDigits: 2 })
@@ -2114,6 +2116,19 @@ const FRTermLoanCCForm = ({
                   onChange={(e) => handleInputChange('Prepared By', 'branch_name', e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
                   placeholder="Enter branch name"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-gray-800">
+                  Bank Mobile No
+                </label>
+                <input
+                  type="tel"
+                  value={(formData['Prepared By'] && formData['Prepared By']['banker_mobile']) || ''}
+                  onChange={(e) => handleInputChange('Prepared By', 'banker_mobile', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+                  placeholder="Enter bank mobile number"
+                  autoComplete="off"
                 />
               </div>
               <div className="space-y-1.5">

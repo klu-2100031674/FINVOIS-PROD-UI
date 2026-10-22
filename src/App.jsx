@@ -503,7 +503,7 @@ const CustomerRoute = ({ children }) => {
   if (!isAuthenticated) {
     return <Navigate to="/auth?portal=customer" replace />;
   }
-  if (r !== 'customer') {
+  if (r !== 'customer' && r !== 'bank_manager') {
     return <Navigate to={dashboardHomePath(user)} replace />;
   }
   return children;
@@ -649,7 +649,7 @@ const PublicRoute = ({ children }) => {
     return <Navigate to="/dpr-request-dashboard" replace />;
   } else if (normalizedRole === 'msme_service') {
     return <Navigate to="/msme-service/requests" replace />;
-  } else if (normalizedRole === 'customer') {
+  } else if (normalizedRole === 'customer' || normalizedRole === 'bank_manager') {
     return <Navigate to="/customer/dashboard" replace />;
   }
   return <Navigate to="/dashboard" replace />;

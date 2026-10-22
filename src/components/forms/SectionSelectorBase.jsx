@@ -92,6 +92,46 @@ const getVehicleTestData = (fieldName, templateId) => {
       swot_threats: 'Strict DGCA flight zones/permissions; high cost of replacement parts; risk of accidental crashes.',
       competitor_notes: 'Very few licensed drone service providers operate in this district; our DGCA-compliant certified pilot status sets us apart from local hobbyists.',
       market_trend_notes: 'Agri-drones are seeing massive adoption due to labor shortages in spraying operations and government encouragement of precision agriculture.',
+    },
+    TERM_LOAN_TRACTOR_VEHICLE: {
+      nature_of_business: 'Agricultural Machinery, Cultivation & Tractor Rental Services',
+      raw_materials: 'Not applicable for tractor rental services. Consumables include diesel, engine oils, grease, and implement maintenance parts.',
+      machinery_list: 'Agricultural Tractor (45-55 HP) with essential attachments including Rotary Tiller (Rotavator), Cultivator, Disc Plough, and Heavy Haulage Trolley.',
+      machinery_supplier: 'Authorized Farm Equipment Dealership, Vijayawada',
+      total_machinery_cost: '9,50,000',
+      power_load_required: 'Not applicable (Diesel powered agricultural tractor)',
+      inward_transport: 'Tractor self-drive or flatbed trailer transport to agricultural fields and rural project sites.',
+      outward_transport: 'Farmland preparation, ploughing, rotavating, sowing support, and agricultural harvest haulage services.',
+      processing_steps: '1. Field soil inspection and customer requirement assessment -> 2. Implement selection (rotavator/cultivator/plough) -> 3. Farmland preparation and cultivation operations -> 4. Post-harvest farm-to-market transportation -> 5. Daily equipment inspection and scheduled servicing.',
+      experience_details: 'The promoter has 6 years of hands-on experience in agricultural operations, custom hiring center management, and mechanized farming.',
+      experience: '6 years in agricultural machinery and custom hiring services.',
+      key_attributes: 'Strong local farmer network, technical expertise in seasonal soil preparation, and reliable on-time field service.',
+      swot_strengths: 'Multi-purpose versatility across farming seasons; strong year-round rental and haulage demand; high rural utility and low maintenance cost.',
+      swot_weaknesses: 'Seasonal demand peaks during sowing/harvesting; diesel fuel price volatility; exposure to monsoon timing.',
+      swot_opportunities: 'Growing farm mechanization; custom hiring center subsidies; rural infrastructure and farm-to-market road construction logistics.',
+      swot_threats: 'Unseasonal rains affecting crop cycles; local unorganized tractor competition; delay in seasonal farmer settlements.',
+      competitor_notes: 'Competitors offer basic tractor services; differentiation through modern attachments (rotavator/seed drill), punctual execution, and bundled transport.',
+      market_trend_notes: 'Farm mechanization is rapidly growing due to agricultural labor shortages, making custom tractor services indispensable across rural markets.',
+    },
+    TERM_LOAN_TIPPER_VEHICLE: {
+      nature_of_business: 'Construction Logistics, Bulk Material Transport & Tipper Truck Operations',
+      raw_materials: 'Not applicable for transport services. Consumables include diesel, engine oil, hydraulic fluid for tipping gear, and heavy-duty radial tyres.',
+      machinery_list: 'Heavy Commercial Multi-Axle Tipper Truck (16-28 Ton GVW) with heavy-duty hydraulic tipping body.',
+      machinery_supplier: 'Authorized Commercial Vehicle Dealership, Vijayawada',
+      total_machinery_cost: '34,00,000',
+      power_load_required: 'Not applicable (Diesel powered commercial vehicle)',
+      inward_transport: 'Direct highway drive from dealership/depot to designated mining, quarry, or construction logistics sites.',
+      outward_transport: 'Bulk haulage of sand, blue metal aggregates, earth, gravel, and construction materials.',
+      processing_steps: '1. Loading at quarry/sand reach via excavator -> 2. Weighbridge clearance and documentation -> 3. Bulk transport to destination -> 4. Hydraulic tipping and unloading at project site -> 5. Trip log recording and preventive maintenance.',
+      experience_details: 'The promoter has 8 years of operational experience in commercial vehicle fleet management, civil contracts, and bulk material transport logistics.',
+      experience: '8 years in commercial logistics and bulk aggregate haulage.',
+      key_attributes: 'Established contracts with quarry owners, ready builder clientele, and deep knowledge of regional transport routes and mining regulations.',
+      swot_strengths: 'Consistent high-volume demand from infrastructure projects; modern reliable hydraulics; established transport contracts with fixed trip tariffs.',
+      swot_weaknesses: 'High capital investment and tyre wear-and-tear; dependency on diesel price fluctuations; toll and interstate permit costs.',
+      swot_opportunities: 'National and state highway expansions; industrial corridor development; urban housing and commercial infrastructure boom.',
+      swot_threats: 'Regulatory changes in mining permits; temporary sand/quarry monsoon bans; intense local fleet competition.',
+      competitor_notes: 'Competitors operate aging fleets; differentiation through GPS tracking, disciplined trip schedules, zero material pilferage, and well-maintained vehicles.',
+      market_trend_notes: 'Infrastructure and highway projects demand high-capacity tippers for rapid material turnaround, making modern commercial tippers highly sought after.',
     }
   };
 
@@ -418,7 +458,8 @@ const SectionSelectorBase = ({
         const cleaned = String(value).replace(/[₹,\s]/g, '').trim();
         const numeric = Number(cleaned);
         if (!Number.isFinite(numeric)) return String(value);
-        const rupees = Math.round(numeric * 100000);
+        // If already in Rupees (e.g. FRCC templates where amount is >= 10,000), do not multiply
+        const rupees = numeric >= 10000 ? Math.round(numeric) : Math.round(numeric * 100000);
         return `₹ ${rupees.toLocaleString('en-IN')}`;
       };
 
@@ -917,14 +958,15 @@ const SectionSelectorBase = ({
     }
 
     if (field.type === 'statutory_list') {
-      const listData = currentSectionData[field.name] || [];
+      const listData = Array.isArray(currentSectionData[field.name]) ? currentSectionData[field.name] : [];
+      const statutoryItems = Array.isArray(field.items) ? field.items : [];
       return (
         <div key={field.name} className="space-y-4">
           <div className="bg-emerald-600 text-white px-4 py-3 rounded-t-md font-semibold text-sm shadow-sm">
              Licenses, Clearances, Approvals, Consents and NOCs (Pre Establishment and Operation) :
           </div>
           <div className="border border-emerald-100 rounded-b-md p-4 space-y-3 bg-white shadow-sm">
-            {field.items.map((itemLabel, idx) => {
+            {statutoryItems.map((itemLabel, idx) => {
               const itemData = listData.find(d => d.name === itemLabel) || { name: itemLabel, checked: false, description: '' };
               const isChecked = itemData.checked;
 
@@ -991,7 +1033,7 @@ const SectionSelectorBase = ({
     }
 
     if (field.type === 'group_list') {
-      const items = currentSectionData[field.name] || [];
+      const items = Array.isArray(currentSectionData[field.name]) ? currentSectionData[field.name] : [];
 
       // ── Special renderer for Implementation Timeline milestones ──────────
       if (sectionId === 'implementation_timeline' && field.name === 'milestones') {

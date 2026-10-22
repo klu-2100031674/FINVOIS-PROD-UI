@@ -133,6 +133,39 @@ const templates = [
       'Type of Report': 'CC',
     },
   },
+  {
+    name: 'JCB Vehicle',
+    id: 'TERM_LOAN_JCB_VEHICLE',
+    description: 'Term Loan Application for JCB Vehicles',
+    version: '1.0.0',
+    author: 'CA',
+    properties: {
+      'No Of Years': 7,
+      'Type of Report': 'TERM_LOAN',
+    },
+  },
+  {
+    name: 'Tractor Vehicle',
+    id: 'TERM_LOAN_TRACTOR_VEHICLE',
+    description: 'Term Loan Application for Tractor Vehicles',
+    version: '1.0.0',
+    author: 'CA',
+    properties: {
+      'No Of Years': 7,
+      'Type of Report': 'TERM_LOAN',
+    },
+  },
+  {
+    name: 'Tipper Vehicle',
+    id: 'TERM_LOAN_TIPPER_VEHICLE',
+    description: 'Term Loan Application for Tipper Vehicles',
+    version: '1.0.0',
+    author: 'CA',
+    properties: {
+      'No Of Years': 7,
+      'Type of Report': 'TERM_LOAN',
+    },
+  },
 ];
 
 /**

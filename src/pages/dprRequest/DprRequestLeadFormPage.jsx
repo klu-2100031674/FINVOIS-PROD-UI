@@ -12,6 +12,8 @@ import { useDispatch } from 'react-redux';
 import { Send, ChevronDown, Plus, Trash2, CheckSquare, Square } from 'lucide-react';
 import apiClient, { apiErrorMessage } from '@/api/apiClient';
 import { persistCustomerLeadSession } from '@/utils/persistCustomerLeadSession';
+import { customerSessionCoversLeadForm } from '@/utils/customerSessionForm';
+import useAuth from '@/hooks/useAuth';
 import LeadFormOtpVerify from '@/components/common/LeadFormOtpVerify';
 import WcOdTypeChart from '@/components/common/WcOdTypeChart';
 import { mapDprRequestFormToSubmittedData, DPR_REQUEST_CUSTOM_ROUTE } from '@/constants/dprRequestSubmittedData';
@@ -127,6 +129,7 @@ function FormField({ label, required, optional, children }) {
 const DprRequestLeadFormPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { user, isAuthenticated } = useAuth();
   const [form, setForm] = useState(INITIAL_FORM);
   const [language, setLanguage] = useState('en');
   const [submitting, setSubmitting] = useState(false);
@@ -374,27 +377,39 @@ const DprRequestLeadFormPage = () => {
 
     setPendingPayload(payload);
     setError('');
+    if (customerSessionCoversLeadForm(user, isAuthenticated, form)) {
+      await handleVerifiedSubmit({
+        payloadOverride: payload,
+        useSession: true,
+        email: form.email,
+        phone: form.mobileNumber,
+      });
+      return;
+    }
     setStep('verify');
   };
 
-  const handleVerifiedSubmit = async ({ type, value, otp, email, phone }) => {
-    if (!pendingPayload) return;
+  const handleVerifiedSubmit = async ({ type, value, otp, email, phone, payloadOverride, useSession } = {}) => {
+    const basePayload = payloadOverride || pendingPayload;
+    if (!basePayload) return;
     setSubmitting(true);
     setError('');
     try {
       const payload = {
-        ...pendingPayload,
-        govt_builtin_email: type === 'email' ? email : (pendingPayload.govt_builtin_email || email || ''),
-        email: email || pendingPayload.email || '',
-        mobileNumber: type === 'phone' ? value : (phone || pendingPayload.mobileNumber || ''),
-        govt_builtin_phone: type === 'phone' ? value : (phone || pendingPayload.govt_builtin_phone || ''),
+        ...basePayload,
+        govt_builtin_email: type === 'email' ? email : (basePayload.govt_builtin_email || email || ''),
+        email: email || basePayload.email || '',
+        mobileNumber: type === 'phone' ? value : (phone || basePayload.mobileNumber || ''),
+        govt_builtin_phone: type === 'phone' ? value : (phone || basePayload.govt_builtin_phone || ''),
       };
       const fd = new FormData();
       fd.append('customRoute', DPR_REQUEST_CUSTOM_ROUTE);
       fd.append('submittedData', JSON.stringify(payload));
-      fd.append('otpType', type);
-      fd.append('otpValue', value);
-      fd.append('otp', otp);
+      if (!useSession) {
+        fd.append('otpType', type);
+        fd.append('otpValue', value);
+        fd.append('otp', otp);
+      }
       pendingAttachments.forEach((file) => fd.append('files', file));
 
       const res = await apiClient.post('/customer/dpr-request-form-register', fd, {

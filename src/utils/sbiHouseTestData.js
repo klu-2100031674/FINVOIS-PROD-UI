@@ -6,7 +6,8 @@ export function getSbiHouseTestData(user) {
     receipt_date: '17-04-2026',
     report_date: '18-04-2026',
     rlms_number: '501260420053255',
-    reference_number: '1368 / 501260420053255',
+    report_id: '1509',
+    branch_name: 'Gollapudi Branch',
     applicant_name: 'AMJURI SATYANARAYANA',
     co_applicant_name: 'AMJURI KANAKA DURGA BHAVANI',
     address:

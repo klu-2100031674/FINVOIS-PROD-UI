@@ -40,7 +40,7 @@ function emptyForm(user) {
     applicant_designation: '',
     working_since: '',
     person_contacted: '',
-    total_service: '',
+
     person_contact_is_applicant: 'yes',
     office_floor: 'Ground+1st Flr',
     field_executive_intro: 'VISITED THE GIVEN ADDRESS AND MET THE APPLICANT.',
@@ -91,7 +91,7 @@ const SbiOfficeVerificationForm = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === 'business_note') {
-      const sanitized = value.replace(/\r?\n|\r/g, '').slice(0, 200);
+      const sanitized = value.replace(/\r?\n|\r/g, '');
       setForm((prev) => ({ ...prev, [name]: sanitized }));
       return;
     }
@@ -166,6 +166,18 @@ const SbiOfficeVerificationForm = () => {
         business_note: `WE TOOK APPLICANT  APRIL 2026 PAYSLIP  AS A SUPPORTING DOCUMENT OF APPLICANT EMPLOYMENT CONFIRMATION IN BERGER PAINTS INDIA LIMITED,AND SAME ARE ATTACHED.`
       }));
       toast.success('Loaded Predefined Wording 3');
+    } else if (val === 'opt4') {
+      setForm((prev) => ({
+        ...prev,
+        business_note: `WE TOOK APPLICANT EMPLOYEE ID AS A SUPPORTING DOCUMENT OF APPLICANT EMPLOYMENT CONFIRMATION IN KOTAK MAHINDRA BANK LIMITED, AND SAME ARE ATTACHED.`
+      }));
+      toast.success('Loaded Predefined Wording 4');
+    } else if (val === 'opt5') {
+      setForm((prev) => ({
+        ...prev,
+        business_note: `WE TOOK APPLICANT MAY-2026 PAYSLIP AS A SUPPORTING DOCUMENT OF APPLICANT EMPLOYMENT CONFIRMATION IN FLAIR WRITING INDUSTRIES LIMITED,AND SAME ARE ATTACHED.`
+      }));
+      toast.success('Loaded Predefined Wording 5');
     }
   };
 
@@ -208,10 +220,6 @@ const SbiOfficeVerificationForm = () => {
     e.preventDefault();
     if (!form.applicant_name?.trim()) {
       toast.error('Applicant name is required');
-      return;
-    }
-    if ((form.business_note || '').length > 200) {
-      toast.error('Note should be a maximum of 200 characters');
       return;
     }
     if (/\r?\n/.test(form.business_note || '')) {
@@ -270,6 +278,8 @@ const SbiOfficeVerificationForm = () => {
             <option value="opt1">1. Office Met the Applicant </option>
             <option value="opt2">2. Office Confirmed by Colleague </option>
             <option value="opt3">3. Office Confirmed by Colleague & Phone/House </option>
+            <option value="opt4">4. Employee ID</option>
+            <option value="opt5">5. Flair Writing</option>
           </select>
         </div>
 
@@ -343,22 +353,7 @@ const SbiOfficeVerificationForm = () => {
                 className="mb-0"
                 inputClassName={EXECUTIVE_INPUT_CLASS}
               />
-              <Input
-                label="Net salary"
-                name="net_salary"
-                value={form.net_salary}
-                onChange={handleChange}
-                className="mb-0"
-                inputClassName={EXECUTIVE_INPUT_CLASS}
-              />
-              <Input
-                label="Total service"
-                name="total_service"
-                value={form.total_service}
-                onChange={handleChange}
-                className="mb-0"
-                inputClassName={EXECUTIVE_INPUT_CLASS}
-              />
+
               <YesNoSelect
                 label="Person contacted is applicant"
                 name="person_contact_is_applicant"
@@ -413,11 +408,19 @@ const SbiOfficeVerificationForm = () => {
             />
             <FormFieldGrid>
               <Input
-                label="Applicant designation"
+                label="APPLICANT IS WORKING AS A"
                 name="applicant_designation"
                 value={form.applicant_designation}
                 onChange={handleChange}
                 className="mb-0 md:col-span-2"
+                inputClassName={EXECUTIVE_INPUT_CLASS}
+              />
+              <Input
+                label="APPLICANT IS EARNING"
+                name="net_salary"
+                value={form.net_salary}
+                onChange={handleChange}
+                className="mb-0"
                 inputClassName={EXECUTIVE_INPUT_CLASS}
               />
               <div className="md:col-span-2">
@@ -430,16 +433,9 @@ const SbiOfficeVerificationForm = () => {
                   className="mb-0"
                 />
               </div>
+
               <Input
-                label="Net salary"
-                name="net_salary"
-                value={form.net_salary}
-                onChange={handleChange}
-                className="mb-0"
-                inputClassName={EXECUTIVE_INPUT_CLASS}
-              />
-              <Input
-                label="Salary bank"
+                label="APPLICANT SALARY IS CREDITED TO"
                 name="salary_credited_bank"
                 value={form.salary_credited_bank}
                 onChange={handleChange}
@@ -447,7 +443,7 @@ const SbiOfficeVerificationForm = () => {
                 inputClassName={EXECUTIVE_INPUT_CLASS}
               />
               <Input
-                label="Employment confirmed by"
+                label="APPLICANT EMPLOYMENT WAS CONFIRMED BY"
                 name="employment_confirmed_by"
                 value={form.employment_confirmed_by}
                 onChange={handleChange}
@@ -470,18 +466,12 @@ const SbiOfficeVerificationForm = () => {
                   onChange={handleChange}
                   rows={4}
                   className="mb-0"
-                  maxLength={200}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
                     }
                   }}
                 />
-                <p
-                  className={`text-xs mt-1 ${(form.business_note || '').length > 200 ? 'text-red-500 font-semibold' : 'text-gray-500'}`}
-                >
-                  Characters: {(form.business_note || '').length} / 200
-                </p>
                 <div className="mt-3 flex items-center gap-3">
                   <Button type="button" variant="outline" disabled={optimizingNote} onClick={handleOptimizeBusinessNote}>
                     {optimizingNote ? 'Optimizing…' : 'Optimize'}

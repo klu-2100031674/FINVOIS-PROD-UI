@@ -27,7 +27,8 @@ import {
   Loader2,
   Settings,
   Building2,
-  Trash2
+  Trash2,
+  Download
 } from 'lucide-react';
 import { AgentLayout } from '../../components/layouts';
 import ClientLayout from '../../components/layouts/ClientLayout';
@@ -68,6 +69,8 @@ const getReportNatureOfBusiness = (report) => {
     'TERM_LOAN_EV_VEHICLE': 'i15',
     'TERM_LOAN_OTHER_THAN_EV_VEHICLE': 'i15',
     'TERM_LOAN_JCB_VEHICLE': 'i15',
+    'TERM_LOAN_TRACTOR_VEHICLE': 'i15',
+    'TERM_LOAN_TIPPER_VEHICLE': 'i15',
     'TERM_LOAN_DRONE_VEHICLE': 'i15',
   };
 
@@ -107,6 +110,8 @@ const isFrccReport = (templateId) => {
     'TERM_LOAN_EV_VEHICLE',
     'TERM_LOAN_OTHER_THAN_EV_VEHICLE',
     'TERM_LOAN_JCB_VEHICLE',
+    'TERM_LOAN_TRACTOR_VEHICLE',
+    'TERM_LOAN_TIPPER_VEHICLE',
     'TERM_LOAN_DRONE_VEHICLE'
   ].includes(String(templateId).trim().toUpperCase());
 };

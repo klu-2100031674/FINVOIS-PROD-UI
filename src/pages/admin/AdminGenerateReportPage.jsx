@@ -8,7 +8,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTemplates, selectTemplates, selectTemplateLoading } from '../../store/slices/templateSlice';
 import { clearGeneratedExcel, clearFormData, clearRelatedDocuments } from '../../store/slices/reportSlice';
-import { getTemplateById } from '../../utils/templateMetadata';
+import { getTemplateById, getTemplates } from '../../utils/templateMetadata';
 import { AdminLayout } from '../../components/layouts';
 import { Loading } from '../../components/common';
 import {
@@ -20,14 +20,15 @@ import {
   Shield
 } from 'lucide-react';
 
-const GOLD_LOAN_ID = 'GOLD_LOAN';
-
-function ensureGoldLoanTemplate(templates) {
+function ensureCoreAdminTemplates(templates) {
   const list = Array.isArray(templates) ? [...templates] : [];
-  const hasGoldLoan = list.some((t) => String(t?.id || '').toUpperCase() === GOLD_LOAN_ID);
-  if (!hasGoldLoan) {
-    const fallback = getTemplateById(GOLD_LOAN_ID);
-    if (fallback) list.push(fallback);
+  const existingIds = new Set(list.map((t) => String(t?.id || '').toUpperCase()));
+  const allStatic = getTemplates();
+  for (const staticTpl of allStatic) {
+    if (!existingIds.has(String(staticTpl.id).toUpperCase())) {
+      list.push(staticTpl);
+      existingIds.add(String(staticTpl.id).toUpperCase());
+    }
   }
   return list;
 }
@@ -63,7 +64,7 @@ const AdminGenerateReportPage = () => {
     navigate(`/generate?${params.toString()}`);
   };
 
-  const templatesWithGoldLoan = useMemo(() => ensureGoldLoanTemplate(templates), [templates]);
+  const templatesWithGoldLoan = useMemo(() => ensureCoreAdminTemplates(templates), [templates]);
 
   const filteredTemplates = templatesWithGoldLoan.filter((template) => {
     const matchesSearch = template.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||

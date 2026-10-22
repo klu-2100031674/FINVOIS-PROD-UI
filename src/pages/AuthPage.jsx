@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { useAuth } from '../hooks';
 import { setLeadAuth } from '../store/slices/leadAuthSlice';
@@ -17,10 +17,12 @@ import { normalizeRoleFromUser, normalizeUserRole } from '../utils/normalizeUser
 import { resolveSignupApprovalStatus } from '../utils/signupApproval';
 import { getVmStartUrl } from '../utils/env';
 import { shouldSkipVmOnLogin } from '../utils/tunnel';
+import { dashboardHomePath } from '../utils/routePaths';
 import { clearMsmeSetupDismissed } from './msmeService/MsmeSetupModal';
 
 const AuthPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
   const { login, googleLogin, register, logout, loading: authLoading, error, clearError } = useAuth();
@@ -242,6 +244,12 @@ const AuthPage = () => {
 
       toast.success('Login successful!');
 
+      const returnTo = location.state?.from;
+      if (typeof returnTo === 'string' && returnTo.startsWith('/')) {
+        navigate(returnTo, { replace: true });
+        return;
+      }
+
       if (userRole === 'company_user') {
         navigate('/company/user/dashboard', { replace: true });
       } else if (userRole === 'company_admin') {
@@ -260,7 +268,7 @@ const AuthPage = () => {
         clearMsmeSetupDismissed();
         navigate('/msme-service/requests', { replace: true });
       } else {
-        navigate('/dashboard', { replace: true });
+        navigate(dashboardHomePath({ role: userRole }) || '/dashboard', { replace: true });
       }
     } catch (err) {
       console.error('Google login error:', err);
@@ -522,6 +530,12 @@ const ensureVmReady = async () => {
 
       toast.success('Login successful!');
 
+      const returnTo = location.state?.from;
+      if (typeof returnTo === 'string' && returnTo.startsWith('/')) {
+        navigate(returnTo, { replace: true });
+        return;
+      }
+
       if (userRole === 'company_user') {
         navigate('/company/user/dashboard', { replace: true });
       } else if (userRole === 'company_admin') {
@@ -542,7 +556,7 @@ const ensureVmReady = async () => {
       } else if (userRole === 'department') {
         navigate('/department/dashboard', { replace: true });
       } else {
-        navigate('/dashboard', { replace: true });
+        navigate(dashboardHomePath({ role: userRole }) || '/dashboard', { replace: true });
       }
 
     } catch (err) {
@@ -820,14 +834,14 @@ const ensureVmReady = async () => {
                   </Link>
                 </p>
 
-                {/* <div className="relative my-6">
+                <div className="relative my-6">
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-gray-200"></div>
                   </div>
                   <div className="relative flex justify-center text-sm">
                     <span className="px-3 bg-white text-gray-500 font-['Inter']">Or continue with</span>
                   </div>
-                </div> */}
+                </div>
 
                 <div id="googleSignInButtonLogin" className="w-full flex justify-center"></div>
               </form>
@@ -1286,14 +1300,14 @@ const ensureVmReady = async () => {
 
                   {!otpSent && (
                     <>
-                      {/* <div className="relative my-5">
+                      <div className="relative my-5">
                         <div className="absolute inset-0 flex items-center">
                           <div className="w-full border-t border-gray-200"></div>
                         </div>
                         <div className="relative flex justify-center text-sm">
                           <span className="px-3 bg-white text-gray-500 font-['Inter']">Or continue with</span>
                         </div>
-                      </div> */}
+                      </div>
 
                       <div className="flex flex-col items-center justify-center space-y-2 min-h-[56px]">
                         <div id="googleSignInButtonLoginCustomer" className="w-full flex justify-center"></div>

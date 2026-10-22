@@ -414,7 +414,34 @@ export function BoiApplicantTabsBar({
             </button>
           );
         })}
+        {/* Applicant count is fixed via the Start Page "Number of Applicants" selector,
+            so the inline add/remove co-applicant controls are disabled here per request.
+        {onAdd && (
+          <button
+            type="button"
+            onClick={onAdd}
+            disabled={!canAdd}
+            className="shrink-0 snap-start inline-flex items-center gap-1.5 min-h-[44px] px-3.5 py-2 rounded-lg border border-dashed border-purple-300 bg-purple-50/50 text-[#7e22ce] text-xs font-semibold hover:bg-purple-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <UserPlus className="h-3.5 w-3.5" />
+            Add Co-Applicant
+          </button>
+        )}
+        */}
       </div>
+
+      {/*
+      {onRemove && activeApplicantId !== 'primary' && (
+        <button
+          type="button"
+          onClick={() => onRemove(activeApplicantId)}
+          className="inline-flex items-center gap-1.5 min-h-[44px] px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 text-xs font-semibold hover:bg-red-100 transition-colors shrink-0"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          Remove Co-Applicant
+        </button>
+      )}
+      */}
     </div>
   );
 }

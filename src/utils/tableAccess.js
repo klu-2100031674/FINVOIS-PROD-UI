@@ -10,7 +10,6 @@ export const TABLE_ACCESS_ELIGIBLE_ROLES = [
   'company_admin',
   'agent',
   'customer',
-  'customer_service',
 ];
 
 export function isTableAccessEligibleRole(role) {

@@ -59,10 +59,14 @@ const ServiceWithoutStockSectionSelector = (props) => {
     tId === 'TERM_LOAN_OTHER_THAN_EV_VEHICLE' ||
     tId === 'TERM_LOAN_JCB_VEHICLE' ||
     tId === 'TERM_LOAN_DRONE_VEHICLE' ||
+    tId === 'TERM_LOAN_TRACTOR_VEHICLE' ||
+    tId === 'TERM_LOAN_TIPPER_VEHICLE' ||
     tId.includes('EV_VEHICLE') ||
     tId.includes('OTHER_THAN_EV') ||
     tId.includes('JCB_VEHICLE') ||
-    tId.includes('DRONE_VEHICLE');
+    tId.includes('DRONE_VEHICLE') ||
+    tId.includes('TRACTOR') ||
+    tId.includes('TIPPER');
 
   let config = SECTION_CONFIG;
   if (isVehicleTemplate) {

@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import ClientLayout from '../components/layouts/ClientLayout';
 import api, { apiErrorMessage } from '../api/apiClient';
 import toast from 'react-hot-toast';
-import { ChevronRight, ClipboardList, Download, FileQuestion, Search, X } from 'lucide-react';
-import CustomerPayNowButton from './CustomerPayNowButton';
+import { ChevronRight, ClipboardList, Download, FileQuestion, Plus, Search, X } from 'lucide-react';
+import CustomerPayNowButton, { ForwardToBankManagerButton } from './CustomerPayNowButton';
 import {
   canDownloadPdf,
   needsPayment,
@@ -153,6 +153,14 @@ const CustomerDepartmentRequestsPage = () => {
               Track status, documents, and chat for forms you submitted to government departments.
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => navigate('/dpr-request')}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-purple-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-purple-800"
+          >
+            <Plus size={16} />
+            New DPR
+          </button>
         </div>
 
         {!loading && requests.length > 0 && (
@@ -261,12 +269,20 @@ const CustomerDepartmentRequestsPage = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           {showPay ? (
-                            <CustomerPayNowButton
-                              request={req}
-                              onPaid={() => {
-                                refresh().catch(() => {});
-                              }}
-                            />
+                            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                              <ForwardToBankManagerButton
+                                request={req}
+                                onForwarded={() => {
+                                  refresh().catch(() => {});
+                                }}
+                              />
+                              <CustomerPayNowButton
+                                request={req}
+                                onPaid={() => {
+                                  refresh().catch(() => {});
+                                }}
+                              />
+                            </div>
                           ) : showPdf ? (
                             <button
                               type="button"

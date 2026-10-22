@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { FlaskConical } from 'lucide-react';
+import { FlaskConical, Upload, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks';
 import { useExecutiveDraft } from '../../hooks/useExecutiveDraft';
@@ -41,17 +41,50 @@ const NEIGHBOUR_OPTIONS = [
   { value: 'Neutral', label: 'Neutral' }
 ];
 
+const FLAT_OWNERSHIP_OPTIONS = [
+  { value: 'Owned', label: 'Owned' },
+  { value: 'Rented', label: 'Rented' }
+];
+
+const DURATION_OF_STAY_OPTIONS = Array.from({ length: 50 }, (_, i) => {
+  const years = i + 1;
+  const label = years === 1 ? '1 year' : `${years} years`;
+  return { value: label, label };
+});
+
+const FAMILY_MEMBERS_OPTIONS = Array.from({ length: 26 }, (_, i) => ({
+  value: String(i),
+  label: String(i)
+}));
+
+const DEPENDENTS_OPTIONS = Array.from({ length: 16 }, (_, i) => ({
+  value: String(i),
+  label: String(i)
+}));
+
+const HOUSE_TYPE_OPTIONS = [
+  { value: 'Joint Property', label: 'Joint Property' },
+  { value: 'Applicant Own Property', label: 'Applicant Own Property' },
+  { value: 'Co-Applicant Own Property', label: 'Co-Applicant Own Property' },
+  { value: 'Relatives Property', label: 'Relatives Property' },
+  { value: 'Brother Property', label: 'Brother Property' },
+  { value: 'Sister Property', label: 'Sister Property' }
+];
+
 function emptyForm(user) {
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   return {
+    num_applicants: '2',
     receipt_date: formatDdMmYyyy(yesterday),
     report_date: formatDdMmYyyy(today),
     rlms_number: '',
-    reference_number: '',
+    report_id: '',
+    branch_name: '',
     applicant_name: '',
     co_applicant_name: '',
+    co_applicant_2_name: '',
     address: '',
     locality_surrounding: '',
     accessibility: '',
@@ -76,6 +109,7 @@ function emptyForm(user) {
     neighbour_comments: '',
     applicant_mobile: '',
     co_applicant_mobile: '',
+    co_applicant_2_mobile: '',
     field_executive_intro: '',
     field_executive_comment_items: [],
     house_type: '',
@@ -84,6 +118,7 @@ function emptyForm(user) {
     total_family_members: '',
     dependents_applicant: '',
     dependents_co_applicant: '',
+    dependents_co_applicant_2: '',
     document_status: 'GIVEN DOCUMENTS WERE CHECKED, STANDARD OF LIVING IS SATISFACTORY,',
     residence_confirmation: ' APPLICANT STAY CONFIRMED BY         (APPLICANT NEIGHBOUR)',
     residence_note: '',
@@ -136,6 +171,54 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
     isBusinessTemplate ? emptyBusinessForm(user) : emptyForm(user)
   );
   const [photos, setPhotos] = useState([]);
+  const [sectionPhotos, setSectionPhotos] = useState({
+    status: [],
+    gas_bill: [],
+    aadhar_card: [],
+    electricity_bill: [],
+    landline_bill: [],
+    internet_bill: [],
+    license: [],
+    bank_statements: [],
+    ration_card: []
+  });
+
+  const handleSectionPhotos = (sectionKey, maxCount) => (e) => {
+    const selected = Array.from(e.target.files || []);
+    let oversized = 0;
+    const valid = selected.filter(file => {
+      if (file.size > 4 * 1024 * 1024) {
+        oversized++;
+        return false;
+      }
+      return true;
+    });
+    
+    if (oversized > 0) {
+      toast.error(`Each image must be 4MB or less (${oversized} file(s) skipped)`);
+    }
+
+    setSectionPhotos((prev) => {
+      const existing = prev[sectionKey] || [];
+      const combined = [...existing, ...valid].slice(0, maxCount);
+      return {
+        ...prev,
+        [sectionKey]: combined
+      };
+    });
+    e.target.value = '';
+  };
+
+  const handleRemoveSectionPhoto = (sectionKey, idx) => {
+    setSectionPhotos((prev) => {
+      const existing = prev[sectionKey] || [];
+      return {
+        ...prev,
+        [sectionKey]: existing.filter((_, i) => i !== idx)
+      };
+    });
+  };
+
   const [generating, setGenerating] = useState(false);
   const [lastGenerated, setLastGenerated] = useState(null);
   const [optimizingIntro, setOptimizingIntro] = useState(false);
@@ -161,15 +244,21 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
     onRestore: onRestoreDraft
   });
 
+  const currentHouseType = form.house_type || '';
+  const displayHouseTypeOptions = HOUSE_TYPE_OPTIONS.slice();
+  if (currentHouseType && !HOUSE_TYPE_OPTIONS.some(opt => opt.value.toLowerCase() === currentHouseType.toLowerCase())) {
+    displayHouseTypeOptions.unshift({ value: currentHouseType, label: currentHouseType });
+  }
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === 'field_executive_intro') {
-      const sanitized = value.replace(/\r?\n|\r/g, '').slice(0, 300);
+      const sanitized = value.replace(/\r?\n|\r/g, '');
       setForm((prev) => ({ ...prev, [name]: sanitized }));
       return;
     }
     if (name === 'residence_note') {
-      const sanitized = value.replace(/\r?\n|\r/g, '').slice(0, 420);
+      const sanitized = value.replace(/\r?\n|\r/g, '');
       setForm((prev) => ({ ...prev, [name]: sanitized }));
       return;
     }
@@ -198,33 +287,64 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
 
   const getCommentItems = (f) => {
     const items = [];
+    const numApps = f.num_applicants || '2';
+    
+    const replaceBoth = (str) => {
+      if (numApps === '1') {
+        return str
+          .replace(/BOTH APPLICANT'S/g, "APPLICANT'S")
+          .replace(/BOTH APPLICANTS'/g, "APPLICANT'S")
+          .replace(/BOTH APPLICANTS/g, "APPLICANT")
+          .replace(/BOTH APPLICANT/g, "APPLICANT");
+      } else if (numApps === '3') {
+        return str
+          .replace(/BOTH APPLICANT'S/g, "THREE APPLICANTS'")
+          .replace(/BOTH APPLICANTS'/g, "THREE APPLICANTS'")
+          .replace(/BOTH APPLICANTS/g, "THREE APPLICANTS")
+          .replace(/BOTH APPLICANT/g, "THREE APPLICANTS");
+      }
+      return str;
+    };
+
     if (f.house_type) {
-      items.push(`BOTH APPLICANT'S HOUSE TYPE : ${f.house_type}`);
+      items.push(replaceBoth(`BOTH APPLICANT'S HOUSE TYPE : ${f.house_type}`));
     }
     if (f.flat_ownership) {
-      items.push(`BOTH APPLICANT'S GIVEN FLAT OWNERSHIP: ${f.flat_ownership}`);
+      items.push(replaceBoth(`BOTH APPLICANT'S GIVEN FLAT OWNERSHIP: ${f.flat_ownership}`));
     }
     if (f.duration_of_stay) {
-      items.push(`BOTH APPLICANT'S DURATION OF STAY AT GIVEN ADDRESS : ${f.duration_of_stay}`);
+      items.push(replaceBoth(`BOTH APPLICANT'S DURATION OF STAY AT GIVEN ADDRESS : ${f.duration_of_stay}`));
     }
     if (f.total_family_members) {
-      items.push(`BOTH APPLICANT'S TOTAL FAMILY MEMBERS : ${f.total_family_members}`);
+      items.push(replaceBoth(`BOTH APPLICANT'S TOTAL FAMILY MEMBERS : ${f.total_family_members}`));
     }
-    if (f.dependents_applicant || f.dependents_co_applicant) {
-      items.push(`NUMBER OF DEPENDENTS : APPLICANT : ${f.dependents_applicant || ''}`);
-      items.push(`CO-APPLICANT : ${f.dependents_co_applicant || ''}`);
+    if (numApps === '1') {
+      if (f.dependents_applicant) {
+        items.push(`NUMBER OF DEPENDENTS : APPLICANT : ${f.dependents_applicant || ''}`);
+      }
+    } else if (numApps === '3') {
+      if (f.dependents_applicant || f.dependents_co_applicant || f.dependents_co_applicant_2) {
+        items.push(`NUMBER OF DEPENDENTS : APPLICANT : ${f.dependents_applicant || ''}`);
+        items.push(`CO-APPLICANT 1 : ${f.dependents_co_applicant || ''}`);
+        items.push(`CO-APPLICANT 2 : ${f.dependents_co_applicant_2 || ''}`);
+      }
+    } else { // '2'
+      if (f.dependents_applicant || f.dependents_co_applicant) {
+        items.push(`NUMBER OF DEPENDENTS : APPLICANT : ${f.dependents_applicant || ''}`);
+        items.push(`CO-APPLICANT : ${f.dependents_co_applicant || ''}`);
+      }
     }
     if (f.document_status) {
-      items.push(f.document_status);
+      items.push(replaceBoth(f.document_status));
     }
     if (f.residence_confirmation || f.residence_note) {
       let combined = '';
       if (f.residence_confirmation) {
-        combined += `RESIDENCE CONFIRMATION: ${f.residence_confirmation}`;
+        combined += `RESIDENCE CONFIRMATION: ${replaceBoth(f.residence_confirmation)}`;
       }
       if (f.residence_note) {
         if (combined) combined += ', ';
-        combined += `NOTE: ${f.residence_note}`;
+        combined += `NOTE: ${replaceBoth(f.residence_note)}`;
       }
       items.push(combined);
     }
@@ -236,9 +356,9 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
     setForm({
       ...base,
       house_type: 'RESIDENTIAL HOUSE',
-      flat_ownership: 'RENTED (6,500 PER MONTH)',
-      duration_of_stay: '7 YEARS',
-      total_family_members: '04',
+      flat_ownership: 'Rented',
+      duration_of_stay: '7 years',
+      total_family_members: '4',
       dependents_applicant: '2',
       dependents_co_applicant: '0',
       document_status: 'GIVEN DOCUMENTS WERE CHECKED, STANDARD OF LIVING IS SATISFACTORY,',
@@ -251,16 +371,16 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
     });
     toast.success('Test data filled');
   };
-
+ 
   const handleLoadPredefined = (val) => {
     if (val === 'opt1') {
       setForm((prev) => ({
         ...prev,
         field_executive_intro: 'VISITED THE GIVEN ADDRESS AND MET ',
         house_type: 'RESIDENTIAL HOUSE',
-        flat_ownership: 'RENTED (6,500 PER MONTH)',
-        duration_of_stay: '7 YEARS',
-        total_family_members: '04',
+        flat_ownership: 'Rented',
+        duration_of_stay: '7 years',
+        total_family_members: '4',
         dependents_applicant: '2',
         dependents_co_applicant: '0',
         document_status: 'GIVEN DOCUMENTS WERE CHECKED, STANDARD OF LIVING IS SATISFACTORY,',
@@ -275,9 +395,9 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
         person_contacted: 'MRS.DURGA',
         relationship: 'APPLICANT-SISTER IN LAW',
         house_type: 'RESIDENTIAL HOUSE',
-        flat_ownership: 'RENTED (6,500 PER MONTH)',
-        duration_of_stay: '7 YEARS',
-        total_family_members: '04',
+        flat_ownership: 'Rented',
+        duration_of_stay: '7 years',
+        total_family_members: '4',
         dependents_applicant: '2',
         dependents_co_applicant: '0',
         document_status: 'GIVEN DOCUMENTS WERE CHECKED, STANDARD OF LIVING IS SATISFACTORY,',
@@ -313,7 +433,7 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
   };
 
   const handleApplyOptimizedIntro = () => {
-    const sanitized = (introOptimizedPreview || '').replace(/\r?\n|\r/g, '').slice(0, 300);
+    const sanitized = (introOptimizedPreview || '').replace(/\r?\n|\r/g, '');
     setForm((prev) => ({ ...prev, field_executive_intro: sanitized }));
     setShowIntroPreview(false);
     setIntroOptimizedPreview('');
@@ -372,16 +492,8 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
       toast.error('Please specify the accommodation type');
       return;
     }
-    if ((form.field_executive_intro || '').length > 300) {
-      toast.error('Opening line should be a maximum of 300 characters');
-      return;
-    }
     if (/\r?\n/.test(form.field_executive_intro || '')) {
       toast.error('Opening line must not contain newlines');
-      return;
-    }
-    if ((form.residence_note || '').length > 420) {
-      toast.error('Note should be a maximum of 420 characters');
       return;
     }
     if (/\r?\n/.test(form.residence_note || '')) {
@@ -390,11 +502,40 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
     }
     setGenerating(true);
     try {
-      const formToSend = {
+      let finalPhotos = photos;
+      let formToSend = {
         ...form,
         field_executive_comment_items: isBusinessTemplate ? form.field_executive_comment_items : getCommentItems(form)
       };
-      const res = await executiveAPI.generateExecutiveReport(templateId, formToSend, photos);
+
+      if (templateId === 'sbi-house') {
+        finalPhotos = [
+          ...sectionPhotos.status,
+          ...sectionPhotos.gas_bill,
+          ...sectionPhotos.aadhar_card,
+          ...sectionPhotos.electricity_bill,
+          ...sectionPhotos.landline_bill,
+          ...sectionPhotos.internet_bill,
+          ...sectionPhotos.license,
+          ...sectionPhotos.bank_statements,
+          ...sectionPhotos.ration_card
+        ];
+
+        formToSend = {
+          ...formToSend,
+          status_photo_count: sectionPhotos.status.length,
+          gas_bill_photo_count: sectionPhotos.gas_bill.length,
+          aadhar_card_photo_count: sectionPhotos.aadhar_card.length,
+          electricity_bill_photo_count: sectionPhotos.electricity_bill.length,
+          landline_bill_photo_count: sectionPhotos.landline_bill.length,
+          internet_bill_photo_count: sectionPhotos.internet_bill.length,
+          license_photo_count: sectionPhotos.license.length,
+          bank_statements_photo_count: sectionPhotos.bank_statements.length,
+          ration_card_photo_count: sectionPhotos.ration_card.length
+        };
+      }
+
+      const res = await executiveAPI.generateExecutiveReport(templateId, formToSend, finalPhotos);
       setLastGenerated(res?.data);
       toast.success('Report submitted for admin approval');
     } catch (err) {
@@ -459,6 +600,30 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
           {!isBusinessTemplate && (
             <FormSection title="Report Reference">
               <FormFieldGrid>
+                {templateId === 'sbi-house' && (
+                  <div className="md:col-span-2 mb-3 bg-purple-50/50 p-3 rounded-xl border border-purple-100/50">
+                    <label className="block text-sm font-semibold text-purple-900 mb-2">
+                      Number of Applicants
+                    </label>
+                    <div className="flex gap-6">
+                      {['1', '2', '3'].map((num) => (
+                        <label key={num} className="inline-flex items-center cursor-pointer select-none">
+                          <input
+                            type="radio"
+                            name="num_applicants"
+                            value={num}
+                            checked={(form.num_applicants || '2') === num}
+                            onChange={handleChange}
+                            className="form-radio text-[#7e22ce] focus:ring-[#7e22ce] h-4 w-4 border-gray-300 transition-all cursor-pointer"
+                          />
+                          <span className="ml-2 text-sm text-gray-700 font-medium">
+                            {num} {num === '1' ? 'Applicant' : 'Applicants'}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <Input
                   type="date"
                   label="Date of receipt"
@@ -488,9 +653,17 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
                   inputClassName={EXECUTIVE_INPUT_CLASS}
                 />
                 <Input
-                  label="Reference number"
-                  name="reference_number"
-                  value={form.reference_number}
+                  label="Report ID"
+                  name="report_id"
+                  value={form.report_id}
+                  onChange={handleChange}
+                  className="mb-0"
+                  inputClassName={EXECUTIVE_INPUT_CLASS}
+                />
+                <Input
+                  label="Branch Name"
+                  name="branch_name"
+                  value={form.branch_name}
                   onChange={handleChange}
                   className="mb-0"
                   inputClassName={EXECUTIVE_INPUT_CLASS}
@@ -543,16 +716,40 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
                 inputClassName={EXECUTIVE_INPUT_CLASS}
               />
             ) : (
-              <FormFieldGrid cols={1}>
-                <Input
-                  label="Co-applicant name"
-                  name="co_applicant_name"
-                  value={form.co_applicant_name}
-                  onChange={handleChange}
-                  className="mb-0"
-                  inputClassName={EXECUTIVE_INPUT_CLASS}
-                />
-              </FormFieldGrid>
+              <>
+                {(form.num_applicants === '2' || !form.num_applicants) && (
+                  <FormFieldGrid cols={1}>
+                    <Input
+                      label="Co-applicant name"
+                      name="co_applicant_name"
+                      value={form.co_applicant_name}
+                      onChange={handleChange}
+                      className="mb-0"
+                      inputClassName={EXECUTIVE_INPUT_CLASS}
+                    />
+                  </FormFieldGrid>
+                )}
+                {form.num_applicants === '3' && (
+                  <FormFieldGrid cols={2}>
+                    <Input
+                      label="Co-applicant 1 name"
+                      name="co_applicant_name"
+                      value={form.co_applicant_name}
+                      onChange={handleChange}
+                      className="mb-0"
+                      inputClassName={EXECUTIVE_INPUT_CLASS}
+                    />
+                    <Input
+                      label="Co-applicant 2 name"
+                      name="co_applicant_2_name"
+                      value={form.co_applicant_2_name}
+                      onChange={handleChange}
+                      className="mb-0"
+                      inputClassName={EXECUTIVE_INPUT_CLASS}
+                    />
+                  </FormFieldGrid>
+                )}
+              </>
             )}
             <FormTextarea label="Address" name="address" value={form.address} onChange={handleChange} rows={2} className="mb-0" />
           </FormSection>
@@ -851,14 +1048,36 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
                   className="mb-0"
                   inputClassName={EXECUTIVE_INPUT_CLASS}
                 />
-                <Input
-                  label="Co-applicant mobile"
-                  name="co_applicant_mobile"
-                  value={form.co_applicant_mobile}
-                  onChange={handleChange}
-                  className="mb-0"
-                  inputClassName={EXECUTIVE_INPUT_CLASS}
-                />
+                {(form.num_applicants === '2' || !form.num_applicants) && (
+                  <Input
+                    label="Co-applicant mobile"
+                    name="co_applicant_mobile"
+                    value={form.co_applicant_mobile}
+                    onChange={handleChange}
+                    className="mb-0"
+                    inputClassName={EXECUTIVE_INPUT_CLASS}
+                  />
+                )}
+                {form.num_applicants === '3' && (
+                  <>
+                    <Input
+                      label="Co-applicant 1 mobile"
+                      name="co_applicant_mobile"
+                      value={form.co_applicant_mobile}
+                      onChange={handleChange}
+                      className="mb-0"
+                      inputClassName={EXECUTIVE_INPUT_CLASS}
+                    />
+                    <Input
+                      label="Co-applicant 2 mobile"
+                      name="co_applicant_2_mobile"
+                      value={form.co_applicant_2_mobile}
+                      onChange={handleChange}
+                      className="mb-0"
+                      inputClassName={EXECUTIVE_INPUT_CLASS}
+                    />
+                  </>
+                )}
               </FormFieldGrid>
             </FormSection>
           )}
@@ -871,18 +1090,12 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
               onChange={handleChange}
               rows={2}
               className="mb-0"
-              maxLength={300}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
                 }
               }}
             />
-            <p
-              className={`text-xs mt-1 ${(form.field_executive_intro || '').length > 300 ? 'text-red-500 font-semibold' : 'text-gray-500'}`}
-            >
-              Characters: {(form.field_executive_intro || '').length} / 300
-            </p>
             <div className="mt-3 flex items-center gap-3">
               <Button type="button" variant="outline" disabled={optimizingIntro} onClick={handleOptimizeIntro}>
                 {optimizingIntro ? 'Optimizing…' : 'Optimize'}
@@ -1017,60 +1230,76 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
               <div className="mt-6 border-t border-gray-200 pt-6">
                 <h4 className="text-sm font-semibold text-gray-800 mb-4">House &amp; Household Comments</h4>
                 <FormFieldGrid>
-                  <Input
+                  <SelectGroup
                     label="House Type"
                     name="house_type"
+                    options={displayHouseTypeOptions}
                     value={form.house_type}
                     onChange={handleChange}
-                    placeholder="e.g. RESIDENTIAL HOUSE"
                     className="mb-0"
-                    inputClassName={EXECUTIVE_INPUT_CLASS}
                   />
-                  <Input
+                  <SelectGroup
                     label="Flat Ownership"
                     name="flat_ownership"
+                    options={FLAT_OWNERSHIP_OPTIONS}
                     value={form.flat_ownership}
                     onChange={handleChange}
-                    placeholder="e.g. RENTED (6,500 PER MONTH)"
                     className="mb-0"
-                    inputClassName={EXECUTIVE_INPUT_CLASS}
                   />
-                  <Input
+                  <SelectGroup
                     label="Duration of Stay"
                     name="duration_of_stay"
+                    options={DURATION_OF_STAY_OPTIONS}
                     value={form.duration_of_stay}
                     onChange={handleChange}
-                    placeholder="e.g. 7 YEARS"
                     className="mb-0"
-                    inputClassName={EXECUTIVE_INPUT_CLASS}
                   />
-                  <Input
+                  <SelectGroup
                     label="Total Family Members"
                     name="total_family_members"
+                    options={FAMILY_MEMBERS_OPTIONS}
                     value={form.total_family_members}
                     onChange={handleChange}
-                    placeholder="e.g. 04"
                     className="mb-0"
-                    inputClassName={EXECUTIVE_INPUT_CLASS}
                   />
-                  <Input
+                  <SelectGroup
                     label="Dependents: Applicant"
                     name="dependents_applicant"
+                    options={DEPENDENTS_OPTIONS}
                     value={form.dependents_applicant}
                     onChange={handleChange}
-                    placeholder="e.g. 2"
                     className="mb-0"
-                    inputClassName={EXECUTIVE_INPUT_CLASS}
                   />
-                  <Input
-                    label="Dependents: Co-Applicant"
-                    name="dependents_co_applicant"
-                    value={form.dependents_co_applicant}
-                    onChange={handleChange}
-                    placeholder="e.g. 0"
-                    className="mb-0"
-                    inputClassName={EXECUTIVE_INPUT_CLASS}
-                  />
+                  {(form.num_applicants === '2' || !form.num_applicants) && (
+                    <SelectGroup
+                      label="Dependents: Co-Applicant"
+                      name="dependents_co_applicant"
+                      options={DEPENDENTS_OPTIONS}
+                      value={form.dependents_co_applicant}
+                      onChange={handleChange}
+                      className="mb-0"
+                    />
+                  )}
+                  {form.num_applicants === '3' && (
+                    <>
+                      <SelectGroup
+                        label="Dependents: Co-Applicant 1"
+                        name="dependents_co_applicant"
+                        options={DEPENDENTS_OPTIONS}
+                        value={form.dependents_co_applicant}
+                        onChange={handleChange}
+                        className="mb-0"
+                      />
+                      <SelectGroup
+                        label="Dependents: Co-Applicant 2"
+                        name="dependents_co_applicant_2"
+                        options={DEPENDENTS_OPTIONS}
+                        value={form.dependents_co_applicant_2}
+                        onChange={handleChange}
+                        className="mb-0"
+                      />
+                    </>
+                  )}
                   <div className="md:col-span-2">
                     <Input
                       label="Document Status"
@@ -1102,18 +1331,12 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
                       placeholder="e.g. WE TOOK BOTH APPLICANT'S AADHAAR CARDS AS A SUPPORTING DOCUMENT..."
                       rows={2}
                       className="mb-0"
-                      maxLength={420}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
                         }
                       }}
                     />
-                    <p
-                      className={`text-xs mt-1 ${(form.residence_note || '').length > 420 ? 'text-red-500 font-semibold' : 'text-gray-500'}`}
-                    >
-                      Characters: {(form.residence_note || '').length} / 420
-                    </p>
                     <div className="mt-3 flex items-center gap-3">
                       <Button type="button" variant="outline" disabled={optimizingNote} onClick={handleOptimizeNote}>
                         {optimizingNote ? 'Optimizing…' : 'Optimize'}
@@ -1167,20 +1390,111 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
             </FormFieldGrid>
           </FormSection>
 
-          <SitePhotosSection
-            photos={photos}
-            onPhotosChange={handlePhotos}
-            onRemovePhoto={(idx) => setPhotos((prev) => prev.filter((_, i) => i !== idx))}
-          />
+          {templateId === 'sbi-house' ? (
+            <FormSection title="Document Attachments">
+              <div className="flex flex-col gap-4">
+                <ImageSectionUpload
+                  title="Status Images"
+                  maxPhotos={2}
+                  photos={sectionPhotos.status}
+                  onPhotosChange={handleSectionPhotos('status', 2)}
+                  onRemovePhoto={(idx) => handleRemoveSectionPhoto('status', idx)}
+                />
+                <ImageSectionUpload
+                  title="Gas Bill"
+                  maxPhotos={3}
+                  photos={sectionPhotos.gas_bill}
+                  onPhotosChange={handleSectionPhotos('gas_bill', 3)}
+                  onRemovePhoto={(idx) => handleRemoveSectionPhoto('gas_bill', idx)}
+                />
+                <ImageSectionUpload
+                  title="Aadhar Card"
+                  maxPhotos={3}
+                  photos={sectionPhotos.aadhar_card}
+                  onPhotosChange={handleSectionPhotos('aadhar_card', 3)}
+                  onRemovePhoto={(idx) => handleRemoveSectionPhoto('aadhar_card', idx)}
+                />
+                <ImageSectionUpload
+                  title="Electricity Bill"
+                  maxPhotos={3}
+                  photos={sectionPhotos.electricity_bill}
+                  onPhotosChange={handleSectionPhotos('electricity_bill', 3)}
+                  onRemovePhoto={(idx) => handleRemoveSectionPhoto('electricity_bill', idx)}
+                />
+                <ImageSectionUpload
+                  title="Landline Bill"
+                  maxPhotos={3}
+                  photos={sectionPhotos.landline_bill}
+                  onPhotosChange={handleSectionPhotos('landline_bill', 3)}
+                  onRemovePhoto={(idx) => handleRemoveSectionPhoto('landline_bill', idx)}
+                />
+                <ImageSectionUpload
+                  title="Internet Bill"
+                  maxPhotos={3}
+                  photos={sectionPhotos.internet_bill}
+                  onPhotosChange={handleSectionPhotos('internet_bill', 3)}
+                  onRemovePhoto={(idx) => handleRemoveSectionPhoto('internet_bill', idx)}
+                />
+                <ImageSectionUpload
+                  title="License"
+                  maxPhotos={3}
+                  photos={sectionPhotos.license}
+                  onPhotosChange={handleSectionPhotos('license', 3)}
+                  onRemovePhoto={(idx) => handleRemoveSectionPhoto('license', idx)}
+                />
+                <ImageSectionUpload
+                  title="Bank Statements"
+                  maxPhotos={3}
+                  photos={sectionPhotos.bank_statements}
+                  onPhotosChange={handleSectionPhotos('bank_statements', 3)}
+                  onRemovePhoto={(idx) => handleRemoveSectionPhoto('bank_statements', idx)}
+                />
+                <ImageSectionUpload
+                  title="Ration Card"
+                  maxPhotos={3}
+                  photos={sectionPhotos.ration_card}
+                  onPhotosChange={handleSectionPhotos('ration_card', 3)}
+                  onRemovePhoto={(idx) => handleRemoveSectionPhoto('ration_card', idx)}
+                />
+              </div>
+            </FormSection>
+          ) : (
+            <SitePhotosSection
+              photos={photos}
+              onPhotosChange={handlePhotos}
+              onRemovePhoto={(idx) => setPhotos((prev) => prev.filter((_, i) => i !== idx))}
+            />
+          )}
 
           <StickyFormActions
             generating={generating}
             lastGenerated={lastGenerated}
             onDownload={handleDownload}
-            onSaveDraft={() => saveDraft({
-              ...form,
-              field_executive_comment_items: isBusinessTemplate ? form.field_executive_comment_items : getCommentItems(form)
-            }, photos.length)}
+            onSaveDraft={() => {
+              let totalPhotoCount = photos.length;
+              let formToSend = {
+                ...form,
+                field_executive_comment_items: isBusinessTemplate ? form.field_executive_comment_items : getCommentItems(form)
+              };
+
+              if (templateId === 'sbi-house') {
+                totalPhotoCount = Object.values(sectionPhotos).reduce((acc, curr) => acc + curr.length, 0);
+                formToSend = {
+                  ...formToSend,
+                  status_photo_count: sectionPhotos.status.length,
+                  gas_bill_photo_count: sectionPhotos.gas_bill.length,
+                  aadhar_card_photo_count: sectionPhotos.aadhar_card.length,
+                  electricity_bill_photo_count: sectionPhotos.electricity_bill.length,
+                  landline_bill_photo_count: sectionPhotos.landline_bill.length,
+                  internet_bill_photo_count: sectionPhotos.internet_bill.length,
+                  license_photo_count: sectionPhotos.license.length,
+                  bank_statements_photo_count: sectionPhotos.bank_statements.length,
+                  ration_card_photo_count: sectionPhotos.ration_card.length
+                };
+              }
+
+              saveDraft(formToSend, totalPhotoCount);
+            }}
             savingDraft={savingDraft}
             loadingDraft={loadingDraft}
           />
@@ -1189,5 +1503,54 @@ const SbiHouseVerificationForm = ({ templateId = 'sbi-house' }) => {
     </ExecutiveFormShell>
   );
 };
+
+function ImageSectionUpload({ title, maxPhotos, photos, onPhotosChange, onRemovePhoto }) {
+  return (
+    <div className="border border-purple-100 rounded-xl p-4 bg-white shadow-sm flex flex-col gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+        <h4 className="text-sm font-bold text-purple-900">{title}</h4>
+        <p className="text-[11px] text-gray-500 font-medium">Up to {maxPhotos} images allowed</p>
+      </div>
+      
+      <div className="flex flex-col sm:flex-row gap-3 items-center">
+        <label className="flex flex-col items-center justify-center min-h-[90px] w-full sm:w-48 border border-dashed border-purple-200 rounded-xl cursor-pointer bg-purple-50/10 hover:bg-purple-50/30 transition-all select-none">
+          <Upload className="w-5 h-5 text-purple-500 mb-1" />
+          <span className="text-[12px] font-semibold text-purple-800">
+            {photos.length ? `${photos.length} selected` : 'Select photos'}
+          </span>
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            multiple={maxPhotos > 1}
+            className="hidden"
+            onChange={onPhotosChange}
+          />
+        </label>
+        
+        {photos.length > 0 && (
+          <div className="flex flex-wrap gap-2 flex-1 justify-start w-full">
+            {photos.map((file, idx) => (
+              <div
+                key={idx}
+                className="relative group w-16 h-16 rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-gray-50 shrink-0"
+              >
+                <img src={URL.createObjectURL(file)} alt={`upload-${idx}`} className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => onRemovePhoto(idx)}
+                  className="absolute inset-0 bg-red-600/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Remove image"
+                >
+                  <Trash2 className="w-4 h-4 text-white" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default SbiHouseVerificationForm;

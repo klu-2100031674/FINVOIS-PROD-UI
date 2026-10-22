@@ -14,7 +14,7 @@ import {
 
 import SaveDraftButton from '../common/SaveDraftButton';
 
-import { getAuditedSectionDisplayTitle, isOpeningStockField, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_CIBIL_FIELD } from '../../utils/frccFormUi';
+import { getAuditedSectionDisplayTitle, isOpeningStockField, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_BANKER_MOBILE_FIELD, PREPARED_BY_CIBIL_FIELD } from '../../utils/frccFormUi';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -89,6 +89,7 @@ const FRCC4Form = ({
       j100: 'PARVEZ AND NARAYANA', j101: 'Chartered Accountants',
       j102: 'Vijayawada', j103: '9014221011',
       required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
+      banker_mobile: '',
       banker_mail_id: '',
       cibil_score: '',
       ...(initialData['Prepared By'] || {})
@@ -180,13 +181,14 @@ const FRCC4Form = ({
       title: 'Prepared By',
       icon: BuildingOfficeIcon,
       fields: [
-        { id: 'j100',        label: 'Partner Name 1',              type: 'text',     required: true,  note: 'Enter partner name 1' },
+        { id: 'j100',        label: 'Partner Name 1',              type: 'text',     required: false, note: 'Enter partner name 1 (optional)' },
         { id: 'j101',        label: 'Partner Name 2',              type: 'text',     required: false, note: 'Enter partner name 2 (optional)' },
         { id: 'j102',        label: 'Address',                     type: 'textarea', required: true,  note: 'Enter address' },
         { id: 'j103',        label: 'Mobile Number',               type: 'text',     required: true,  note: 'Enter mobile number' },
         FRCC_REQUIRED_STAMP_FIELD,
         { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text',     required: false, note: 'Enter bank or department name' },
         { id: 'branch_name', label: 'Branch Name',                 type: 'text',     required: false, note: 'Enter branch name' },
+      PREPARED_BY_BANKER_MOBILE_FIELD,
       PREPARED_BY_BANKER_MAIL_FIELD,
       PREPARED_BY_CIBIL_FIELD,
       ]
@@ -194,20 +196,41 @@ const FRCC4Form = ({
   ];
 
   useEffect(() => {
-    if (initialData && isEditMode) {
-      console.log('📝 [FRCC4Form] Loading initial data for edit mode:', initialData);
+    if (initialData && Object.keys(initialData).length > 0) {
+      console.log('📝 [FRCC4Form] Loading initial data:', initialData);
       setFormData(prev => ({
         ...prev,
         ...initialData,
+        'General Information': {
+          ...(prev['General Information'] || {}),
+          ...(initialData['General Information'] || {}),
+        },
         'Means of Finance': {
+          ...(prev['Means of Finance'] || {}),
           ...(initialData['Means of Finance'] || {}),
           i11: 'Yes',
           i12: 'No',
         },
-        'Financial Statements': initialData['Financial Statements'] || initialData['Audited Statements'] || prev['Financial Statements']
+        'Financial Years': {
+          ...(prev['Financial Years'] || {}),
+          ...(initialData['Financial Years'] || {}),
+        },
+        'Financial Statements': {
+          ...(prev['Financial Statements'] || {}),
+          ...(initialData['Financial Statements'] || initialData['Audited Statements'] || {}),
+        },
+        'Fixed Assets Schedule': initialData['Fixed Assets Schedule'] || prev['Fixed Assets Schedule'],
+        'Prepared By': {
+          required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
+          banker_mobile: '',
+          banker_mail_id: '',
+          cibil_score: '',
+          ...(prev['Prepared By'] || {}),
+          ...(initialData['Prepared By'] || {}),
+        },
       }));
     }
-  }, [initialData, isEditMode]);
+  }, [initialData]);
 
   useEffect(() => {
     if (onFormDataChange) {
@@ -313,6 +336,7 @@ const FRCC4Form = ({
         j100: 'PARVEZ AND NARAYANA', j101: 'Chartered Accountants',
         j102: 'Hyderabad, Telangana', j103: '9014221011',
         required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
+      banker_mobile: '',
       banker_mail_id: '',
       cibil_score: '',
       }
@@ -604,7 +628,7 @@ const FRCC4Form = ({
           </div>
 
           <div className="space-y-2 max-h-72 overflow-y-auto custom-scrollbar pr-1">
-            {categoryData.items.map((item, idx) => (
+            {(Array.isArray(categoryData?.items) ? categoryData.items : []).map((item, idx) => (
               <div key={idx} className="grid grid-cols-12 gap-3">
                 <input
                   type="text"

@@ -142,6 +142,7 @@ const FRTermLoanWithStockForm = ({
       'j138': 'Vijayawada',
       'j139': '9014221011',
       'required_stamp': FRCC_REQUIRED_STAMP_DEFAULT,
+      'banker_mobile': '',
       'banker_mail_id': '',
       'cibil_score': '',
       'bank_name': '',
@@ -343,9 +344,44 @@ const FRTermLoanWithStockForm = ({
     }
   }, [formData, onFormDataChange]);
 
-  // Load loan percentages from initialData if available
+  // Load initialData into formData and loan percentages if available
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
+      setFormData(prevFormData => {
+        const merged = { ...prevFormData };
+        for (const sectionKey in initialData) {
+          if (Object.hasOwn(initialData, sectionKey)) {
+            if (typeof initialData[sectionKey] === 'object' && initialData[sectionKey] !== null &&
+              typeof merged[sectionKey] === 'object' && merged[sectionKey] !== null &&
+              !Array.isArray(initialData[sectionKey])) {
+              if (sectionKey === 'Schedule for Indirect Expenses') {
+                merged[sectionKey] = { ...merged[sectionKey] };
+                for (const cat of Object.keys(initialData[sectionKey])) {
+                  merged[sectionKey][cat] = {
+                    ...(merged[sectionKey][cat] || {}),
+                    ...(initialData[sectionKey][cat] || {}),
+                  };
+                }
+              } else {
+                merged[sectionKey] = { ...merged[sectionKey], ...initialData[sectionKey] };
+              }
+            } else {
+              merged[sectionKey] = initialData[sectionKey];
+            }
+          }
+        }
+        if (merged['General Information']) {
+          merged['General Information'] = normalizeGeneralInformation(merged['General Information']);
+        }
+        if (presetSector && !(merged['General Information'] && merged['General Information'].i14)) {
+          merged['General Information'] = {
+            ...(merged['General Information'] || {}),
+            i14: presetSector,
+          };
+        }
+        return merged;
+      });
+
       if (initialData['Asset Loan Percentages']) {
         setLoanPercentages(initialData['Asset Loan Percentages']);
       }
@@ -353,7 +389,7 @@ const FRTermLoanWithStockForm = ({
         setLoanAmounts(initialData['Asset Loan Amounts']);
       }
     }
-  }, [initialData]);
+  }, [initialData, presetSector]);
 
   // Calculate loan amount from percentage (for display purposes)
   const calculateLoanAmount = (category, total) => {
@@ -995,12 +1031,12 @@ const FRTermLoanWithStockForm = ({
     const assetCategories = Object.keys(currentSections);
     const currentCategoryName = assetCategories[activeAssetTab];
     const currentItems = getAssetItems(currentCategoryName);
-    const hasItems = currentItems.some(item => item.description.trim() !== '' || (item.amount && item.amount !== 0));
+    const hasItems = currentItems.some(item => String(item?.description || '').trim() !== '' || (item.amount && item.amount !== 0));
 
-    // If current category has items, validate loan percentage
+    // If current category has items, validate loan percentage (0% is allowed)
     if (hasItems) {
       const loanPercentage = loanPercentages[currentCategoryName];
-      if (loanPercentage === undefined || loanPercentage === null || loanPercentage === '' || loanPercentage === 0) {
+      if (loanPercentage === undefined || loanPercentage === null || String(loanPercentage).trim() === '' || Number(loanPercentage) < 0 || isNaN(Number(loanPercentage))) {
         setAssetValidationErrors(prev => ({
           ...prev,
           [currentCategoryName]: 'Please enter Loan Percentage (%) before switching to another category.'
@@ -1052,7 +1088,7 @@ const FRTermLoanWithStockForm = ({
         if (!hasAmountEntered) return false;
 
         const loanPercentage = loanPercentages[categoryName];
-        return loanPercentage === undefined || loanPercentage === null || String(loanPercentage).trim() === '' || Number(loanPercentage) <= 0;
+        return loanPercentage === undefined || loanPercentage === null || String(loanPercentage).trim() === '' || Number(loanPercentage) < 0 || isNaN(Number(loanPercentage));
       });
 
       if (categoriesMissingLoanPercentage.length > 0) {
@@ -1318,6 +1354,19 @@ const FRTermLoanWithStockForm = ({
           />
         </div>
 
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            Bank Mobile No
+          </label>
+          <input
+            type="tel"
+            value={(formData['Prepared By'] && formData['Prepared By']['banker_mobile']) || ''}
+            onChange={(e) => handleFieldChange('Prepared By', 'banker_mobile', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="Enter bank mobile number"
+            autoComplete="off"
+          />
+        </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
             Banker Mail ID
@@ -1947,7 +1996,7 @@ const FRTermLoanWithStockForm = ({
                         <span className="font-semibold text-gray-900">₹{categoryTotal.toLocaleString('en-IN')} Lakhs</span>
                       </div>
                       <div className="flex justify-between items-center text-sm mt-1">
-                        <span className="text-gray-600">Loan Required ({(loanPercentages[activeCategoryName] || 0).toFixed(1)}%):</span>
+                        <span className="text-gray-600">Loan Required ({(parseFloat(loanPercentages[activeCategoryName]) || 0).toFixed(1)}%):</span>
                         <span className="font-bold text-purple-700">
                           ₹{loanAmounts[activeCategoryName] && loanAmounts[activeCategoryName] !== ''
                             ? parseFloat(loanAmounts[activeCategoryName]).toLocaleString('en-IN', { maximumFractionDigits: 2 })

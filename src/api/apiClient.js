@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getApiBaseUrl } from '../utils/env';
 import { getTunnelRequestHeaders } from '../utils/tunnel';
-import { isPublicAnonymousApiPath } from './publicApiPaths';
+import { isPublicAnonymousApiPath, shouldAttachCustomerSession } from './publicApiPaths';
 import { isPublicAppPath } from '../utils/publicAppPaths';
 
 /**
@@ -39,7 +39,8 @@ apiClient.interceptors.request.use(
 
     const token = localStorage.getItem(TOKEN_KEY);
     const reqPath = String(config?.url || '');
-    if (token && !isPublicAnonymousApiPath(reqPath)) {
+    const attachSession = Boolean(token && shouldAttachCustomerSession(reqPath));
+    if (token && (!isPublicAnonymousApiPath(reqPath) || attachSession)) {
       config.headers.Authorization = `Bearer ${token}`;
     } else if (isPublicAnonymousApiPath(reqPath) && config.headers) {
       if (typeof config.headers.delete === 'function') {

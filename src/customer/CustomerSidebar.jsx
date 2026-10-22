@@ -60,7 +60,7 @@ const CustomerSidebar = ({
             {sidebarOpen && (
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 truncate">
-                  {user?.name || 'Customer'}
+                  {user?.name || (user?.role === 'bank_manager' ? 'Bank Manager' : 'Customer')}
                 </p>
                 <p className="text-xs text-gray-500 truncate">{user?.email || ''}</p>
               </div>
@@ -69,7 +69,7 @@ const CustomerSidebar = ({
           {sidebarOpen && (
             <div className="flex items-center gap-2 mt-2">
               <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
-                Customer
+                {user?.role === 'bank_manager' ? 'Bank Manager' : 'Customer'}
               </span>
             </div>
           )}
@@ -122,14 +122,14 @@ const CustomerSidebar = ({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">
-                    {user?.name || 'Customer'}
+                    {user?.name || (user?.role === 'bank_manager' ? 'Bank Manager' : 'Customer')}
                   </p>
                   <p className="text-xs text-gray-500 truncate">{user?.email || ''}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 mt-2">
                 <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
-                  Customer
+                  {user?.role === 'bank_manager' ? 'Bank Manager' : 'Customer'}
                 </span>
               </div>
             </div>

@@ -19,7 +19,7 @@ const CustomerDashboardPage = () => {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent"></div>
           <div className="relative z-10 max-w-2xl">
             <h1 className="text-3xl sm:text-4xl font-bold font-['Manrope'] mb-3">
-              Welcome back, {user?.name || 'Customer'}!
+              Welcome back, {user?.name || (user?.role === 'bank_manager' ? 'Bank Manager' : 'Customer')}!
             </h1>
             <p className="text-purple-100 text-lg mb-6">
               Track your report requests, view generated documents, and manage your account settings from one clean interface.

@@ -17,7 +17,7 @@ import {
 
 import SaveDraftButton from '../common/SaveDraftButton';
 
-import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_CIBIL_FIELD } from '../../utils/frccFormUi';
+import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_BANKER_MOBILE_FIELD, PREPARED_BY_CIBIL_FIELD } from '../../utils/frccFormUi';
 
 const parseNumberInput = (val) => val === '' ? '' : (val.endsWith('.') || val.endsWith('.0') ? val : (isNaN(parseFloat(val)) ? val : parseFloat(val)));
 
@@ -88,24 +88,48 @@ const FRCC7Form = ({
       bank_name: '',
       branch_name: '',
       required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
+      banker_mobile: '',
       banker_mail_id: '',
       cibil_score: '',
     }
   });
 
   const [formData, setFormData] = useState(() => {
+    const empty = buildEmptyState();
     if (initialData && Object.keys(initialData).length > 0) {
       return {
+        ...empty,
         ...initialData,
         'Means of Finance': {
+          ...(empty['Means of Finance'] || {}),
           ...(initialData['Means of Finance'] || {}),
           i11: 'Yes',
           i12: 'Yes',
           i18: 'Yes',
         },
+        'New Asset Schedule': {
+          ...(empty['New Asset Schedule'] || {}),
+          ...(initialData['New Asset Schedule'] || {}),
+        },
+        'Gross Assets Opening Balance': {
+          ...(empty['Gross Assets Opening Balance'] || {}),
+          ...(initialData['Gross Assets Opening Balance'] || {}),
+        },
+        'Financial Statements': {
+          ...(empty['Financial Statements'] || {}),
+          ...(initialData['Financial Statements'] || {}),
+        },
+        'Term Loan Finance Details': {
+          ...(empty['Term Loan Finance Details'] || {}),
+          ...(initialData['Term Loan Finance Details'] || {}),
+        },
+        'Prepared By': {
+          ...(empty['Prepared By'] || {}),
+          ...(initialData['Prepared By'] || {}),
+        },
       };
     }
-    return buildEmptyState();
+    return empty;
   });
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -223,13 +247,14 @@ const FRCC7Form = ({
       title: 'Prepared By',
       icon: UserIcon,
       fields: [
-        { id: 'i159',        label: 'Partner Name 1',              type: 'text', required: true  },
+        { id: 'i159',        label: 'Partner Name 1',              type: 'text', required: false },
         { id: 'i160',        label: 'Partner Name 2',              type: 'text', required: false },
         { id: 'i161',        label: 'Address',                     type: 'text', required: true  },
         { id: 'i162',        label: 'Mobile Number',               type: 'text', required: true  },
         FRCC_REQUIRED_STAMP_FIELD,
         { id: 'bank_name',   label: 'Bank Name / Department Name', type: 'text', required: false },
         { id: 'branch_name', label: 'Branch Name',                 type: 'text', required: false },
+      PREPARED_BY_BANKER_MOBILE_FIELD,
       PREPARED_BY_BANKER_MAIL_FIELD,
       PREPARED_BY_CIBIL_FIELD,
       ]
@@ -237,7 +262,7 @@ const FRCC7Form = ({
   ];
 
   useEffect(() => {
-    if (initialData && isEditMode && Object.keys(initialData).length > 0) {
+    if (initialData && Object.keys(initialData).length > 0) {
       setFormData(prev => {
         const merged = { ...prev };
         for (const sectionKey in initialData) {
@@ -268,7 +293,7 @@ const FRCC7Form = ({
         return merged;
       });
     }
-  }, [initialData, isEditMode]);
+  }, [initialData]);
 
   useEffect(() => {
     if (onFormDataChange) {
@@ -397,6 +422,7 @@ const FRCC7Form = ({
         i161: 'Hyderabad', i162: '9014221011',
         bank_name: 'ICICI Bank', branch_name: 'Industrial Branch',
         required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
+      banker_mobile: '',
       banker_mail_id: '',
       cibil_score: '',
       }
@@ -405,7 +431,7 @@ const FRCC7Form = ({
 
   const convertToExcelData = (data) => {
     const excelData = {};
-    const skipKeys = new Set(['bank_name', 'branch_name']);
+    const skipKeys = new Set(['bank_name', 'branch_name', 'banker_mobile', 'banker_mail_id', 'required_stamp', 'cibil_score']);
 
     // Flat sections — copy all cell-ref keys, skip meta keys
     ['General Information', 'Means of Finance', 'Financial Years',
@@ -637,7 +663,7 @@ const FRCC7Form = ({
           </div>
 
           <div className="space-y-2 max-h-72 overflow-y-auto custom-scrollbar pr-1">
-            {categoryData.items.map((item, idx) => (
+            {(Array.isArray(categoryData?.items) ? categoryData.items : []).map((item, idx) => (
               <div key={idx} className="grid grid-cols-12 gap-3">
                 <input
                   type="text"

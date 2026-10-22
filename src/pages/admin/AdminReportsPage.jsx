@@ -65,6 +65,8 @@ const isFrccReport = (templateId) => {
     'TERM_LOAN_EV_VEHICLE',
     'TERM_LOAN_OTHER_THAN_EV_VEHICLE',
     'TERM_LOAN_JCB_VEHICLE',
+    'TERM_LOAN_TRACTOR_VEHICLE',
+    'TERM_LOAN_TIPPER_VEHICLE',
     'TERM_LOAN_DRONE_VEHICLE',
   ].includes(String(templateId).trim().toUpperCase());
 };

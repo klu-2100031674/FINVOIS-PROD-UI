@@ -249,7 +249,7 @@ const FRTermLoanOtherThanEVVehicleForm = ({
   ];
 
   useEffect(() => {
-    if (initialData && isEditMode) {
+    if (initialData && Object.keys(initialData).length > 0) {
       setFormData(prevFormData => {
         const merged = { ...prevFormData };
         for (const sectionKey in initialData) {
@@ -257,7 +257,17 @@ const FRTermLoanOtherThanEVVehicleForm = ({
             if (typeof initialData[sectionKey] === 'object' && initialData[sectionKey] !== null &&
               typeof merged[sectionKey] === 'object' && merged[sectionKey] !== null &&
               !Array.isArray(initialData[sectionKey])) {
-              merged[sectionKey] = { ...merged[sectionKey], ...initialData[sectionKey] };
+              if (sectionKey === 'Schedule for Indirect Expenses') {
+                merged[sectionKey] = { ...merged[sectionKey] };
+                for (const cat of Object.keys(initialData[sectionKey])) {
+                  merged[sectionKey][cat] = {
+                    ...(merged[sectionKey][cat] || {}),
+                    ...(initialData[sectionKey][cat] || {}),
+                  };
+                }
+              } else {
+                merged[sectionKey] = { ...merged[sectionKey], ...initialData[sectionKey] };
+              }
             } else {
               merged[sectionKey] = initialData[sectionKey];
             }
@@ -265,8 +275,15 @@ const FRTermLoanOtherThanEVVehicleForm = ({
         }
         return merged;
       });
+
+      const newTenure = initialData?.['Term Loan Details']?.i46 !== undefined
+        ? parseInt(initialData['Term Loan Details'].i46, 10)
+        : null;
+      if (newTenure !== null && !isNaN(newTenure)) {
+        setLiveTenure(newTenure);
+      }
     }
-  }, [initialData, isEditMode]);
+  }, [initialData]);
 
   useEffect(() => {
     if (initialData?.['Asset Loan Percentages']) {
@@ -868,6 +885,7 @@ const FRTermLoanOtherThanEVVehicleForm = ({
         'j138': 'Vijayawada',
         'j139': '9014221011',
         'required_stamp': FRCC_REQUIRED_STAMP_DEFAULT,
+      'banker_mobile': '',
       'banker_mail_id': '',
       'cibil_score': '',
         'bank_name': '',
@@ -1048,16 +1066,13 @@ const FRTermLoanOtherThanEVVehicleForm = ({
           <label className="block text-xs font-semibold text-gray-800">
             Nature of Business
           </label>
-          <select
+          <input
+            type="text"
             value={(formData['General Information'] && formData['General Information']['i15']) || ''}
             onChange={(e) => handleFieldChange('General Information', 'i15', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-          >
-            <option value="">Select Nature of Business</option>
-            <option value="Travels Service">Travels Service</option>
-            <option value="Goods Transport Service">Goods Transport Service</option>
-            <option value="Transport service">Transport service</option>
-          </select>
+            placeholder="Enter nature of business"
+          />
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
@@ -1552,12 +1567,12 @@ const FRTermLoanOtherThanEVVehicleForm = ({
     const assetCategories = Object.keys(CURRENT_ASSET_SECTIONS);
     const currentCategoryName = assetCategories[activeAssetTab];
     const currentItems = getAssetItems(currentCategoryName);
-    const hasItems = currentItems.some(item => item.description.trim() !== '' || (item.amount && item.amount !== 0));
+    const hasItems = currentItems.some(item => String(item?.description || '').trim() !== '' || (item.amount && item.amount !== 0));
 
-    // If current category has items, validate loan percentage
+    // If current category has items, validate loan percentage (0% is allowed)
     if (hasItems) {
       const loanPercentage = loanPercentages[currentCategoryName];
-      if (loanPercentage === undefined || loanPercentage === null || loanPercentage === '' || loanPercentage === 0) {
+      if (loanPercentage === undefined || loanPercentage === null || String(loanPercentage).trim() === '' || Number(loanPercentage) < 0 || isNaN(Number(loanPercentage))) {
         setAssetValidationErrors(prev => ({
           ...prev,
           [currentCategoryName]: 'Please enter Loan Percentage (%) before switching to another category.'
@@ -1745,7 +1760,7 @@ const FRTermLoanOtherThanEVVehicleForm = ({
                     <span className="font-semibold text-gray-900">₹{categoryTotal.toLocaleString('en-IN')} Lakhs</span>
                   </div>
                   <div className="flex justify-between items-center text-sm mt-1">
-                    <span className="text-gray-600">Loan Required ({(loanPercentages[activeCategoryName] || 0).toFixed(1)}%):</span>
+                    <span className="text-gray-600">Loan Required ({(parseFloat(loanPercentages[activeCategoryName]) || 0).toFixed(1)}%):</span>
                     <span className="font-bold text-purple-700">
                       ₹{loanAmounts[activeCategoryName] && loanAmounts[activeCategoryName] !== ''
                         ? parseFloat(loanAmounts[activeCategoryName]).toLocaleString('en-IN', { maximumFractionDigits: 2 })
@@ -2008,6 +2023,19 @@ const FRTermLoanOtherThanEVVehicleForm = ({
 
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
+            Bank Mobile No
+          </label>
+          <input
+            type="tel"
+            value={(formData['Prepared By'] && formData['Prepared By']['banker_mobile']) || ''}
+            onChange={(e) => handleFieldChange('Prepared By', 'banker_mobile', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="Enter bank mobile number"
+            autoComplete="off"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
             Banker Mail ID
           </label>
           <input
@@ -2133,7 +2161,7 @@ const FRTermLoanOtherThanEVVehicleForm = ({
         if (!hasAmountEntered) return false;
 
         const loanPercentage = loanPercentages[categoryName];
-        return loanPercentage === undefined || loanPercentage === null || String(loanPercentage).trim() === '' || Number(loanPercentage) <= 0;
+        return loanPercentage === undefined || loanPercentage === null || String(loanPercentage).trim() === '' || Number(loanPercentage) < 0 || isNaN(Number(loanPercentage));
       });
 
       if (categoriesMissingLoanPercentage.length > 0) {
@@ -2454,7 +2482,7 @@ const FRTermLoanOtherThanEVVehicleForm = ({
                 type="button"
                 className="px-5 py-2 bg-[#9333EA] text-white rounded-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-300 font-medium text-sm flex items-center gap-1"
                 onClick={handleNext}
-                disabled={!canProceed}
+                disabled={sections[currentStep].key !== 'general' && sections[currentStep].key !== 'term' && !canProceed}
               >
                 Next
                 <ChevronRightIcon className="w-4 h-4" />

@@ -1,17 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Download, Eye, Filter, Search, X, RefreshCw, Loader2 } from 'lucide-react';
-import JSZip from 'jszip';
+import { Download, Eye, Filter, Search, X, RefreshCw, Loader2, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { executiveAPI } from '../../api/executiveAPI';
 
 const PAGE_SIZE = 50;
+const MAX_BULK_SELECTION = 15;
 
 const TEMPLATE_BADGES = {
   SBI_House: { label: 'SBI House', className: 'bg-blue-50 text-blue-700' },
   SBI_Office: { label: 'SBI Office', className: 'bg-indigo-50 text-indigo-700' },
   SBI_Bussiness: { label: 'SBI Business', className: 'bg-amber-50 text-amber-700' },
-  SBI_IncomeTax: { label: 'Income Tax', className: 'bg-teal-50 text-teal-700' }
+  SBI_IncomeTax: { label: 'Income Tax', className: 'bg-teal-50 text-teal-700' },
+  BOI_Housing: { label: 'BOI Housing', className: 'bg-rose-50 text-rose-700' },
+  BOI_Verification: { label: 'BOI', className: 'bg-orange-50 text-orange-700' },
+  BOI: { label: 'BOI', className: 'bg-orange-50 text-orange-700' }
 };
 
 function StatusBadge({ status }) {
@@ -104,6 +107,7 @@ const ExecutiveReportsList = () => {
 
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkDownloading, setBulkDownloading] = useState(false);
+  const [bulkDownloadProgress, setBulkDownloadProgress] = useState({ done: 0, total: 0 });
 
   const [selectedReport, setSelectedReport] = useState(null);
   const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
@@ -186,16 +190,25 @@ const ExecutiveReportsList = () => {
   const toggleSelect = (row) => {
     if (!isApproved(row)) return;
     const sid = String(row.id);
-    setSelectedIds((prev) =>
-      prev.includes(sid) ? prev.filter((x) => x !== sid) : [...prev, sid]
-    );
+    setSelectedIds((prev) => {
+      if (prev.includes(sid)) return prev.filter((x) => x !== sid);
+      if (prev.length >= MAX_BULK_SELECTION) {
+        toast.error(`You can select up to ${MAX_BULK_SELECTION} reports at a time`);
+        return prev;
+      }
+      return [...prev, sid];
+    });
   };
 
   const toggleSelectAllApproved = () => {
     if (allApprovedOnPageSelected) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(approvedOnPage.map((r) => String(r.id)));
+      const ids = approvedOnPage.map((r) => String(r.id));
+      if (ids.length > MAX_BULK_SELECTION) {
+        toast.error(`Only the first ${MAX_BULK_SELECTION} approved reports were selected (max ${MAX_BULK_SELECTION} at a time)`);
+      }
+      setSelectedIds(ids.slice(0, MAX_BULK_SELECTION));
     }
   };
 
@@ -204,38 +217,36 @@ const ExecutiveReportsList = () => {
       toast.error('Select approved reports to download');
       return;
     }
+    const reportsToDownload = selectedApprovedReports.slice(0, MAX_BULK_SELECTION);
     try {
       setBulkDownloading(true);
-      const zip = new JSZip();
-      let added = 0;
-      for (const report of selectedApprovedReports) {
+      let downloaded = 0;
+      setBulkDownloadProgress({ done: 0, total: reportsToDownload.length });
+      for (const report of reportsToDownload) {
         try {
-          const response = await executiveAPI.fetchReportBlobRaw(report.id);
-          zip.file(report.fileName || `report-${report.id}.pdf`, response.data);
-          added += 1;
+          await executiveAPI.downloadReport(report.id, report.fileName);
+          downloaded += 1;
         } catch (err) {
-          console.error('Bulk download failed for', report.id, err);
+          console.error('Download failed for', report.id, err);
+        } finally {
+          setBulkDownloadProgress({ done: downloaded, total: reportsToDownload.length });
+        }
+        // Small delay between downloads so the browser doesn't block/throttle
+        // multiple simultaneous downloads triggered in quick succession.
+        if (report !== reportsToDownload[reportsToDownload.length - 1]) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
         }
       }
-      if (added === 0) {
-        toast.error('Could not download any PDFs');
-        return;
+      if (downloaded === 0) {
+        toast.error('Could not download any reports');
+      } else if (downloaded < reportsToDownload.length) {
+        toast.error(`Downloaded ${downloaded} of ${reportsToDownload.length} report(s); some failed`);
+      } else {
+        toast.success(`Downloaded ${downloaded} report${downloaded === 1 ? '' : 's'}`);
       }
-      const blob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `my-reports-${new Date().toISOString().slice(0, 10)}.zip`;
-      link.click();
-      URL.revokeObjectURL(url);
-      toast.success(`Downloaded ${added} PDF(s) as ZIP`);
-      if (added < selectedApprovedReports.length) {
-        toast.error(`${selectedApprovedReports.length - added} file(s) could not be included`);
-      }
-    } catch {
-      toast.error('Bulk download failed');
     } finally {
       setBulkDownloading(false);
+      setBulkDownloadProgress({ done: 0, total: 0 });
     }
   };
 
@@ -396,6 +407,7 @@ const ExecutiveReportsList = () => {
             <option value="SBI_Office">SBI Office</option>
             <option value="SBI_Bussiness">SBI Business</option>
             <option value="SBI_IncomeTax">Income Tax</option>
+            <option value="BOI_Housing">BOI Housing</option>
           </select>
         </div>
         <div>
@@ -508,7 +520,7 @@ const ExecutiveReportsList = () => {
 
   const pdfViewerOverlay = showPdfPanel && (
     <div
-      className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-3 sm:p-4"
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label="PDF preview"
@@ -519,19 +531,31 @@ const ExecutiveReportsList = () => {
         onClick={closePdfViewer}
         aria-label="Close preview"
       />
-      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[92vh] sm:h-[90vh] flex flex-col overflow-hidden">
-        <div className="p-3 sm:p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-gray-50 shrink-0">
+      <div className="relative bg-white shadow-2xl w-full h-[100dvh] sm:h-[90vh] sm:max-w-5xl sm:rounded-xl flex flex-col overflow-hidden">
+        <div className="p-3 sm:p-4 border-b border-gray-200 flex items-center justify-between gap-2 bg-gray-50 shrink-0">
           <h3 className="text-sm sm:text-base font-semibold text-gray-800 truncate pr-2">
             {selectedReport.fileName || 'PDF Preview'}
           </h3>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {pdfBlobUrl && (
+              <a
+                href={pdfBlobUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center px-2.5 sm:px-3 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 min-h-[44px] sm:min-h-0"
+                title="Open PDF in a new tab (use this if the preview below doesn't scroll)"
+              >
+                <ExternalLink className="w-4 h-4 sm:mr-1.5" />
+                <span className="hidden sm:inline">Open in new tab</span>
+              </a>
+            )}
             <button
               type="button"
               onClick={() => handleDownload(selectedReport)}
-              className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-[#7e22ce] rounded-lg hover:bg-[#6b21a8] min-h-[44px] sm:min-h-0"
+              className="inline-flex items-center px-2.5 sm:px-3 py-2 text-sm font-medium text-white bg-[#7e22ce] rounded-lg hover:bg-[#6b21a8] min-h-[44px] sm:min-h-0"
             >
-              <Download className="w-4 h-4 mr-1.5" />
-              Download
+              <Download className="w-4 h-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">Download</span>
             </button>
             <button
               type="button"
@@ -543,7 +567,21 @@ const ExecutiveReportsList = () => {
             </button>
           </div>
         </div>
-        <div className="flex-1 bg-gray-100 flex items-center justify-center min-h-0 overflow-hidden">
+        <p className="sm:hidden text-[11px] text-gray-500 bg-gray-50 border-b border-gray-200 px-3 py-1.5 shrink-0">
+          Can&apos;t scroll or see the PDF below? Use{' '}
+          {pdfBlobUrl ? (
+            <a href={pdfBlobUrl} target="_blank" rel="noopener noreferrer" className="text-[#7e22ce] underline font-medium">
+              Open in new tab
+            </a>
+          ) : (
+            '"Open in new tab"'
+          )}
+          {' '}for the full viewer.
+        </p>
+        <div
+          className="flex-1 bg-gray-100 flex items-center justify-center min-h-0 overflow-auto"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
           {loadingPdf ? (
             <div className="flex flex-col items-center gap-3 py-12">
               <Loader2 className="w-10 h-10 animate-spin text-[#7e22ce]" />
@@ -591,27 +629,33 @@ const ExecutiveReportsList = () => {
       {showBulkBar && (
         <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <span className="text-purple-800 font-medium text-sm">
-            {selectedApprovedReports.length} approved report
+            {selectedApprovedReports.length}/{MAX_BULK_SELECTION} approved report
             {selectedApprovedReports.length === 1 ? '' : 's'} selected for download
           </span>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {bulkDownloading && bulkDownloadProgress.total > 0 && (
+              <span className="text-xs text-purple-700">
+                Downloading {bulkDownloadProgress.done} of {bulkDownloadProgress.total}…
+              </span>
+            )}
             <button
               type="button"
               disabled={bulkDownloading}
               onClick={handleBulkDownload}
-              className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 text-sm font-medium"
+              className="inline-flex items-center min-h-[44px] sm:min-h-0 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 text-sm font-medium"
             >
               {bulkDownloading ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
                 <Download className="w-4 h-4 mr-2" />
               )}
-              Download ZIP
+              Download all ({selectedApprovedReports.length})
             </button>
             <button
               type="button"
+              disabled={bulkDownloading}
               onClick={() => setSelectedIds([])}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
+              className="min-h-[44px] sm:min-h-0 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50"
             >
               Clear selection
             </button>
