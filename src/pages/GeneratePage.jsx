@@ -3,7 +3,7 @@
  * Form submission and Excel generation
  */
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector, useStore } from 'react-redux';
 import { useAuth } from '../hooks';
@@ -216,6 +216,9 @@ const GeneratePage = () => {
   const [msmePrefillComplete, setMsmePrefillComplete] = useState(!msmeLeadId && !mepmaLeadId && !dprRequestLeadId && !deptRequestId);
   const [sectionSelectorMounted, setSectionSelectorMounted] = useState(false);
   const [tempFormData, setTempFormData] = useState(null);
+  // One-time hydration for the form. Live edits stay in tempFormData / Redux and
+  // must not be passed back as initialData, or the form reset effect loops until React unmounts (blank page).
+  const [formSeed, setFormSeed] = useState(null);
   const [tempSubmittedData, setTempSubmittedData] = useState(null);
   const [draftCheckComplete, setDraftCheckComplete] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -399,12 +402,9 @@ const GeneratePage = () => {
     };
   };
 
-  // Initialize tempFormData from Redux if it exists on mount
-  useEffect(() => {
-    if (reduxFormData && Object.keys(reduxFormData).length > 0) {
-      setTempFormData(reduxFormData);
-    }
-  }, [reduxFormData]);
+  // Do not copy Redux form data back into the form on every change.
+  // The form writes to Redux via onFormDataChange; echoing that into initialData
+  // retriggers each template's reset effect and overflows React updates.
 
   // Draft saving is EXPLICIT only (see SaveDraftButton). We intentionally do
   // NOT auto-save here: the previous debounced auto-save raced with the
@@ -437,6 +437,7 @@ const GeneratePage = () => {
 
     if (!draftId) {
       setTempFormData(null);
+      setFormSeed(null);
       dispatch(clearFormData());
       setDraftCheckComplete(true);
       return;
@@ -450,6 +451,7 @@ const GeneratePage = () => {
         const data = draftObj?.formData || draftObj?.form_data;
         if (data && typeof data === 'object') {
           setTempFormData(data);
+          setFormSeed(data);
           dispatch(setFormData(data));
           hydrateFromLoadedDraft(data);
           // Always resume on Stage 1 form; pre-mount profile selector if stage2 exists
@@ -479,6 +481,7 @@ const GeneratePage = () => {
       if (!result) return;
       const { initialData, autoFilledLabels } = result;
       setTempFormData(initialData);
+      setFormSeed(initialData);
       dispatch(setFormData(initialData));
       if (autoFilledLabels.length > 0) {
         setMsmeAutoFilledLabels(autoFilledLabels);
@@ -899,13 +902,17 @@ const GeneratePage = () => {
     }
   };
 
-  const handleFormDataChange = (rawFormData) => {
-    console.log('💾 [GeneratePage] Saving raw form data to Redux:', rawFormData);
+  const handleFormDataChange = useCallback((rawFormData) => {
     dispatch(setFormData(rawFormData));
     if (isAiTermLoanTemplate) {
       mergeStage1IntoTemp(rawFormData);
     }
-  };
+  }, [dispatch, isAiTermLoanTemplate, mergeStage1IntoTemp]);
+
+  const stage1InitialData = useMemo(
+    () => (formSeed ? stripStage2FromDraft(formSeed) : null),
+    [formSeed]
+  );
 
   const handleBackToDashboard = () => {
     if (isAdminMode) {
@@ -936,8 +943,6 @@ const GeneratePage = () => {
       </GenerateStandaloneLayout>
     );
   }
-
-  const stage1InitialData = tempFormData ? stripStage2FromDraft(tempFormData) : null;
 
   if (!draftCheckComplete || !msmePrefillComplete) {
     return (
