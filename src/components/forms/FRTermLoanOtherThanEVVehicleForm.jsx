@@ -273,6 +273,11 @@ const FRTermLoanOtherThanEVVehicleForm = ({
             }
           }
         }
+        // initialData arrives as a NEW object on every parent render (stripStage2FromDraft), and
+        // formData flows back to the parent via onFormDataChange. Returning a new reference here
+        // every time creates an endless update loop (React error #185). Keep the previous state
+        // when the merge changes nothing.
+        if (JSON.stringify(merged) === JSON.stringify(prevFormData)) return prevFormData;
         return merged;
       });
 
