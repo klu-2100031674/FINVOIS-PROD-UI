@@ -178,7 +178,7 @@ const PaymentModal = ({
   // Re-fetch free credits whenever the CS agent switches to the "CS pays" card
   // so the count is always fresh when they see the payment screen.
   useEffect(() => {
-    if (payerChoice === 'customer_service') {
+    if (payerChoice === 'customer_service' || payerChoice === 'admin') {
       fetchFreeCredits();
     }
   }, [payerChoice]);
@@ -887,13 +887,15 @@ const PaymentModal = ({
                       </button>
                       <button
                         type="button"
-                        onClick={() => setPayerChoice('customer_service')}
+                        onClick={() => setPayerChoice(userRole === 'admin' ? 'admin' : 'customer_service')}
                         className="text-left rounded-xl border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 p-4 transition-all"
                       >
                         <div className="w-10 h-10 rounded-full bg-purple-50 border border-purple-100 flex items-center justify-center mb-3">
                           <User className="w-5 h-5 text-purple-700" />
                         </div>
-                        <h4 className="font-bold text-gray-900 text-sm">Customer service pays</h4>
+                        <h4 className="font-bold text-gray-900 text-sm">
+                          {userRole === 'admin' ? 'Use Free Credit / Admin pays' : 'Customer service pays'}
+                        </h4>
                         <p className="text-xs text-gray-500 mt-1">
                           Use a free credit or Razorpay. Customer unlocks immediately.
                         </p>
@@ -1171,7 +1173,7 @@ const PaymentModal = ({
                   No payment now. After admin approval you'll pay the amount set by admin when downloading.
                 </p>
               )}
-              {payerChoice === 'customer_service' && !lockPayer && (
+              {(payerChoice === 'customer_service' || payerChoice === 'admin') && !lockPayer && (
                 <button
                   type="button"
                   onClick={() => {

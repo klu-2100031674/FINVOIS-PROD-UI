@@ -6,7 +6,7 @@ const AdminMsmeDprDashboardPage = () => (
     <MsmeDprDashboard
       showEmailConfig
       // showDelete // single + multi select/delete
-      // showGenerateReport
+      showGenerateReport
     />
   </AdminLayout>
 );

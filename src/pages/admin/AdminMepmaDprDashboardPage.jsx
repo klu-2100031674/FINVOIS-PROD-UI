@@ -6,7 +6,7 @@ const AdminMepmaDprDashboardPage = () => (
     <MepmaDprDashboard
       showEmailConfig
       // showDelete // single + multi select/delete
-      // showGenerateReport
+      showGenerateReport
     />
   </AdminLayout>
 );

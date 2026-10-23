@@ -974,7 +974,7 @@ const MepmaDprDashboard = ({
                     <th className="px-3 py-3">DPR Status</th>
                     <th className="px-3 py-3">Staff</th>
                     <th className="px-3 py-3">Report</th>
-                    {/* {showGenerateReport && <th className="px-3 py-3">Generate Report</th>} */}
+                    {showGenerateReport && <th className="px-3 py-3">Generate Report</th>}
                     {showDelete && <th className="px-3 py-3 text-right">Actions</th>}
                   </tr>
                 </thead>
@@ -1045,15 +1045,16 @@ const MepmaDprDashboard = ({
                           <td className="px-3 py-3">
                             <DprLeadReportActions lead={s} />
                           </td>
-                          {/* {showGenerateReport && (
+                          {showGenerateReport && (
                             <td className="px-3 py-3">
                               <GenerateReportCell
                                 leadId={s._id}
                                 departmentRequestId={s.departmentRequestId}
+                                loanType={s.loanType}
                                 navigate={navigate}
                               />
                             </td>
-                          )} */}
+                          )}
                           {showDelete && (
                             <td className="px-3 py-3 text-right">
                               <button

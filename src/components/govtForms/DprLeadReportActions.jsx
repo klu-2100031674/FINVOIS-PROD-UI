@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, Eye } from 'lucide-react';
+import { Download, Eye, Link2, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api, { apiErrorMessage } from '../../api/apiClient';
 import { WORKFLOW_KEYS, workflowFromLead } from '../../utils/dprWorkflowStatus';
@@ -9,6 +9,11 @@ function requestIdFromLead(lead) {
   if (nested && typeof nested === 'object') return nested._id || null;
   if (nested) return nested;
   return lead?.departmentRequest?._id || null;
+}
+
+function paymentLinkFromLead(lead) {
+  const r = lead?.report || lead?.departmentRequest?.reportId;
+  return r?.payment_link_url || r?.payment?.payment_link_url || null;
 }
 
 export function leadHasGeneratedReport(lead) {
@@ -35,8 +40,10 @@ async function fetchReportBlob(requestId, kind, inline = false) {
 const DprLeadReportActions = ({ lead }) => {
   const [busy, setBusy] = useState(null);
   const requestId = requestIdFromLead(lead);
+  const hasReport = leadHasGeneratedReport(lead) && Boolean(requestId);
+  const payUrl = paymentLinkFromLead(lead);
 
-  if (!leadHasGeneratedReport(lead) || !requestId) {
+  if (!hasReport && !payUrl) {
     return <span className="text-xs text-gray-400">—</span>;
   }
 
@@ -76,35 +83,69 @@ const DprLeadReportActions = ({ lead }) => {
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
 
+  const handleCopyPaymentLink = (e) => {
+    e.stopPropagation();
+    if (!payUrl) return;
+    navigator.clipboard.writeText(payUrl);
+    toast.success('Payment link copied to clipboard');
+  };
+
   return (
     <div className="flex flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-      <button
-        type="button"
-        disabled={!!busy}
-        onClick={() => run('view', viewPdf)}
-        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg disabled:opacity-50"
-      >
-        <Eye className="h-3.5 w-3.5" />
-        {busy === 'view' ? '…' : 'View'}
-      </button>
-      <button
-        type="button"
-        disabled={!!busy}
-        onClick={() => run('pdf', () => downloadFile('pdf'))}
-        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-teal-800 bg-teal-50 border border-teal-200 hover:bg-teal-100 rounded-lg disabled:opacity-50"
-      >
-        <Download className="h-3.5 w-3.5" />
-        {busy === 'pdf' ? '…' : 'PDF'}
-      </button>
-      <button
-        type="button"
-        disabled={!!busy}
-        onClick={() => run('excel', () => downloadFile('excel'))}
-        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-800 bg-gray-50 border border-gray-200 hover:bg-gray-100 rounded-lg disabled:opacity-50"
-      >
-        <Download className="h-3.5 w-3.5" />
-        {busy === 'excel' ? '…' : 'Excel'}
-      </button>
+      {payUrl && (
+        <div className="inline-flex items-center gap-0.5">
+          <button
+            type="button"
+            onClick={handleCopyPaymentLink}
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-l-lg transition-colors"
+            title="Copy payment link"
+          >
+            <Link2 className="h-3.5 w-3.5 text-blue-600" />
+            Pay Link
+          </button>
+          <a
+            href={payUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="p-1 text-xs text-blue-700 bg-blue-50 border border-l-0 border-blue-200 hover:bg-blue-100 rounded-r-lg"
+            title="Open payment link in new tab"
+          >
+            <ExternalLink className="h-3.5 w-3.5 text-blue-600" />
+          </a>
+        </div>
+      )}
+      {hasReport && (
+        <>
+          <button
+            type="button"
+            disabled={!!busy}
+            onClick={() => run('view', viewPdf)}
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg disabled:opacity-50"
+          >
+            <Eye className="h-3.5 w-3.5" />
+            {busy === 'view' ? '…' : 'View'}
+          </button>
+          <button
+            type="button"
+            disabled={!!busy}
+            onClick={() => run('pdf', () => downloadFile('pdf'))}
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-teal-800 bg-teal-50 border border-teal-200 hover:bg-teal-100 rounded-lg disabled:opacity-50"
+          >
+            <Download className="h-3.5 w-3.5" />
+            {busy === 'pdf' ? '…' : 'PDF'}
+          </button>
+          <button
+            type="button"
+            disabled={!!busy}
+            onClick={() => run('excel', () => downloadFile('excel'))}
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-800 bg-gray-50 border border-gray-200 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+          >
+            <Download className="h-3.5 w-3.5" />
+            {busy === 'excel' ? '…' : 'Excel'}
+          </button>
+        </>
+      )}
     </div>
   );
 };

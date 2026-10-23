@@ -1157,7 +1157,7 @@ const DprRequestDashboard = ({
                     <th className="px-3 py-3">DPR Status</th>
                     <th className="px-3 py-3">Staff</th>
                     <th className="px-3 py-3">Report</th>
-                    {/* {showGenerateReport && <th className="px-3 py-3">Generate Report</th>} */}
+                    {showGenerateReport && <th className="px-3 py-3">Generate Report</th>}
                     {showDelete && <th className="px-3 py-3 text-right">Actions</th>}
                   </tr>
                 </thead>
@@ -1228,11 +1228,11 @@ const DprRequestDashboard = ({
                           <td className="px-3 py-3">
                             <DprLeadReportActions lead={s} />
                           </td>
-                          {/* {showGenerateReport && (
+                          {showGenerateReport && (
                             <td className="px-3 py-3">
                               <GenerateReportCell leadId={s._id} departmentRequestId={s.departmentRequestId} loanType={s.loanType} navigate={navigate} />
                             </td>
-                          )} */}
+                          )}
                           {showDelete && (
                             <td className="px-3 py-3 text-right">
                               <button
@@ -1366,12 +1366,12 @@ const DprRequestDashboard = ({
                           <p className="font-medium text-gray-700 mb-2 text-xs uppercase tracking-wide">Report</p>
                           <DprLeadReportActions lead={s} />
                         </div>
-                        {/* {showGenerateReport && (
+                        {showGenerateReport && (
                           <div className="pt-2 border-t mt-2">
                             <p className="font-medium text-gray-700 mb-2 text-xs uppercase tracking-wide">Generate Report</p>
                             <GenerateReportCell leadId={s._id} departmentRequestId={s.departmentRequestId} loanType={s.loanType} navigate={navigate} />
                           </div>
-                        )} */}
+                        )}
                         {showDelete && (
                           <div className="flex items-center justify-between pt-2 border-t mt-2">
                             <span className="font-medium text-gray-700">Delete submission</span>
