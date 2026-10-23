@@ -107,6 +107,11 @@ export const downloadUserReportFile = async (report, kind) => {
   if (!path) {
     throw new Error('Report is missing an id for download');
   }
+  // channel partner: pay the admin-set amount first (dynamic import avoids a utils <-> api cycle)
+  if (report?.payment?.collect_on_download && report.payment.status !== 'completed') {
+    const { ensureCpDownloadPaid } = await import('./cpDownloadPayment');
+    if (!(await ensureCpDownloadPaid(report))) return false; // checkout closed
+  }
   const token = localStorage.getItem(TOKEN_KEY);
   const response = await fetch(path, {
     method: 'GET',

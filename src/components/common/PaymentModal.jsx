@@ -95,6 +95,8 @@ const PaymentModal = ({
   const savedFormData = useSelector((state) => state.report.formData);
   const isVehicleTemplate = isVehicleTemplateId(templateId);
   const userRole = normalizeUserRole(user?.role);
+  // channel partners submit without paying; they pay the admin-set amount at download
+  const cpPayAtDownload = userRole === 'customer_service';
   const requestId =
     requestIdProp ||
     (typeof window !== 'undefined'
@@ -158,6 +160,20 @@ const PaymentModal = ({
       setPayerChoice(lockPayer);
     }
   }, [isOpen, lockPayer]);
+
+  // CP: skip this modal entirely and submit for generation once sheet data is loaded
+  const cpAutoSubmitted = useRef(false);
+  const cpSubmitDone = useRef(false);
+  useEffect(() => {
+    if (!isOpen) { cpAutoSubmitted.current = false; cpSubmitDone.current = false; return; }
+    if (!cpPayAtDownload || cpAutoSubmitted.current || loadingPricing || loadingFreeCredits) return;
+    cpAutoSubmitted.current = true;
+    handlePayment().finally(() => {
+      // on success finishPaid() already closed the modal; on error close the overlay too
+      if (!cpSubmitDone.current) onClose();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, cpPayAtDownload, loadingPricing, loadingFreeCredits]);
 
   // Re-fetch free credits whenever the CS agent switches to the "CS pays" card
   // so the count is always fresh when they see the payment screen.
@@ -298,6 +314,7 @@ const PaymentModal = ({
   };
 
   const finishPaid = (reportId, amount, extra = {}) => {
+    cpSubmitDone.current = true;
     const selectedSheetsData = extra.selected_sheets || buildSelectedSheetsData();
     onPaymentSuccess({
       report_id: reportId,
@@ -706,6 +723,15 @@ const PaymentModal = ({
         requestId,
         payer
       );
+      // Channel partner: no payment now — admin sets the amount at approval, CP pays at download
+      if (orderResponse.data?.pay_at_download) {
+        toast.success('Report submitted. You can pay and download it once admin approves.');
+        finishPaid(orderResponse.data.report_id, 0, {
+          selected_sheets: selectedSheetsData,
+          generate_without_payment: true,
+        });
+        return;
+      }
       if (orderResponse.data?.free_credit || orderResponse.data?.amount === 0) {
         const verifyResponse = await reportAPI.verifyReportPayment(orderResponse.data.report_id, {});
         finishPaid(orderResponse.data.report_id, 0, {
@@ -728,6 +754,18 @@ const PaymentModal = ({
   };
 
   if (!isOpen) return null;
+
+  // CP: nothing to choose or pay here — just a short "submitting" overlay while the effect submits
+  if (cpPayAtDownload) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="bg-white rounded-xl px-6 py-4 flex items-center gap-3 shadow-lg">
+          <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
+          <span className="text-sm font-medium text-gray-800">Submitting report...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AnimatePresence>
@@ -760,7 +798,7 @@ const PaymentModal = ({
                 {isBetaMode || effectiveFreeCredits > 0 ? <CheckCircle2 className="w-8 h-8 text-green-600" /> : <CreditCard className="w-8 h-8 text-purple-600" />}
               </div>
 
-              <h2 className="text-2xl font-bold font-manrope text-gray-900">{isBetaMode ? "Generate Free Report" : showPayerChooser ? "Who will pay?" : billToCustomer ? "Forward payment to customer" : billToBankManager ? "Forward payment to Bank Manager" : effectiveFreeCredits > 0 ? "Use Free Report Credit" : "Complete Report Payment"}</h2>
+              <h2 className="text-2xl font-bold font-manrope text-gray-900">{isBetaMode ? "Generate Free Report" : cpPayAtDownload ? "Submit Report" : showPayerChooser ? "Who will pay?" : billToCustomer ? "Forward payment to customer" : billToBankManager ? "Forward payment to Bank Manager" : effectiveFreeCredits > 0 ? "Use Free Report Credit" : "Complete Report Payment"}</h2>
               <p className="text-gray-500 text-sm mt-1">{resolveReportTitle({ formData: savedFormData, reportTitle, templateId })}</p>
             </div>
 
@@ -956,9 +994,11 @@ const PaymentModal = ({
             {/* Footer */}
             <div className="border-t border-gray-100 p-6 bg-gray-50">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-gray-600 font-medium">Total Amount</span>
+                <span className="text-gray-600 font-medium">{cpPayAtDownload ? 'Pay now' : 'Total Amount'}</span>
                 <span className="text-3xl font-bold text-gray-900">
-                  {isBetaMode || (!showPayerChooser && !billToCustomer && !existingReportId && effectiveFreeCredits > 0)
+                  {cpPayAtDownload
+                    ? <span className="text-green-600">₹0</span>
+                    : isBetaMode || (!showPayerChooser && !billToCustomer && !existingReportId && effectiveFreeCredits > 0)
                     ? <span className="text-green-600">FREE</span>
                     : <>₹{calculateTotalPrice()}<span className="text-lg text-gray-400 font-medium">.00</span></>
                   }
@@ -1112,7 +1152,7 @@ const PaymentModal = ({
                   </>
                 ) : (
                   <>
-                    {isBetaMode ? "Generate Report Now" : effectiveFreeCredits > 0 ? "Use Free Credit & Generate" : "Proceed to Payment"}
+                    {isBetaMode ? "Generate Report Now" : cpPayAtDownload ? "Submit Report" : effectiveFreeCredits > 0 ? "Use Free Credit & Generate" : "Proceed to Payment"}
                   </>
                 )}
               </button>
@@ -1125,6 +1165,11 @@ const PaymentModal = ({
                   <Share2 className="w-4 h-4 text-blue-600" />
                   Forward payment to Bank Manager instead
                 </button>
+              )}
+              {cpPayAtDownload && (
+                <p className="text-xs text-gray-500 text-center">
+                  No payment now. After admin approval you'll pay the amount set by admin when downloading.
+                </p>
               )}
               {payerChoice === 'customer_service' && !lockPayer && (
                 <button
@@ -1141,7 +1186,7 @@ const PaymentModal = ({
               </div>
               )}
 
-              {!isBetaMode && (
+              {!isBetaMode && !cpPayAtDownload && (
                 <div className="flex items-center justify-center gap-2 mt-4 text-gray-400 text-xs">
                   <ShieldCheck className="w-3 h-3" />
                   <span>Payments secured by Razorpay </span>
