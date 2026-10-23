@@ -160,7 +160,8 @@ const AdminSidebar = ({
         { to: '/admin/withdrawals', icon: Wallet, label: 'Withdrawals' },
         { to: '/admin/payments', icon: CreditCard, label: 'Transactions' },
         { to: '/admin/free-credits', icon: Gift, label: 'Free Reports' },
-        { to: '/admin/promotional-emails', icon: Mail, label: 'Promo Emails' }
+        { to: '/admin/promotional-emails', icon: Mail, label: 'Promo Emails' },
+        { to: '/admin/email-automation', icon: Mail, label: 'Email Automation' }
       );
     }
 

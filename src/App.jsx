@@ -54,6 +54,7 @@ import {
   AdminGenerateReportPage,
   AdminFreeCreditsPage,
   AdminPromotionalEmailsPage,
+  AdminEmailAutomationPage,
   AdminCompaniesPage,
   AdminCreateCompanyPage,
   AdminCompanyCreatePage,
@@ -1566,6 +1567,14 @@ function App() {
           element={
             <AdminOnlyRoute>
               <AdminFreeCreditsPage />
+            </AdminOnlyRoute>
+          }
+        />
+        <Route
+          path="/admin/email-automation"
+          element={
+            <AdminOnlyRoute>
+              <AdminEmailAutomationPage />
             </AdminOnlyRoute>
           }
         />
