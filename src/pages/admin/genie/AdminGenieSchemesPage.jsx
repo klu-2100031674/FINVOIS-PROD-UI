@@ -148,12 +148,6 @@ export default function AdminGenieSchemesPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
-              to="/admin/schemes/ai-knowledge"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-            >
-              <FlaskConical className="h-4 w-4" /> Test AI answers
-            </Link>
-            <Link
               to="/admin/client-screening/emails"
               className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
