@@ -17,6 +17,7 @@ export { default as AdminProfilePage } from './AdminProfilePage';
 export { default as AdminGenerateReportPage } from './AdminGenerateReportPage';
 export { default as AdminFreeCreditsPage } from './AdminFreeCreditsPage';
 export { default as AdminPromotionalEmailsPage } from './AdminPromotionalEmailsPage';
+export { default as AdminEmailAutomationPage } from './AdminEmailAutomationPage';
 export { default as AdminCreateCompanyPage } from './AdminCreateCompanyPage';
 export { default as AdminCompanyCreatePage } from './AdminCompanyCreatePage';
 export { default as AdminCompaniesPage } from './AdminCompaniesPage';
