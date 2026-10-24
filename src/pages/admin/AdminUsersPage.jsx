@@ -301,11 +301,11 @@ const AdminUsersPage = () => {
   const handleTableAccessChange = async (userId, tableAccess) => {
     try {
       await api.patch(`/users/${userId}`, { table_access: tableAccess });
-      toast.success(tableAccess ? 'Validation Rights granted' : 'Validation Rights revoked');
+      toast.success(tableAccess ? 'Table Access granted' : 'Table Access revoked');
       fetchUsers();
       fetchPendingVrRequests();
     } catch (error) {
-      toast.error(error?.response?.data?.error || error?.error || 'Failed to update Validation Rights');
+      toast.error(error?.response?.data?.error || error?.error || 'Failed to update Table Access');
     }
     setActionMenu(null);
   };
@@ -326,10 +326,10 @@ const AdminUsersPage = () => {
     setVrActionId(requestId);
     try {
       await api.patch(`/validation-rights-requests/${requestId}/approve`);
-      toast.success('Validation Rights granted');
+      toast.success('Table Access granted');
       await Promise.all([fetchUsers(), fetchPendingVrRequests()]);
     } catch (error) {
-      toast.error(error?.response?.data?.error || error?.error || 'Failed to grant Validation Rights');
+      toast.error(error?.response?.data?.error || error?.error || 'Failed to grant Table Access');
     } finally {
       setVrActionId(null);
     }
@@ -524,13 +524,13 @@ const AdminUsersPage = () => {
         </button>
       </div>
 
-      {/* Pending Validation Rights queue */}
+      {/* Pending Table Access queue */}
       {pendingVrRequests.length > 0 && (
         <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4">
           <div className="flex items-center justify-between gap-3 mb-3">
             <div>
               <h2 className="text-sm font-semibold text-amber-900">
-                Pending Validation Rights
+                Pending Table Access
               </h2>
               <p className="text-xs text-amber-700 mt-0.5">
                 {pendingVrRequests.length} request{pendingVrRequests.length === 1 ? '' : 's'} awaiting review
@@ -774,7 +774,7 @@ const AdminUsersPage = () => {
                           </span>
                           {canManageTableAccess(user) && user.table_access && (
                             <span className="inline-block px-2 py-0.5 text-[10px] font-semibold rounded-full bg-indigo-100 text-indigo-800">
-                              Validation Rights
+                              Table Access
                             </span>
                           )}
                           {canManageApprovalRights(user) && user.approval_rights && (
@@ -784,7 +784,7 @@ const AdminUsersPage = () => {
                           )}
                           {canManageTableAccess(user) && !user.table_access && pendingVrUserIds.has(String(user._id)) && (
                             <span className="inline-block px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-100 text-amber-800">
-                              VR Request Pending
+                              Table Access Pending
                             </span>
                           )}
                         </div>
@@ -894,7 +894,7 @@ const AdminUsersPage = () => {
                   className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 >
                   <Edit2 size={15} className="mr-2 shrink-0" />
-                  {actionMenuUser.table_access ? 'Revoke Validation Rights' : 'Grant Validation Rights'}
+                  {actionMenuUser.table_access ? 'Revoke Table Access' : 'Grant Table Access'}
                 </button>
               )}
               {canManageApprovalRights(actionMenuUser) && (
@@ -1066,7 +1066,7 @@ const AdminUsersPage = () => {
                   </div>
                   {canManageTableAccess(selectedUser) && (
                     <div>
-                      <p className="text-sm text-gray-500">Validation Rights</p>
+                      <p className="text-sm text-gray-500">Table Access</p>
                       <p className="font-medium">{selectedUser.table_access ? 'Granted' : 'Not granted'}</p>
                     </div>
                   )}

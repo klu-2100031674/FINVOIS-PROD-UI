@@ -216,7 +216,7 @@ const ProfilePage = ({ variant }) => {
       await api.post('/validation-rights-requests', {
         message: vrMessage.trim() || undefined,
       });
-      toast.success('Validation Rights request submitted');
+      toast.success('Table Access request submitted');
       setVrMessage('');
       await loadValidationRightsStatus();
     } catch (error) {
@@ -311,13 +311,13 @@ const ProfilePage = ({ variant }) => {
                   <div className="p-2 bg-indigo-50 rounded-lg">
                     <ClipboardCheck className="w-5 h-5 text-indigo-700" />
                   </div>
-                  <h3 className="text-sm font-semibold text-gray-900">Validation Rights</h3>
+                  <h3 className="text-sm font-semibold text-gray-900">Table Access</h3>
                 </div>
                 {vrStatus.loading ? (
                   <p className="text-sm text-gray-500">Checking status…</p>
                 ) : userHasValidationRights ? (
                   <div className="rounded-xl border border-green-100 bg-green-50 px-3 py-3">
-                    <p className="text-sm font-medium text-green-800">Validation Rights granted</p>
+                    <p className="text-sm font-medium text-green-800">Table Access granted</p>
                     <p className="text-xs text-green-700 mt-1">
                       You can view Stage 1 financials sheets.
                     </p>
@@ -347,7 +347,7 @@ const ProfilePage = ({ variant }) => {
                       disabled={vrSubmitting}
                       className="w-full px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {vrSubmitting ? 'Submitting…' : 'Request Validation Rights'}
+                      {vrSubmitting ? 'Submitting…' : 'Request Table Access'}
                     </button>
                     {vrStatus.latest?.status === 'rejected' && (
                       <p className="text-xs text-gray-500">

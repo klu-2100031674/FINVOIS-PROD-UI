@@ -1,7 +1,7 @@
 import { normalizeRoleFromUser, normalizeUserRole } from './normalizeUserRole';
 
 /**
- * Roles that require Validation Rights (table_access === true)
+ * Roles that require Table Access (table_access === true)
  * to view Stage 1 financials. All other roles always have access.
  */
 export const TABLE_ACCESS_ELIGIBLE_ROLES = [
@@ -10,6 +10,7 @@ export const TABLE_ACCESS_ELIGIBLE_ROLES = [
   'company_admin',
   'agent',
   'customer',
+  'customer_service',
 ];
 
 export function isTableAccessEligibleRole(role) {

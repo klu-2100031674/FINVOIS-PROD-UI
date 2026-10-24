@@ -9,6 +9,9 @@ export function normalizeUserRole(role) {
   if (normalized === 'super_admin') return 'admin';
   if (['lead manager', 'lead-manager', 'leadmanager', 'service manager', 'service-manager', 'servicemanager'].includes(normalized)) return 'lead_manager';
   if (['bank manager', 'bank-manager', 'bankmanager', 'bank_manager'].includes(normalized)) return 'bank_manager';
+  if (['customer service', 'customer-service', 'customerservice'].includes(normalized)) {
+    return 'customer_service';
+  }
   // Legacy platform executive → SBI executive
   if (normalized === 'executive') return 'sbi_executive';
   return normalized;
