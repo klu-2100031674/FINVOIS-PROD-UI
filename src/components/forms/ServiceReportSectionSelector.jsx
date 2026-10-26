@@ -8,6 +8,7 @@ import {
 import toast from 'react-hot-toast';
 import { Button } from '../common';
 import { normalizeStage2Snapshot } from '../../utils/draftPayload';
+import { firstFilled, looksLikePhone, looksLikeSectorLabel } from './sectionSelectorShared';
 
 const SECTION_CONFIG = [
   {
@@ -16,7 +17,8 @@ const SECTION_CONFIG = [
     prompt_ref: "constitution",
     fields: [
       { name: "firm_name", label: "Firm Name", type: "text", required: false },
-      { name: "organisation_type", label: "Sector", type: "select", options: ["Proprietorship", "Partnership", "Private Limited", "LLP", "Other"] },
+      { name: "organisation_type", label: "Constitution / Entity Type", type: "select", options: ["Proprietorship", "Partnership", "Private Limited", "LLP", "Other"] },
+      { name: "sector", label: "Sector", type: "text", placeholder: "Prefilled from previous page" },
       { name: "nature_of_business", label: "Nature of Business", type: "text", placeholder: "Prefilled from previous page" },
       { name: "proprietor_name", label: "Name of Authorised person", type: "text", required: true },
       { name: "pan_number", label: "PAN Number", type: "text" },
@@ -537,11 +539,17 @@ const ServiceReportSectionSelector = ({
 
     // Specific pre-fills for statutory_approvals
     if (testData.statutory_approvals) {
-       testData.statutory_approvals.approvals = [
-         { name: "GST", checked: true, description: "Applied date: 15/05/2025, Status: Pending" },
-         { name: "Udyam (UAM/MSME) RC", checked: true, description: "RC No: UDYAM-AP-01-0001234" },
-         { name: "Pollution Approval / NOC", checked: true, description: "Applied for CFE on 10/06/2025" }
-       ];
+      const existingApprovals = testData.statutory_approvals.approvals;
+      const hasUserApprovals = Array.isArray(existingApprovals) && existingApprovals.some((item) => (
+        item && (item.checked || (item.description && String(item.description).trim() !== ''))
+      ));
+      if (!hasUserApprovals) {
+        testData.statutory_approvals.approvals = [
+          { name: "GST", checked: true, description: "Applied date: 15/05/2025, Status: Pending" },
+          { name: "Udyam (UAM/MSME) RC", checked: true, description: "RC No: UDYAM-AP-01-0001234" },
+          { name: "Pollution Approval / NOC", checked: true, description: "Applied for CFE on 10/06/2025" }
+        ];
+      }
     }
 
     // Specific Land Breakdown overrides if empty
@@ -645,40 +653,102 @@ const ServiceReportSectionSelector = ({
       SECTION_CONFIG.forEach(section => {
         // Specific pre-filling logic based on section id
         if (section.id === 'firm_constitution') {
-          const firmFromForm =
-            getS1('General Information', 'i17') || getS1('General Information', 'i8');
+          const firmFromForm = firstFilled(
+            getS1('General Information', 'i17'),
+            stage1.firmName,
+            stage1.firm_name,
+            stage1.enterpriseName
+          );
           setMapped('firm_constitution', 'firm_name', firmFromForm);
-          setMapped('firm_constitution', 'organisation_type', getS1('General Information', 'i14'));
-          setMapped('firm_constitution', 'nature_of_business', getS1('General Information', 'i15') || getS1('General Information', 'i9'));
-          setMapped('firm_constitution', 'proprietor_name', getS1('General Information', 'i8'));
-          setMapped('firm_constitution', 'pan_number', getS1('General Information', 'i18') || getS1('General Information', 'i11'));
-          setMapped('firm_constitution', 'aadhar_number', getS1('General Information', 'i10'));
-          setMapped('firm_constitution', 'caste', getS1('General Information', 'i21'));
-          const address = getS1('General Information', 'i16');
-          setMapped('firm_constitution', 'residential_address', address);
-        } else if (section.id === 'promoter_details') {
-          // Flatten previous mappings into the list if available
-           const name = getS1('General Information', 'i8') || stage1.proprietorName || '';
-           if (name) {
-              const caste = getS1('General Information', 'i21') || stage1.caste || '';
-              const pan = getS1('General Information', 'i11') || stage1.panNo || '';
-              const aadhar = getS1('General Information', 'i10') || stage1.aadharNo || '';
-              const address = getS1('General Information', 'i16') || stage1.address || '';
-              const edu = getS1('General Information', 'i19') || stage1.education || '';
-              const ageRaw = getS1('General Information', 'i12') ?? stage1.age ?? '';
-              const age =
-                ageRaw !== undefined && ageRaw !== null && String(ageRaw).trim() !== ''
-                  ? String(ageRaw).trim()
-                  : '';
 
-              if (!autoMapped[section.id]) autoMapped[section.id] = {};
-              autoMapped[section.id]['promoters'] = [{
-                 name, caste, pan_number: pan, aadhar_number: aadhar, address, education: edu,
-                 designation: "Proprietor", share_ratio: "100%", age, experience: ""
-              }];
-              // We do not hide lists usually, but if desired:
-              // setMapped(section.id, 'promoters', 'filled'); 
-           }
+          const rawStatusCandidate = firstFilled(
+            getS1('General Information', 'i7'),
+            stage1.constitution,
+            looksLikeSectorLabel(stage1.organisation_type) ? '' : stage1.organisation_type,
+            looksLikeSectorLabel(stage1.organisationType) ? '' : stage1.organisationType
+          );
+          const rawStatus = looksLikeSectorLabel(rawStatusCandidate) ? '' : rawStatusCandidate;
+          let normalizedOrg = rawStatus;
+          const statusLower = String(rawStatus).toLowerCase();
+          if (statusLower.includes('sole') || statusLower.includes('proprietor')) {
+            normalizedOrg = 'Proprietorship';
+          } else if (statusLower.includes('partner')) {
+            normalizedOrg = 'Partnership';
+          } else if (statusLower.includes('private') || statusLower.includes('pvt')) {
+            normalizedOrg = 'Private Limited';
+          } else if (statusLower.includes('llp')) {
+            normalizedOrg = 'LLP';
+          } else if (rawStatus && !['Proprietorship', 'Partnership', 'Private Limited', 'LLP'].includes(rawStatus)) {
+            normalizedOrg = 'Other';
+          }
+          setMapped('firm_constitution', 'organisation_type', normalizedOrg);
+          setMapped('firm_constitution', 'constitution', rawStatus || normalizedOrg);
+
+          const sectorVal = firstFilled(getS1('General Information', 'i14'), stage1.sector);
+          setMapped('firm_constitution', 'sector', sectorVal);
+
+          const natureCandidate = firstFilled(
+            getS1('General Information', 'i15'),
+            stage1.natureOfBusiness,
+            stage1.nature_of_business,
+            looksLikePhone(getS1('General Information', 'i9')) ? '' : getS1('General Information', 'i9')
+          );
+          const natureVal = looksLikePhone(natureCandidate) ? '' : natureCandidate;
+          setMapped('firm_constitution', 'nature_of_business', natureVal);
+
+          const propName = firstFilled(
+            getS1('General Information', 'i8'),
+            stage1.proprietorName,
+            stage1.applicantName
+          );
+          setMapped('firm_constitution', 'proprietor_name', propName);
+
+          setMapped('firm_constitution', 'pan_number', firstFilled(
+            getS1('General Information', 'i11'),
+            getS1('General Information', 'i18'),
+            stage1.panNo
+          ));
+          setMapped('firm_constitution', 'aadhar_number', firstFilled(
+            getS1('General Information', 'i10'),
+            stage1.aadharNo
+          ));
+          setMapped('firm_constitution', 'caste', firstFilled(
+            getS1('General Information', 'i21'),
+            stage1.caste
+          ));
+
+          const residential = firstFilled(
+            getS1('General Information', 'residential_address'),
+            stage1.residential_address
+          );
+          setMapped('firm_constitution', 'residential_address', residential);
+        } else if (section.id === 'promoter_details') {
+          const name = firstFilled(
+            getS1('General Information', 'i8'),
+            stage1.proprietorName,
+            stage1.applicantName
+          );
+          if (name) {
+            const caste = getS1('General Information', 'i21') || stage1.caste || '';
+            const pan = getS1('General Information', 'i11') || getS1('General Information', 'i18') || stage1.panNo || '';
+            const aadhar = getS1('General Information', 'i10') || stage1.aadharNo || '';
+            const address = firstFilled(
+              getS1('General Information', 'residential_address'),
+              stage1.residential_address
+            );
+            const edu = getS1('General Information', 'i19') || stage1.education || '';
+            const ageRaw = getS1('General Information', 'i12') ?? stage1.age ?? '';
+            const age =
+              ageRaw !== undefined && ageRaw !== null && String(ageRaw).trim() !== ''
+                ? String(ageRaw).trim()
+                : '';
+
+            if (!autoMapped[section.id]) autoMapped[section.id] = {};
+            autoMapped[section.id]['promoters'] = [{
+              name, caste, pan_number: pan, aadhar_number: aadhar, address, education: edu,
+              designation: "Proprietor", share_ratio: "100%", age, experience: ""
+            }];
+          }
         } else if (section.id === 'partner_education') {
            const name = getS1('General Information', 'i8') || stage1.proprietorName || '';
            const edu = getS1('General Information', 'i19') || stage1.education || '';
@@ -689,8 +759,7 @@ const ServiceReportSectionSelector = ({
               }];
            }
         } else if (section.id === 'product_details') {
-          setMapped('product_details', 'main_product', getS1('General Information', 'i15'));
-          setMapped('product_details', 'product_category', getS1('General Information', 'i14'));
+          setMapped('product_details', 'nature_of_business', getS1('General Information', 'i15'));
         } else if (section.id === 'manufacturing_capacity') {
           const mainProd = getS1('General Information', 'i15');
           if (mainProd) {

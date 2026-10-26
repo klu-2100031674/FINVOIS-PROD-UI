@@ -15,7 +15,8 @@ export const firmConstitutionSection = {
   prompt_ref: "constitution",
   fields: [
     { name: "firm_name", label: "Firm Name", type: "text", required: false },
-    { name: "organisation_type", label: "Sector", type: "select", options: ["Proprietorship", "Partnership", "Private Limited", "LLP", "Other"] },
+    { name: "organisation_type", label: "Constitution / Entity Type", type: "select", options: ["Proprietorship", "Partnership", "Private Limited", "LLP", "Other"] },
+    { name: "sector", label: "Sector", type: "text", placeholder: "Prefilled from previous page" },
     { name: "nature_of_business", label: "Nature of Business", type: "text", placeholder: "Prefilled from previous page" },
     { name: "proprietor_name", label: "Name of Authorised person", type: "text", required: true },
     { name: "pan_number", label: "PAN Number", type: "text" },
@@ -373,7 +374,7 @@ export const conclusionSection = {
  * are simply ignored.
  */
 export const MAPPED_FIELDS_CONFIG = {
-  firm_constitution: ['firm_name', 'organisation_type', 'nature_of_business', 'proprietor_name', 'pan_number', 'aadhar_number', 'caste', 'residential_address'],
+  firm_constitution: ['firm_name', 'organisation_type', 'sector', 'nature_of_business', 'proprietor_name', 'pan_number', 'aadhar_number', 'caste', 'residential_address'],
   promoter_details: ['promoters'],
   product_details: ['nature_of_business'],
   product_characteristics: ['industry_type'],
@@ -396,3 +397,22 @@ export const SKIP_VALIDATION_SECTION_IDS = [
   'market_trend',
   'conclusion'
 ];
+
+export const firstFilled = (...vals) => {
+  for (const value of vals) {
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      return value;
+    }
+  }
+  return '';
+};
+
+export const looksLikePhone = (value) => {
+  const text = String(value || '').trim();
+  const digits = text.replace(/\D/g, '');
+  const compact = text.replace(/\s/g, '');
+  return digits.length >= 10 && digits.length <= 12 && digits.length >= compact.length * 0.7;
+};
+
+export const looksLikeSectorLabel = (value) =>
+  /manufacturing|trading|service/i.test(String(value || ''));

@@ -12,9 +12,11 @@ import {
   Clock,
   Send,
   LogOut,
+  BookOpen,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { hasApprovalRights } from '../../utils/approvalRights';
+import { theoryPagesHubPath } from '../../utils/routePaths';
 import api from '../../api/apiClient';
 
 const linkClass = ({ isActive }) =>
@@ -101,6 +103,7 @@ const CustomerServiceSidebar = ({
     { type: 'section', key: 'cs-section', label: 'Work Queue' },
     { type: 'work-queue' },
     { type: 'section', key: 'personal-section', label: 'Personal Work' },
+    { to: theoryPagesHubPath(user), icon: BookOpen, label: 'Theory Pages' },
     { to: '/drafts', icon: FileText, label: 'Drafts' },
     { to: '/reports', icon: FileStack, label: 'Approved Reports' },
     { to: '/profile', icon: User, label: 'Profile' },

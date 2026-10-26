@@ -15,16 +15,8 @@ import {
   DashboardPage,
   DraftsPage,
   GeneratePage,
-  // PMEGP
-  PmegpSchemeMailPage,
-  PublicPmegpSchemeMailPage,
   PublicPmegpAiChatPage,
-  CmepSchemeMailPage,
-  PublicCmepSchemeMailPage,
   PublicCmepAiChatPage,
-  // AP IDP
-  ApIdpSchemeMailPage,
-  PublicApIdpSchemeMailPage,
   PublicApIdpAiChatPage,
   ReportsPage,
   Stage1Page,
@@ -1088,20 +1080,13 @@ function App() {
         {/* PMEGP / AP IDP generate routes */}
         {/* The PMEGP / CMEP / AP IDP questionnaires are admin-configured Genie questions now */}
         <Route path="/generate/pmegp" element={<Navigate to="/genie/pmegp" replace />} />
-        <Route path="/generate/pmegp/scheme-mail" element={<GenerateWizardRoute><PmegpSchemeMailPage /></GenerateWizardRoute>} />
+        <Route path="/generate/pmegp/scheme-mail" element={<Navigate to="/client-screening" replace />} />
         <Route path="/generate/pmegp/ai-chat" element={<GenerateWizardRoute><PublicPmegpAiChatPage /></GenerateWizardRoute>} />
         <Route path="/generate/ap-idp" element={<Navigate to="/genie/ap-idp" replace />} />
-        <Route path="/generate/ap-idp/scheme-mail" element={<GenerateWizardRoute><ApIdpSchemeMailPage /></GenerateWizardRoute>} />
+        <Route path="/generate/ap-idp/scheme-mail" element={<Navigate to="/client-screening" replace />} />
         <Route path="/generate/ap-idp/ai-chat" element={<GenerateWizardRoute><PublicApIdpAiChatPage /></GenerateWizardRoute>} />
         <Route path="/generate/cmep" element={<Navigate to="/genie/cmep" replace />} />
-        <Route
-          path="/generate/cmep/scheme-mail"
-          element={
-            <GenerateWizardRoute>
-              <CmepSchemeMailPage />
-            </GenerateWizardRoute>
-          }
-        />
+        <Route path="/generate/cmep/scheme-mail" element={<Navigate to="/client-screening" replace />} />
         <Route
           path="/generate/cmep/ai-chat"
           element={
@@ -2136,7 +2121,7 @@ function App() {
         <Route path="/genie" element={<GeniePage />} />
         <Route path="/genie/:slug" element={<GeniePage />} />
         {/* PMEGP */}
-        <Route path="/schemes/pmegp/support" element={<PublicPmegpSchemeMailPage />} />
+        <Route path="/schemes/pmegp/support" element={<Navigate to="/client-screening" replace />} />
         <Route path="/schemes/pmegp" element={<Navigate to="/genie/pmegp" replace />} />
         <Route path="/schemes/pmegp/ai-chat" element={<PublicPmegpAiChatPage />} />
         <Route
@@ -2144,10 +2129,10 @@ function App() {
           element={<Navigate to="/admin/client-screening/emails" replace />}
         />
         {/* AP IDP */}
-        <Route path="/schemes/ap-idp/support" element={<PublicApIdpSchemeMailPage />} />
+        <Route path="/schemes/ap-idp/support" element={<Navigate to="/client-screening" replace />} />
         <Route path="/schemes/ap-idp" element={<Navigate to="/genie/ap-idp" replace />} />
         <Route path="/schemes/ap-idp/ai-chat" element={<PublicApIdpAiChatPage />} />
-        <Route path="/schemes/cmep/support" element={<PublicCmepSchemeMailPage />} />
+        <Route path="/schemes/cmep/support" element={<Navigate to="/client-screening" replace />} />
         <Route path="/schemes/cmep" element={<Navigate to="/genie/cmep" replace />} />
         <Route path="/schemes/cmep/ai-chat" element={<PublicCmepAiChatPage />} />
         <Route path="/eligibility-result" element={<EligibilityResult />} />

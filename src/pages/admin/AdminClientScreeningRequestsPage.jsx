@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, ChevronDown, ChevronRight, Mail, Search } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronRight, Mail, RefreshCw, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AdminLayout } from '../../components/layouts';
 import api from '../../api/apiClient';
@@ -16,9 +16,6 @@ const STATUS_FILTERS = [
 const SOURCE_FILTERS = [
   { id: '', label: 'All sources' },
   { id: 'client-screening', label: 'Client screening' },
-  { id: 'pmegp', label: 'PMEGP' },
-  { id: 'cmep', label: 'CMEP' },
-  { id: 'ap-idp', label: 'AP IDP' },
 ];
 
 const SOURCE_LABELS = {
@@ -205,13 +202,25 @@ const AdminClientScreeningRequestsPage = () => {
               Track whether each MSME Service Provider accepted, approved, or rejected a lead. Open a row to reassign or change status.
             </p>
           </div>
-          <Link
-            to="/admin/client-screening/emails"
-            className="inline-flex items-center gap-2 px-3.5 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition text-sm font-semibold shadow-sm shrink-0"
-          >
-            <Mail className="w-4 h-4" />
-            Screening Emails
-          </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={load}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition text-sm font-semibold shadow-xs disabled:opacity-50"
+              title="Refresh requests"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-purple-600' : 'text-gray-500'}`} />
+              Refresh
+            </button>
+            <Link
+              to="/admin/client-screening/emails"
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition text-sm font-semibold shadow-sm shrink-0"
+            >
+              <Mail className="w-4 h-4" />
+              Screening Emails
+            </Link>
+          </div>
         </div>
 
         <GlanceCards summary={summary} />
@@ -287,20 +296,6 @@ const AdminClientScreeningRequestsPage = () => {
                 onClick={() => setStatus(f.id)}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-full ${
                   status === f.id ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-600'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {SOURCE_FILTERS.map((f) => (
-              <button
-                key={f.id || 'all-sources'}
-                type="button"
-                onClick={() => setSourceType(f.id)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-full ${
-                  sourceType === f.id ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-800'
                 }`}
               >
                 {f.label}

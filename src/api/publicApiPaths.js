@@ -15,7 +15,9 @@ export function shouldAttachCustomerSession(url) {
 export function isPublicAnonymousApiPath(url) {
   const u = String(url || '');
   const isClientScreeningSubmit =
-    u.includes('/client-screening') && !u.includes('/client-screening/mail-routing');
+    u.includes('/client-screening') &&
+    !u.includes('/client-screening/mail-routing') &&
+    !u.includes('/client-screening/config');
   // Unified scheme route (form/mail/chat via action field) — public for the
   // active schemes, same as the legacy per-action paths below.
   const isUnifiedSchemeRoute =

@@ -10,8 +10,9 @@ const EstablishmentSupportChecklist = ({
   selected,
   onToggle,
   heading = 'What do you need help with?',
+  options: customOptions,
 }) => {
-  const options = topicsForStage(stage);
+  const options = customOptions && customOptions.length ? customOptions : topicsForStage(stage);
 
   return (
     <div className="space-y-6">
@@ -23,11 +24,10 @@ const EstablishmentSupportChecklist = ({
             {options.map((opt) => (
               <label
                 key={opt.id}
-                className={`flex cursor-pointer select-none items-start gap-3 rounded-lg border p-3 transition ${
-                  selected[opt.id]
+                className={`flex cursor-pointer select-none items-start gap-3 rounded-lg border p-3 transition ${selected[opt.id]
                     ? 'border-purple-300 bg-purple-50'
                     : 'border-gray-200 bg-white hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 <input
                   type="checkbox"
