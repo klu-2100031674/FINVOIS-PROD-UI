@@ -17,8 +17,24 @@ export const uploadEmailExcel = async (file, name, mapping) => {
   return (await apiClient.post(`${BASE}/upload`, form)).data.data;
 };
 
-export const scheduleEmailRequest = async (id, templateId, scheduledAt, scheduledDates) =>
-  (await apiClient.put(`${BASE}/requests/${id}/schedule`, { templateId, scheduledAt, scheduledDates })).data.data;
+export const scheduleEmailRequest = async (id, templateId, scheduledAt, scheduledDates, attachmentIds = []) =>
+  (await apiClient.put(`${BASE}/requests/${id}/schedule`, { templateId, scheduledAt, scheduledDates, attachmentIds })).data.data;
+
+export const uploadEmailAttachment = async (file) => {
+  const form = new FormData();
+  form.append('file', file);
+  return (await apiClient.post(`${BASE}/attachments`, form)).data.data;
+};
+
+export const downloadEmailAttachment = async ({ _id, filename }) => {
+  const res = await apiClient.get(`${BASE}/attachments/${_id}/download`, { responseType: 'blob' });
+  const url = URL.createObjectURL(res.data);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
 
 export const cloneEmailRequest = async (id) => (await apiClient.post(`${BASE}/requests/${id}/clone`)).data.data;
 
@@ -32,11 +48,13 @@ export const deleteEmailRequest = async (id) => (await apiClient.delete(`${BASE}
 
 export const fetchEmailTemplates = async () => (await apiClient.get(`${BASE}/templates`)).data.data;
 
-export const saveEmailTemplate = async ({ _id, name, subject, body }) =>
-  (_id
-    ? await apiClient.put(`${BASE}/templates/${_id}`, { name, subject, body })
-    : await apiClient.post(`${BASE}/templates`, { name, subject, body })
+export const saveEmailTemplate = async ({ _id, name, subject, body, attachments = [] }) => {
+  const payload = { name, subject, body, attachments: attachments.map((a) => a._id || a) };
+  return (_id
+    ? await apiClient.put(`${BASE}/templates/${_id}`, payload)
+    : await apiClient.post(`${BASE}/templates`, payload)
   ).data.data;
+};
 
 export const deleteEmailTemplate = async (id) => (await apiClient.delete(`${BASE}/templates/${id}`)).data;
 
@@ -61,8 +79,8 @@ export const deleteFolderContact = async (id, cid) => (await apiClient.delete(`$
 export const fetchSelectedFolderEmails = async (folderIds, params = {}) =>
   (await apiClient.get(`${BASE}/folder-emails`, { params: { ...params, folderIds: folderIds.join(',') } })).data.data;
 
-export const scheduleFolders = async ({ folderIds, templateId, scheduledAt, scheduledDates }) =>
-  (await apiClient.post(`${BASE}/schedules`, { folderIds, templateId, scheduledAt, scheduledDates })).data.data;
+export const scheduleFolders = async ({ folderIds, templateId, scheduledAt, scheduledDates, attachmentIds = [] }) =>
+  (await apiClient.post(`${BASE}/schedules`, { folderIds, templateId, scheduledAt, scheduledDates, attachmentIds })).data.data;
 
 export const fetchEmailQuota = async () => (await apiClient.get(`${BASE}/quota`)).data.data;
 
