@@ -6,7 +6,6 @@ import {
   ArrowRight,
   ClipboardList,
   FileText,
-  Layers,
   MessageCircle,
   PencilLine,
   RefreshCw,
@@ -37,8 +36,13 @@ import {
 } from '../../utils/schemeFormSession';
 
 const SESSION_PREFIX = 'finvois_genie_v1_';
+// Bump to drop conversations saved by older Genie versions (answers and progress are kept).
+// 2: Nov 2026 RAG fix; earlier chats could contain wrong answers that new replies would build on.
+const CHAT_VERSION = 2;
 // Reserved slug: the API answers across every published scheme (RAG 'ALL' mode)
 const ALL_SCHEMES_SLUG = 'all';
+// Served by the API from Azure; ?v matches the API's XPLORE_BANNER_VERSION
+const XPLORE_BANNER_URL = `/genie/schemes/${ALL_SCHEMES_SLUG}/banner?v=${Date.UTC(2026, 10, 2)}`;
 // A little above the API's RAG timeout (120s) so its own timeout message arrives first
 const CHAT_TIMEOUT_MS = 130000;
 
@@ -217,22 +221,25 @@ function SchemePicker() {
             <button
               type="button"
               onClick={() => navigate(`/genie/${ALL_SCHEMES_SLUG}`)}
-              className="group mt-10 flex w-full flex-col items-start gap-4 overflow-hidden rounded-2xl bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-600 p-6 text-left text-white shadow-lg shadow-purple-500/20 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus-visible:ring-4 focus-visible:ring-purple-300 sm:flex-row sm:items-center sm:justify-between"
+              className="group mt-10 flex w-full flex-col overflow-hidden rounded-2xl bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-600 text-left text-white shadow-lg shadow-purple-500/20 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus-visible:ring-4 focus-visible:ring-purple-300 sm:flex-row sm:items-center"
             >
-              <div className="flex items-start gap-4">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15">
-                  <Layers className="h-6 w-6" />
-                </span>
+              <SchemeBanner
+                bannerUrl={XPLORE_BANNER_URL}
+                name="Xplore"
+                rounded="rounded-none"
+                className="w-full shrink-0 sm:w-80"
+              />
+              <div className="flex flex-1 flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
                 <div>
-                  <p className="font-['Manrope'] text-lg font-bold">Not sure which scheme? Ask about all of them</p>
+                  <p className="font-['Manrope'] text-lg font-bold">Xplore: not sure which scheme? Ask about all of them</p>
                   <p className="mt-1 text-sm text-purple-100">
                     Compare benefits, eligibility and documents across all {schemes.length} schemes in one chat.
                   </p>
                 </div>
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-purple-800 transition group-hover:bg-purple-50">
+                  Xplore <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                </span>
               </div>
-              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-purple-800 transition group-hover:bg-purple-50">
-                Ask about all schemes <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-              </span>
             </button>
           )}
           <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -301,7 +308,7 @@ function SchemeSession({ slug, previewId = null }) {
       const saved = loadSession(sessionKey);
       setScheme(data);
       setAnswers(saved?.answers || {});
-      setMessages(saved?.messages || []);
+      setMessages(saved?.chatVersion === CHAT_VERSION ? saved.messages || [] : []);
       setStage(saved?.stage || 'intro');
     } catch (err) {
       setError(err.status === 404 ? 'This scheme is not available.' : err.message);
@@ -317,7 +324,7 @@ function SchemeSession({ slug, previewId = null }) {
   useEffect(() => {
     if (scheme) {
       const settled = messages.filter((m) => !m.isError && !m.streaming && !m.interrupted);
-      saveSession(sessionKey, { stage, answers, messages: settled });
+      saveSession(sessionKey, { stage, answers, messages: settled, chatVersion: CHAT_VERSION });
     }
   }, [sessionKey, scheme, stage, answers, messages]);
 
