@@ -5,10 +5,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Mail, Upload, FileText, RefreshCw, Trash2, Eye, X, Save, Send, Clock, CheckCircle2,
-  AlertTriangle, Plus, Pencil, Ban, RotateCcw, Play, Copy, Folder,
+  AlertTriangle, Plus, Pencil, Ban, RotateCcw, Play, Copy, Folder, Paperclip,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AdminLayout } from '../../components/layouts';
+import ClientLayout from '../../components/layouts/ClientLayout';
+import useAuth from '../../hooks/useAuth';
+import { effectiveUserRole } from '../../utils/normalizeUserRole';
 import { apiErrorMessage } from '../../api/apiClient';
 import ReactQuill, { Quill } from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
@@ -17,7 +20,7 @@ import {
   scheduleEmailRequest, cancelEmailRequest, deleteEmailRequest, deleteEmailRecipient, retryFailedEmails,
   fetchEmailTemplates, saveEmailTemplate, deleteEmailTemplate, cloneEmailRequest,
   fetchEmailFolders, createEmailFolder, deleteEmailFolder, uploadFolderExcel, fetchFolderContacts,
-  deleteFolderContact, scheduleFolders, fetchSelectedFolderEmails,
+  deleteFolderContact, scheduleFolders, fetchSelectedFolderEmails, uploadEmailAttachment, downloadEmailAttachment,
 } from '../../api/emailAutomationAPI';
 
 const SENT_TAB = 'Recently Sent';
@@ -26,25 +29,43 @@ const DATA_TAB = 'Email Data';
 const TABS = [SENT_TAB, SCHEDULE_TAB, DATA_TAB, 'Templates'];
 const SENT_STATUSES = ['completed', 'failed'];
 
-/* ---------------- Send-date helpers (all sends go out at 10:00 IST) ---------------- */
-const SEND_HOUR_IST = 10;
+/* ---------------- Send-date helpers (sends go out at the chosen IST time, 10:00 AM – 11:59 PM) ---------------- */
+// "HH:MM" slots every 30 min from 10:00 to 23:30, plus 23:59 as the last slot before midnight
+const SEND_TIMES = [
+  ...Array.from({ length: 28 }, (_, i) => `${String(10 + Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`),
+  '23:59',
+];
+const DEFAULT_SEND_TIME = '10:00';
+const timeLabel = (hhmm) => {
+  const [h, m] = hhmm.split(':').map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+};
 const addDays = (ymd, n) => {
   const d = new Date(`${ymd}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 };
-// first date whose 10:00 IST is still ahead
-const firstSendDate = () => {
-  const ist = new Date(Date.now() + 5.5 * 3600 * 1000);
-  const today = ist.toISOString().slice(0, 10);
-  return ist.getUTCHours() < SEND_HOUR_IST ? today : addDays(today, 1);
+const toSendTime = (ymd, time = DEFAULT_SEND_TIME) => new Date(`${ymd}T${time}:00+05:30`).toISOString();
+// first date whose chosen IST time is still ahead
+const firstSendDate = (time = DEFAULT_SEND_TIME) => {
+  const today = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+  return new Date(toSendTime(today, time)) > new Date() ? today : addDays(today, 1);
 };
 const dateRange = (from, to) => {
   const out = [];
   for (let d = from; d <= to && out.length < 120; d = addDays(d, 1)) out.push(d);
   return out;
 };
-const toSendTime = (ymd) => new Date(`${ymd}T${String(SEND_HOUR_IST).padStart(2, '0')}:00:00+05:30`).toISOString();
+const SendTimeNote = () => (
+  <div className="flex items-start gap-2 text-xs bg-blue-50 text-blue-800 rounded-lg p-3">
+    <Clock className="w-4 h-4 mt-0.5 shrink-0" />
+    <span>
+      Emails can only be scheduled between <b>10:00 AM and 11:59 PM IST</b> (Indian time), in 30-minute slots.
+      They go out at the chosen time on every selected date. <b>Send Now</b> starts immediately, whatever the time.
+      If the daily sending limit is reached, the remaining emails continue at the next 10:00 AM IST.
+    </span>
+  </div>
+);
 const SCHEDULE_MODES = [
   ['single', 'Single date'],
   ['range', 'Every day (from – to)'],
@@ -252,9 +273,87 @@ const RecipientsPanel = ({ requestId, onData, onRemoved }) => {
   );
 };
 
+/* ---------------- Attachments: same files go to every recipient ---------------- */
+const MAX_FILES = 10;
+const MAX_BYTES = 10 * 1024 * 1024;
+const ATTACH_ACCEPT = '.pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt';
+const fmtSize = (n) => (n >= 1024 * 1024 ? `${(n / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+
+const AttachmentChip = ({ file, onRemove, note }) => (
+  <span className="flex items-center gap-1.5 max-w-full px-2 py-1 text-xs bg-white border border-gray-200 rounded-lg">
+    <Paperclip className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+    <button
+      type="button"
+      title="Download"
+      onClick={() => downloadEmailAttachment(file).catch((e) => toast.error(apiErrorMessage(e, 'Download failed')))}
+      className="truncate text-gray-700 hover:text-purple-700 hover:underline"
+    >
+      {file.filename}
+    </button>
+    <span className="text-gray-400 shrink-0">{fmtSize(file.size)}</span>
+    {note && <span className="text-purple-600 shrink-0">{note}</span>}
+    {onRemove && (
+      <button type="button" title="Remove" onClick={onRemove} className="text-gray-400 hover:text-red-600 shrink-0"><X className="w-3.5 h-3.5" /></button>
+    )}
+  </span>
+);
+
+/** files: removable list; locked: read-only files already on the email (e.g. from the template), counted in the limits. */
+const AttachmentPicker = ({ files, setFiles, locked = [], label = 'Attachments' }) => {
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef(null);
+  const all = [...locked, ...files];
+  const total = all.reduce((n, f) => n + f.size, 0);
+
+  const add = async (list) => {
+    let count = all.length;
+    let bytes = total;
+    setUploading(true);
+    try {
+      for (const file of list) {
+        if (count >= MAX_FILES) { toast.error(`At most ${MAX_FILES} files per email`); break; }
+        if (bytes + file.size > MAX_BYTES) { toast.error(`${file.name}: attachments can't exceed 10 MB in total`); continue; }
+        try {
+          const saved = await uploadEmailAttachment(file);
+          setFiles((prev) => [...prev, saved]);
+          count += 1;
+          bytes += saved.size;
+        } catch (e) {
+          toast.error(apiErrorMessage(e, `Failed to upload ${file.name}`));
+        }
+      }
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-medium text-gray-600 flex items-center gap-1"><Paperclip className="w-3.5 h-3.5" />{label}</p>
+        <span className="text-xs text-gray-400">{all.length}/{MAX_FILES} files · {fmtSize(total)} of 10 MB</span>
+      </div>
+      {all.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {locked.map((f) => <AttachmentChip key={`l-${f._id}`} file={f} note="from template" />)}
+          {files.map((f) => <AttachmentChip key={f._id} file={f} onRemove={() => setFiles((prev) => prev.filter((x) => x._id !== f._id))} />)}
+        </div>
+      )}
+      <label className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs border border-dashed border-gray-300 rounded-lg ${uploading || all.length >= MAX_FILES ? 'opacity-50 pointer-events-none' : 'cursor-pointer hover:bg-gray-50'}`}>
+        {uploading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+        {uploading ? 'Uploading...' : 'Add file'}
+        <input ref={inputRef} type="file" multiple accept={ATTACH_ACCEPT} className="hidden" onChange={(e) => add([...(e.target.files || [])])} />
+      </label>
+      <p className="text-[11px] text-gray-400">Every recipient gets the same files. PDF, images, Word, Excel, CSV, PowerPoint or TXT — up to {MAX_FILES} files and 10 MB in total per email.</p>
+    </div>
+  );
+};
+
 /* ---------------- Template form ---------------- */
 const TemplateForm = ({ initial, onSaved, onCancel, columns }) => {
   const [form, setForm] = useState(initial || emptyTemplate);
+  const [files, setFiles] = useState(initial?.attachments || []);
   const [saving, setSaving] = useState(false);
   const quillRef = useRef(null);
   const subjectRef = useRef(null);
@@ -281,7 +380,7 @@ const TemplateForm = ({ initial, onSaved, onCancel, columns }) => {
   const submit = async () => {
     setSaving(true);
     try {
-      const saved = await saveEmailTemplate(form);
+      const saved = await saveEmailTemplate({ ...form, attachments: files });
       toast.success('Template saved');
       onSaved(saved);
     } catch (e) {
@@ -318,6 +417,9 @@ const TemplateForm = ({ initial, onSaved, onCancel, columns }) => {
           ))}
         </div>
       </div>
+      <div className="bg-white border border-gray-100 rounded-lg p-3">
+        <AttachmentPicker files={files} setFiles={setFiles} label="Template attachments (sent with every email using this template)" />
+      </div>
       <div className="flex gap-2 justify-end">
         {onCancel && <button onClick={onCancel} className="px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg">Cancel</button>}
         <button
@@ -351,7 +453,7 @@ const TemplatesTab = ({ templates, reload }) => {
           </button>
         )}
       </div>
-      {editing && <TemplateForm initial={editing} onCancel={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />}
+      {editing && <TemplateForm key={editing._id || 'new'} initial={editing} onCancel={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />}
       <div className="grid gap-3 md:grid-cols-2">
         {templates.length === 0 && <p className="text-sm text-gray-400">No templates yet.</p>}
         {templates.map((t) => (
@@ -367,6 +469,11 @@ const TemplatesTab = ({ templates, reload }) => {
               </div>
             </div>
             <p className="text-xs text-gray-400 mt-2 line-clamp-3">{plainText(t.body)}</p>
+            {t.attachments?.length > 0 && (
+              <p className="text-xs text-purple-600 mt-2 flex items-center gap-1 truncate">
+                <Paperclip className="w-3.5 h-3.5 shrink-0" />{t.attachments.map((a) => a.filename).join(', ')}
+              </p>
+            )}
           </div>
         ))}
       </div>
@@ -375,12 +482,18 @@ const TemplatesTab = ({ templates, reload }) => {
 };
 
 /* ---------------- Schedule picker: presets fill the date list, admin can remove/add any date ---------------- */
-const SchedulePicker = ({ dates, setDates }) => {
-  const min = firstSendDate();
+const SchedulePicker = ({ dates, setDates, time, setTime }) => {
+  const min = firstSendDate(time);
   const [mode, setMode] = useState('single');
   const [from, setFrom] = useState(min);
   const [to, setTo] = useState(addDays(min, 6));
   const [pick, setPick] = useState('');
+
+  // a later/earlier time can make today (in)valid: keep the start and picked dates on or after it
+  useEffect(() => {
+    if (from < min) setFrom(min);
+    if (mode === 'pick') setDates((list) => list.filter((d) => d >= min));
+  }, [min]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // presets regenerate the list whenever mode/start/end changes
   useEffect(() => {
@@ -396,6 +509,12 @@ const SchedulePicker = ({ dates, setDates }) => {
 
   return (
     <div className="space-y-3">
+      <SendTimeNote />
+      <label className="block text-xs text-gray-600">Send time (IST)
+        <select value={time} onChange={(e) => setTime(e.target.value)} className={`block mt-0.5 ${input}`}>
+          {SEND_TIMES.map((t) => <option key={t} value={t}>{timeLabel(t)}</option>)}
+        </select>
+      </label>
       <div className="flex flex-wrap gap-2">
         {SCHEDULE_MODES.map(([key, label]) => (
           <button
@@ -431,7 +550,7 @@ const SchedulePicker = ({ dates, setDates }) => {
       )}
       {dates.length > 0 && (
         <div className="space-y-1">
-          <p className="text-xs text-gray-500">{dates.length} send date(s) — click × to skip a date:</p>
+          <p className="text-xs text-gray-500">{dates.length} send date(s) at {timeLabel(time)} IST — click × to skip a date:</p>
           <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
             {dates.map((d) => (
               <span key={d} className="flex items-center gap-1 px-2 py-0.5 text-xs bg-purple-50 text-purple-700 rounded-full">
@@ -770,7 +889,9 @@ const FolderScheduleForm = ({ folders, templates, reloadTemplates, onDone }) => 
   const [templateId, setTemplateId] = useState('');
   const [creating, setCreating] = useState(false);
   const [dates, setDates] = useState([]);
+  const [sendTime, setSendTime] = useState(DEFAULT_SEND_TIME);
   const [scheduling, setScheduling] = useState(false);
+  const [extraFiles, setExtraFiles] = useState([]);
 
   const [uniqueTotal, setUniqueTotal] = useState(null);
   const chosen = folders.filter((f) => selected.includes(f._id));
@@ -785,10 +906,11 @@ const FolderScheduleForm = ({ folders, templates, reloadTemplates, onDone }) => 
   const schedule = async (sendNow) => {
     setScheduling(true);
     try {
+      const attachmentIds = extraFiles.map((f) => f._id);
       await scheduleFolders(sendNow
-        ? { folderIds: selected, templateId, scheduledAt: new Date().toISOString() }
-        : { folderIds: selected, templateId, scheduledDates: dates.map(toSendTime) });
-      toast.success(sendNow ? 'Sending started' : `Scheduled for ${dates.length} date(s)`);
+        ? { folderIds: selected, templateId, attachmentIds, scheduledAt: new Date().toISOString() }
+        : { folderIds: selected, templateId, attachmentIds, scheduledDates: dates.map((d) => toSendTime(d, sendTime)) });
+      toast.success(sendNow ? 'Sending started' : `Scheduled for ${dates.length} date(s) at ${timeLabel(sendTime)} IST`);
       onDone();
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Failed to schedule'));
@@ -849,12 +971,16 @@ const FolderScheduleForm = ({ folders, templates, reloadTemplates, onDone }) => 
             onSaved={(t) => { setCreating(false); reloadTemplates(); setTemplateId(t._id); }}
           />
         )}
+        {!creating && (
+          <div className="border-t border-gray-100 pt-3">
+            <AttachmentPicker files={extraFiles} setFiles={setExtraFiles} locked={selectedTemplate?.attachments || []} label="Attachments for this send (template files + extra files)" />
+          </div>
+        )}
       </div>
 
       <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-3 max-w-xl">
         <h3 className="font-semibold text-gray-800">3. Schedule</h3>
-        <p className="text-sm text-gray-500">Emails go out at 10:00 AM IST on every selected date.</p>
-        <SchedulePicker dates={dates} setDates={setDates} />
+        <SchedulePicker dates={dates} setDates={setDates} time={sendTime} setTime={setSendTime} />
         <div className="flex flex-wrap gap-2">
           <button disabled={!canSchedule || !dates.length || scheduling} onClick={() => schedule(false)} className="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg disabled:opacity-50 flex items-center gap-2">
             <Clock className="w-4 h-4" />{scheduling ? 'Scheduling...' : 'Schedule'}
@@ -875,14 +1001,17 @@ const NewRequestTab = ({ templates, reloadTemplates, folders, onDone, resume, ch
   const [creating, setCreating] = useState(false);
   const [editingTpl, setEditingTpl] = useState(false);
   const [dates, setDates] = useState([]);
+  const [sendTime, setSendTime] = useState(DEFAULT_SEND_TIME);
   const [scheduling, setScheduling] = useState(false);
+  const [extraFiles, setExtraFiles] = useState([]);
 
   const schedule = async (sendNow) => {
     setScheduling(true);
     try {
-      if (sendNow) await scheduleEmailRequest(request._id, templateId, new Date().toISOString());
-      else await scheduleEmailRequest(request._id, templateId, undefined, dates.map(toSendTime));
-      toast.success(sendNow ? 'Sending started' : `Scheduled for ${dates.length} date(s)`);
+      const attachmentIds = extraFiles.map((f) => f._id);
+      if (sendNow) await scheduleEmailRequest(request._id, templateId, new Date().toISOString(), undefined, attachmentIds);
+      else await scheduleEmailRequest(request._id, templateId, undefined, dates.map((d) => toSendTime(d, sendTime)), attachmentIds);
+      toast.success(sendNow ? 'Sending started' : `Scheduled for ${dates.length} date(s) at ${timeLabel(sendTime)} IST`);
       onDone();
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Failed to schedule'));
@@ -964,13 +1093,18 @@ const NewRequestTab = ({ templates, reloadTemplates, folders, onDone, resume, ch
             onSaved={(t) => { setCreating(false); setEditingTpl(false); reloadTemplates(); setTemplateId(t._id); }}
           />
         )}
+        {!creating && !editingTpl && (
+          <div className="border-t border-gray-100 pt-3">
+            <AttachmentPicker files={extraFiles} setFiles={setExtraFiles} locked={selectedTemplate?.attachments || []} label="Attachments for this send (template files + extra files)" />
+          </div>
+        )}
       </div>
 
       <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-3 max-w-xl">
         <h3 className="font-semibold text-gray-800">4. Schedule</h3>
         {request.cloned_from && <p className="text-xs text-purple-600">Reusing recipients from a sent request — pick a template and new dates.</p>}
-        <p className="text-sm text-gray-500">Emails go out at 10:00 AM IST on every selected date, to the same recipients each time.</p>
-        <SchedulePicker dates={dates} setDates={setDates} />
+        <p className="text-sm text-gray-500">The same recipients get the email on every selected date.</p>
+        <SchedulePicker dates={dates} setDates={setDates} time={sendTime} setTime={setSendTime} />
         <div className="flex flex-wrap gap-2">
           <button disabled={!canSchedule || !dates.length || scheduling} onClick={() => schedule(false)} className="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg disabled:opacity-50 flex items-center gap-2">
             <Clock className="w-4 h-4" />{scheduling ? 'Scheduling...' : 'Create Email Request'}
@@ -1025,7 +1159,13 @@ const RequestsTab = ({ requests, loading, reload, onContinue, onReuse, title, em
             {requests.length === 0 && <tr><td colSpan={9} className="py-8 text-center text-gray-400">{emptyText}</td></tr>}
             {requests.map((r) => (
               <tr key={r._id} className="border-b border-gray-50 hover:bg-gray-50">
-                <td className="py-3 px-4 font-medium text-gray-800">{r.name}<p className="text-xs text-gray-400 font-normal">{r.folders?.length ? `Folders: ${r.folders.map((f) => f.name).join(', ')}` : r.file_name}</p></td>
+                <td className="py-3 px-4 font-medium text-gray-800">{r.name}<p className="text-xs text-gray-400 font-normal">{r.folders?.length ? `Folders: ${r.folders.map((f) => f.name).join(', ')}` : r.file_name}</p>
+                  {r.attachments?.length > 0 && (
+                    <p className="text-xs text-purple-600 font-normal flex items-center gap-1" title={r.attachments.map((a) => a.filename).join(', ')}>
+                      <Paperclip className="w-3 h-3" />{r.attachments.length} attachment(s)
+                    </p>
+                  )}
+                </td>
                 <td className="py-3 px-4">{r.template?.name || '—'}</td>
                 <td className="py-3 px-4">{r.stats.total}</td>
                 <td className="py-3 px-4 text-green-700">{r.stats.sent}</td>
@@ -1120,6 +1260,10 @@ const LimitEditor = ({ limit, onSaved }) => {
 
 /* ---------------- Page ---------------- */
 const AdminEmailAutomationPage = () => {
+  const { user } = useAuth();
+  const isAdmin = effectiveUserRole(user) === 'admin';
+  // customer service members use the same page inside their own layout/sidebar
+  const Layout = isAdmin ? AdminLayout : ClientLayout;
   const [tab, setTab] = useState(TABS[0]);
   const [resume, setResume] = useState(null);
   const [quota, setQuota] = useState(null);
@@ -1174,7 +1318,7 @@ const AdminEmailAutomationPage = () => {
   }, [active, loadRequests]);
 
   return (
-    <AdminLayout>
+    <Layout>
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -1214,8 +1358,9 @@ const AdminEmailAutomationPage = () => {
             </div>
             <p className="text-xs text-gray-400">
               Counts only emails sent by Email Automation. If a request exceeds the remaining quota, the rest continues automatically at the next 10:00 AM IST.
+              {!isAdmin && ' Only an admin can change this limit.'}
             </p>
-            <LimitEditor limit={quota.limit} onSaved={setQuota} />
+            {isAdmin && <LimitEditor limit={quota.limit} onSaved={setQuota} />}
           </div>
         )}
 
@@ -1262,7 +1407,7 @@ const AdminEmailAutomationPage = () => {
         {tab === DATA_TAB && <EmailDataTab folders={folders} reload={loadFolders} />}
         {tab === 'Templates' && <TemplatesTab templates={templates} reload={loadTemplates} />}
       </div>
-    </AdminLayout>
+    </Layout>
   );
 };
 

@@ -13,6 +13,7 @@ import {
   Send,
   LogOut,
   BookOpen,
+  Mail,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { hasApprovalRights } from '../../utils/approvalRights';
@@ -106,6 +107,7 @@ const CustomerServiceSidebar = ({
     { to: theoryPagesHubPath(user), icon: BookOpen, label: 'Theory Pages' },
     { to: '/drafts', icon: FileText, label: 'Drafts' },
     { to: '/reports', icon: FileStack, label: 'Approved Reports' },
+    { to: '/customer-service/email-automation', icon: Mail, label: 'Email Automation' },
     { to: '/profile', icon: User, label: 'Profile' },
   ];
 

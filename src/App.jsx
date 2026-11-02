@@ -1816,6 +1816,14 @@ function App() {
           }
         />
         <Route
+          path="/customer-service/email-automation"
+          element={
+            <CustomerServiceRoute>
+              <AdminEmailAutomationPage />
+            </CustomerServiceRoute>
+          }
+        />
+        <Route
           path="/customer-service/claimed"
           element={
             <Navigate to="/customer-service/assigned" replace />
