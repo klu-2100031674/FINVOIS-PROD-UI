@@ -6,6 +6,7 @@ import {
   ArrowRight,
   ClipboardList,
   FileText,
+  Layers,
   MessageCircle,
   PencilLine,
   RefreshCw,
@@ -36,6 +37,8 @@ import {
 } from '../../utils/schemeFormSession';
 
 const SESSION_PREFIX = 'finvois_genie_v1_';
+// Reserved slug: the API answers across every published scheme (RAG 'ALL' mode)
+const ALL_SCHEMES_SLUG = 'all';
 // A little above the API's RAG timeout (120s) so its own timeout message arrives first
 const CHAT_TIMEOUT_MS = 130000;
 
@@ -209,7 +212,30 @@ function SchemePicker() {
             {schemes.length === 0 ? 'No schemes are available yet. Please check back soon.' : 'No scheme matches your search.'}
           </p>
         ) : (
-          <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <>
+          {schemes.length > 1 && !query.trim() && (
+            <button
+              type="button"
+              onClick={() => navigate(`/genie/${ALL_SCHEMES_SLUG}`)}
+              className="group mt-10 flex w-full flex-col items-start gap-4 overflow-hidden rounded-2xl bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-600 p-6 text-left text-white shadow-lg shadow-purple-500/20 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus-visible:ring-4 focus-visible:ring-purple-300 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="flex items-start gap-4">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                  <Layers className="h-6 w-6" />
+                </span>
+                <div>
+                  <p className="font-['Manrope'] text-lg font-bold">Not sure which scheme? Ask about all of them</p>
+                  <p className="mt-1 text-sm text-purple-100">
+                    Compare benefits, eligibility and documents across all {schemes.length} schemes in one chat.
+                  </p>
+                </div>
+              </div>
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-purple-800 transition group-hover:bg-purple-50">
+                Ask about all schemes <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+              </span>
+            </button>
+          )}
+          <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((scheme) => (
               <button
                 key={scheme.slug}
@@ -228,6 +254,7 @@ function SchemePicker() {
               </button>
             ))}
           </div>
+          </>
         )}
       </main>
     </GenieShell>
