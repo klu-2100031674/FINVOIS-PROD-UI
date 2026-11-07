@@ -4,6 +4,7 @@
  */
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { assignNewReportSession } from '../../utils/reportSession';
 import {
   ChevronDown,
   ChevronLeft,
@@ -449,9 +450,11 @@ function GenerateReportCell({ leadId, departmentRequestId, navigate, loanType })
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          const params = new URLSearchParams({ templateId: selected, newDraft: '1', msmeLeadId: leadId });
+          const params = new URLSearchParams({ templateId: selected, msmeLeadId: leadId });
+          assignNewReportSession(params);
           const requestId = departmentRequestId?._id || departmentRequestId || '';
           if (requestId) params.set('requestId', String(requestId));
+          params.set('admin', 'true');
           navigate(`/generate?${params.toString()}`);
         }}
         className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors shrink-0"

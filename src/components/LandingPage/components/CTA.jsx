@@ -79,20 +79,22 @@ const CTA = () => {
           </button>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.5 }}
-          className="flex flex-wrap justify-center gap-x-8 gap-y-4 text-sm font-inter text-gray-400"
-        >
-          {cta.benefits.map((benefit, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-green-400" />
-              <span>{benefit}</span>
-            </div>
-          ))}
-        </motion.div>
+        {cta.benefits && cta.benefits.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+            className="flex flex-wrap justify-center gap-x-8 gap-y-4 text-sm font-inter text-gray-400"
+          >
+            {cta.benefits.map((benefit, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-400" />
+                <span>{benefit}</span>
+              </div>
+            ))}
+          </motion.div>
+        )}
       </div>
     </section>
   );

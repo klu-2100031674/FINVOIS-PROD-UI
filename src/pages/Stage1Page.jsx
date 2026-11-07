@@ -33,6 +33,10 @@ const Stage1Page = () => {
   const layoutProps = isCompanyAdmin ? {} : { wideContent: true };
   const reportId = searchParams.get("reportId");
   const templateId = searchParams.get("templateId");
+  const draftIdFromUrl = searchParams.get("draftId") || "";
+  const reportSession =
+    searchParams.get("reportSession") ||
+    (draftIdFromUrl ? `draft:${draftIdFromUrl}` : "");
   const assistedUserId = searchParams.get("assistedUserId") || "";
   const reportHelpId = searchParams.get("reportHelpId") || "";
   const deptRequestId = searchParams.get("requestId") || "";
@@ -573,6 +577,7 @@ const Stage1Page = () => {
           templateId,
           updates,
           recalculate: true,
+          reportSession,
         })
       ).unwrap();
       toast.success("Final workings recalculated successfully");

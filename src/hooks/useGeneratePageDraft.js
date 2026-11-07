@@ -23,6 +23,7 @@ export function useGeneratePageDraft({
   templateId,
   draftIdFromUrl,
   forceNewDraft,
+  visitKey,
   setTempFormData,
   dispatchSetFormData,
 }) {
@@ -30,6 +31,17 @@ export function useGeneratePageDraft({
   const sessionDraftIdRef = useRef(forceNewDraft ? null : draftIdFromUrl);
   const [stage2Draft, setStage2Draft] = useState(EMPTY_STAGE2);
   const [savingDraft, setSavingDraft] = useState(false);
+  const appliedVisitKeyRef = useRef(visitKey);
+
+  if (appliedVisitKeyRef.current !== visitKey) {
+    appliedVisitKeyRef.current = visitKey;
+    sessionDraftIdRef.current = forceNewDraft || !draftIdFromUrl ? null : draftIdFromUrl;
+    setStage2Draft({
+      selected_sections: {},
+      prompts_data: {},
+      related_documents_meta: [],
+    });
+  }
 
   const hydrateFromLoadedDraft = useCallback((data) => {
     setStage2Draft(extractStage2FromDraft(data));
@@ -79,6 +91,7 @@ export function useGeneratePageDraft({
 
       const merged = mergeStage1AndStage2(mergedStage1, stage2);
       const targetDraftId = sessionDraftIdRef.current || undefined;
+      const requestId = new URLSearchParams(window.location.search).get('requestId') || undefined;
 
       setSavingDraft(true);
       try {
@@ -88,6 +101,7 @@ export function useGeneratePageDraft({
             formData: merged,
             draftId: targetDraftId,
             currentStep: activeStep,
+            requestId,
           })
         ).unwrap();
 

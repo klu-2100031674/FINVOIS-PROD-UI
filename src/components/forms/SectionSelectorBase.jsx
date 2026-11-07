@@ -7,7 +7,91 @@ import {
 import toast from 'react-hot-toast';
 import { Button } from '../common';
 import { normalizeStage2Snapshot, preparePromptsDataForBackend } from '../../utils/draftPayload';
-import { MAPPED_FIELDS_CONFIG, SKIP_VALIDATION_SECTION_IDS, firstFilled, looksLikePhone, looksLikeSectorLabel } from './sectionSelectorShared';
+import { normalizeCc6GiCells } from '../../utils/cc6GeneralInfo';
+import { MAPPED_FIELDS_CONFIG, SKIP_VALIDATION_SECTION_IDS, firstFilled, looksLikePhone, looksLikeSectorLabel, giCellsForTemplate } from './sectionSelectorShared';
+
+function ProductPhotosField({ photos, onChange }) {
+  const maxPhotos = 3;
+  const remaining = Math.max(0, maxPhotos - photos.length);
+
+  const onPick = async (event) => {
+    const files = Array.from(event.target.files || []).slice(0, remaining);
+    event.target.value = '';
+    if (!files.length) return;
+    try {
+      const encoded = [];
+      for (const file of files) {
+        if (!file.type.startsWith('image/')) continue;
+        const dataUrl = await compressImageFile(file);
+        encoded.push({ name: file.name, dataUrl });
+      }
+      if (!encoded.length) {
+        toast.error('Please choose image files only.');
+        return;
+      }
+      onChange([...photos, ...encoded].slice(0, maxPhotos));
+    } catch (err) {
+      toast.error('Could not add that photo. Try a smaller image.');
+    }
+  };
+
+  return (
+    <div className="space-y-2 rounded-lg border border-purple-200 bg-purple-50/40 p-4">
+      <label className="block text-sm font-medium text-gray-800">Product Photos (maximum 3)</label>
+      <p className="text-xs text-gray-500">
+        Optional. These photos are printed in the report after the product description.
+      </p>
+      <input
+        type="file"
+        accept="image/*"
+        multiple
+        disabled={remaining === 0}
+        onChange={onPick}
+        className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-purple-700"
+      />
+      {photos.length > 0 && (
+        <div className="flex flex-wrap gap-3">
+          {photos.map((photo, idx) => (
+            <div key={`${photo.name || 'photo'}-${idx}`} className="relative w-24 h-24 rounded-md border border-gray-200 overflow-hidden bg-white">
+              <img src={photo.dataUrl} alt={photo.name || `Product photo ${idx + 1}`} className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={() => onChange(photos.filter((_, photoIdx) => photoIdx !== idx))}
+                className="absolute top-1 right-1 rounded-full bg-white/90 text-red-500 px-1.5 text-xs"
+                title="Remove photo"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function compressImageFile(file, maxEdge = 900, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read image'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Could not load image'));
+      img.onload = () => {
+        const longest = Math.max(img.width, img.height) || 1;
+        const scale = Math.min(1, maxEdge / longest);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 const getVehicleTestData = (fieldName, templateId) => {
   const tid = String(templateId || '').trim().toUpperCase();
@@ -138,6 +222,34 @@ const getVehicleTestData = (fieldName, templateId) => {
   return data[tid]?.[fieldName] || null;
 };
 
+const MARKET_LOCATION_SECTION_IDS = [
+  'swot_analysis',
+  'target_market_new',
+  'competitor_overview',
+  'market_trend',
+];
+
+function formatProfileLocation(location) {
+  const isGeneric = (value) => {
+    const text = String(value || '').trim().toLowerCase();
+    return !text || text === 'as per business operations' || text === 'surrounding area' || text.startsWith('as per ');
+  };
+  const area = String(location?.location_name || '').trim();
+  const district = String(location?.district || '').trim();
+  const state = String(location?.state || '').trim();
+  return [area, district, state].filter((part) => !isGeneric(part)).join(', ');
+}
+
+function applyProfileLocationToMarketSections(sectionState, location) {
+  const place = formatProfileLocation(location);
+  MARKET_LOCATION_SECTION_IDS.forEach((id) => {
+    sectionState[id] = {
+      ...(sectionState[id] || {}),
+      district_and_state: place,
+    };
+  });
+}
+
 /**
  * Generic, config-driven renderer for the Stage-2 "PROJECT PROFILE AND BUSINESS
  * ANALYSIS" form. Each business category supplies its own `sectionConfig`
@@ -158,6 +270,7 @@ const SectionSelectorBase = ({
   mappedFieldsConfig = MAPPED_FIELDS_CONFIG,
   skipValidationSectionIds = SKIP_VALIDATION_SECTION_IDS,
   templateId,
+  marketLocationFromProfile = false,
 }) => {
   const SECTION_CONFIG = sectionConfig;
   const SKIP_VALIDATION_SECTIONS = new Set(skipValidationSectionIds);
@@ -360,6 +473,23 @@ const SectionSelectorBase = ({
       }));
     }
 
+    // Section 5 is seeded with one empty product row, so the loop above skips it.
+    const productSection = SECTION_CONFIG.find((s) => s.id === 'product_details');
+    if (productSection) {
+      if (!testData.product_details) testData.product_details = {};
+      const productRows = testData.product_details.products;
+      const hasNamedProduct = Array.isArray(productRows) && productRows.some((row) => (
+        row && String(row.name || '').trim() !== ''
+      ));
+      if (!hasNamedProduct) {
+        const noun = productSection.productNoun === 'Service' ? 'Service' : 'Product';
+        testData.product_details.products = [
+          { name: `Sample ${noun} A` },
+          { name: `Sample ${noun} B` },
+        ];
+      }
+    }
+
     const hasManufacturingCapacity = SECTION_CONFIG.some((s) => s.id === 'manufacturing_capacity');
     if (hasManufacturingCapacity) {
       if (!testData.manufacturing_capacity) testData.manufacturing_capacity = {};
@@ -456,7 +586,11 @@ const SectionSelectorBase = ({
     // Grouping logic for prompts_data (Stage 2)
     // and Pre-filling from Stage 1 (initialData.prompts_data)
     if (initialData.prompts_data) {
-      const stage1 = initialData.prompts_data;
+      const stage1Raw = initialData.prompts_data;
+      const rawGi = stage1Raw['General Information'];
+      const stage1 = rawGi && typeof rawGi === 'object'
+        ? { ...stage1Raw, 'General Information': normalizeCc6GiCells(rawGi) }
+        : stage1Raw;
       const getS1 = (section, cell) => stage1[section]?.[cell] || stage1[section]?.[cell.toLowerCase()] || '';
 
       const formatLakhAsRupees = (value) => {
@@ -528,14 +662,19 @@ const SectionSelectorBase = ({
         newHiddenFields[sectionId].push(fieldName);
       };
 
+      const giCells = giCellsForTemplate(templateId);
+      const giCell = (field) => {
+        const key = giCells[field];
+        return key ? getS1('General Information', key) : '';
+      };
+
       SECTION_CONFIG.forEach(section => {
         // Specific pre-filling logic based on section id
         if (section.id === 'firm_constitution') {
-          // Term Loan GI: i17 firm, i7 constitution, i14 sector, i15 nature,
-          // i8 proprietor, i11/i18 PAN, i10 Aadhaar, i21 caste.
+          // Read only this template's General Information cells.
           // Never chain PAN/Aadhaar/mobile/person-name into other fields.
           const firmFromForm = firstFilled(
-            getS1('General Information', 'i17'),
+            giCell('firm'),
             stage1.firmName,
             stage1.firm_name,
             stage1.enterpriseName
@@ -543,7 +682,7 @@ const SectionSelectorBase = ({
           setMapped('firm_constitution', 'firm_name', firmFromForm);
 
           const rawStatusCandidate = firstFilled(
-            getS1('General Information', 'i7'),
+            giCell('status'),
             stage1.constitution,
             looksLikeSectorLabel(stage1.organisation_type) ? '' : stage1.organisation_type,
             looksLikeSectorLabel(stage1.organisationType) ? '' : stage1.organisationType
@@ -557,44 +696,44 @@ const SectionSelectorBase = ({
             normalizedOrg = 'Partnership';
           } else if (statusLower.includes('private') || statusLower.includes('pvt')) {
             normalizedOrg = 'Private Limited';
+          } else if (statusLower.includes('public')) {
+            normalizedOrg = 'Public Limited';
           } else if (statusLower.includes('llp')) {
             normalizedOrg = 'LLP';
-          } else if (rawStatus && !['Proprietorship', 'Partnership', 'Private Limited', 'LLP'].includes(rawStatus)) {
+          } else if (rawStatus && !['Proprietorship', 'Partnership', 'Private Limited', 'Public Limited', 'LLP'].includes(rawStatus)) {
             normalizedOrg = 'Other';
           }
           setMapped('firm_constitution', 'organisation_type', normalizedOrg);
           setMapped('firm_constitution', 'constitution', rawStatus || normalizedOrg);
 
-          const sectorVal = firstFilled(getS1('General Information', 'i14'), stage1.sector);
+          const sectorVal = firstFilled(giCell('sector'), stage1.sector);
           setMapped('firm_constitution', 'sector', sectorVal);
 
           const natureCandidate = firstFilled(
-            getS1('General Information', 'i15'),
+            giCell('nature'),
             stage1.natureOfBusiness,
-            stage1.nature_of_business,
-            looksLikePhone(getS1('General Information', 'i9')) ? '' : getS1('General Information', 'i9')
+            stage1.nature_of_business
           );
           const natureVal = looksLikePhone(natureCandidate) ? '' : natureCandidate;
           setMapped('firm_constitution', 'nature_of_business', natureVal);
 
           const propName = firstFilled(
-            getS1('General Information', 'i8'),
+            giCell('person'),
             stage1.proprietorName,
             stage1.applicantName
           );
           setMapped('firm_constitution', 'proprietor_name', propName);
 
           setMapped('firm_constitution', 'pan_number', firstFilled(
-            getS1('General Information', 'i11'),
-            getS1('General Information', 'i18'),
+            giCell('pan'),
             stage1.panNo
           ));
           setMapped('firm_constitution', 'aadhar_number', firstFilled(
-            getS1('General Information', 'i10'),
+            giCell('aadhaar'),
             stage1.aadharNo
           ));
           setMapped('firm_constitution', 'caste', firstFilled(
-            getS1('General Information', 'i21'),
+            giCell('caste'),
             stage1.caste
           ));
 
@@ -605,22 +744,22 @@ const SectionSelectorBase = ({
           setMapped('firm_constitution', 'residential_address', residential);
         } else if (section.id === 'promoter_details') {
           const name = firstFilled(
-            getS1('General Information', 'i8'),
+            giCell('person'),
             stage1.proprietorName,
             stage1.applicantName
           );
           if (name) {
-            const caste = getS1('General Information', 'i21') || stage1.caste || '';
-            const pan = getS1('General Information', 'i11') || getS1('General Information', 'i18') || stage1.panNo || '';
-            const aadhar = getS1('General Information', 'i10') || stage1.aadharNo || '';
+            const caste = giCell('caste') || stage1.caste || '';
+            const pan = giCell('pan') || stage1.panNo || '';
+            const aadhar = giCell('aadhaar') || stage1.aadharNo || '';
             // Proprietor's residential address — prefer the dedicated residential
             // field, falling back to legacy address only when unavailable.
             const address = firstFilled(
               getS1('General Information', 'residential_address'),
               stage1.residential_address
             );
-            const edu = getS1('General Information', 'i19') || stage1.education || '';
-            const ageRaw = getS1('General Information', 'i12') ?? stage1.age ?? '';
+            const edu = giCell('education') || stage1.education || '';
+            const ageRaw = giCell('age') ?? stage1.age ?? '';
             const age =
               ageRaw !== undefined && ageRaw !== null && String(ageRaw).trim() !== ''
                 ? String(ageRaw).trim()
@@ -635,9 +774,9 @@ const SectionSelectorBase = ({
         } else if (section.id === 'product_details') {
           // Only Nature of Business is pre-filled (read-only). The product /
           // service list is entered manually by the user (no prefill).
-          setMapped('product_details', 'nature_of_business', getS1('General Information', 'i15'));
+          setMapped('product_details', 'nature_of_business', giCell('nature'));
         } else if (section.id === 'manufacturing_capacity') {
-          const mainProd = getS1('General Information', 'i15');
+          const mainProd = giCell('nature');
           if (mainProd) {
             if (!autoMapped[section.id]) autoMapped[section.id] = {};
             autoMapped[section.id]['product_capacity_list'] = [{
@@ -646,7 +785,7 @@ const SectionSelectorBase = ({
             }];
           }
         } else if (section.id === 'product_characteristics') {
-          setMapped('product_characteristics', 'industry_type', getS1('General Information', 'i14'));
+          setMapped('product_characteristics', 'industry_type', giCell('sector'));
         } else if (section.id === 'plant_machinery') {
           const hasExistingMachinery = Array.isArray(stage1?.plant_machinery?.machinery_items) && stage1.plant_machinery.machinery_items.length > 0;
           if (!hasExistingMachinery) {
@@ -657,9 +796,11 @@ const SectionSelectorBase = ({
             }
           }
         } else if (section.id === 'swot_analysis' || section.id === 'competitor_overview' || section.id === 'market_trend') {
-          const address = getS1('General Information', 'i16');
-          const products = getS1('General Information', 'i15');
-          setMapped(section.id, 'district_and_state', address);
+          const address = giCell('address');
+          const products = giCell('nature');
+          if (!marketLocationFromProfile) {
+            setMapped(section.id, 'district_and_state', address);
+          }
           setMapped(section.id, 'product_or_service_list', products);
         } else if (section.id === 'manpower') {
           const skilled = parseInt(getS1('Expected Employment Generation', 'i24')) || 0;
@@ -716,6 +857,19 @@ const SectionSelectorBase = ({
             Object.assign(next[section.id], saved);
           }
         });
+
+        if (marketLocationFromProfile) {
+          applyProfileLocationToMarketSections(next, next.location_overview);
+        }
+
+        const businessAddress = giCell('address');
+        if (businessAddress) {
+          if (!next.location_overview) next.location_overview = {};
+          const currentArea = String(next.location_overview.location_name || '').trim();
+          if (!currentArea || currentArea.toLowerCase() === 'as per business operations') {
+            next.location_overview.location_name = businessAddress;
+          }
+        }
 
         return next;
       });
@@ -822,6 +976,14 @@ const SectionSelectorBase = ({
             capacity: currentList[idx]?.capacity || ''
           }));
         }
+      }
+
+      if (marketLocationFromProfile && sectionId === 'location_overview' && (field === 'location_name' || field === 'district' || field === 'state')) {
+        const location = {
+          ...(prev.location_overview || {}),
+          [field]: value,
+        };
+        applyProfileLocationToMarketSections(next, location);
       }
 
       return next;
@@ -1305,6 +1467,67 @@ const SectionSelectorBase = ({
       )
     }
 
+    if (field.type === 'image_list') {
+      const maxPhotos = field.max || 3;
+      const photos = Array.isArray(currentSectionData[field.name]) ? currentSectionData[field.name] : [];
+      const remaining = Math.max(0, maxPhotos - photos.length);
+
+      const onPick = async (event) => {
+        const files = Array.from(event.target.files || []).slice(0, remaining);
+        event.target.value = '';
+        if (!files.length) return;
+        try {
+          const encoded = [];
+          for (const file of files) {
+            if (!file.type.startsWith('image/')) continue;
+            const dataUrl = await compressImageFile(file);
+            encoded.push({ name: file.name, dataUrl });
+          }
+          if (!encoded.length) {
+            toast.error('Please choose image files only.');
+            return;
+          }
+          handleFieldChange(sectionId, field.name, [...photos, ...encoded].slice(0, maxPhotos));
+        } catch (err) {
+          toast.error('Could not add that photo. Try a smaller image.');
+        }
+      };
+
+      return (
+        <div key={field.name} className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">{field.label}</label>
+          <p className="text-xs text-gray-500">
+            Optional. Up to {maxPhotos} photos are printed in the report after the product description. Service sectors do not use these photos.
+          </p>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            disabled={remaining === 0}
+            onChange={onPick}
+            className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-purple-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-purple-700"
+          />
+          {photos.length > 0 && (
+            <div className="flex flex-wrap gap-3">
+              {photos.map((photo, idx) => (
+                <div key={`${photo.name || 'photo'}-${idx}`} className="relative w-24 h-24 rounded-md border border-gray-200 overflow-hidden bg-gray-50">
+                  <img src={photo.dataUrl} alt={photo.name || `Product photo ${idx + 1}`} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => handleFieldChange(sectionId, field.name, photos.filter((_, photoIdx) => photoIdx !== idx))}
+                    className="absolute top-1 right-1 rounded-full bg-white/90 text-red-500 px-1.5 text-xs"
+                    title="Remove photo"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     if (field.type === 'checkbox') {
       const isChildCheckbox = !!field.dependsOn;
       return (
@@ -1488,6 +1711,12 @@ const SectionSelectorBase = ({
                             </div>
                           );
                         })()}
+                        {section.id === 'product_details' && section.productNoun === 'Product' && (
+                          <ProductPhotosField
+                            photos={Array.isArray(sectionData.product_details?.product_photos) ? sectionData.product_details.product_photos : []}
+                            onChange={(next) => handleFieldChange('product_details', 'product_photos', next)}
+                          />
+                        )}
                       </div>
                     </div>
                   )}

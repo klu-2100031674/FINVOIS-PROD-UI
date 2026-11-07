@@ -16,6 +16,7 @@ import {
 
 import SaveDraftButton from '../common/SaveDraftButton';
 import { FRCC_REQUIRED_STAMP_DEFAULT } from '../../utils/frccFormUi';
+import { assetRowIsOpen, readOpenAssetRows, withOpenAssetRow, withoutOpenAssetRow } from '../../utils/assetOpenRows';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -141,10 +142,12 @@ const FRTermLoanTipperVehicleForm = ({
       }
     },
     'Vehicle Expense': {
-      'e299': '',
       'e300': '',
       'e301': '',
-      'e302': ''
+      'e302': '',
+      'e303': '',
+      'e304': '',
+      'e305': ''
     }
   };
 
@@ -294,8 +297,9 @@ const FRTermLoanTipperVehicleForm = ({
           const desc = formData['Schedule for Assets']?.[`d${i}`] || '';
           const amount = formData['Schedule for Assets']?.[`e${i}`] || '';
           const hasAmount = amount !== '' && amount !== null && amount !== undefined && Number(amount) !== 0;
+          const openRows = readOpenAssetRows(formData['Schedule for Assets']);
 
-          if (desc !== '' || hasAmount) {
+          if (openRows.has(i) || desc !== '' || hasAmount) {
             rowSet.add(i);
           }
         }
@@ -368,7 +372,7 @@ const FRTermLoanTipperVehicleForm = ({
     'Indirect Expenses Increment': ['h64', 'h65', 'h66', 'h67', 'h68'],
     'Schedule for Assets': [],
     'Schedule for Indirect Expenses': [],
-    'Vehicle Expense': ['e299', 'e300', 'e301', 'e302'],
+    'Vehicle Expense': ['e300', 'e301', 'e302', 'e303', 'e304', 'e305'],
   };
 
   // Check if current step can proceed
@@ -659,7 +663,7 @@ const FRTermLoanTipperVehicleForm = ({
       const desc = formData['Schedule for Assets'][`d${i}`] || '';
       const amount = formData['Schedule for Assets'][`e${i}`] || '';
       const hasAmount = amount !== '' && amount !== null && amount !== undefined && Number(amount) !== 0;
-      if (visibleRows.has(i) || desc !== '' || hasAmount) {
+      if (visibleRows.has(i) || assetRowIsOpen(formData['Schedule for Assets'], i, desc, amount)) {
         items.push({ row: i, description: desc, amount: amount });
       }
     }
@@ -670,12 +674,13 @@ const FRTermLoanTipperVehicleForm = ({
   const addAssetItem = useCallback((categoryName) => {
     const section = CURRENT_ASSET_SECTIONS[categoryName];
     const visibleRows = new Set(assetVisibleRowsByCategory[categoryName] || []);
+    const openRows = readOpenAssetRows(formData['Schedule for Assets']);
 
     for (let i = section.start; i <= section.end; i++) {
       const desc = formData['Schedule for Assets'][`d${i}`];
       const amount = formData['Schedule for Assets'][`e${i}`];
       const isEmpty = (desc === '' || desc === undefined) && (amount === '' || amount === undefined || Number(amount) === 0);
-      if (!visibleRows.has(i) && isEmpty) {
+      if (!visibleRows.has(i) && !openRows.has(i) && isEmpty) {
         setAssetVisibleRowsByCategory(prev => ({
           ...prev,
           [categoryName]: [...(prev[categoryName] || []), i].sort((a, b) => a - b)
@@ -683,11 +688,11 @@ const FRTermLoanTipperVehicleForm = ({
 
         setFormData(prev => ({
           ...prev,
-          'Schedule for Assets': {
+          'Schedule for Assets': withOpenAssetRow({
             ...prev['Schedule for Assets'],
-            [`d${i}`]: 'New Item',
-            [`e${i}`]: 0
-          }
+            [`d${i}`]: '',
+            [`e${i}`]: ''
+          }, i)
         }));
         // Track that this category now has items
         setCategoriesWithItems(prev => new Set([...prev, categoryName]));
@@ -778,11 +783,11 @@ const FRTermLoanTipperVehicleForm = ({
     setFormData(prev => {
       const newData = {
         ...prev,
-        'Schedule for Assets': {
+        'Schedule for Assets': withoutOpenAssetRow({
           ...prev['Schedule for Assets'],
           [`d${row}`]: '',
           [`e${row}`]: ''
-        }
+        }, row)
       };
 
       // Check if category still has items after removal
@@ -924,10 +929,12 @@ const FRTermLoanTipperVehicleForm = ({
         }
       },
       'Vehicle Expense': {
-        'e299': 300,
-        'e300': 1100,
-        'e301': 4,
-        'e302': 105
+        'e300': 300,
+        'e301': 10,
+        'e302': 8,
+        'e303': 105,
+        'e304': 4,
+        'e305': 25
       }
     });
   }, [presetSector, lockSector]);
@@ -992,7 +999,7 @@ const FRTermLoanTipperVehicleForm = ({
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            PAN of proprietor / Managing Partner / Managing Director
+            PAN of proprietor / Managing Partner / Managing Director (Optional)
           </label>
           <input
             type="text"
@@ -1071,7 +1078,7 @@ const FRTermLoanTipperVehicleForm = ({
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Residential Address
+            Residential Address (Optional)
           </label>
           <input
             type="text"
@@ -2050,29 +2057,10 @@ const FRTermLoanTipperVehicleForm = ({
 
   const renderVehicleRelated = () => (
     <div className="space-y-6">
-      <div className="bg-purple-50 p-4 rounded-lg">
-        <h3 className="text-lg font-medium text-purple-800 mb-2">Vehicle Expense</h3>
-        <p className="text-sm text-[#7e22ce]">
-          Enter assumptions used for vehicle revenue and operating cost calculations.
-        </p>
-      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            No of Working days *
-          </label>
-          <input
-            type="number"
-            onWheel={(e) => e.target.blur()}
-            value={(formData['Vehicle Expense'] && formData['Vehicle Expense']['e299']) ?? ''}
-            onChange={(e) => handleFieldChange('Vehicle Expense', 'e299', e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-            placeholder="e.g. 300"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-gray-800">
-            Gross Revenue charged from Customer per Hour *
+            No. of Working Days per Annum *
           </label>
           <input
             type="number"
@@ -2080,12 +2068,12 @@ const FRTermLoanTipperVehicleForm = ({
             value={(formData['Vehicle Expense'] && formData['Vehicle Expense']['e300']) ?? ''}
             onChange={(e) => handleFieldChange('Vehicle Expense', 'e300', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-            placeholder="e.g. 1100"
+            placeholder="e.g. 300"
           />
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Fuel/Gas Consumption per hour in Litres/KGs *
+            Maximum Capacity of Vehicle *
           </label>
           <input
             type="number"
@@ -2093,12 +2081,12 @@ const FRTermLoanTipperVehicleForm = ({
             value={(formData['Vehicle Expense'] && formData['Vehicle Expense']['e301']) ?? ''}
             onChange={(e) => handleFieldChange('Vehicle Expense', 'e301', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
-            placeholder="e.g. 4"
+            placeholder="e.g. 10"
           />
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Fuel/Gas Rate per Liter/KG *
+            Mileage per Litre/KG of Gas *
           </label>
           <input
             type="number"
@@ -2106,7 +2094,46 @@ const FRTermLoanTipperVehicleForm = ({
             value={(formData['Vehicle Expense'] && formData['Vehicle Expense']['e302']) ?? ''}
             onChange={(e) => handleFieldChange('Vehicle Expense', 'e302', e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="e.g. 8"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            Fuel/Gas Rate per Litre/KG *
+          </label>
+          <input
+            type="number"
+            onWheel={(e) => e.target.blur()}
+            value={(formData['Vehicle Expense'] && formData['Vehicle Expense']['e303']) ?? ''}
+            onChange={(e) => handleFieldChange('Vehicle Expense', 'e303', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
             placeholder="e.g. 105"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            Total No. of Trips Covered per Day *
+          </label>
+          <input
+            type="number"
+            onWheel={(e) => e.target.blur()}
+            value={(formData['Vehicle Expense'] && formData['Vehicle Expense']['e304']) ?? ''}
+            onChange={(e) => handleFieldChange('Vehicle Expense', 'e304', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="e.g. 4"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-800">
+            No. of KMs per Trip *
+          </label>
+          <input
+            type="number"
+            onWheel={(e) => e.target.blur()}
+            value={(formData['Vehicle Expense'] && formData['Vehicle Expense']['e305']) ?? ''}
+            onChange={(e) => handleFieldChange('Vehicle Expense', 'e305', e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
+            placeholder="e.g. 25"
           />
         </div>
       </div>
@@ -2338,10 +2365,9 @@ const FRTermLoanTipperVehicleForm = ({
 
       <div className="bg-white rounded-xl shadow-soft p-6 max-w-7xl mx-auto">
         <div className="mb-6">
-          <h1 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-2xl font-bold text-gray-900 mb-2">
-            Term Loan Form
+          <h1 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-2xl font-bold text-gray-900">
+            Tipper Vehicle
           </h1>
-          <p className="text-gray-600 text-sm">Tipper Vehicle</p>
         </div>
 
         <div className="mb-4 flex justify-end">

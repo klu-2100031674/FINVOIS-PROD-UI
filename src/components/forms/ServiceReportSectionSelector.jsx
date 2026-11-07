@@ -21,10 +21,10 @@ const SECTION_CONFIG = [
       { name: "sector", label: "Sector", type: "text", placeholder: "Prefilled from previous page" },
       { name: "nature_of_business", label: "Nature of Business", type: "text", placeholder: "Prefilled from previous page" },
       { name: "proprietor_name", label: "Name of Authorised person", type: "text", required: true },
-      { name: "pan_number", label: "PAN Number", type: "text" },
-      { name: "aadhar_number", label: "Aadhar Number", type: "text" },
+      { name: "pan_number", label: "PAN Number (Optional)", type: "text", required: false },
+      { name: "aadhar_number", label: "Aadhar Number (Optional)", type: "text", required: false },
       { name: "caste", label: "Caste/Category", type: "text", required: false },
-      { name: "residential_address", label: "Residential Address", type: "textarea" }
+      { name: "residential_address", label: "Residential Address (Optional)", type: "textarea", required: false }
     ]
   },
   {
@@ -67,12 +67,12 @@ const SECTION_CONFIG = [
           { name: "designation", label: "Designation", type: "select", options: ["Proprietor", "Partner", "Director"] },
           { name: "caste", label: "Caste", type: "text", required: false },
           { name: "share_ratio", label: "Share %", type: "text" },
-          { name: "pan_number", label: "PAN", type: "text", required: false },
-          { name: "aadhar_number", label: "Aadhar", type: "text", required: false },
+          { name: "pan_number", label: "PAN (Optional)", type: "text", required: false },
+          { name: "aadhar_number", label: "Aadhar (Optional)", type: "text", required: false },
           { name: "address", label: "Res. Address", type: "text" },
           { name: "age", label: "Age", type: "text" },
           { name: "education", label: "Qualification", type: "text" },
-          { name: "experience", label: "Experience", type: "textarea" }
+          { name: "experience", label: "Experience (Optional)", type: "textarea", required: false }
         ]
       }
     ]

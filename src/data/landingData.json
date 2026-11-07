@@ -74,8 +74,8 @@
     "badge": "AI-Powered DPR Generation with CA on the Loop solution",
     "title": "Generate Professional DPRs in",
     "titleHighlight": "Minutes",
-    "subtitle": "CA Validates, auto-generate financials & get bank Compliant DPRs",
-    "primaryCTA": "Challenge or Doubt your MSME is facing now",
+    "subtitle": "Auto-generate financials, CA Validates & get bank Compliant DPRs",
+    "primaryCTA": "Solve Now",
     "primaryLink": "/client-screening",
     "secondaryCTA": "Contact Sales",
     "secondaryLink": "/contact",
@@ -110,6 +110,8 @@
     "Startup India",
     "Govt Industries Departments",
     "SIDBI",
+    "SERP",
+    "MEPMA",
     "Mudra",
     "Banks"
   ],
@@ -338,8 +340,8 @@
     },
     {
       "name": "Priya Sharma",
-      "role": "Channel Partner",
-      "content": "The commission system is transparent. I've helped 50+ clients and earned consistently.",
+      "role": "MSME Entrepreneur",
+      "content": "Generated DPR in less than 10 mins without errors in bank acceptable format",
       "rating": 5,
       "avatar": "PS"
     },

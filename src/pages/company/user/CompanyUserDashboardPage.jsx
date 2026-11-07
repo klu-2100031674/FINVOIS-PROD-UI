@@ -6,6 +6,7 @@ import { Loading } from '../../../components/common';
 import ClientLayout from '../../../components/layouts/ClientLayout';
 import DashboardAISection from '../../../components/dashboard/DashboardAISection';
 import useGenerateHubPrep from '../../../hooks/useGenerateHubPrep';
+import { assignNewReportSession } from '../../../utils/reportSession';
 
 /**
  * Company-affiliated user home (`/company/user/dashboard`) — isolated from retail `/dashboard`.
@@ -17,10 +18,8 @@ const CompanyUserDashboardPage = () => {
   useGenerateHubPrep(dispatch);
 
   const handleTemplateSelect = (templateId, opts = {}) => {
-    const params = new URLSearchParams({
-      templateId,
-      newDraft: '1',
-    });
+    const params = new URLSearchParams({ templateId });
+    assignNewReportSession(params);
     if (opts.presetSector) params.set('presetSector', opts.presetSector);
     // Sector stays editable after auto-select.
     // if (opts.lockSector) params.set('lockSector', '1');

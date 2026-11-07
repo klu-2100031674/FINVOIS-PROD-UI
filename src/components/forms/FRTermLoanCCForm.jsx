@@ -1661,7 +1661,7 @@ const FRTermLoanCCForm = ({
               )}
               {renderInput('General Information', 'i15', 'Nature of Business')}
               {renderInput('General Information', 'i16', 'Address of office/Factory')}
-              {renderInput('General Information', 'residential_address', 'Residential Address')}
+              {renderInput('General Information', 'residential_address', 'Residential Address (Optional)')}
               {renderInput('General Information', 'i17', 'Name of firm/Company (Optional)')}
               {renderInput('General Information', 'i18', 'PAN of firm/Company (Optional)')}
               {renderInput('General Information', 'i19', 'Education Qualification', 'text', ['Below 8th', 'Above 8th', 'SSC 10th', 'intermediate +2', 'Graduate', 'Post Graduate'])}

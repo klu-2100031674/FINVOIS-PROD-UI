@@ -39,7 +39,7 @@ const sections = [
     title: 'General Information',
     icon: DocumentTextIcon,
     fields: [
-      { id: 'i4', label: 'Name of Firm', type: 'text', required: true, note: 'Enter your company/firm name' },
+      { id: 'i4', label: 'Name of Firm', type: 'text', required: false, note: 'Enter your company/firm name' },
       { id: 'i5', label: 'Status of Concern', type: 'select', options: ['Sole Proprietorship', 'Partnership Firm', 'Private limited Company', 'LLP', 'Society', 'Trust', 'Federation', 'SHG'], required: true, note: 'Select the legal status' },
       { id: 'i6', label: 'Name of Authorised Person', type: 'text', required: true, note: 'Enter the authorised person name' },
       { id: 'i7', label: 'Business Address', type: 'textarea', required: true, note: 'Enter complete business address' },

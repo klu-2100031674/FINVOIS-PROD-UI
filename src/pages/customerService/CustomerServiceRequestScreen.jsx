@@ -6,6 +6,7 @@ import api, { apiErrorMessage } from '../../api/apiClient';
 import useAuth from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 import { isTermLoanTemplateId, resolveTemplateSector } from '../../utils/templateSectorConfig';
+import { assignNewReportSession } from '../../utils/reportSession';
 import RequestDocumentsPanel from '../../components/department/RequestDocumentsPanel';
 import RequestChatPanel from '../../components/department/RequestChatPanel';
 import PaymentModal from '../../components/common/PaymentModal';
@@ -682,9 +683,9 @@ const CustomerServiceRequestScreen = () => {
 
     const params = new URLSearchParams({
       templateId: selectedTemplate,
-      newDraft: '1',
       requestId: id,
     });
+    assignNewReportSession(params);
 
     if (isTermLoanTemplateId(selectedTemplate)) {
       const { presetSector } = resolveTemplateSector(selectedTemplate);

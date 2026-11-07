@@ -14,6 +14,7 @@ import {
 } from '@/utils/dprWorkflowStatus';
 import { displayMsmeLoanType } from '@/utils/msmeLoanTypeDisplay';
 import { reportTemplatesForLoanType } from '@/utils/partnerLeadLoanTypes';
+import { assignNewReportSession } from '@/utils/reportSession';
 
 const PAGE_LIMIT = 100;
 
@@ -209,9 +210,9 @@ function DetailDrawer({ lead, showGenerateReport, onClose }) {
                   onClick={() => {
                     const params = new URLSearchParams({
                       templateId,
-                      newDraft: '1',
                       msmeLeadId: lead._id,
                     });
+                    assignNewReportSession(params);
                     const requestId =
                       lead.departmentRequestId?._id ||
                       lead.departmentRequestId ||

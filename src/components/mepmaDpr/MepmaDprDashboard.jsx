@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { assignNewReportSession } from '../../utils/reportSession';
 import {
   ChevronDown,
   ChevronLeft,
@@ -64,6 +65,11 @@ const PAGE_SIZE = 25;
 const TEMPLATES_LIST = [
   { id: 'frcc1', name: 'FRCC 1' },
   { id: 'frcc2', name: 'FRCC 2' },
+  { id: 'frcc3', name: 'FRCC 3' },
+  { id: 'frcc4', name: 'FRCC 4' },
+  { id: 'frcc5', name: 'FRCC 5' },
+  { id: 'frcc6', name: 'FRCC 6' },
+  { id: 'frcc7', name: 'FRCC 7' },
   { id: 'TERM_LOAN_SERVICE_WITHOUT_STOCK', name: 'Term Loan (Service w/o Stock)' },
   { id: 'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK', name: 'Term Loan (With Stock)' },
   { id: 'TERM_LOAN_CC', name: 'Term Loan CC' },
@@ -96,9 +102,11 @@ function GenerateReportCell({ leadId, departmentRequestId, navigate, loanType })
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          const params = new URLSearchParams({ templateId: selected, newDraft: '1', mepmaLeadId: leadId });
+          const params = new URLSearchParams({ templateId: selected, mepmaLeadId: leadId });
+          assignNewReportSession(params);
           const requestId = departmentRequestId?._id || departmentRequestId || '';
           if (requestId) params.set('requestId', String(requestId));
+          params.set('admin', 'true');
           navigate(`/generate?${params.toString()}`);
         }}
         className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors shrink-0"

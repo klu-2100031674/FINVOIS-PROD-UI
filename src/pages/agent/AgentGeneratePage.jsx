@@ -4,6 +4,7 @@ import { useDispatch } from 'react-redux';
 import { AgentLayout } from '../../components/layouts';
 import AIAssistant from '../../components/dashboard/AIAssistant';
 import { clearGeneratedExcel, clearFormData, clearRelatedDocuments } from '../../store/slices/reportSlice';
+import { assignNewReportSession } from '../../utils/reportSession';
 
 const AgentGeneratePage = () => {
     const navigate = useNavigate();
@@ -19,10 +20,8 @@ const AgentGeneratePage = () => {
     }, [dispatch]);
 
     const handleTemplateSelect = (templateId, opts = {}) => {
-        const params = new URLSearchParams({
-            templateId,
-            newDraft: '1',
-        });
+        const params = new URLSearchParams({ templateId });
+        assignNewReportSession(params);
         if (opts.presetSector) params.set('presetSector', opts.presetSector);
         // Sector stays editable after auto-select.
         // if (opts.lockSector) params.set('lockSector', '1');

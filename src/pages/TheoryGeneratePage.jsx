@@ -1,7 +1,7 @@
 /**
  * Theory Page generation:
  * 1) General Information
- * 2) Project Profile and Analysis (same SectionSelectors as Reports)
+ * 2) Project Profile and Analysis (theory-only section list)
  * 3) Next → AI-only multi-section PDF → validation queue (no payment)
  */
 
@@ -16,10 +16,7 @@ import { ReportGenerationModal } from '../components/common';
 import TheoryGeneralInformationForm, {
   THEORY_GI_DEFAULT,
 } from '../components/forms/TheoryGeneralInformationForm';
-import ManufacturingSectionSelector from '../components/forms/ManufacturingSectionSelector';
-import TradingSectionSelector from '../components/forms/TradingSectionSelector';
-import ServiceWithStockSectionSelector from '../components/forms/ServiceWithStockSectionSelector';
-import ServiceWithoutStockSectionSelector from '../components/forms/ServiceWithoutStockSectionSelector';
+import TheoryProfileSelector from '../components/forms/TheoryProfileSelector';
 import {
   getTheoryPageTemplateById,
   isTheoryTemplateId,
@@ -32,13 +29,6 @@ import { reportAPI } from '../api/endpoints';
 import { setFormData, clearFormData } from '../store/slices/reportSlice';
 import { formatApiErrorMessage } from '../utils';
 
-const CATEGORY_SELECTORS = {
-  manufacturing: ManufacturingSectionSelector,
-  trading: TradingSectionSelector,
-  service_with_stock: ServiceWithStockSectionSelector,
-  service_without_stock: ServiceWithoutStockSectionSelector,
-};
-
 const TheoryGeneratePage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -47,11 +37,12 @@ const TheoryGeneratePage = () => {
   const role = effectiveUserRole(user);
 
   const templateId = searchParams.get('templateId') || '';
+  const reportSession = searchParams.get('reportSession') || '';
   const useAdminLayout = role === 'admin' || role === 'company_admin';
 
   const template = useMemo(() => getTheoryPageTemplateById(templateId), [templateId]);
   const category = template?.category;
-  const CategorySectionSelector = category ? CATEGORY_SELECTORS[category] : null;
+  const hasProfile = Boolean(category);
 
   const [step, setStep] = useState(1);
   const [gi, setGi] = useState({ ...THEORY_GI_DEFAULT });
@@ -61,12 +52,12 @@ const TheoryGeneratePage = () => {
 
   useEffect(() => {
     dispatch(clearFormData());
-    if (!template) return;
-    setGi((prev) => ({
-      ...prev,
-      i14: template.sectorLabel || prev.i14,
-    }));
-  }, [dispatch, template]);
+    setStep(1);
+    setGi({
+      ...THEORY_GI_DEFAULT,
+      i14: template?.sectorLabel || '',
+    });
+  }, [dispatch, templateId, reportSession, template]);
 
   const fillGiTestData = useCallback(() => {
     const sector = template?.sectorLabel || 'Manufacturing';
@@ -190,7 +181,7 @@ const TheoryGeneratePage = () => {
     await runGenerate(payload);
   };
 
-  if (!isTheoryTemplateId(templateId) || !template || !CategorySectionSelector) {
+  if (!isTheoryTemplateId(templateId) || !template || !hasProfile) {
     const missing = (
       <div className="p-6 max-w-lg mx-auto text-center">
         <p className="text-gray-600 mb-4">Invalid or missing theory page template.</p>
@@ -275,8 +266,9 @@ const TheoryGeneratePage = () => {
         </div>
       ) : (
         <div className="mb-6">
-          <CategorySectionSelector
-            key={`theory-profile-${category}-${gi.i17 || gi.i8 || 'new'}`}
+          <TheoryProfileSelector
+            key={`theory-profile-${reportSession || templateId}-${category}`}
+            category={category}
             initialData={sectionInitialData}
             isVisible
             onBack={() => {

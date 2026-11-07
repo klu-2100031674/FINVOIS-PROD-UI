@@ -195,6 +195,12 @@ const GeneratePage = () => {
   /** From dashboard "start this template" — always INSERT first save, never update an old draft */
   const forceNewDraft =
     searchParams.get('newDraft') === '1' || searchParams.get('newDraft') === 'true';
+  // Unique per "start a new report" click. Same template for the next client gets a new id.
+  const reportSession = searchParams.get('reportSession') || '';
+  const visitKey = draftId
+    ? `draft:${draftId}`
+    : `new:${reportSession || 'legacy'}:${templateId || ''}`;
+  const wizardSession = reportSession || (draftId ? `draft:${draftId}` : '');
   const assistedUserId = searchParams.get('assistedUserId') || '';
   const reportHelpId = searchParams.get('reportHelpId') || '';
   const deptRequestId = searchParams.get('requestId') || '';
@@ -208,6 +214,7 @@ const GeneratePage = () => {
   const reduxFormData = useSelector(selectFormData);
   const relatedDocuments = useSelector(selectRelatedDocuments);
   const generateInitKey = useRef('');
+  const [appliedVisitKey, setAppliedVisitKey] = useState(visitKey);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSectionSelector, setShowSectionSelector] = useState(false);
@@ -269,9 +276,30 @@ const GeneratePage = () => {
     templateId,
     draftIdFromUrl: draftId,
     forceNewDraft,
+    visitKey,
     setTempFormData,
     dispatchSetFormData: (data) => dispatch(setFormData(data)),
   });
+
+  // Drop the previous client's fields before paint when the visit changes.
+  // A draft id is a different visit and is filled from the server, not left blank.
+  if (appliedVisitKey !== visitKey) {
+    setAppliedVisitKey(visitKey);
+    setTempFormData(null);
+    setFormSeed(null);
+    setTempSubmittedData(null);
+    setShowSectionSelector(false);
+    setSectionSelectorMounted(false);
+    setMsmeAutoFilledLabels([]);
+    setShowAutoFillBanner(false);
+    setAnalysisData(null);
+    setReportTitle('');
+    setInitialSheetSelections(null);
+    setShowPaymentModal(false);
+    setShowAnalysisModal(false);
+    setIsProcessing(false);
+    setDraftCheckComplete(!draftId);
+  }
 
   const handleSaveDraftFromForm = (stage1Payload) => {
     saveDraft({ stage1Payload, activeStep: 'form' });
@@ -417,7 +445,7 @@ const GeneratePage = () => {
       return;
     }
 
-    const initKey = `${templateId}|${draftId || ''}`;
+    const initKey = `${templateId}|${draftId || ''}|${reportSession}`;
     const isNewVisit = generateInitKey.current !== initKey;
     if (!isNewVisit) return;
 
@@ -432,13 +460,17 @@ const GeneratePage = () => {
 
     dispatch(clearGeneratedExcel());
     dispatch(clearRelatedDocuments());
+    dispatch(clearFormData());
     generationRequestedRef.current = false;
+    paidResumeStartedRef.current = false;
     hasMounted.current = true;
 
     if (!draftId) {
       setTempFormData(null);
       setFormSeed(null);
-      dispatch(clearFormData());
+      setTempSubmittedData(null);
+      setShowSectionSelector(false);
+      setSectionSelectorMounted(false);
       setDraftCheckComplete(true);
       return;
     }
@@ -466,7 +498,7 @@ const GeneratePage = () => {
         toast.error('Failed to load draft. Please try again.');
       })
       .finally(() => setDraftCheckComplete(true));
-  }, [templateId, draftId, dispatch, store]);
+  }, [templateId, draftId, reportSession, dispatch, store]);
 
   // MSME / MEPMA auto-fill from a lead id or from a department request (Open Requests).
   // Runs only after the draft check completes and only when no draft is being resumed.
@@ -610,7 +642,7 @@ const GeneratePage = () => {
     load();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [msmeLeadId, mepmaLeadId, dprRequestLeadId, deptRequestId, draftCheckComplete, draftId, templateId]);
+  }, [msmeLeadId, mepmaLeadId, dprRequestLeadId, deptRequestId, draftCheckComplete, draftId, templateId, reportSession]);
 
   useEffect(() => {
     if (!generationRequestedRef.current || !hasMounted.current) return;
@@ -628,6 +660,8 @@ const GeneratePage = () => {
         if (msmeLeadId) stageParams.set('msmeLeadId', msmeLeadId);
         if (mepmaLeadId) stageParams.set('mepmaLeadId', mepmaLeadId);
         if (dprRequestLeadId) stageParams.set('dprRequestLeadId', dprRequestLeadId);
+        if (reportSession) stageParams.set('reportSession', reportSession);
+        if (draftId) stageParams.set('draftId', draftId);
         navigate(`/stage1?${stageParams.toString()}`);
         generationRequestedRef.current = false;
         setIsProcessing(false);
@@ -640,7 +674,7 @@ const GeneratePage = () => {
     );
     generationRequestedRef.current = false;
     setIsProcessing(false);
-  }, [generatedExcel, navigate, templateId, searchParams, assistedUserId, reportHelpId, deptRequestId, msmeLeadId, mepmaLeadId, dprRequestLeadId]);
+  }, [generatedExcel, navigate, templateId, searchParams, assistedUserId, reportHelpId, deptRequestId, msmeLeadId, mepmaLeadId, dprRequestLeadId, reportSession, draftId]);
 
   // Check if admin mode (no credits required)
   const isAdminMode = searchParams.get('admin') === 'true';
@@ -714,6 +748,7 @@ const GeneratePage = () => {
         paidReportId,
         analysisOptions,
         sheets,
+        reportSession: wizardSession,
       });
 
       if (result.success) {
@@ -848,7 +883,7 @@ const GeneratePage = () => {
       generationRequestedRef.current = true;
       try {
         const finalWithLogos = await withTemplateLogos(submittedFormData);
-        await dispatch(applyFormData({ templateId, formData: finalWithLogos })).unwrap();
+        await dispatch(applyFormData({ templateId, formData: finalWithLogos, reportSession: wizardSession })).unwrap();
       } catch (error) {
         generationRequestedRef.current = false;
         toast.error(formatApiErrorMessage(error, 'Failed to submit data for Excel generation.'));
@@ -894,7 +929,7 @@ const GeneratePage = () => {
 
     try {
       const finalWithLogos = await withTemplateLogos(finalFormData);
-      await dispatch(applyFormData({ templateId, formData: finalWithLogos })).unwrap();
+      await dispatch(applyFormData({ templateId, formData: finalWithLogos, reportSession: wizardSession })).unwrap();
     } catch (error) {
       generationRequestedRef.current = false;
       toast.error(formatApiErrorMessage(error, 'Failed to submit data for Excel generation.'));
@@ -965,7 +1000,7 @@ const GeneratePage = () => {
         </div>
       )}
 
-      <div className="px-0 sm:px-2 py-4">
+      <div key={visitKey} className="px-0 sm:px-2 py-4">
         {/* Back Button */}
         <button
           onClick={() => showSectionSelector ? handleBackFromProfile() : handleBackToDashboard()}
@@ -1032,7 +1067,7 @@ const GeneratePage = () => {
           return (
             <div className={showSectionSelector ? '' : 'hidden'}>
               <CategorySectionSelector
-                key={`${draftId || 'term-loan-profile'}-${category}`}
+                key={`${visitKey}-${category}`}
                 initialData={buildSectionSelectorInitialData(tempFormData || {})}
                 isVisible={showSectionSelector}
                 onBack={handleBackFromProfile}

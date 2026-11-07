@@ -16,6 +16,7 @@ import {
 
 import SaveDraftButton from '../common/SaveDraftButton';
 import { FRCC_REQUIRED_STAMP_DEFAULT } from '../../utils/frccFormUi';
+import { assetRowIsOpen, readOpenAssetRows, withOpenAssetRow, withoutOpenAssetRow } from '../../utils/assetOpenRows';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -127,7 +128,7 @@ const FRTermLoanWithStockForm = ({
       'i14': '', // Sector
       'i15': '', // Nature of Business
       'i16': '', // Address
-      'residential_address': '', // Residential Address (named key, not an Excel cell)
+      'residential_address': '', // Residential Address (Optional) (named key, not an Excel cell)
       'i17': '', // Name of firm
       'i18': '', // Type of Entity
       'i19': '', // PAN of firm
@@ -185,70 +186,70 @@ const FRTermLoanWithStockForm = ({
     })(),
     'Schedule for Indirect Expenses': {
       'Administrative & Office Expenses': {
-        'd251': 'Office rent', 'e251': 0,
-        'd252': 'Electricity and water charges', 'e252': 0,
-        'd253': 'Telephone, mobile & internet expenses', 'e253': 0,
-        'd254': 'Postage and courier charges', 'e254': 0,
-        'd255': 'Printing and stationery', 'e255': 0,
-        'd256': 'Office maintenance & repairs', 'e256': 0,
-        'd257': 'Petrol, Diesel and Gas Charges', 'e257': 0,
-        'd258': 'Computer maintenance & AMC', 'e258': 0,
-        'd259': 'Legal and professional fees', 'e259': 0,
-        'd260': 'Audit fees', 'e260': 0,
-        'd261': 'Consultancy charges', 'e261': 0,
-        'd262': 'License and registration fees', 'e262': 0,
-        'd263': 'Bank charges', 'e263': 0,
-        'd264': 'Software subscription fees', 'e264': 0,
-        'd265': 'Security expenses', 'e265': 0,
-        'd266': 'Office cleaning expenses', 'e266': 0,
-        'd267': 'Staff welfare expenses', 'e267': 0,
-        'd268': 'Conveyance expenses', 'e268': 0,
-        'd269': 'Travelling expenses (non-production staff)', 'e269': 0,
-        'd270': 'Meeting & conference expenses', 'e270': 0,
-        'd271': 'Other Administrative & Office Expenses', 'e271': 0
+        'd239': 'Office rent', 'e239': 0,
+        'd240': 'Electricity and water charges', 'e240': 0,
+        'd241': 'Telephone, mobile & internet expenses', 'e241': 0,
+        'd242': 'Postage and courier charges', 'e242': 0,
+        'd243': 'Printing and stationery', 'e243': 0,
+        'd244': 'Office maintenance & repairs', 'e244': 0,
+        'd245': 'Petrol, Diesel and Gas Charges', 'e245': 0,
+        'd246': 'Computer maintenance & AMC', 'e246': 0,
+        'd247': 'Legal and professional fees', 'e247': 0,
+        'd248': 'Audit fees', 'e248': 0,
+        'd249': 'Consultancy charges', 'e249': 0,
+        'd250': 'License and registration fees', 'e250': 0,
+        'd251': 'Bank charges', 'e251': 0,
+        'd252': 'Software subscription fees', 'e252': 0,
+        'd253': 'Security expenses', 'e253': 0,
+        'd254': 'Office cleaning expenses', 'e254': 0,
+        'd255': 'Staff welfare expenses', 'e255': 0,
+        'd256': 'Conveyance expenses', 'e256': 0,
+        'd257': 'Travelling expenses (non-production staff)', 'e257': 0,
+        'd258': 'Meeting & conference expenses', 'e258': 0,
+        'd259': 'Other Administrative & Office Expenses', 'e259': 0
       },
       'Employee Related Expenses': {
-        'd273': 'Provident fund and ESI contribution', 'e273': 0,
-        'd274': 'Gratuity and pension', 'e274': 0,
-        'd275': 'Staff training and development', 'e275': 0,
-        'd276': 'Recruitment expenses', 'e276': 0,
-        'd277': 'Employee insurance', 'e277': 0,
-        'd278': 'Refreshments & canteen expenses (office staff)', 'e278': 0,
-        'd279': 'Other Employee related expenses', 'e279': 0
+        'd261': 'Provident fund and ESI contribution', 'e261': 0,
+        'd262': 'Gratuity and pension', 'e262': 0,
+        'd263': 'Staff training and development', 'e263': 0,
+        'd264': 'Recruitment expenses', 'e264': 0,
+        'd265': 'Employee insurance', 'e265': 0,
+        'd266': 'Refreshments & canteen expenses (office staff)', 'e266': 0,
+        'd267': 'Other Employee related expenses', 'e267': 0
       },
       'Selling and Distribution Expenses': {
-        'd280': 'Advertising & publicity', 'e280': 0,
-        'd281': 'Sales promotion expenses', 'e281': 0,
-        'd282': 'Trade show / exhibition expenses', 'e282': 0,
-        'd283': 'Dealer commission', 'e283': 0,
-        'd284': 'Freight inward', 'e284': 0,
-        'd285': 'Freight and forwarding (outward)', 'e285': 0,
-        'd286': 'Packing and delivery expenses', 'e286': 0,
-        'd287': 'Customer discounts / rebates', 'e287': 0,
-        'd288': 'Warranty & after-sales service expenses', 'e288': 0,
-        'd289': 'Bad debts written off', 'e289': 0,
-        'd290': 'Business entertainment expenses', 'e290': 0,
-        'd291': 'Other Selling and Distribution Expenses', 'e291': 0
+        'd268': 'Advertising & publicity', 'e268': 0,
+        'd269': 'Sales promotion expenses', 'e269': 0,
+        'd270': 'Trade show / exhibition expenses', 'e270': 0,
+        'd271': 'Dealer commission', 'e271': 0,
+        'd272': 'Freight inward', 'e272': 0,
+        'd273': 'Freight and forwarding (outward)', 'e273': 0,
+        'd274': 'Packing and delivery expenses', 'e274': 0,
+        'd275': 'Customer discounts / rebates', 'e275': 0,
+        'd276': 'Warranty & after-sales service expenses', 'e276': 0,
+        'd277': 'Bad debts written off', 'e277': 0,
+        'd278': 'Business entertainment expenses', 'e278': 0,
+        'd279': 'Other Selling and Distribution Expenses', 'e279': 0
       },
       'General Overheads': {
-        'd292': 'Insurance (office, employee, general liability)', 'e292': 0,
-        'd293': 'Repairs & maintenance (non-production)', 'e293': 0,
-        'd294': 'Subscription & membership fees', 'e294': 0,
-        'd295': 'Vehicle running expenses (admin vehicles)', 'e295': 0,
-        'd296': 'Fuel & maintenance for delivery vehicles', 'e296': 0,
-        'd297': 'Rent, rates, and taxes (non-factory premises)', 'e297': 0,
-        'd298': 'AMC (Annual Maintenance Contracts)', 'e298': 0,
-        'd299': 'Other General Overhead expenses', 'e299': 0
+        'd280': 'Insurance (office, employee, general liability)', 'e280': 0,
+        'd281': 'Repairs & maintenance (non-production)', 'e281': 0,
+        'd282': 'Subscription & membership fees', 'e282': 0,
+        'd283': 'Vehicle running expenses (admin vehicles)', 'e283': 0,
+        'd284': 'Fuel & maintenance for delivery vehicles', 'e284': 0,
+        'd285': 'Rent, rates, and taxes (non-factory premises)', 'e285': 0,
+        'd286': 'AMC (Annual Maintenance Contracts)', 'e286': 0,
+        'd287': 'Other General Overhead expenses', 'e287': 0
       },
       'Miscellaneous Expenses': {
-        'd300': 'Donation & charity (if not CSR)', 'e300': 0,
-        'd301': 'CSR expenses', 'e301': 0,
-        'd302': 'Loss on sale of fixed assets', 'e302': 0,
-        'd303': 'Provision for doubtful debts', 'e303': 0,
-        'd304': 'Entertainment & hospitality', 'e304': 0,
-        'd305': 'Gifts and samples', 'e305': 0,
-        'd306': 'Internet domain renewal & web hosting', 'e306': 0,
-        'd307': 'Miscellaneous expenses', 'e307': 0
+        'd288': 'Donation & charity (if not CSR)', 'e288': 0,
+        'd289': 'CSR expenses', 'e289': 0,
+        'd290': 'Loss on sale of fixed assets', 'e290': 0,
+        'd291': 'Provision for doubtful debts', 'e291': 0,
+        'd292': 'Entertainment & hospitality', 'e292': 0,
+        'd293': 'Gifts and samples', 'e293': 0,
+        'd294': 'Internet domain renewal & web hosting', 'e294': 0,
+        'd295': 'Miscellaneous expenses', 'e295': 0
       }
     }
   };
@@ -484,7 +485,7 @@ const FRTermLoanWithStockForm = ({
   };
 
   const requiredFields = {
-    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i18', 'i20', 'i22', 'i23', 'i12', 'i13', 'i19'],
+    'General Information': ['i7', 'i8', 'i9', 'i14', 'i15', 'i16', 'i20', 'i22', 'i23', 'i12', 'i13', 'i19'],
     'Expected Employment Generation': ['i24', 'i25', 'i26'],
     'Term Loan Details': ['h44', 'i45', 'i46', 'i47', 'i48', 'h49', 'i51', 'i52', 'i53'],
     'Indirect Expenses Increment': ['h64', 'h65', 'h66', 'h67', 'h68', 'i56'],
@@ -778,7 +779,7 @@ const FRTermLoanWithStockForm = ({
       // We can check if the key exists in formData? No, we initialized all keys.
       // Let's assume "added" means description or amount is not empty string.
       const hasAmount = amount !== '' && amount !== null && amount !== undefined && Number(amount) !== 0;
-      if (desc !== '' || hasAmount) {
+      if (assetRowIsOpen(formData['Schedule for Assets'], i, desc, amount)) {
         items.push({ row: i, description: desc, amount: amount });
       }
     }
@@ -787,11 +788,12 @@ const FRTermLoanWithStockForm = ({
 
   const addAssetItem = useCallback((sectionName) => {
     const section = getAssetSections(formData['Term Loan Details']?.['i46'])[sectionName];
+    const openRows = readOpenAssetRows(formData['Schedule for Assets']);
     let emptyRow = -1;
     for (let i = section.start; i <= section.end; i++) {
       const desc = formData['Schedule for Assets'][`d${i}`];
       const amount = formData['Schedule for Assets'][`e${i}`];
-      if ((desc === '' || desc === undefined) && (amount === '' || amount === undefined || Number(amount) === 0)) {
+      if (!openRows.has(i) && (desc === '' || desc === undefined) && (amount === '' || amount === undefined || Number(amount) === 0)) {
         emptyRow = i;
         break;
       }
@@ -800,11 +802,11 @@ const FRTermLoanWithStockForm = ({
     if (emptyRow !== -1) {
       setFormData(prev => ({
         ...prev,
-        'Schedule for Assets': {
+        'Schedule for Assets': withOpenAssetRow({
           ...prev['Schedule for Assets'],
-          [`d${emptyRow}`]: 'New Item',
-          [`e${emptyRow}`]: 0
-        }
+          [`d${emptyRow}`]: '',
+          [`e${emptyRow}`]: ''
+        }, emptyRow)
       }));
       // Track that this category now has items
       setCategoriesWithItems(prev => new Set([...prev, sectionName]));
@@ -875,11 +877,11 @@ const FRTermLoanWithStockForm = ({
     setFormData(prev => {
       const newData = {
         ...prev,
-        'Schedule for Assets': {
+        'Schedule for Assets': withoutOpenAssetRow({
           ...prev['Schedule for Assets'],
           [`d${row}`]: '',
           [`e${row}`]: ''
-        }
+        }, row)
       };
 
       // Check if category still has items after removal
@@ -927,11 +929,11 @@ const FRTermLoanWithStockForm = ({
     // Generate test data for indirect expenses - maintain nested structure
     const expensesData = {};
     const expenseCategories = [
-      { name: 'Administrative & Office Expenses', rows: [251, 252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 271] },
-      { name: 'Employee Related Expenses', rows: [273, 274, 275, 276, 277, 278, 279] }, // Skip 272 - auto-generated in Excel
-      { name: 'Selling and Distribution Expenses', rows: [280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291] },
-      { name: 'General Overheads', rows: [292, 293, 294, 295, 296, 297, 298, 299] },
-      { name: 'Miscellaneous Expenses', rows: [300, 301, 302, 303, 304, 305, 306, 307] }
+      { name: 'Administrative & Office Expenses', rows: [239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 256, 257, 258, 259] },
+      { name: 'Employee Related Expenses', rows: [261, 262, 263, 264, 265, 266, 267] }, // Skip 260 - auto-generated in Excel
+      { name: 'Selling and Distribution Expenses', rows: [268, 269, 270, 271, 272, 273, 274, 275, 276, 277, 278, 279] },
+      { name: 'General Overheads', rows: [280, 281, 282, 283, 284, 285, 286, 287] },
+      { name: 'Miscellaneous Expenses', rows: [288, 289, 290, 291, 292, 293, 294, 295] }
     ];
 
     expenseCategories.forEach((cat) => {
@@ -943,7 +945,7 @@ const FRTermLoanWithStockForm = ({
       });
     });
 
-    // Do NOT touch d272 and e272 - these have auto-generated values in Excel
+    // Do NOT touch d260 and e260 - these have auto-generated values in Excel
     // Keep them exactly as they are in defaultFormData
 
     // Loan percentages for each asset category
@@ -1225,8 +1227,8 @@ const FRTermLoanWithStockForm = ({
 
     const excelData = extractCellData(updatedFormData);
 
-    // E251–E256: blank → 0 in Excel (same as E258 default behaviour)
-    for (let row = 251; row <= 256; row += 1) {
+    // E239–E244: blank → 0 in Excel (office rent through office maintenance)
+    for (let row = 239; row <= 244; row += 1) {
       const key = `e${row}`;
       const raw = excelData[key];
       if (raw === undefined || raw === null || String(raw).trim() === '') {
@@ -1459,7 +1461,7 @@ const FRTermLoanWithStockForm = ({
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">PAN of Proprietor</label>
+              <label className="block text-sm font-medium text-gray-700">PAN of Proprietor (Optional)</label>
               <input
                 type="text"
                 className="w-full p-2 border border-gray-300 rounded-md"
@@ -1521,7 +1523,7 @@ const FRTermLoanWithStockForm = ({
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Residential Address</label>
+              <label className="block text-sm font-medium text-gray-700">Residential Address (Optional)</label>
               <input
                 type="text"
                 className="w-full p-2 border border-gray-300 rounded-md"
@@ -2097,7 +2099,7 @@ const FRTermLoanWithStockForm = ({
                   if (key.startsWith('d')) return null; // Skip label keys
                   if (key === 'totalComponents') return null;
 
-                  // Find corresponding label key (e.g., e251 -> d251)
+                  // Find corresponding label key (e.g., e239 -> d239)
                   const labelKey = 'd' + key.substring(1);
                   const label = activeExpenses[labelKey];
 

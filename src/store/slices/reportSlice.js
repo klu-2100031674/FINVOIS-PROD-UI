@@ -21,9 +21,10 @@ const initialState = {
 
 export const applyFormData = createAsyncThunk(
   'report/applyFormData',
-  async ({ templateId, formData }, { rejectWithValue }) => {
+  async ({ templateId, formData, reportSession }, { rejectWithValue }) => {
     try {
-      const response = await api.report.applyFormData(templateId, formData);
+      const payload = reportSession ? { ...formData, reportSession } : formData;
+      const response = await api.report.applyFormData(templateId, payload);
       // Return the full response instead of just response.data
       // This preserves the success, message, and data structure
       return response;
@@ -102,9 +103,9 @@ export const uploadReportJson = createAsyncThunk(
 
 export const applyFinalEdits = createAsyncThunk(
   'report/applyFinalEdits',
-  async ({ templateId, updates, recalculate = true }, { rejectWithValue }) => {
+  async ({ templateId, updates, recalculate = true, reportSession }, { rejectWithValue }) => {
     try {
-      const response = await api.report.applyFinalEdits(templateId, updates, recalculate);
+      const response = await api.report.applyFinalEdits(templateId, updates, recalculate, reportSession);
       // Return the full response to preserve structure
       return response;
     } catch (error) {

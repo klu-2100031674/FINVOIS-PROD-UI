@@ -61,6 +61,7 @@ const TheoryGeneralInformationForm = ({ value = {}, onChange, lockSector = false
             <option value="Sole Proprietorship">Sole Proprietorship</option>
             <option value="Partnership Firm">Partnership Firm</option>
             <option value="Private limited Company">Private limited Company</option>
+            <option value="Public Limited">Public Limited</option>
             <option value="LLP">LLP</option>
             <option value="Society">Society</option>
             <option value="Trust">Trust</option>
@@ -94,7 +95,7 @@ const TheoryGeneralInformationForm = ({ value = {}, onChange, lockSector = false
             placeholder="Enter Aadhar number"
           />
         </Field>
-        <Field label="PAN of proprietor / Managing Partner / MD">
+        <Field label="PAN of proprietor / Managing Partner / MD (Optional)">
           <input
             type="text"
             value={gi.i11}
@@ -152,7 +153,7 @@ const TheoryGeneralInformationForm = ({ value = {}, onChange, lockSector = false
             placeholder="Business address"
           />
         </Field>
-        <Field label="Residential Address">
+        <Field label="Residential Address (Optional)">
           <textarea
             value={gi.residential_address}
             onChange={(e) => set('residential_address', e.target.value)}
@@ -170,7 +171,7 @@ const TheoryGeneralInformationForm = ({ value = {}, onChange, lockSector = false
             placeholder="Firm / Company name"
           />
         </Field>
-        <Field label="PAN of firm/Company">
+        <Field label="PAN of firm/Company (Optional)">
           <input
             type="text"
             value={gi.i18}

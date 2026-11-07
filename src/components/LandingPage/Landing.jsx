@@ -84,7 +84,7 @@ const Landing = () => {
       <FinancialProjections />
       <WhyChooseUs />
       <ReportTypes />
-      <AppDownload />
+      {/* <AppDownload /> */}
       <Testimonials />
       <Footer />
       <GenieLauncher />

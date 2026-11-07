@@ -49,8 +49,11 @@ export const authAPI = {
   },
 
   // Force change password (first-login flow)
-  changePassword: async (newPassword) => {
-    const response = await apiClient.post('/users/change-password', { newPassword });
+  changePassword: async (newPassword, extra = {}) => {
+    const response = await apiClient.post('/users/change-password', {
+      newPassword,
+      ...extra,
+    });
     return response.data;
   },
 };
@@ -215,6 +218,10 @@ export const reportAPI = {
 
     if (user_comment) {
       payload.user_comment = user_comment;
+    }
+
+    if (options.reportSession) {
+      payload.reportSession = options.reportSession;
     }
 
     if (aiApiKey) {

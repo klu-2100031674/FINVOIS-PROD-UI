@@ -283,8 +283,8 @@ const SCHEME_LABELS_TE = {
 
 const LOAN_TYPE_LABELS_TE = {
   'Term Loan': 'టర్మ్ లోన్',
-  'Commercial Vehicle Loan': 'వాణిజ్య వాహన లోన్ (Commercial Vehicle Loan)',
-  'Commercial Vehicle': 'వాణిజ్య వాహన లోన్ (Commercial Vehicle Loan)',
+  'Commercial Vehicle Loan': 'వాణిజ్య వాహనం (Commercial Vehicle)',
+  'Commercial Vehicle': 'వాణిజ్య వాహనం (Commercial Vehicle)',
   'Term Loan and working capital loan': 'టర్మ్ లోన్ మరియు వర్కింగ్ క్యాపిటల్ లోన్',
   'Working capital or OD Loan': 'వర్కింగ్ క్యాపిటల్ లేదా ఓడి లోన్',
   'Gold Loan': 'గోల్డ్ లోన్',

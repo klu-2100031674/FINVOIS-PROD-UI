@@ -11,6 +11,7 @@ import { getTheoryPageTemplates } from '../utils/theoryPageTemplates';
 import { effectiveUserRole } from '../utils/normalizeUserRole';
 import { useAuth } from '../hooks';
 import { theoryPagesGeneratePath } from '../utils/routePaths';
+import { assignNewReportSession } from '../utils/reportSession';
 
 const CATEGORY_ICONS = {
   manufacturing: Factory,
@@ -40,7 +41,8 @@ const TheoryPagesHubPage = () => {
   }, [templates, searchQuery]);
 
   const handleSelect = (templateId) => {
-    const params = new URLSearchParams({ templateId, newDraft: '1' });
+    const params = new URLSearchParams({ templateId });
+    assignNewReportSession(params);
     if (role === 'admin') params.set('admin', 'true');
     navigate(`${theoryPagesGeneratePath(user)}?${params.toString()}`);
   };

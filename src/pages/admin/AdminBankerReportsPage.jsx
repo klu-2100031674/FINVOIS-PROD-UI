@@ -21,9 +21,12 @@ import {
   ChevronDown,
   ChevronUp,
   User,
-  Loader2
+  Loader2,
+  MessageCircle
 } from 'lucide-react';
 import { AdminLayout } from '../../components/layouts';
+import QuickPhoneSelect from '../../components/admin/QuickPhoneSelect';
+import { useQuickPhoneNumbers } from '../../hooks';
 import adminExecutiveReportsAPI from '../../api/adminExecutiveReportsAPI';
 import toast from 'react-hot-toast';
 
@@ -64,6 +67,10 @@ const AdminBankerReportsPage = () => {
   const [selectedReport, setSelectedReport] = useState(null);
   const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
   const [loadingPdf, setLoadingPdf] = useState(false);
+  const [showWhatsappBox, setShowWhatsappBox] = useState(false);
+  const [whatsappInput, setWhatsappInput] = useState('');
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
+  const { numbers: quickPhoneNumbers } = useQuickPhoneNumbers();
 
   const [approvalNotes, setApprovalNotes] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
@@ -236,8 +243,31 @@ const AdminBankerReportsPage = () => {
     }
   };
 
+  const handleSendWhatsapp = async () => {
+    if (!selectedReport) return;
+    const phone = whatsappInput.trim();
+    if (!phone) {
+      toast.error('Please enter a recipient phone number.');
+      return;
+    }
+    if (!window.confirm(`Send report via WhatsApp to ${phone}?`)) return;
+    try {
+      setSendingWhatsapp(true);
+      const res = await adminExecutiveReportsAPI.sendWhatsapp(selectedReport._id, phone);
+      toast.success(res.data?.message || 'Report sent via WhatsApp successfully.');
+    } catch (error) {
+      toast.error(
+        typeof error === 'string' ? error : error?.response?.data?.error || error?.message || 'Failed to send WhatsApp report'
+      );
+    } finally {
+      setSendingWhatsapp(false);
+    }
+  };
+
   const handleViewPdf = async (report) => {
     setSelectedReport(report);
+    setWhatsappInput(report?.user_id?.phone || '');
+    setShowWhatsappBox(false);
     setShowPdfViewer(true);
     setLoadingPdf(true);
     if (pdfBlobUrl) {
@@ -987,7 +1017,57 @@ const AdminBankerReportsPage = () => {
               <h2 className="text-lg font-semibold truncate pr-4">
                 {reportTitle(selectedReport)} — PDF
               </h2>
-              <div className="flex gap-2 shrink-0">
+              <div className="flex items-center gap-2 flex-wrap shrink-0">
+                {showWhatsappBox ? (
+                  <div className="flex items-center border border-gray-300 rounded-lg p-1 bg-gray-50 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-transparent">
+                    <QuickPhoneSelect
+                      numbers={quickPhoneNumbers}
+                      currentPhone={whatsappInput}
+                      onSelect={setWhatsappInput}
+                      className="mr-1"
+                    />
+                    <input
+                      type="text"
+                      value={whatsappInput}
+                      onChange={(e) => setWhatsappInput(e.target.value)}
+                      className="px-2 py-1 text-sm bg-transparent outline-none w-36 text-gray-700 font-normal"
+                      placeholder="WhatsApp phone"
+                      title="WhatsApp Phone"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSendWhatsapp}
+                      disabled={sendingWhatsapp}
+                      className="flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors"
+                    >
+                      {sendingWhatsapp ? (
+                        <Loader2 size={14} className="mr-1.5 animate-spin" />
+                      ) : (
+                        <MessageCircle size={14} className="mr-1.5" />
+                      )}
+                      Send
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowWhatsappBox(false)}
+                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded ml-1"
+                      title="Back"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowWhatsappBox(true)}
+                    className="flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm"
+                    title="Share via WhatsApp"
+                  >
+                    <MessageCircle size={14} className="mr-1.5" />
+                    WhatsApp
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => handleDownloadPdf(selectedReport)}

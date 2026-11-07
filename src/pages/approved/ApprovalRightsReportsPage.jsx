@@ -5,6 +5,7 @@
  */
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { normalizeCc6GiCells } from '../../utils/cc6GeneralInfo';
 import {
   FileText,
   Check,
@@ -60,7 +61,7 @@ const getReportNatureOfBusiness = (report) => {
 
   const fd = report?.form_data || {};
   const prompts = fd?.prompts_data || {};
-  const general = fd?.['General Information'] || {};
+  const general = normalizeCc6GiCells(fd?.['General Information'] || {});
 
   const NATURE_CELL_BY_TEMPLATE = {
     'CC1': 'i10', 'GOLD_LOAN': 'i10', 'CC2': 'i9', 'CC3': 'i10', 'CC4': 'i9', 'CC5': 'i9', 'CC6': 'i8', 'CC7': 'i9',
@@ -1149,6 +1150,11 @@ const ApprovalRightsReportsPage = () => {
                             <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full truncate" title={report.templateId || report.report_type}>
                               {getTemplateDisplayName(report.templateId || report.report_type)}
                             </span>
+                            {report.partnerFormLabel && (
+                              <span className="text-xs font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                                {report.partnerFormLabel}
+                              </span>
+                            )}
                             {(report.content_kind === 'theory' || String(report.templateId || '').startsWith('THEORY_')) && (
                               <span className="text-xs font-medium text-teal-800 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
                                 Theory Page

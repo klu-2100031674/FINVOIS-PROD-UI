@@ -60,6 +60,9 @@ const adminExecutiveReportsAPI = {
       responseType: 'blob'
     }),
 
+  sendWhatsapp: (reportId, phone) =>
+    apiClient.post(`/admin-executive-reports/${reportId}/whatsapp`, { phone }),
+
   markUnderReview: (reportId) => apiClient.patch(`/admin-executive-reports/${reportId}/review`),
 
   reReview: (reportId) => apiClient.patch(`/admin-executive-reports/${reportId}/re-review`),

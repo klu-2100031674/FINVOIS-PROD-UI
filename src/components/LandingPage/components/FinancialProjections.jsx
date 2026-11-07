@@ -63,7 +63,7 @@ const FinancialProjections = () => {
                 </div>
                 <div className="bg-gray-800 p-4 rounded-xl border border-gray-700">
                   <div className="text-gray-400 text-xs font-inter mb-1">ROI (5 Years)</div>
-                  <div className="text-xl font-bold text-green-400 font-manrope">342%</div>
+                  <div className="text-xl font-bold text-green-400 font-manrope">34%</div>
                 </div>
               </div>
             </motion.div>

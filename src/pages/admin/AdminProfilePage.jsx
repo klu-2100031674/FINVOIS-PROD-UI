@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { AdminLayout } from '../../components/layouts';
 import { useAuth, useAdminTierProfile } from '../../hooks';
+import QuickPhoneNumbersCard from '../../components/admin/QuickPhoneNumbersCard';
 
 const AdminProfilePage = () => {
   const { user, refreshUser } = useAuth();
@@ -191,6 +192,8 @@ const AdminProfilePage = () => {
             </div>
           </form>
         </div>
+
+        <QuickPhoneNumbersCard />
       </div>
     </AdminLayout>
   );

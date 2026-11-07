@@ -9,6 +9,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchTemplates, selectTemplates, selectTemplateLoading } from '../../store/slices/templateSlice';
 import { clearGeneratedExcel, clearFormData, clearRelatedDocuments } from '../../store/slices/reportSlice';
 import { getTemplateById, getTemplates } from '../../utils/templateMetadata';
+import { assignNewReportSession } from '../../utils/reportSession';
 import { AdminLayout } from '../../components/layouts';
 import { Loading } from '../../components/common';
 import {
@@ -57,8 +58,8 @@ const AdminGenerateReportPage = () => {
     const params = new URLSearchParams({
       templateId,
       admin: 'true',
-      newDraft: '1',
     });
+    assignNewReportSession(params);
     if (assistedUserId) params.set('assistedUserId', assistedUserId);
     if (reportHelpId) params.set('reportHelpId', reportHelpId);
     navigate(`/generate?${params.toString()}`);

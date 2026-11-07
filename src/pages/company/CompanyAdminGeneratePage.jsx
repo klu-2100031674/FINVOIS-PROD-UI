@@ -6,6 +6,7 @@ import { Loading } from '../../components/common';
 import { AdminLayout } from '../../components/layouts';
 import DashboardAISection from '../../components/dashboard/DashboardAISection';
 import useGenerateHubPrep from '../../hooks/useGenerateHubPrep';
+import { assignNewReportSession } from '../../utils/reportSession';
 
 /**
  * Company admin generate hub (`/company/generate`) — separate file from retail dashboard.
@@ -18,10 +19,8 @@ const CompanyAdminGeneratePage = () => {
   useGenerateHubPrep(dispatch);
 
   const handleTemplateSelect = (templateId, opts = {}) => {
-    const params = new URLSearchParams({
-      templateId,
-      newDraft: '1',
-    });
+    const params = new URLSearchParams({ templateId });
+    assignNewReportSession(params);
     if (opts.presetSector) params.set('presetSector', opts.presetSector);
     // Sector stays editable after auto-select.
     // if (opts.lockSector) params.set('lockSector', '1');

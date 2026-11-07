@@ -15,14 +15,14 @@ export const firmConstitutionSection = {
   prompt_ref: "constitution",
   fields: [
     { name: "firm_name", label: "Firm Name", type: "text", required: false },
-    { name: "organisation_type", label: "Constitution / Entity Type", type: "select", options: ["Proprietorship", "Partnership", "Private Limited", "LLP", "Other"] },
+    { name: "organisation_type", label: "Constitution / Entity Type", type: "select", options: ["Proprietorship", "Partnership", "Private Limited", "Public Limited", "LLP", "Other"] },
     { name: "sector", label: "Sector", type: "text", placeholder: "Prefilled from previous page" },
     { name: "nature_of_business", label: "Nature of Business", type: "text", placeholder: "Prefilled from previous page" },
     { name: "proprietor_name", label: "Name of Authorised person", type: "text", required: true },
-    { name: "pan_number", label: "PAN Number", type: "text" },
-    { name: "aadhar_number", label: "Aadhar Number", type: "text" },
+    { name: "pan_number", label: "PAN Number (Optional)", type: "text", required: false },
+    { name: "aadhar_number", label: "Aadhar Number (Optional)", type: "text", required: false },
     { name: "caste", label: "Caste/Category", type: "text", required: false },
-    { name: "residential_address", label: "Residential Address", type: "textarea" }
+    { name: "residential_address", label: "Residential Address (Optional)", type: "textarea", required: false }
   ]
 };
 
@@ -65,15 +65,15 @@ export const promoterDetailsSection = {
       type: "group_list",
       subFields: [
         { name: "name", label: "Name", type: "text" },
-        { name: "designation", label: "Designation", type: "select", options: ["Proprietor", "Partner", "Director"] },
+        { name: "designation", label: "Designation", type: "select", options: ["Proprietor", "Partner", "Director", "Member"] },
         { name: "caste", label: "Caste", type: "text", required: false },
         { name: "share_ratio", label: "Share %", type: "text" },
-        { name: "pan_number", label: "PAN", type: "text", required: false },
-        { name: "aadhar_number", label: "Aadhar", type: "text", required: false },
-        { name: "address", label: "Res. Address", type: "text" },
+        { name: "pan_number", label: "PAN (Optional)", type: "text", required: false },
+        { name: "aadhar_number", label: "Aadhar (Optional)", type: "text", required: false },
+        { name: "address", label: "Res. Address", type: "text", required: false },
         { name: "age", label: "Age", type: "text" },
         { name: "education", label: "Qualification", type: "text" },
-        { name: "experience", label: "Experience", type: "textarea" }
+        { name: "experience", label: "Experience (Optional)", type: "textarea", required: false }
       ]
     }
   ]
@@ -334,7 +334,8 @@ export const landRequirementsSection = {
       type: "group_list",
       subFields: [
         { name: "details", label: "Land Requirement Details", type: "text" },
-        { name: "area", label: "Area (Square Meters)", type: "text" }
+        { name: "area", label: "Area (Square Meters)", type: "text" },
+        { name: "land_value", label: "Land Value (₹)", type: "text", required: false }
       ]
     }
   ]
@@ -416,3 +417,33 @@ export const looksLikePhone = (value) => {
 
 export const looksLikeSectorLabel = (value) =>
   /manufacturing|trading|service/i.test(String(value || ''));
+
+const CC_GI_ROW4 = {
+  firm: 'i4', status: 'i5', person: 'i6', address: 'i7', phone: 'i8', sector: 'i9', nature: 'i10',
+};
+const CC_GI_ROW3 = {
+  firm: 'i3', status: 'i4', person: 'i5', address: 'i6', phone: 'i7', sector: 'i8', nature: 'i9',
+};
+const CC6_GI = {
+  firm: 'i3', status: 'i4', person: 'i5', address: 'i6', phone: 'i9', sector: 'i7', nature: 'i8',
+};
+const TERM_GI = {
+  firm: 'i17', status: 'i7', person: 'i8', address: 'i16', phone: 'i9', sector: 'i14', nature: 'i15',
+  pan: 'i11', firmPan: 'i18', aadhaar: 'i10', education: 'i19', caste: 'i21', age: 'i12',
+};
+
+/** General Information cells for the template that produced Stage 1. Term-loan layout is the default. */
+export function giCellsForTemplate(templateId) {
+  const raw = String(templateId || '').toUpperCase();
+  if (raw.includes('GOLD') && raw.includes('LOAN')) return { ...CC_GI_ROW4 };
+  if (!raw.includes('TERM_LOAN') && !raw.includes('TERM LOAN')) {
+    const match = raw.match(/(?:^|[^A-Z])(?:FR)?CC(\d+)\b/) || raw.match(/FORMAT\s*CC(\d+)/);
+    if (match) {
+      const id = `CC${match[1]}`;
+      if (id === 'CC1' || id === 'CC3') return { ...CC_GI_ROW4 };
+      if (id === 'CC6') return { ...CC6_GI };
+      if (['CC2', 'CC4', 'CC5', 'CC7'].includes(id)) return { ...CC_GI_ROW3 };
+    }
+  }
+  return { ...TERM_GI };
+}

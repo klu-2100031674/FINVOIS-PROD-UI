@@ -16,6 +16,7 @@ import {
 
 import SaveDraftButton from '../common/SaveDraftButton';
 import { FRCC_REQUIRED_STAMP_DEFAULT } from '../../utils/frccFormUi';
+import { assetRowIsOpen, readOpenAssetRows, withOpenAssetRow, withoutOpenAssetRow } from '../../utils/assetOpenRows';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -297,8 +298,9 @@ const FRTermLoanDroneVehicleForm = ({
           const desc = formData['Schedule for Assets']?.[`d${i}`] || '';
           const amount = formData['Schedule for Assets']?.[`e${i}`] || '';
           const hasAmount = amount !== '' && amount !== null && amount !== undefined && Number(amount) !== 0;
+          const openRows = readOpenAssetRows(formData['Schedule for Assets']);
 
-          if (desc !== '' || hasAmount) {
+          if (openRows.has(i) || desc !== '' || hasAmount) {
             rowSet.add(i);
           }
         }
@@ -662,7 +664,7 @@ const FRTermLoanDroneVehicleForm = ({
       const desc = formData['Schedule for Assets'][`d${i}`] || '';
       const amount = formData['Schedule for Assets'][`e${i}`] || '';
       const hasAmount = amount !== '' && amount !== null && amount !== undefined && Number(amount) !== 0;
-      if (visibleRows.has(i) || desc !== '' || hasAmount) {
+      if (visibleRows.has(i) || assetRowIsOpen(formData['Schedule for Assets'], i, desc, amount)) {
         items.push({ row: i, description: desc, amount: amount });
       }
     }
@@ -673,12 +675,13 @@ const FRTermLoanDroneVehicleForm = ({
   const addAssetItem = useCallback((categoryName) => {
     const section = CURRENT_ASSET_SECTIONS[categoryName];
     const visibleRows = new Set(assetVisibleRowsByCategory[categoryName] || []);
+    const openRows = readOpenAssetRows(formData['Schedule for Assets']);
 
     for (let i = section.start; i <= section.end; i++) {
       const desc = formData['Schedule for Assets'][`d${i}`];
       const amount = formData['Schedule for Assets'][`e${i}`];
       const isEmpty = (desc === '' || desc === undefined) && (amount === '' || amount === undefined || Number(amount) === 0);
-      if (!visibleRows.has(i) && isEmpty) {
+      if (!visibleRows.has(i) && !openRows.has(i) && isEmpty) {
         setAssetVisibleRowsByCategory(prev => ({
           ...prev,
           [categoryName]: [...(prev[categoryName] || []), i].sort((a, b) => a - b)
@@ -686,11 +689,11 @@ const FRTermLoanDroneVehicleForm = ({
 
         setFormData(prev => ({
           ...prev,
-          'Schedule for Assets': {
+          'Schedule for Assets': withOpenAssetRow({
             ...prev['Schedule for Assets'],
-            [`d${i}`]: 'New Item',
-            [`e${i}`]: 0
-          }
+            [`d${i}`]: '',
+            [`e${i}`]: ''
+          }, i)
         }));
         // Track that this category now has items
         setCategoriesWithItems(prev => new Set([...prev, categoryName]));
@@ -781,11 +784,11 @@ const FRTermLoanDroneVehicleForm = ({
     setFormData(prev => {
       const newData = {
         ...prev,
-        'Schedule for Assets': {
+        'Schedule for Assets': withoutOpenAssetRow({
           ...prev['Schedule for Assets'],
           [`d${row}`]: '',
           [`e${row}`]: ''
-        }
+        }, row)
       };
 
       // Check if category still has items after removal
@@ -998,7 +1001,7 @@ const FRTermLoanDroneVehicleForm = ({
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            PAN of proprietor / Managing Partner / Managing Director
+            PAN of proprietor / Managing Partner / Managing Director (Optional)
           </label>
           <input
             type="text"
@@ -1077,7 +1080,7 @@ const FRTermLoanDroneVehicleForm = ({
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Residential Address
+            Residential Address (Optional)
           </label>
           <input
             type="text"
@@ -2056,12 +2059,6 @@ const FRTermLoanDroneVehicleForm = ({
 
   const renderVehicleRelated = () => (
     <div className="space-y-6">
-      <div className="bg-purple-50 p-4 rounded-lg">
-        <h3 className="text-lg font-medium text-purple-800 mb-2">Vehicle Expense</h3>
-        <p className="text-sm text-[#7e22ce]">
-          Enter assumptions used for vehicle revenue and operating cost calculations.
-        </p>
-      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
@@ -2383,10 +2380,9 @@ const FRTermLoanDroneVehicleForm = ({
 
       <div className="bg-white rounded-xl shadow-soft p-6 max-w-7xl mx-auto">
         <div className="mb-6">
-          <h1 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-2xl font-bold text-gray-900 mb-2">
-            Term Loan Form
+          <h1 style={{ fontFamily: 'Manrope, sans-serif' }} className="text-2xl font-bold text-gray-900">
+            Drone Vehicle
           </h1>
-          <p className="text-gray-600 text-sm">Drone Vehicle</p>
         </div>
 
         <div className="mb-4 flex justify-end">

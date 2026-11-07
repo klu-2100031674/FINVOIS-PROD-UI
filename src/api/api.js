@@ -423,11 +423,11 @@ export const reportAPI = {
   },
 
   // Apply final edits (sheet updates) and recalculate
-  applyFinalEdits: async (templateId, updates, recalculate = true) => {
+  applyFinalEdits: async (templateId, updates, recalculate = true, reportSession) => {
     try {
       const response = await apiClient.post(
         `/reports/templates/${templateId}/apply-final`,
-        { updates, recalculate },
+        { updates, recalculate, reportSession: reportSession || undefined },
         { timeout: REPORT_HEAVY_TIMEOUT }
       );
       return response.data;

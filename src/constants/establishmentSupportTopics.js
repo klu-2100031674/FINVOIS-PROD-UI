@@ -2,12 +2,12 @@ export const ESTABLISHMENT_STAGES = [
   {
     id: 'pre-establishment',
     title: 'Pre-Establishment',
-    description: 'You are starting or setting up the unit',
+    description: 'Challenge or Problem before business Establishment',
   },
   {
     id: 'post-establishment',
     title: 'Post-Establishment',
-    description: 'The unit is already running',
+    description: 'Challenge or Problem after business Establishment',
   },
 ];
 

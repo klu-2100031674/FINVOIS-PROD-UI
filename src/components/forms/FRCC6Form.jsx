@@ -18,6 +18,7 @@ import {
 import SaveDraftButton from '../common/SaveDraftButton';
 
 import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_BANKER_MOBILE_FIELD, PREPARED_BY_CIBIL_FIELD } from '../../utils/frccFormUi';
+import { normalizeCc6GiCells } from '../../utils/cc6GeneralInfo';
 
 const parseNumberInput = (val) => val === '' ? '' : (val.endsWith('.') || val.endsWith('.0') ? val : (isNaN(parseFloat(val)) ? val : parseFloat(val)));
 
@@ -98,6 +99,10 @@ const FRCC6Form = ({
       return {
         ...empty,
         ...initialData,
+        'General Information': normalizeCc6GiCells({
+          ...(empty['General Information'] || {}),
+          ...(initialData['General Information'] || {}),
+        }),
         'Means of Finance': {
           ...(empty['Means of Finance'] || {}),
           ...(initialData['Means of Finance'] || {}),
@@ -299,6 +304,9 @@ const FRCC6Form = ({
           } else {
             merged[sectionKey] = incoming;
           }
+        }
+        if (merged['General Information']) {
+          merged['General Information'] = normalizeCc6GiCells(merged['General Information']);
         }
         merged['Means of Finance'] = {
           ...(merged['Means of Finance'] || {}),

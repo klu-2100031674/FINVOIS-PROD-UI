@@ -16,6 +16,7 @@ import {
 
 import SaveDraftButton from '../common/SaveDraftButton';
 import { FRCC_REQUIRED_STAMP_DEFAULT } from '../../utils/frccFormUi';
+import { assetRowIsOpen, readOpenAssetRows, withOpenAssetRow, withoutOpenAssetRow } from '../../utils/assetOpenRows';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -539,8 +540,9 @@ const FRTermLoanForm = ({
           const desc = formData['Schedule for Assets']?.[`d${i}`] || '';
           const amount = formData['Schedule for Assets']?.[`e${i}`] || '';
           const hasAmount = amount !== '' && amount !== null && amount !== undefined && Number(amount) !== 0;
+          const openRows = readOpenAssetRows(formData['Schedule for Assets']);
 
-          if (desc !== '' || hasAmount) {
+          if (openRows.has(i) || desc !== '' || hasAmount) {
             rowSet.add(i);
           }
         }
@@ -901,7 +903,7 @@ const FRTermLoanForm = ({
       const desc = formData['Schedule for Assets'][`d${i}`] || '';
       const amount = formData['Schedule for Assets'][`e${i}`] || '';
       const hasAmount = amount !== '' && amount !== null && amount !== undefined && Number(amount) !== 0;
-      if (visibleRows.has(i) || desc !== '' || hasAmount) {
+      if (visibleRows.has(i) || assetRowIsOpen(formData['Schedule for Assets'], i, desc, amount)) {
         items.push({ row: i, description: desc, amount: amount });
       }
     }
@@ -912,12 +914,13 @@ const FRTermLoanForm = ({
   const addAssetItem = useCallback((categoryName) => {
     const section = CURRENT_ASSET_SECTIONS[categoryName];
     const visibleRows = new Set(assetVisibleRowsByCategory[categoryName] || []);
+    const openRows = readOpenAssetRows(formData['Schedule for Assets']);
 
     for (let i = section.start; i <= section.end; i++) {
       const desc = formData['Schedule for Assets'][`d${i}`];
       const amount = formData['Schedule for Assets'][`e${i}`];
       const isEmpty = (desc === '' || desc === undefined) && (amount === '' || amount === undefined || Number(amount) === 0);
-      if (!visibleRows.has(i) && isEmpty) {
+      if (!visibleRows.has(i) && !openRows.has(i) && isEmpty) {
         setAssetVisibleRowsByCategory(prev => ({
           ...prev,
           [categoryName]: [...(prev[categoryName] || []), i].sort((a, b) => a - b)
@@ -925,11 +928,11 @@ const FRTermLoanForm = ({
 
         setFormData(prev => ({
           ...prev,
-          'Schedule for Assets': {
+          'Schedule for Assets': withOpenAssetRow({
             ...prev['Schedule for Assets'],
-            [`d${i}`]: 'New Item',
-            [`e${i}`]: 0
-          }
+            [`d${i}`]: '',
+            [`e${i}`]: ''
+          }, i)
         }));
         // Track that this category now has items
         setCategoriesWithItems(prev => new Set([...prev, categoryName]));
@@ -1020,11 +1023,11 @@ const FRTermLoanForm = ({
     setFormData(prev => {
       const newData = {
         ...prev,
-        'Schedule for Assets': {
+        'Schedule for Assets': withoutOpenAssetRow({
           ...prev['Schedule for Assets'],
           [`d${row}`]: '',
           [`e${row}`]: ''
-        }
+        }, row)
       };
 
       // Check if category still has items after removal
@@ -1294,7 +1297,7 @@ const FRTermLoanForm = ({
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            PAN of proprietor / Managing Partner / Managing Director
+            PAN of proprietor / Managing Partner / Managing Director (Optional)
           </label>
           <input
             type="text"
@@ -1373,7 +1376,7 @@ const FRTermLoanForm = ({
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-800">
-            Residential Address
+            Residential Address (Optional)
           </label>
           <input
             type="text"

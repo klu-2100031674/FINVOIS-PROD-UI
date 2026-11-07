@@ -8,6 +8,7 @@
  */
 
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { normalizeCc6GiCells } from '../../utils/cc6GeneralInfo';
 import {
   FileText,
   Check,
@@ -36,12 +37,20 @@ import {
   Trash2
 } from 'lucide-react';
 import { AdminLayout } from '../../components/layouts';
-import { useAuth } from '../../hooks';
+import { useAuth, useQuickPhoneNumbers } from '../../hooks';
+import QuickPhoneSelect from '../../components/admin/QuickPhoneSelect';
 import api from '../../api/apiClient';
 import { companyAPI } from '../../api/endpoints';
 import toast from 'react-hot-toast';
 import { reportRequiresCaStamp } from '../../utils/frccFormUi';
 import caIndiaStamp from '../../assets/CA_INDIA.jpg';
+import {
+  buildSheetCatalog,
+  isSheetInSelection,
+  normalizeSheetKey,
+  toggleSheetInSelection,
+} from '../../utils/sheetCatalog';
+import { getTemplateDisplayName } from '../../utils/templateSectorConfig';
 import { buildDedupedReportTypeOptions } from '../../utils/reportTypeOptions';
 import { needsCpAmount, isValidAmount } from '../../utils/cpDownloadPayment';
 
@@ -50,6 +59,48 @@ const getReportCompanyName = (report) => {
   if (report?.user_id?.companyId?.companyName) return report.user_id.companyId.companyName;
   if (report?.user_id?.company_name) return report.user_id.company_name;
   return null;
+};
+
+const getReportNatureOfBusiness = (report) => {
+  if (report?.nature_of_business) return report.nature_of_business;
+
+  const fd = report?.form_data || {};
+  const prompts = fd?.prompts_data || {};
+  const general = normalizeCc6GiCells(fd?.['General Information'] || {});
+
+  const NATURE_CELL_BY_TEMPLATE = {
+    'CC1': 'i10', 'GOLD_LOAN': 'i10', 'CC2': 'i9', 'CC3': 'i10', 'CC4': 'i9', 'CC5': 'i9', 'CC6': 'i8', 'CC7': 'i9',
+    'TERM_LOAN_CC': 'i15',
+    'TERM_LOAN_SERVICE_WITHOUT_STOCK': 'i15',
+    'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK': 'i15',
+    'TERM_LOAN_EV_VEHICLE': 'i15',
+    'TERM_LOAN_OTHER_THAN_EV_VEHICLE': 'i15',
+    'TERM_LOAN_JCB_VEHICLE': 'i15',
+    'TERM_LOAN_TRACTOR_VEHICLE': 'i15',
+    'TERM_LOAN_TIPPER_VEHICLE': 'i15',
+    'TERM_LOAN_DRONE_VEHICLE': 'i15',
+  };
+
+  const rawId = (report?.templateId || report?.report_type || '').toUpperCase();
+  const ccMatch = rawId.match(/CC(\d+)/);
+  const normalizedTemplateId = ccMatch
+    ? `CC${ccMatch[1]}`
+    : Object.keys(NATURE_CELL_BY_TEMPLATE).find((key) => rawId.startsWith(key)) || rawId;
+  const natureCellKey = NATURE_CELL_BY_TEMPLATE[normalizedTemplateId];
+
+  return (
+    prompts?.firm_constitution?.nature_of_business ||
+    prompts?.product_details?.main_product ||
+    (natureCellKey && general[natureCellKey]) ||
+    fd?.natureOfFirm ||
+    fd?.natureOfBusiness ||
+    fd?.nature_of_business ||
+    fd?.lineOfActivity ||
+    fd?.businessActivity ||
+    fd?.industryType ||
+    report?.report_metadata?.nature_of_business ||
+    'N/A'
+  );
 };
 
 const isFrccReport = (templateId) => {
@@ -68,7 +119,7 @@ const isFrccReport = (templateId) => {
     'TERM_LOAN_JCB_VEHICLE',
     'TERM_LOAN_TRACTOR_VEHICLE',
     'TERM_LOAN_TIPPER_VEHICLE',
-    'TERM_LOAN_DRONE_VEHICLE',
+    'TERM_LOAN_DRONE_VEHICLE'
   ].includes(String(templateId).trim().toUpperCase());
 };
 
@@ -110,17 +161,18 @@ const AdminReportsPage = () => {
   const [activeTab, setActiveTab] = useState('pending_validation');
   const [expandedReport, setExpandedReport] = useState(null);
   const [pagination, setPagination] = useState({ current_page: 1, total_pages: 1, total_count: 0 });
-  
+
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [companyFilter, setCompanyFilter] = useState('');
   const [companies, setCompanies] = useState([]);
   const [reportType, setReportType] = useState(''); // backend filter: report_type
   const [reportTypeOptions, setReportTypeOptions] = useState([]);
+  const [contentKind, setContentKind] = useState(''); // 'report' | 'theory'
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [groupByCompany, setGroupByCompany] = useState(false);
-  
+
   // Modals
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [amountToCollect, setAmountToCollect] = useState('');
@@ -130,14 +182,14 @@ const AdminReportsPage = () => {
   const [selectedReport, setSelectedReport] = useState(null);
   const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
   const [loadingPdf, setLoadingPdf] = useState(false);
-  
+
   // Upload modal state
   const [uploadFile, setUploadFile] = useState(null);
   const [revisionNotes, setRevisionNotes] = useState('');
   const [uploadLoading, setUploadLoading] = useState(false);
   const [isDraggingUpload, setIsDraggingUpload] = useState(false);
   const fileInputRef = useRef(null);
-  
+
   // Form data for modals
   const [approvalNotes, setApprovalNotes] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
@@ -155,8 +207,14 @@ const AdminReportsPage = () => {
   const [emailInput, setEmailInput] = useState('');
   const [whatsappInput, setWhatsappInput] = useState('');
   const [activeShareType, setActiveShareType] = useState(null); // 'email', 'whatsapp', or null
+  const { numbers: quickPhoneNumbers } = useQuickPhoneNumbers();
   // WhatsApp gateway health — null = loading, true = connected, false = disconnected
   const [waConnected, setWaConnected] = useState(null);
+
+  // Sheet updates and selection states
+  const [templateConfigs, setTemplateConfigs] = useState({}); // templateId -> template config
+  const [selectedReportSheets, setSelectedReportSheets] = useState({}); // reportId -> selected sheet names
+  const [updatingSheetsId, setUpdatingSheetsId] = useState(null); // reportId being updated
 
   const displayStats = useMemo(() => {
     const pending = (stats.pending ?? 0) + STATS_OFFSETS.pending;
@@ -218,6 +276,7 @@ const AdminReportsPage = () => {
       const params = new URLSearchParams();
       if (activeTab) params.append('status', activeTab);
       if (reportType) params.append('report_type', reportType);
+      if (contentKind) params.append('content_kind', contentKind);
       if (companyFilter) params.append('company_id', companyFilter);
       if (searchQuery) params.append('search', searchQuery);
       if (dateRange.start) params.append('start_date', dateRange.start);
@@ -235,7 +294,7 @@ const AdminReportsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, reportType, companyFilter, searchQuery, dateRange]);
+  }, [activeTab, reportType, contentKind, companyFilter, searchQuery, dateRange]);
 
   useEffect(() => {
     fetchReportTypes();
@@ -282,6 +341,90 @@ const AdminReportsPage = () => {
     return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [reports, groupByCompany]);
 
+  const fetchTemplateConfig = useCallback(async (templateId) => {
+    if (!templateId || templateConfigs[templateId]) return;
+    try {
+      const response = await api.get(`/template-config/${templateId}`);
+      if (response.data?.success) {
+        setTemplateConfigs((prev) => ({
+          ...prev,
+          [templateId]: response.data.data
+        }));
+      }
+    } catch (error) {
+      console.error(`Error fetching template config for ${templateId}:`, error);
+    }
+  }, [templateConfigs]);
+
+  // Load template config and initialize sheets selection on report expansion
+  useEffect(() => {
+    if (expandedReport) {
+      const report = reports.find((r) => r._id === expandedReport);
+      if (report) {
+        if (report.templateId) {
+          fetchTemplateConfig(report.templateId);
+        }
+        setSelectedReportSheets((prev) => ({
+          ...prev,
+          [report._id]: report.requested_sheets || []
+        }));
+      }
+    }
+  }, [expandedReport, reports, fetchTemplateConfig]);
+
+  const handleToggleSheet = (reportId, sheetName, templateId) => {
+    setSelectedReportSheets((prev) => ({
+      ...prev,
+      [reportId]: toggleSheetInSelection(prev[reportId] || [], sheetName, templateId),
+    }));
+  };
+
+  const handleUpdateReportSheets = async (report) => {
+    const selectedSheets = selectedReportSheets[report._id];
+    if (!selectedSheets || selectedSheets.length === 0) {
+      toast.error('Please select at least one sheet.');
+      return;
+    }
+
+    try {
+      setUpdatingSheetsId(report._id);
+      const response = await api.post(
+        `/admin-reports/${report._id}/regenerate`,
+        { requested_sheets: selectedSheets },
+        { timeout: 600000 }
+      );
+
+      if (response.data?.success) {
+        toast.success('Report regenerated successfully with selected sheets');
+
+        // Update reports state with new pdf url and requested_sheets
+        setReports((prev) =>
+          prev.map((item) =>
+            item._id === report._id
+              ? {
+                ...item,
+                pdf_file_url: response.data.data.new_pdf_url,
+                requested_sheets: response.data.data.requested_sheets || selectedSheets,
+                all_available_sheets: response.data.data.all_available_sheets || item.all_available_sheets
+              }
+              : item
+          )
+        );
+        setSelectedReportSheets((prev) => ({
+          ...prev,
+          [report._id]: response.data.data.requested_sheets || selectedSheets
+        }));
+      } else {
+        toast.error(response.data?.error || 'Failed to update report sheets');
+      }
+    } catch (error) {
+      console.error('Error updating report sheets:', error);
+      toast.error(error.response?.data?.error || 'An error occurred while updating report sheets');
+    } finally {
+      setUpdatingSheetsId(null);
+    }
+  };
+
   const handleSearch = (e) => {
     e.preventDefault();
     fetchReports(1);
@@ -295,12 +438,12 @@ const AdminReportsPage = () => {
       prev.map((item) =>
         item._id === report._id
           ? {
-              ...item,
-              report_metadata: {
-                ...(item.report_metadata || {}),
-                frcc1PlbsStampEnabled: enabled,
-              },
-            }
+            ...item,
+            report_metadata: {
+              ...(item.report_metadata || {}),
+              frcc1PlbsStampEnabled: enabled,
+            },
+          }
           : item
       )
     );
@@ -313,13 +456,13 @@ const AdminReportsPage = () => {
         prev.map((item) =>
           item._id === report._id
             ? {
-                ...item,
-                report_metadata: {
-                  ...(item.report_metadata || {}),
-                  frcc1PlbsStampEnabled: nextEnabled,
-                },
-                pdf_file_url: response.data?.data?.pdf_file_url || item.pdf_file_url,
-              }
+              ...item,
+              report_metadata: {
+                ...(item.report_metadata || {}),
+                frcc1PlbsStampEnabled: nextEnabled,
+              },
+              pdf_file_url: response.data?.data?.pdf_file_url || item.pdf_file_url,
+            }
             : item
         )
       );
@@ -334,12 +477,12 @@ const AdminReportsPage = () => {
         prev.map((item) =>
           item._id === report._id
             ? {
-                ...item,
-                report_metadata: {
-                  ...(item.report_metadata || {}),
-                  frcc1PlbsStampEnabled: previousEnabled,
-                },
-              }
+              ...item,
+              report_metadata: {
+                ...(item.report_metadata || {}),
+                frcc1PlbsStampEnabled: previousEnabled,
+              },
+            }
             : item
         )
       );
@@ -351,7 +494,7 @@ const AdminReportsPage = () => {
 
   const handleApprove = async () => {
     if (!selectedReport) return;
-    
+
     try {
       setActionLoading(true);
       await api.patch(`/admin-reports/${selectedReport._id}/approve`, {
@@ -359,7 +502,7 @@ const AdminReportsPage = () => {
         send_email: sendEmail,
         ...(needsCpAmount(selectedReport) ? { amount_to_collect: Number(amountToCollect) } : {})
       });
-      
+
       toast.success('Report approved successfully');
       setShowApproveModal(false);
       setApprovalNotes('');
@@ -379,14 +522,14 @@ const AdminReportsPage = () => {
       toast.error('Rejection reason is required');
       return;
     }
-    
+
     try {
       setActionLoading(true);
       await api.patch(`/admin-reports/${selectedReport._id}/reject`, {
         rejection_reason: rejectionReason,
         send_email: sendEmail
       });
-      
+
       toast.success('Report rejected');
       setShowRejectModal(false);
       setRejectionReason('');
@@ -448,13 +591,13 @@ const AdminReportsPage = () => {
     setActiveShareType(null);
     setShowPdfViewer(true);
     setLoadingPdf(true);
-    
+
     try {
       // Fetch PDF with authentication
       const response = await api.get(`/admin-reports/${report._id}/pdf?inline=true`, {
         responseType: 'blob'
       });
-      
+
       // Create blob URL for iframe
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
@@ -555,16 +698,16 @@ const AdminReportsPage = () => {
 
   const handleBulkApprove = async () => {
     if (selectedReports.length === 0) return;
-    
+
     if (!window.confirm(`Approve ${selectedReports.length} reports?`)) return;
-    
+
     try {
       setBulkActionLoading(true);
       const response = await api.post('/admin-reports/bulk-approve', {
         report_ids: selectedReports,
         send_email: true
       });
-      
+
       toast.success(response.data?.message || 'Bulk approval completed');
       setSelectedReports([]);
       fetchReports();
@@ -602,7 +745,7 @@ const AdminReportsPage = () => {
       const response = await api.get(`/admin-reports/${report._id}/excel`, {
         responseType: 'blob'
       });
-      
+
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -611,7 +754,7 @@ const AdminReportsPage = () => {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      
+
       toast.success('Excel downloaded');
     } catch (error) {
       toast.error('Failed to download Excel file');
@@ -688,16 +831,16 @@ const AdminReportsPage = () => {
       toast.error('Please select an Excel file to upload');
       return;
     }
-    
+
     try {
       setUploadLoading(true);
-      
+
       const formData = new FormData();
       formData.append('excel', uploadFile);
       if (revisionNotes.trim()) {
         formData.append('revision_notes', revisionNotes.trim());
       }
-      
+
       const response = await api.post(
         `/admin-reports/${selectedReport._id}/upload-revised-excel`,
         formData,
@@ -706,7 +849,7 @@ const AdminReportsPage = () => {
           timeout: 600000 // 10 minutes timeout for PDF regeneration
         }
       );
-      
+
       if (response.data?.success) {
         toast.success('Excel uploaded and PDF regenerated successfully');
         setShowUploadModal(false);
@@ -730,8 +873,8 @@ const AdminReportsPage = () => {
   };
 
   const toggleSelectReport = (reportId) => {
-    setSelectedReports(prev => 
-      prev.includes(reportId) 
+    setSelectedReports(prev =>
+      prev.includes(reportId)
         ? prev.filter(id => id !== reportId)
         : [...prev, reportId]
     );
@@ -794,11 +937,10 @@ const AdminReportsPage = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          <div 
+          <div
             onClick={() => setActiveTab('pending_validation')}
-            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all ${
-              activeTab === 'pending_validation' ? 'border-yellow-500' : 'border-transparent hover:border-yellow-200'
-            }`}
+            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all ${activeTab === 'pending_validation' ? 'border-yellow-500' : 'border-transparent hover:border-yellow-200'
+              }`}
           >
             <div className="flex items-center justify-between">
               <Clock className="text-yellow-500" size={24} />
@@ -806,12 +948,11 @@ const AdminReportsPage = () => {
             </div>
             <p className="text-sm text-gray-600 mt-2">Pending</p>
           </div>
-          
-          <div 
+
+          <div
             onClick={() => setActiveTab('under_review')}
-            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all ${
-              activeTab === 'under_review' ? 'border-[#7e22ce]' : 'border-transparent hover:border-purple-200'
-            }`}
+            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all ${activeTab === 'under_review' ? 'border-[#7e22ce]' : 'border-transparent hover:border-purple-200'
+              }`}
           >
             <div className="flex items-center justify-between">
               <AlertCircle className="text-purple-500" size={24} />
@@ -819,12 +960,11 @@ const AdminReportsPage = () => {
             </div>
             <p className="text-sm text-gray-600 mt-2">Under Review</p>
           </div>
-          
-          <div 
+
+          <div
             onClick={() => setActiveTab('approved')}
-            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all ${
-              activeTab === 'approved' ? 'border-green-500' : 'border-transparent hover:border-green-200'
-            }`}
+            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all ${activeTab === 'approved' ? 'border-green-500' : 'border-transparent hover:border-green-200'
+              }`}
           >
             <div className="flex items-center justify-between">
               <CheckCircle className="text-green-500" size={24} />
@@ -832,12 +972,11 @@ const AdminReportsPage = () => {
             </div>
             <p className="text-sm text-gray-600 mt-2">Approved</p>
           </div>
-          
-          <div 
+
+          <div
             onClick={() => setActiveTab('rejected')}
-            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all ${
-              activeTab === 'rejected' ? 'border-red-500' : 'border-transparent hover:border-red-200'
-            }`}
+            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all ${activeTab === 'rejected' ? 'border-red-500' : 'border-transparent hover:border-red-200'
+              }`}
           >
             <div className="flex items-center justify-between">
               <XCircle className="text-red-500" size={24} />
@@ -845,12 +984,11 @@ const AdminReportsPage = () => {
             </div>
             <p className="text-sm text-gray-600 mt-2">Rejected</p>
           </div>
-          
-          <div 
+
+          <div
             onClick={() => setActiveTab('')}
-            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all ${
-              activeTab === '' ? 'border-purple-500' : 'border-transparent hover:border-purple-200'
-            }`}
+            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all ${activeTab === '' ? 'border-purple-500' : 'border-transparent hover:border-purple-200'
+              }`}
           >
             <div className="flex items-center justify-between">
               <FileText className="text-purple-500" size={24} />
@@ -873,13 +1011,23 @@ const AdminReportsPage = () => {
                 <option value="">All report types</option>
                 {reportTypeOptions.map((opt) => {
                   const value = typeof opt === 'string' ? opt : opt.value;
-                  const label = typeof opt === 'string' ? opt : (opt.label || opt.value);
+                  const label = typeof opt === 'string' ? getTemplateDisplayName(opt) : (opt.label || getTemplateDisplayName(opt.value));
                   return (
                     <option key={value} value={value}>
                       {label}
                     </option>
                   );
                 })}
+              </select>
+              <select
+                value={contentKind}
+                onChange={(e) => setContentKind(e.target.value)}
+                className="w-full sm:w-40 shrink-0 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-sm"
+                title="Filter by content kind"
+              >
+                <option value="">All kinds</option>
+                <option value="report">Reports</option>
+                <option value="theory">Theory Pages</option>
               </select>
               <div className="relative flex-1 min-w-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
@@ -900,11 +1048,10 @@ const AdminReportsPage = () => {
               <button
                 type="button"
                 onClick={() => setShowAdvancedFilters((prev) => !prev)}
-                className={`shrink-0 flex items-center justify-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${
-                  showAdvancedFilters
-                    ? 'border-purple-300 bg-purple-50 text-purple-800'
-                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`shrink-0 flex items-center justify-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${showAdvancedFilters
+                  ? 'border-purple-300 bg-purple-50 text-purple-800'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
                 aria-expanded={showAdvancedFilters}
               >
                 <SlidersHorizontal size={16} />
@@ -967,13 +1114,14 @@ const AdminReportsPage = () => {
                     />
                     Group by company
                   </label>
-                  {(companyFilter || searchQuery || reportType || dateRange.start || dateRange.end || groupByCompany) && (
+                  {(companyFilter || searchQuery || reportType || contentKind || dateRange.start || dateRange.end || groupByCompany) && (
                     <button
                       type="button"
                       onClick={() => {
                         setDateRange({ start: '', end: '' });
                         setSearchQuery('');
                         setReportType('');
+                        setContentKind('');
                         setCompanyFilter('');
                         setGroupByCompany(false);
                       }}
@@ -1021,6 +1169,7 @@ const AdminReportsPage = () => {
             </div>
           </div>
         )}
+
         {selectedReports.length > 0 && activeTab === 'under_review' && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4 flex items-center justify-between">
             <span className="text-green-700 font-medium">
@@ -1115,302 +1264,367 @@ const AdminReportsPage = () => {
                     </div>
                   )}
                   {companyReports.map((report) => (
-                <div key={report._id} className="border-b border-gray-100 last:border-0">
-                  <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center hover:bg-gray-50">
-                    {/* Checkbox */}
-                    {showBulkSelect && (
-                      <div className="col-span-1 hidden md:block">
-                        <input
-                          type="checkbox"
-                          checked={selectedReports.includes(report._id)}
-                          onChange={() => toggleSelectReport(report._id)}
-                          className="w-4 h-4 text-purple-600 rounded"
-                        />
-                      </div>
-                    )}
-
-                    {/* Report Info */}
-                    <div className={`${showBulkSelect ? 'col-span-3' : 'col-span-4'} min-w-0`}>
-                      <h3 className="font-medium text-gray-800 truncate" title={report.title}>{report.title}</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full truncate" title={report.templateId || report.report_type}>
-                          {report.templateId || report.report_type}
-                        </span>
-                        {reportRequiresCaStamp(report) && (
-                          <span className="text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
-                            Required CA Stamp
-                          </span>
+                    <div key={report._id} className="border-b border-gray-100 last:border-0">
+                      <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center hover:bg-gray-50">
+                        {/* Checkbox */}
+                        {showBulkSelect && (
+                          <div className="col-span-1 hidden md:block">
+                            <input
+                              type="checkbox"
+                              checked={selectedReports.includes(report._id)}
+                              onChange={() => toggleSelectReport(report._id)}
+                              className="w-4 h-4 text-purple-600 rounded"
+                            />
+                          </div>
                         )}
-                        {report.client_name && (
-                          <span className="text-xs text-gray-500 truncate" title={report.client_name}>• {report.client_name}</span>
-                        )}
-                      </div>
-                    </div>
 
-                    <div className="col-span-2 min-w-0">
-                      <p className="text-sm font-medium text-gray-800 truncate" title={report.user_id?.name || 'Unknown'}>
-                        {report.user_id?.name || 'Unknown'}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate" title={report.user_id?.email}>
-                        {report.user_id?.email}
-                      </p>
-                      {getReportCompanyName(report) && (
-                        <div
-                          className="flex items-center gap-1.5 mt-0.5 min-w-0"
-                          title={getReportCompanyName(report)}
-                        >
-                          <Building2 size={14} className="text-purple-500 shrink-0" aria-hidden />
-                          <p className="text-xs text-purple-700 truncate">
-                            {getReportCompanyName(report)}
+                        {/* Report Info */}
+                        <div className={`${showBulkSelect ? 'col-span-3' : 'col-span-4'} min-w-0`}>
+                          <h3 className="font-medium text-gray-800 truncate" title={report.title}>{report.title}</h3>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full truncate" title={report.templateId || report.report_type}>
+                              {getTemplateDisplayName(report.templateId || report.report_type)}
+                            </span>
+                            {report.partnerFormLabel && (
+                              <span className="text-xs font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                                {report.partnerFormLabel}
+                              </span>
+                            )}
+                            {(report.content_kind === 'theory' || String(report.templateId || '').startsWith('THEORY_')) && (
+                              <span className="text-xs font-medium text-teal-800 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                                Theory Page
+                              </span>
+                            )}
+                            {reportRequiresCaStamp(report) && (
+                              <span className="text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+                                Required CA Stamp
+                              </span>
+                            )}
+                            {report.client_name && (
+                              <span className="text-xs text-gray-500 truncate" title={report.client_name}>• {report.client_name}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="col-span-2 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 truncate" title={report.user_id?.name || 'Unknown'}>
+                            {report.user_id?.name || 'Unknown'}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate" title={report.user_id?.email}>
+                            {report.user_id?.email}
+                          </p>
+                          {getReportCompanyName(report) && (
+                            <div
+                              className="flex items-center gap-1.5 mt-0.5 min-w-0"
+                              title={getReportCompanyName(report)}
+                            >
+                              <Building2 size={14} className="text-purple-500 shrink-0" aria-hidden />
+                              <p className="text-xs text-purple-700 truncate">
+                                {getReportCompanyName(report)}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Date */}
+                        <div className="col-span-1 min-w-0 flex flex-col justify-center">
+                          <p className="text-sm text-gray-600 truncate">
+                            {new Date(report.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5 truncate">
+                            {new Date(report.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
                           </p>
                         </div>
-                      )}
-                    </div>
 
-                    {/* Date */}
-                    <div className="col-span-1 min-w-0 flex flex-col justify-center">
-                      <p className="text-sm text-gray-600 truncate">
-                        {new Date(report.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5 truncate">
-                        {new Date(report.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                      </p>
-                    </div>
+                        {/* Status */}
+                        <div className="col-span-2 min-w-0 pr-2">
+                          {getStatusBadge(report.validation_status, report)}
+                        </div>
 
-                    {/* Status */}
-                    <div className="col-span-2 min-w-0 pr-2">
-                      {getStatusBadge(report.validation_status)}
-                    </div>
+                        {/* Actions — fixed stamp slot keeps buttons aligned across rows */}
+                        <div className="col-span-3 flex items-center justify-end gap-1.5 min-w-0">
+                          {showCaStampSlot(report.validation_status) && (
+                            <div className="w-10 h-9 shrink-0 flex items-center justify-center">
+                              {isFrccReport(report.templateId) ? (
+                                <button
+                                  type="button"
+                                  title="CA Stamp"
+                                  aria-pressed={getFrcc1StampEnabled(report)}
+                                  disabled={stampTogglingId === report._id}
+                                  onClick={() =>
+                                    handleFrcc1StampToggle(report, !getFrcc1StampEnabled(report))
+                                  }
+                                  className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:cursor-wait"
+                                >
+                                  {stampTogglingId === report._id ? (
+                                    <Loader2 size={14} className="animate-spin text-purple-600" />
+                                  ) : (
+                                    <img
+                                      src={caIndiaStamp}
+                                      alt="CA India stamp"
+                                      className={`h-7 w-auto object-contain transition-opacity duration-200 ${getFrcc1StampEnabled(report) ? 'opacity-100' : 'opacity-20'
+                                        }`}
+                                    />
+                                  )}
+                                </button>
+                              ) : null}
+                            </div>
+                          )}
 
-                    {/* Actions — fixed stamp slot keeps buttons aligned across rows */}
-                    <div className="col-span-3 flex items-center justify-end gap-1.5 min-w-0">
-                      {showCaStampSlot(report.validation_status) && (
-                        <div className="w-10 h-9 shrink-0 flex items-center justify-center">
-                          {isFrccReport(report.templateId) ? (
+                          {report.pdf_file_url && (
                             <button
-                              type="button"
-                              title="CA Stamp"
-                              aria-pressed={getFrcc1StampEnabled(report)}
-                              disabled={stampTogglingId === report._id}
-                              onClick={() =>
-                                handleFrcc1StampToggle(report, !getFrcc1StampEnabled(report))
-                              }
-                              className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:cursor-wait"
+                              onClick={() => handleViewPdf(report)}
+                              className="p-2 text-[#7e22ce] hover:bg-purple-50 rounded-lg transition-colors shrink-0"
+                              title="View PDF"
                             >
-                              {stampTogglingId === report._id ? (
-                                <Loader2 size={14} className="animate-spin text-purple-600" />
-                              ) : (
-                                <img
-                                  src={caIndiaStamp}
-                                  alt="CA India stamp"
-                                  className={`h-7 w-auto object-contain transition-opacity duration-200 ${
-                                    getFrcc1StampEnabled(report) ? 'opacity-100' : 'opacity-20'
-                                  }`}
-                                />
-                              )}
+                              <Eye size={18} />
                             </button>
-                          ) : null}
-                        </div>
-                      )}
+                          )}
 
-                      {report.pdf_file_url && (
-                        <button
-                          onClick={() => handleViewPdf(report)}
-                          className="p-2 text-[#7e22ce] hover:bg-purple-50 rounded-lg transition-colors shrink-0"
-                          title="View PDF"
-                        >
-                          <Eye size={18} />
-                        </button>
-                      )}
+                          {!(report.content_kind === 'theory' || String(report.templateId || '').startsWith('THEORY_')) && (
+                            <button
+                              onClick={() => handleDownloadExcel(report)}
+                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors shrink-0"
+                              title="Download Excel"
+                            >
+                              <FileSpreadsheet size={18} />
+                            </button>
+                          )}
 
-                      <button
-                        onClick={() => handleDownloadExcel(report)}
-                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors shrink-0"
-                        title="Download Excel"
-                      >
-                        <FileSpreadsheet size={18} />
-                      </button>
+                          {report.validation_status === 'under_review' && (
+                            <>
+                              <button
+                                onClick={() => { setSelectedReport(report); setAmountToCollect(String(report.payment?.template_amount ?? '')); setShowApproveModal(true); }}
+                                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors shrink-0"
+                                title="Approve"
+                              >
+                                <Check size={18} />
+                              </button>
+                              <button
+                                onClick={() => { setSelectedReport(report); setShowRejectModal(true); }}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                                title="Reject"
+                              >
+                                <X size={18} />
+                              </button>
+                            </>
+                          )}
 
-                      {report.validation_status === 'under_review' && (
-                        <>
+                          {['pending_validation', 'rejected'].includes(report.validation_status) && (
+                            <button
+                              onClick={() => handleMarkUnderReview(report)}
+                              className="flex items-center gap-1 px-3 py-1.5 text-sm text-[#7e22ce] bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200 shrink-0"
+                              title={report.is_re_review || report.validation_status === 'rejected' ? "Start Re-Review" : "Start Review"}
+                            >
+                              <AlertCircle size={16} />
+                              <span>{report.is_re_review || report.validation_status === 'rejected' ? "Re-Review" : "Start Review"}</span>
+                            </button>
+                          )}
+
+
+
+                          {(report.validation_status === 'under_review' || report.validation_status === 'approved') &&
+                            !(report.content_kind === 'theory' || String(report.templateId || '').startsWith('THEORY_')) && (
+                            <button
+                              onClick={() => handleOpenUploadModal(report)}
+                              className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors shrink-0"
+                              title="Upload Revised Excel"
+                            >
+                              <Upload size={18} />
+                            </button>
+                          )}
+
                           <button
-                            onClick={() => { setSelectedReport(report); setAmountToCollect(String(report.payment?.template_amount ?? '')); setShowApproveModal(true); }}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors shrink-0"
-                            title="Approve"
+                            onClick={() => setExpandedReport(expandedReport === report._id ? null : report._id)}
+                            className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
                           >
-                            <Check size={18} />
+                            {expandedReport === report._id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                           </button>
-                          <button
-                            onClick={() => { setSelectedReport(report); setShowRejectModal(true); }}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0"
-                            title="Reject"
-                          >
-                            <X size={18} />
-                          </button>
-                        </>
-                      )}
-
-                      {['pending_validation', 'rejected'].includes(report.validation_status) && (
-                        <button
-                          onClick={() => handleMarkUnderReview(report)}
-                          className="flex items-center gap-1 px-3 py-1.5 text-sm text-[#7e22ce] bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200 shrink-0"
-                          title={report.is_re_review || report.validation_status === 'rejected' ? "Start Re-Review" : "Start Review"}
-                        >
-                          <AlertCircle size={16} />
-                          <span>{report.is_re_review || report.validation_status === 'rejected' ? "Re-Review" : "Start Review"}</span>
-                        </button>
-                      )}
-
-                      {(report.validation_status === 'under_review' || report.validation_status === 'approved') &&
-                        !(report.content_kind === 'theory' || String(report.templateId || '').startsWith('THEORY_')) && (
-                        <button
-                          onClick={() => handleOpenUploadModal(report)}
-                          className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors shrink-0"
-                          title="Upload Revised Excel"
-                        >
-                          <Upload size={18} />
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => setExpandedReport(expandedReport === report._id ? null : report._id)}
-                        className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
-                      >
-                        {expandedReport === report._id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Expanded Details */}
-                  {expandedReport === report._id && (
-                    <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                      <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-                        {/* User Details */}
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                            <User size={16} className="mr-2" />
-                            User Details
-                          </h4>
-                          <div className="space-y-1 text-sm">
-                            <p><span className="text-gray-500">Name:</span> {report.user_id?.name}</p>
-                            <p><span className="text-gray-500">Email:</span> {report.user_id?.email}</p>
-                            <p><span className="text-gray-500">Phone:</span> {report.user_id?.phone || 'N/A'}</p>
-                            <p><span className="text-gray-500">Role:</span> {report.user_id?.role}</p>
-                            {getReportCompanyName(report) && (
-                              <p><span className="text-gray-500">Company:</span> {getReportCompanyName(report)}</p>
-                            )}
-                          </div>
                         </div>
+                      </div>
 
-                        {/* Report Details */}
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                            <FileText size={16} className="mr-2" />
-                            Report Details
-                          </h4>
-                          <div className="space-y-1 text-sm">
-                            <p><span className="text-gray-500">Nature of Business:</span> {report.nature_of_business || 'N/A'}</p>
-                            <p><span className="text-gray-500">Project Cost:</span> {report.project_cost || 'N/A'}</p>
-                            <p><span className="text-gray-500">Term Period:</span> {report.term_period || 'N/A'}</p>
-                            <p><span className="text-gray-500">Mobile No:</span> {report.mobile_no || report.user_id?.mobile || report.user_id?.phone || 'N/A'}</p>
-                            <p><span className="text-gray-500">Type:</span> {report.report_type || 'N/A'}</p>
-                            <p><span className="text-gray-500">Client:</span> {report.client_name || 'N/A'}</p>
-                            <p><span className="text-gray-500">Payment:</span> 
-                              <span className={`ml-1 ${report.payment?.status === 'completed' ? 'text-green-600' : 'text-yellow-600'}`}>
-                                {report.payment?.status || 'N/A'}
-                              </span>
-                            </p>
-                          </div>
-                        </div>
+                      {/* Expanded Details */}
+                      {expandedReport === report._id && (
+                        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                          <div className={`grid grid-cols-1 gap-6 ${report.user_comment ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
+                            {/* User Details */}
+                            <div>
+                              <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                                <User size={16} className="mr-2" />
+                                User Details
+                              </h4>
+                              <div className="space-y-1 text-sm">
+                                <p><span className="text-gray-500">Name:</span> {report.user_id?.name}</p>
+                                <p><span className="text-gray-500">Email:</span> {report.user_id?.email}</p>
+                                <p><span className="text-gray-500">Phone:</span> {report.user_id?.phone || 'N/A'}</p>
+                                <p><span className="text-gray-500">Role:</span> {report.user_id?.role}</p>
+                                {getReportCompanyName(report) && (
+                                  <p><span className="text-gray-500">Company:</span> {getReportCompanyName(report)}</p>
+                                )}
+                              </div>
+                            </div>
 
-                        {/* Validation Info */}
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center flex-wrap gap-2">
-                            <CheckCircle size={16} className="mr-1" />
-                            Validation Info
-                          </h4>
-                          <div className="space-y-1 text-sm">
-                            <p><span className="text-gray-500">Status:</span> {report.validation_status}</p>
-                            {report.validated_by && (
-                              <p><span className="text-gray-500">Validated By:</span> {report.validated_by?.name}</p>
-                            )}
-                            {report.validated_at && (
-                              <p><span className="text-gray-500">Validated At:</span> {new Date(report.validated_at).toLocaleString('en-IN')}</p>
-                            )}
-                            {report.rejection_reason && (
-                              <p className="text-red-600"><span className="text-gray-500">Reason:</span> {report.rejection_reason}</p>
-                            )}
-                          </div>
-                        </div>
+                            {/* Report Details */}
+                            <div>
+                              <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                                <FileText size={16} className="mr-2" />
+                                Report Details
+                              </h4>
+                              <div className="space-y-1 text-sm">
+                                <p><span className="text-gray-500">Nature of Business:</span> {report.nature_of_business || getReportNatureOfBusiness(report)}</p>
+                                <p><span className="text-gray-500">Project Cost:</span> {report.project_cost || 'N/A'}</p>
+                                <p><span className="text-gray-500">Term Period:</span> {report.term_period || 'N/A'}</p>
+                                <p><span className="text-gray-500">Mobile No:</span> {report.mobile_no || report.user_id?.mobile || report.user_id?.phone || 'N/A'}</p>
+                                <p><span className="text-gray-500">Type:</span> {report.report_type || 'N/A'}</p>
+                                <p><span className="text-gray-500">Client:</span> {report.client_name || 'N/A'}</p>
+                                <p><span className="text-gray-500">Payment:</span>
+                                  <span className={`ml-1 ${report.payment?.status === 'completed' ? 'text-green-600' : 'text-yellow-600'}`}>
+                                    {report.payment?.status || 'N/A'}
+                                  </span>
+                                </p>
+                              </div>
+                            </div>
 
-                        {/* User Comment */}
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                            <MessageSquare size={16} className="mr-2" />
-                            User Comment
-                          </h4>
-                          <div className="space-y-1 text-sm bg-white p-3 rounded-lg border border-gray-200 min-h-[80px]">
-                            {report.user_comment ? (
-                              <p className="text-gray-700 whitespace-pre-wrap">{report.user_comment}</p>
-                            ) : (
-                              <p className="text-gray-400 italic">No notes entered by user during generation</p>
-                            )}
-                          </div>
-                        </div>
+                            {/* Validation Info */}
+                            <div>
+                              <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center flex-wrap gap-2">
+                                <CheckCircle size={16} className="mr-1" />
+                                Validation Info
+                              </h4>
+                              <div className="space-y-1 text-sm">
+                                <p><span className="text-gray-500">Status:</span> {report.validation_status}</p>
+                                {report.validated_by && (
+                                  <p><span className="text-gray-500">Validated By:</span> {report.validated_by?.name}</p>
+                                )}
+                                {report.validated_at && (
+                                  <p><span className="text-gray-500">Validated At:</span> {new Date(report.validated_at).toLocaleString('en-IN')}</p>
+                                )}
+                                {report.rejection_reason && (
+                                  <p className="text-red-600"><span className="text-gray-500">Reason:</span> {report.rejection_reason}</p>
+                                )}
+                              </div>
+                            </div>
 
-                        {/* Term Loan Analysis Options */}
-                        {(report.requested_sheets?.length > 0 || report.analysis_options) && (
-                          <div className="col-span-1 mt-4 pt-4 border-t border-gray-200 md:col-span-4">
-                            <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                              <Settings size={16} className="mr-2" />
-                              Requested Analysis & Parameters
-                            </h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              {report.requested_sheets?.length > 0 && (
-                                <div>
-                                  <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Requested Sheets</p>
-                                  <div className="flex flex-wrap gap-2">
-                                    {report.requested_sheets.map((sheet, idx) => (
-                                      <span key={idx} className="px-2 py-1 bg-purple-50 text-purple-700 text-xs rounded border border-purple-100">
-                                        {sheet}
-                                      </span>
-                                    ))}
-                                  </div>
+                            {/* User Comment */}
+                            {report.user_comment && (
+                              <div>
+                                <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                                  <MessageSquare size={16} className="mr-2" />
+                                  User Comment
+                                </h4>
+                                <div className="space-y-1 text-sm bg-white p-3 rounded-lg border border-gray-200 min-h-[80px]">
+                                  <p className="text-gray-700 whitespace-pre-wrap">{report.user_comment}</p>
                                 </div>
-                              )}
-                              {/* Analysis Parameters section removed from UI
-                              {report.analysis_options?.extra_data && (
-                                <div>
-                                  <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Analysis Parameters</p>
-                                  <div className="space-y-2 text-sm">
-                                    {report.analysis_options.extra_data.sensitivity && (
-                                      <div className="p-2 bg-orange-50 rounded border border-orange-100">
-                                        <p className="text-xs font-medium text-orange-800">Sensitivity Analysis</p>
-                                        <p className="text-gray-700">Selling Price Decrease: <span className="font-bold">{report.analysis_options.extra_data.sensitivity.sellingPriceDecrease}%</span></p>
-                                      </div>
+                              </div>
+                            )}
+
+                            {/* Term Loan Analysis Options */}
+                            {(() => {
+                              const sheetCatalog = buildSheetCatalog({
+                                allAvailable: report.all_available_sheets,
+                                fullReportSheets: templateConfigs[report.templateId]?.full_report_sheets,
+                                requested: report.requested_sheets,
+                                selected: selectedReportSheets[report._id],
+                                templateId: report.templateId,
+                              });
+                              const hasSheetSection = sheetCatalog.length > 0 || report.analysis_options;
+                              if (!hasSheetSection) return null;
+
+                              const activeSelection = selectedReportSheets[report._id] ?? report.requested_sheets ?? [];
+
+                              return (
+                                <div className={`col-span-1 mt-4 pt-4 border-t border-gray-200 ${report.user_comment ? 'md:col-span-4' : 'md:col-span-3'}`}>
+                                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
+                                    <h4 className="text-sm font-medium text-gray-700 flex items-center">
+                                      <Settings size={16} className="mr-2 text-purple-600" />
+                                      Requested Analysis & Parameters
+                                    </h4>
+                                    {sheetCatalog.length > 0 && (
+                                      <button
+                                        onClick={() => handleUpdateReportSheets(report)}
+                                        disabled={updatingSheetsId === report._id}
+                                        className="flex items-center gap-1.5 px-3 py-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-medium rounded-lg transition-colors shadow-sm hover:shadow"
+                                      >
+                                        {updatingSheetsId === report._id ? (
+                                          <>
+                                            <Loader2 size={12} className="animate-spin mr-1" />
+                                            <span>Updating...</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <RefreshCw size={12} className="mr-1" />
+                                            <span>Update</span>
+                                          </>
+                                        )}
+                                      </button>
                                     )}
-                                    {report.analysis_options.extra_data.bep && (
-                                      <div className="p-2 bg-green-50 rounded border border-green-100">
-                                        <p className="text-xs font-medium text-green-800">BEP Analysis</p>
-                                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
-                                          <p className="text-xs text-gray-500">Unit: <span className="text-gray-800 font-medium">{report.analysis_options.extra_data.bep.productManufactured}</span></p>
-                                          <p className="text-xs text-gray-500">Price: <span className="text-gray-800 font-medium">₹{report.analysis_options.extra_data.bep.sellingPricePerUnit}</span></p>
-                                          <p className="text-xs text-gray-500">Growth: <span className="text-gray-800 font-medium">{report.analysis_options.extra_data.bep.sellingPriceGrowth}%</span></p>
-                                          <p className="text-xs text-gray-500">Capacity: <span className="text-gray-800 font-medium">{report.analysis_options.extra_data.bep.plantCapacity}</span></p>
+                                  </div>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {sheetCatalog.length > 0 && (
+                                      <div>
+                                        <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Requested Sheets</p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {sheetCatalog.map((sheet) => {
+                                            const isSelected = isSheetInSelection(
+                                              sheet,
+                                              activeSelection,
+                                              report.templateId
+                                            );
+                                            return (
+                                              <label
+                                                key={normalizeSheetKey(sheet) || sheet}
+                                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs cursor-pointer select-none transition-all ${isSelected
+                                                    ? 'bg-purple-50 text-purple-700 border-purple-200 font-medium'
+                                                    : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 hover:text-gray-600'
+                                                  }`}
+                                              >
+                                                <input
+                                                  type="checkbox"
+                                                  checked={isSelected}
+                                                  onChange={() => handleToggleSheet(report._id, sheet, report.templateId)}
+                                                  className="w-3.5 h-3.5 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer"
+                                                />
+                                                <span>{sheet}</span>
+                                              </label>
+                                            );
+                                          })}
                                         </div>
                                       </div>
                                     )}
+                                    {/* Analysis Parameters section removed from UI
+                                    {report.analysis_options?.extra_data && (
+                                      <div>
+                                        <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Analysis Parameters</p>
+                                        <div className="space-y-2 text-sm">
+                                          {report.analysis_options.extra_data.sensitivity && (
+                                            <div className="p-2 bg-orange-50 rounded border border-orange-100">
+                                              <p className="text-xs font-medium text-orange-800">Sensitivity Analysis</p>
+                                              <p className="text-gray-700">Selling Price Decrease: <span className="font-bold">{report.analysis_options.extra_data.sensitivity.sellingPriceDecrease}%</span></p>
+                                            </div>
+                                          )}
+                                          {report.analysis_options.extra_data.bep && (
+                                            <div className="p-2 bg-green-50 rounded border border-green-100">
+                                              <p className="text-xs font-medium text-green-800">BEP Analysis</p>
+                                              <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
+                                                <p className="text-xs text-gray-500">Unit: <span className="text-gray-800 font-medium">{report.analysis_options.extra_data.bep.productManufactured}</span></p>
+                                                <p className="text-xs text-gray-500">Price: <span className="text-gray-800 font-medium">₹{report.analysis_options.extra_data.bep.sellingPricePerUnit}</span></p>
+                                                <p className="text-xs text-gray-500">Growth: <span className="text-gray-800 font-medium">{report.analysis_options.extra_data.bep.sellingPriceGrowth}%</span></p>
+                                                <p className="text-xs text-gray-500">Capacity: <span className="text-gray-800 font-medium">{report.analysis_options.extra_data.bep.plantCapacity}</span></p>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                    */}
                                   </div>
                                 </div>
-                              )}
-                              */}
-                            </div>
+                              );
+                            })()}
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
                   ))}
                 </React.Fragment>
               ))}
@@ -1487,7 +1701,7 @@ const AdminReportsPage = () => {
               <h2 className="text-xl font-semibold text-gray-800">Approve Report</h2>
               <p className="text-gray-500 mt-1">{selectedReport.title}</p>
             </div>
-            
+
             <div className="p-6 space-y-4">
               <div>
                 {needsCpAmount(selectedReport) && (
@@ -1518,7 +1732,7 @@ const AdminReportsPage = () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                 />
               </div>
-              
+
               <label className="flex items-center">
                 <input
                   type="checkbox"
@@ -1551,7 +1765,7 @@ const AdminReportsPage = () => {
                 </div>
               )}
             </div>
-            
+
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
               <button
                 onClick={() => { setShowApproveModal(false); setSelectedReport(null); setApprovalNotes(''); setAmountToCollect(''); }}
@@ -1580,7 +1794,7 @@ const AdminReportsPage = () => {
               <h2 className="text-xl font-semibold text-gray-800">Reject Report</h2>
               <p className="text-gray-500 mt-1">{selectedReport.title}</p>
             </div>
-            
+
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1595,7 +1809,7 @@ const AdminReportsPage = () => {
                   required
                 />
               </div>
-              
+
               <label className="flex items-center">
                 <input
                   type="checkbox"
@@ -1606,7 +1820,7 @@ const AdminReportsPage = () => {
                 <span className="text-sm text-gray-700">Send rejection email to user</span>
               </label>
             </div>
-            
+
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
               <button
                 onClick={() => { setShowRejectModal(false); setSelectedReport(null); setRejectionReason(''); }}
@@ -1627,183 +1841,194 @@ const AdminReportsPage = () => {
         </div>
       )}
 
-      {/* PDF Viewer Modal */}
-      {showPdfViewer && selectedReport && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col">
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center gap-4 min-w-0">
-              <h2 className="text-lg font-semibold text-gray-800 truncate min-w-0 flex-1" title={`${selectedReport.title} - PDF Preview`}>
-                {selectedReport.title} <span className="text-gray-400 font-normal text-sm hidden sm:inline">- PDF Preview</span>
-              </h2>
-              <div className="flex items-center gap-2 flex-wrap shrink-0">
-                {activeShareType === null ? (
-                  <>
-                    <button
-                      onClick={() => setActiveShareType('email')}
-                      className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors shadow-sm"
-                      title="Share via Email"
-                    >
-                      <Mail size={14} className="mr-1.5" />
-                      Email
-                    </button>
 
-                    {/* WhatsApp Option Button + connection badge */}
-                    <div className="relative inline-flex items-center">
+        {/* PDF Viewer Modal */}
+        {showPdfViewer && selectedReport && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col">
+              <div className="p-4 border-b border-gray-200 flex justify-between items-center gap-4 min-w-0">
+                <h2 className="text-lg font-semibold text-gray-800 truncate min-w-0 flex-1" title={`${selectedReport.title} - PDF Preview`}>
+                  {selectedReport.title} <span className="text-gray-400 font-normal text-sm hidden sm:inline">- PDF Preview</span>
+                </h2>
+                <div className="flex items-center gap-2 flex-wrap shrink-0">
+                  {activeShareType === null ? (
+                    <>
+                      {/* Email Option Button */}
                       <button
-                        onClick={() => setActiveShareType('whatsapp')}
-                        className="flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg transition-colors shadow-sm"
-                        title={
-                          waConnected === null
-                            ? 'Checking WhatsApp gateway…'
-                            : waConnected
-                            ? 'WhatsApp gateway is connected'
-                            : 'WhatsApp gateway is DISCONNECTED — messages may fail'
-                        }
+                        onClick={() => setActiveShareType('email')}
+                        className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors shadow-sm"
+                        title="Share via Email"
                       >
-                        <MessageCircle size={14} className="mr-1.5" />
-                        WhatsApp
-                      </button>
-                      <span
-                        className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-white ${
-                          waConnected === null
-                            ? 'bg-gray-400 animate-pulse'
-                            : waConnected
-                            ? 'bg-green-500'
-                            : 'bg-red-500'
-                        }`}
-                        title={
-                          waConnected === null
-                            ? 'Checking…'
-                            : waConnected
-                            ? 'WhatsApp Connected'
-                            : 'WhatsApp Disconnected'
-                        }
-                      />
-                    </div>
-                  </>
-                ) : activeShareType === 'email' ? (
-                  <div className="flex items-center border border-gray-300 rounded-lg p-1 bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
-                    <input
-                      type="email"
-                      value={emailInput}
-                      onChange={(e) => setEmailInput(e.target.value)}
-                      className="px-2 py-1 text-sm bg-transparent outline-none w-48 text-gray-700 font-normal"
-                      placeholder="Recipient email"
-                      title="Recipient Email"
-                      autoFocus
-                    />
-                    <button
-                      onClick={handleSendEmail}
-                      disabled={sendingEmail}
-                      className="flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors"
-                    >
-                      {sendingEmail ? (
-                        <Loader2 size={14} className="mr-1.5 animate-spin" />
-                      ) : (
                         <Mail size={14} className="mr-1.5" />
-                      )}
-                      Send
-                    </button>
-                    <button
-                      onClick={() => setActiveShareType(null)}
-                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded ml-1"
-                      title="Back"
-                    >
-                      <X size={14} />
-                    </button>
+                        Email
+                      </button>
+
+                      {/* WhatsApp Option Button + connection badge */}
+                      <div className="relative inline-flex items-center">
+                        <button
+                          onClick={() => setActiveShareType('whatsapp')}
+                          className="flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg transition-colors shadow-sm"
+                          title={
+                            waConnected === null
+                              ? 'Checking WhatsApp gateway…'
+                              : waConnected
+                              ? 'WhatsApp gateway is connected'
+                              : 'WhatsApp gateway is DISCONNECTED — messages may fail'
+                          }
+                        >
+                          <MessageCircle size={14} className="mr-1.5" />
+                          WhatsApp
+                        </button>
+                        {/* Connection indicator dot */}
+                        <span
+                          className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-white ${
+                            waConnected === null
+                              ? 'bg-gray-400 animate-pulse'
+                              : waConnected
+                              ? 'bg-green-500'
+                              : 'bg-red-500'
+                          }`}
+                          title={
+                            waConnected === null
+                              ? 'Checking…'
+                              : waConnected
+                              ? 'WhatsApp Connected'
+                              : 'WhatsApp Disconnected'
+                          }
+                        />
+                      </div>
+                    </>
+                  ) : activeShareType === 'email' ? (
+                    /* Email Input & Send Button */
+                    <div className="flex items-center border border-gray-300 rounded-lg p-1 bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
+                      <input
+                        type="email"
+                        value={emailInput}
+                        onChange={(e) => setEmailInput(e.target.value)}
+                        className="px-2 py-1 text-sm bg-transparent outline-none w-48 text-gray-700 font-normal"
+                        placeholder="Recipient email"
+                        title="Recipient Email"
+                        autoFocus
+                      />
+                      <button
+                        onClick={handleSendEmail}
+                        disabled={sendingEmail}
+                        className="flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors"
+                      >
+                        {sendingEmail ? (
+                          <Loader2 size={14} className="mr-1.5 animate-spin" />
+                        ) : (
+                          <Mail size={14} className="mr-1.5" />
+                        )}
+                        Send
+                      </button>
+                      <button
+                        onClick={() => setActiveShareType(null)}
+                        className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded ml-1"
+                        title="Back"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    /* WhatsApp Input & Send Button */
+                    <div className="flex items-center border border-gray-300 rounded-lg p-1 bg-gray-50 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-transparent">
+                      <QuickPhoneSelect
+                        numbers={quickPhoneNumbers}
+                        currentPhone={whatsappInput}
+                        onSelect={setWhatsappInput}
+                        className="mr-1"
+                      />
+                      <input
+                        type="text"
+                        value={whatsappInput}
+                        onChange={(e) => setWhatsappInput(e.target.value)}
+                        className="px-2 py-1 text-sm bg-transparent outline-none w-36 text-gray-700 font-normal"
+                        placeholder="WhatsApp phone"
+                        title="WhatsApp Phone"
+                        autoFocus
+                      />
+                      <button
+                        onClick={handleSendWhatsapp}
+                        disabled={sendingWhatsapp}
+                        className="flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors"
+                      >
+                        {sendingWhatsapp ? (
+                          <Loader2 size={14} className="mr-1.5 animate-spin" />
+                        ) : (
+                          <MessageCircle size={14} className="mr-1.5" />
+                        )}
+                        Send
+                      </button>
+                      <button
+                        onClick={() => setActiveShareType(null)}
+                        className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded ml-1"
+                        title="Back"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  )}
+                  <button
+                    onClick={async () => {
+                      try {
+                        const response = await api.get(`/admin-reports/${selectedReport._id}/pdf`, {
+                          responseType: 'blob'
+                        });
+                        const blob = new Blob([response.data], { type: 'application/pdf' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `${selectedReport.title}.pdf`;
+                        link.click();
+                        URL.revokeObjectURL(url);
+                        toast.success('PDF downloaded successfully');
+                      } catch (error) {
+                        toast.error(
+                          typeof error === 'string' ? error : error?.message || 'Failed to download PDF'
+                        );
+                      }
+                    }}
+                    className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                  >
+                    <Download size={16} className="mr-2" />
+                    Download
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowPdfViewer(false);
+                      setSelectedReport(null);
+                      setActiveShareType(null);
+                      if (pdfBlobUrl) {
+                        URL.revokeObjectURL(pdfBlobUrl);
+                        setPdfBlobUrl(null);
+                      }
+                    }}
+                    className="p-2 text-gray-500 hover:text-gray-700"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-hidden bg-gray-100 flex items-center justify-center">
+                {loadingPdf ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="animate-spin text-purple-600" size={48} />
+                    <p className="text-gray-600">Loading PDF...</p>
                   </div>
+                ) : pdfBlobUrl ? (
+                  <iframe
+                    src={pdfBlobUrl}
+                    className="w-full h-full"
+                    title="PDF Preview"
+                  />
                 ) : (
-                  <div className="flex items-center border border-gray-300 rounded-lg p-1 bg-gray-50 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-transparent">
-                    <input
-                      type="text"
-                      value={whatsappInput}
-                      onChange={(e) => setWhatsappInput(e.target.value)}
-                      className="px-2 py-1 text-sm bg-transparent outline-none w-36 text-gray-700 font-normal"
-                      placeholder="WhatsApp phone"
-                      title="WhatsApp Phone"
-                      autoFocus
-                    />
-                    <button
-                      onClick={handleSendWhatsapp}
-                      disabled={sendingWhatsapp}
-                      className="flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors"
-                    >
-                      {sendingWhatsapp ? (
-                        <Loader2 size={14} className="mr-1.5 animate-spin" />
-                      ) : (
-                        <MessageCircle size={14} className="mr-1.5" />
-                      )}
-                      Send
-                    </button>
-                    <button
-                      onClick={() => setActiveShareType(null)}
-                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded ml-1"
-                      title="Back"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
+                  <p className="text-red-600">Failed to load PDF</p>
                 )}
-                <button
-                  onClick={async () => {
-                    try {
-                      const response = await api.get(`/admin-reports/${selectedReport._id}/pdf`, {
-                        responseType: 'blob'
-                      });
-                      const blob = new Blob([response.data], { type: 'application/pdf' });
-                      const url = URL.createObjectURL(blob);
-                      const link = document.createElement('a');
-                      link.href = url;
-                      link.download = `${selectedReport.title}.pdf`;
-                      link.click();
-                      URL.revokeObjectURL(url);
-                      toast.success('PDF downloaded successfully');
-                    } catch (error) {
-                      toast.error(
-                        typeof error === 'string' ? error : error?.message || 'Failed to download PDF'
-                      );
-                    }
-                  }}
-                  className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                >
-                  <Download size={16} className="mr-2" />
-                  Download
-                </button>
-                <button
-                  onClick={() => { 
-                    setShowPdfViewer(false); 
-                    setSelectedReport(null);
-                    setActiveShareType(null);
-                    if (pdfBlobUrl) {
-                      URL.revokeObjectURL(pdfBlobUrl);
-                      setPdfBlobUrl(null);
-                    }
-                  }}
-                  className="p-2 text-gray-500 hover:text-gray-700"
-                >
-                  <X size={24} />
-                </button>
               </div>
             </div>
-            <div className="flex-1 overflow-hidden bg-gray-100 flex items-center justify-center">
-              {loadingPdf ? (
-                <div className="flex flex-col items-center gap-3">
-                  <Loader2 className="animate-spin text-purple-600" size={48} />
-                  <p className="text-gray-600">Loading PDF...</p>
-                </div>
-              ) : pdfBlobUrl ? (
-                <iframe
-                  src={pdfBlobUrl}
-                  className="w-full h-full"
-                  title="PDF Preview"
-                />
-              ) : (
-                <p className="text-red-600">Failed to load PDF</p>
-              )}
-            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Upload Revised Excel Modal */}
       {showUploadModal && selectedReport && (
@@ -1813,7 +2038,7 @@ const AdminReportsPage = () => {
               <h2 className="text-xl font-semibold text-gray-800">Upload Revised Excel</h2>
               <p className="text-gray-500 mt-1">{selectedReport.title}</p>
             </div>
-            
+
             <div className="p-6 space-y-4">
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                 <p className="text-sm text-orange-800">
@@ -1834,82 +2059,88 @@ const AdminReportsPage = () => {
                 </div>
               )}
 
-              {/* File Upload Area */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Excel File <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileSelect}
-                  accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-                  className="hidden"
-                />
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  onDragOver={handleUploadDragOver}
-                  onDragEnter={handleUploadDragEnter}
-                  onDragLeave={handleUploadDragLeave}
-                  onDrop={handleUploadDrop}
-                  className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-                    uploadFile 
-                      ? 'border-green-400 bg-green-50' 
+
+                {/* File Upload Area */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Excel File <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                    className="hidden"
+                  />
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={handleUploadDragOver}
+                    onDragEnter={handleUploadDragEnter}
+                    onDragLeave={handleUploadDragLeave}
+                    onDrop={handleUploadDrop}
+                    className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${uploadFile
+                      ? 'border-green-400 bg-green-50'
                       : isDraggingUpload
                         ? 'border-purple-500 bg-purple-50'
                         : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'
-                  }`}
-                >
-                  {uploadFile ? (
-                    <div className="flex items-center justify-center gap-3">
-                      <FileSpreadsheet className="text-green-600" size={24} />
-                      <div className="text-left">
-                        <p className="text-sm font-medium text-gray-800">{uploadFile.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {(uploadFile.size / 1024 / 1024).toFixed(2)} MB
+                      }`}
+                  >
+                    {uploadFile ? (
+                      <div className="flex items-center justify-between gap-3 w-full max-w-md mx-auto bg-green-50/50 p-2 rounded-lg border border-green-100">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <FileSpreadsheet className="text-green-600 shrink-0" size={24} />
+                          <div className="text-left min-w-0">
+                            <p className="text-sm font-medium text-gray-800 truncate" title={uploadFile.name}>
+                              {uploadFile.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {(uploadFile.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setUploadFile(null); }}
+                          className="p-1.5 text-red-500 hover:bg-red-100 rounded-lg shrink-0"
+                          title="Remove file"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <Upload className="mx-auto text-gray-400 mb-2" size={32} />
+                        <p className="text-sm text-gray-600">
+                          Click to select or drag & drop Excel file
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Max size: 25 MB (.xlsx, .xls)
                         </p>
                       </div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setUploadFile(null); }}
-                        className="p-1 text-red-500 hover:bg-red-100 rounded"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <Upload className="mx-auto text-gray-400 mb-2" size={32} />
-                      <p className="text-sm text-gray-600">
-                        Click to select or drag & drop Excel file
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        Max size: 25 MB (.xlsx, .xls)
-                      </p>
-                    </div>
-                  )}
+                    )}
+                  </div>
+                </div>
+
+                {/* Revision Notes */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Revision Notes (Optional)
+                  </label>
+                  <textarea
+                    value={revisionNotes}
+                    onChange={(e) => setRevisionNotes(e.target.value)}
+                    rows={2}
+                    placeholder="Describe what was changed..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                  />
                 </div>
               </div>
 
-              {/* Revision Notes */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Revision Notes (Optional)
-                </label>
-                <textarea
-                  value={revisionNotes}
-                  onChange={(e) => setRevisionNotes(e.target.value)}
-                  rows={2}
-                  placeholder="Describe what was changed..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                />
-              </div>
-            </div>
-            
+
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
               <button
-                onClick={() => { 
-                  setShowUploadModal(false); 
-                  setSelectedReport(null); 
+                onClick={() => {
+                  setShowUploadModal(false);
+                  setSelectedReport(null);
                   setUploadFile(null);
                   setRevisionNotes('');
                 }}

@@ -29,11 +29,31 @@ function mapMsmeSectorToFrcc(sector) {
   return '';
 }
 
-function mapMsmeSectorToTermLoan(sector) {
-  const s = String(sector || '').toLowerCase();
-  if (s.includes('manufactur')) return 'Manufacturing sector';
-  if (s.includes('trad')) return 'Trading sector';
-  if (s.includes('service') || s.includes('vehicle')) return 'service sector without stock';
+/**
+ * Term-loan form <option> values (not the all-lowercase Excel set).
+ * Manufacturing / Trading stay title case so the dropdown matches.
+ * Service labels are already the lowercase strings the forms and Assumptions!I14 accept.
+ */
+const TERM_LOAN_FORM_SECTOR = {
+  manufacturing: 'Manufacturing sector',
+  trading: 'Trading sector',
+  serviceWithoutStock: 'service sector without stock',
+  serviceWithStock: 'service sector with stock',
+};
+
+function mapMsmeSectorToTermLoan(sector, templateKey) {
+  const s = String(sector || '').toLowerCase().trim();
+  if (!s) return '';
+  if (s.includes('manufactur')) return TERM_LOAN_FORM_SECTOR.manufacturing;
+  if (s.includes('trad')) return TERM_LOAN_FORM_SECTOR.trading;
+  if (s.includes('with stock') && !s.includes('without')) return TERM_LOAN_FORM_SECTOR.serviceWithStock;
+  if (s.includes('without stock')) return TERM_LOAN_FORM_SECTOR.serviceWithoutStock;
+  if (s.includes('service') || s.includes('vehicle')) {
+    // A generic Service lead on the with-stock workbook must not land on "without stock",
+    // which blocks that form's preset sector.
+    if (isTermLoanWithStockTemplate(templateKey)) return TERM_LOAN_FORM_SECTOR.serviceWithStock;
+    return TERM_LOAN_FORM_SECTOR.serviceWithoutStock;
+  }
   return '';
 }
 function buildAddress(lead) {
@@ -66,6 +86,25 @@ function normalizePan(value) {
 function parsePercent(value) {
   const n = parseFloat(String(value || '').replace(/,/g, '').replace(/%/g, ''));
   return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * First number as typed. "6 months" → 6, "2%" → 2, "2.5 %" → 2.5.
+ * No percent-to-fraction conversion and no unit conversion. Null when absent.
+ */
+function extractTypedNumber(value) {
+  const match = String(value ?? '').replace(/,/g, '').match(/-?\d+(?:\.\d+)?/);
+  if (!match) return null;
+  const n = parseFloat(match[0]);
+  return Number.isFinite(n) ? n : null;
+}
+
+function assignTypedNumber(target, cell, raw) {
+  if (!target || !cell) return false;
+  const n = extractTypedNumber(raw);
+  if (n === null) return false;
+  target[cell] = n;
+  return true;
 }
 
 /** Term Loan Schedule for Assets / Cost of Project use ₹ Lakhs. MSME form stores ₹. */
@@ -424,7 +463,7 @@ function mapAssetsToTermLoanSections(lead, labels, tenureYears = 0, templateKey 
   };
 }
 
-function mapAssetsToFrccFixedSchedule(lead, labels) {
+function mapAssetsToFrccFixedSchedule(lead, labels, filledLabel = 'Fixed Assets Schedule') {
   const assets = getLeadAssets(lead);
   if (!assets.length) return null;
 
@@ -465,8 +504,69 @@ function mapAssetsToFrccFixedSchedule(lead, labels) {
     });
   });
 
-  if (filled > 0) labels.push('Fixed Assets Schedule');
+  if (filled > 0) labels.push(filledLabel);
   return filled > 0 ? schedule : null;
+}
+
+/** FRCC1 schedule titles → FRCC6/FRCC7 New Asset Schedule titles. */
+const CC67_NEW_ASSET_KEY_BY_FRCC1 = {
+  'Shed, Construction and Civil works': 'Shed, Construction and Civil Works',
+  'Live stock': 'Live Stock',
+};
+
+function isFrcc6Or7(templateKey) {
+  const k = String(templateKey || '').toLowerCase().trim();
+  return k === 'frcc6' || k === 'format cc6' || k === 'cc6'
+    || k === 'frcc7' || k === 'format cc7' || k === 'cc7';
+}
+
+/** FRCC7 Means of Finance i14 is labeled "Working Capital Loan Requirement (Lakhs)". */
+function isFrcc7(templateKey) {
+  const k = String(templateKey || '').toLowerCase().trim();
+  return k === 'frcc7' || k === 'format cc7' || k === 'cc7';
+}
+
+/** Category-level loan %: amount-weighted when possible, otherwise the first item. */
+function categoryLoanPctFromItems(items) {
+  const list = Array.isArray(items) ? items : [];
+  let weightedPct = 0;
+  let weightedBase = 0;
+  list.forEach((item) => {
+    const amount = Number(item?.amount) || 0;
+    const pct = Number(item?.loanPct);
+    if (amount > 0 && Number.isFinite(pct) && pct > 0) {
+      weightedPct += pct * amount;
+      weightedBase += amount;
+    }
+  });
+  if (weightedBase > 0) {
+    return Math.round((weightedPct / weightedBase) * 100) / 100;
+  }
+  const first = list.find((item) => Number.isFinite(Number(item?.loanPct)));
+  return first ? Number(first.loanPct) : 0;
+}
+
+/**
+ * Merge FRCC1-keyed assets into the CC6/CC7 default New Asset Schedule.
+ * Unknown keys (aliases, Non Current Assets) are left out so defaults stay intact.
+ */
+function applyCc67NewAssetSchedule(targetSchedule, fixedSchedule) {
+  if (!targetSchedule || !fixedSchedule) return;
+  Object.entries(fixedSchedule).forEach(([key, bucket]) => {
+    const destKey = CC67_NEW_ASSET_KEY_BY_FRCC1[key] || key;
+    if (!Object.prototype.hasOwnProperty.call(targetSchedule, destKey)) return;
+    const items = Array.isArray(bucket?.items) ? bucket.items : [];
+    if (!items.length) return;
+    targetSchedule[destKey] = {
+      items: items.map((item) => ({
+        description: item.description,
+        amount: item.amount,
+        loanPct: item.loanPct,
+      })),
+      total: Number(bucket.total) || 0,
+      loanPct: categoryLoanPctFromItems(items),
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -513,7 +613,7 @@ function resolveFrccGeneralInfoCells(templateKey) {
     return { firm: 'i4', status: 'i5', authPerson: 'i6', address: 'i7', phone: 'i8', sector: 'i9', nature: 'i10' };
   }
   if (k === 'frcc6' || k === 'format cc6' || k === 'cc6') {
-    return { firm: 'i3', status: 'i4', authPerson: 'i5', address: 'i6', sector: 'i7', nature: 'i8', phone: 'i9' };
+    return { firm: 'i3', status: 'i4', authPerson: 'i5', address: 'i6', phone: 'i9', sector: 'i7', nature: 'i8' };
   }
   // frcc2, frcc4, frcc5, frcc7
   return { firm: 'i3', status: 'i4', authPerson: 'i5', address: 'i6', phone: 'i7', sector: 'i8', nature: 'i9' };
@@ -653,7 +753,7 @@ function resolveFrccMeansOfFinanceCells(templateKey) {
 function resolveFrccTermLoanFinanceCells(templateKey) {
   const k = String(templateKey || '').toLowerCase().trim();
   if (k === 'frcc6' || k === 'format cc6' || k === 'cc6') {
-    return { roi: 'h73', tenure: 'i74' };
+    return { roi: 'h73', tenure: 'i74', moratorium: 'i76', processing: 'h77' };
   }
   if (k === 'frcc7' || k === 'format cc7' || k === 'cc7') {
     return { roi: 'h74', tenure: 'i75', moratorium: 'i77', processing: 'h78' };
@@ -699,38 +799,44 @@ function mapMsmeLeadToFrccInitialData(lead, templateKey) {
   }
 
   // Working capital requirement (₹) takes priority; fall back to total loanAmount.
+  // FRCC7 i14 is "Working Capital Loan Requirement (Lakhs)" — convert ₹ → lakhs.
   const wcOrLoan = lead.workingCapital || lead.loanAmount;
   if (wcOrLoan && cells.amount) {
-    data['Means of Finance'][cells.amount] = wcOrLoan;
-    labels.push('Working Capital / Loan Requirement');
+    if (isFrcc7(templateKey)) {
+      const lakhs = msmeAmountToLakhs(wcOrLoan);
+      if (lakhs > 0) {
+        data['Means of Finance'][cells.amount] = lakhs;
+        labels.push('Working Capital Loan Requirement (Lakhs)');
+      }
+    } else {
+      data['Means of Finance'][cells.amount] = wcOrLoan;
+      labels.push('Working Capital / Loan Requirement');
+    }
   }
-  if (lead.rateOfInterest && cells.roi) {
-    data['Means of Finance'][cells.roi] = lead.rateOfInterest;
+  if (assignTypedNumber(data['Means of Finance'], cells.roi, lead.rateOfInterest)) {
     labels.push('Rate of Interest');
   }
   const processingFeeValue = resolveProcessingFee(lead);
-  if (processingFeeValue && cells.processing) {
-    data['Means of Finance'][cells.processing] = processingFeeValue;
+  if (assignTypedNumber(data['Means of Finance'], cells.processing, processingFeeValue)) {
     labels.push('Processing Fee');
   }
 
   // Term Loan Finance Details (FRCC6 / FRCC7) — tenure, moratorium, term ROI/fee
   if (termCells) {
     const term = {};
-    if (lead.rateOfInterest && termCells.roi) {
-      term[termCells.roi] = lead.rateOfInterest;
+    if (assignTypedNumber(term, termCells.roi, lead.rateOfInterest)) {
+      labels.push('Term Loan Rate of Interest');
     }
     const tenure = parseTenureYears(lead.loanTermPeriod);
     if (tenure && termCells.tenure) {
       term[termCells.tenure] = tenure;
       labels.push('Loan Term Period');
     }
-    if (lead.moratoriumPeriod && termCells.moratorium) {
-      term[termCells.moratorium] = lead.moratoriumPeriod;
+    if (assignTypedNumber(term, termCells.moratorium, lead.moratoriumPeriod)) {
       labels.push('Moratorium Period');
     }
-    if (processingFeeValue && termCells.processing) {
-      term[termCells.processing] = processingFeeValue;
+    if (assignTypedNumber(term, termCells.processing, processingFeeValue)) {
+      labels.push('Term Loan Processing Fee');
     }
     if (Object.keys(term).length > 0) {
       data['Term Loan Finance Details'] = term;
@@ -738,12 +844,16 @@ function mapMsmeLeadToFrccInitialData(lead, templateKey) {
     }
   }
 
-  const fixedSchedule = mapAssetsToFrccFixedSchedule(lead, labels);
+  const fixedSchedule = mapAssetsToFrccFixedSchedule(
+    lead,
+    labels,
+    isFrcc6Or7(templateKey) ? 'New Asset Schedule' : 'Fixed Assets Schedule',
+  );
   if (fixedSchedule) {
-    data['Fixed Assets Schedule'] = fixedSchedule;
-    const k = String(templateKey || '').toLowerCase().trim();
-    if (k === 'frcc6' || k === 'format cc6' || k === 'cc6' || k === 'frcc7' || k === 'format cc7' || k === 'cc7') {
-      data['New Asset Schedule'] = fixedSchedule;
+    if (isFrcc6Or7(templateKey)) {
+      applyCc67NewAssetSchedule(data['New Asset Schedule'], fixedSchedule);
+    } else {
+      data['Fixed Assets Schedule'] = fixedSchedule;
     }
   }
 
@@ -820,10 +930,17 @@ function mapMsmeLeadToTermLoanInitialData(lead, templateKey) {
     gi.i13 = lead.gender;
     labels.push('Gender');
   }
-  const tlSector = mapMsmeSectorToTermLoan(lead.sector);
-  if (tlSector) {
-    gi.i14 = tlSector;
+  // Vehicle sheets only apply presetSector when i14 is empty, so a Manufacturing/Trading
+  // lead must not block the canonical vehicle sector. lockSector stays false.
+  if (isVehicleTemplate(templateKey)) {
+    gi.i14 = TERM_LOAN_FORM_SECTOR.serviceWithoutStock;
     labels.push('Sector');
+  } else {
+    const tlSector = mapMsmeSectorToTermLoan(lead.sector, templateKey);
+    if (tlSector) {
+      gi.i14 = tlSector;
+      labels.push('Sector');
+    }
   }
   if (lead.natureOfBusiness) {
     gi.i15 = lead.natureOfBusiness;
@@ -853,25 +970,21 @@ function mapMsmeLeadToTermLoanInitialData(lead, templateKey) {
     // TERM_LOAN_CC uses section "Means of Finance details" (not "Term Loan Details")
     // and "Cost of Project details" for working capital requirement (in lakhs).
     const means = {};
-    if (lead.rateOfInterest) {
-      means.h45 = lead.rateOfInterest;
+    if (assignTypedNumber(means, 'h45', lead.rateOfInterest)) {
       labels.push('Rate of Interest');
     }
-    if (lead.workingCapitalRateOfInterest) {
-      means.h52 = lead.workingCapitalRateOfInterest;
+    if (assignTypedNumber(means, 'h52', lead.workingCapitalRateOfInterest)) {
       labels.push('Working capital Loan Rate of Interest');
     }
     if (tenure) {
       means.i47 = tenure;
       labels.push('Loan Term Period');
     }
-    if (lead.moratoriumPeriod) {
-      means.i49 = lead.moratoriumPeriod;
+    if (assignTypedNumber(means, 'i49', lead.moratoriumPeriod)) {
       labels.push('Moratorium Period');
     }
     const processingFeeValue = resolveProcessingFee(lead);
-    if (processingFeeValue) {
-      means.h53 = processingFeeValue;
+    if (assignTypedNumber(means, 'h53', processingFeeValue)) {
       labels.push('Processing Fee');
     }
     if (Object.keys(means).length > 0) {
@@ -892,21 +1005,18 @@ function mapMsmeLeadToTermLoanInitialData(lead, templateKey) {
     // Standard Term Loan / Vehicle / With-Stock forms → "Term Loan Details"
     // UI title shown to CS is "Means of Finance details".
     const termLoan = {};
-    if (lead.rateOfInterest) {
-      termLoan.h44 = lead.rateOfInterest;
+    if (assignTypedNumber(termLoan, 'h44', lead.rateOfInterest)) {
       labels.push('Rate of Interest');
     }
     if (tenure) {
       termLoan.i46 = tenure;
       labels.push('Loan Term Period');
     }
-    if (lead.moratoriumPeriod) {
-      termLoan.i48 = lead.moratoriumPeriod;
+    if (assignTypedNumber(termLoan, 'i48', lead.moratoriumPeriod)) {
       labels.push('Moratorium Period');
     }
     const processingFeeValue = resolveProcessingFee(lead);
-    if (processingFeeValue) {
-      termLoan.h49 = processingFeeValue;
+    if (assignTypedNumber(termLoan, 'h49', processingFeeValue)) {
       labels.push('Processing Fee');
     }
     if (Object.keys(termLoan).length > 0) {
@@ -950,13 +1060,11 @@ function mapMsmeLeadToGoldLoanInitialData(lead) {
     data['Means of Finance'][cells.amount] = lead.loanAmount;
     labels.push('Loan Amount');
   }
-  if (lead.rateOfInterest && cells.roi) {
-    data['Means of Finance'][cells.roi] = lead.rateOfInterest;
+  if (assignTypedNumber(data['Means of Finance'], cells.roi, lead.rateOfInterest)) {
     labels.push('Rate of Interest');
   }
   const processingFeeValue = resolveProcessingFee(lead);
-  if (processingFeeValue && cells.processing) {
-    data['Means of Finance'][cells.processing] = processingFeeValue;
+  if (assignTypedNumber(data['Means of Finance'], cells.processing, processingFeeValue)) {
     labels.push('Processing Fee');
   }
   if (lead.applicantName) {

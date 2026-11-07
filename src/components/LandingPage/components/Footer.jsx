@@ -82,12 +82,23 @@ const Footer = () => {
                   {footer.contact.email}
                 </a>
               </li>
-              <li className="flex items-start gap-3">
-                <Phone className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
-                <a href={`tel:${footer.contact.phone}`} className="hover:text-white transition-colors">
-                  {footer.contact.phone}
-                </a>
-              </li>
+              {Array.isArray(footer.contact.phone) ? (
+                footer.contact.phone.map((ph, idx) => (
+                  <li key={idx} className="flex items-start gap-3">
+                    <Phone className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
+                    <a href={`tel:${ph.replace(/\s+/g, '')}`} className="hover:text-white transition-colors">
+                      {ph}
+                    </a>
+                  </li>
+                ))
+              ) : (
+                <li className="flex items-start gap-3">
+                  <Phone className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
+                  <a href={`tel:${footer.contact.phone}`} className="hover:text-white transition-colors">
+                    {footer.contact.phone}
+                  </a>
+                </li>
+              )}
               <li className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
                 <span>{footer.contact.address}</span>
