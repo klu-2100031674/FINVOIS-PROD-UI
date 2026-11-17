@@ -7,11 +7,13 @@ import {
 import toast from 'react-hot-toast';
 import { Button } from '../common';
 import { normalizeStage2Snapshot, preparePromptsDataForBackend } from '../../utils/draftPayload';
+import { savedDraftOwnsField, unlockFieldsPresentInSavedDraft } from '../../utils/mergeReportPrefill';
 import { normalizeCc6GiCells } from '../../utils/cc6GeneralInfo';
 import { MAPPED_FIELDS_CONFIG, SKIP_VALIDATION_SECTION_IDS, firstFilled, looksLikePhone, looksLikeSectorLabel, giCellsForTemplate } from './sectionSelectorShared';
+import { backgroundSectionTitle, normalizeConstitution, promoterRole } from '../../utils/promoterTitle';
 
 function ProductPhotosField({ photos, onChange }) {
-  const maxPhotos = 3;
+  const maxPhotos = 1;
   const remaining = Math.max(0, maxPhotos - photos.length);
 
   const onPick = async (event) => {
@@ -37,14 +39,13 @@ function ProductPhotosField({ photos, onChange }) {
 
   return (
     <div className="space-y-2 rounded-lg border border-purple-200 bg-purple-50/40 p-4">
-      <label className="block text-sm font-medium text-gray-800">Product Photos (maximum 3)</label>
+      <label className="block text-sm font-medium text-gray-800">Product Photo</label>
       <p className="text-xs text-gray-500">
-        Optional. These photos are printed in the report after the product description.
+        Optional. One photo is printed large in the report after the product description.
       </p>
       <input
         type="file"
         accept="image/*"
-        multiple
         disabled={remaining === 0}
         onChange={onPick}
         className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-purple-700"
@@ -52,8 +53,8 @@ function ProductPhotosField({ photos, onChange }) {
       {photos.length > 0 && (
         <div className="flex flex-wrap gap-3">
           {photos.map((photo, idx) => (
-            <div key={`${photo.name || 'photo'}-${idx}`} className="relative w-24 h-24 rounded-md border border-gray-200 overflow-hidden bg-white">
-              <img src={photo.dataUrl} alt={photo.name || `Product photo ${idx + 1}`} className="w-full h-full object-cover" />
+            <div key={`${photo.name || 'photo'}-${idx}`} className="relative w-full max-w-xl rounded-md border border-gray-200 overflow-hidden bg-white">
+              <img src={photo.dataUrl} alt={photo.name || 'Product photo'} className="w-full h-auto max-h-[28rem] object-contain bg-white" />
               <button
                 type="button"
                 onClick={() => onChange(photos.filter((_, photoIdx) => photoIdx !== idx))}
@@ -70,7 +71,59 @@ function ProductPhotosField({ photos, onChange }) {
   );
 }
 
-function compressImageFile(file, maxEdge = 900, quality = 0.72) {
+function experienceEntries(person) {
+  if (Array.isArray(person?.experiences) && person.experiences.length > 0) {
+    return person.experiences.map((entry) => (
+      typeof entry === 'string' ? entry : (entry?.details || entry?.experience || entry?.text || '')
+    ));
+  }
+  const blob = String(person?.experience || '');
+  if (!blob.trim()) return [''];
+  const parts = blob.split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean);
+  return parts.length ? parts : [''];
+}
+
+function ExperienceEntries({ entries, onChange }) {
+  const rows = entries.length ? entries : [''];
+  return (
+    <div className="space-y-2 md:col-span-2">
+      <p className="text-xs text-gray-500">Optional. Each box is printed as its own paragraph.</p>
+      {rows.map((entry, entryIdx) => (
+        <div key={entryIdx} className="flex gap-2">
+          <textarea
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 resize-none"
+            rows={3}
+            placeholder={`Experience ${entryIdx + 1}`}
+            value={entry}
+            onChange={(e) => {
+              const next = [...rows];
+              next[entryIdx] = e.target.value;
+              onChange(next);
+            }}
+          />
+          {rows.length > 1 && (
+            <button
+              type="button"
+              className="text-red-500 text-sm px-2"
+              onClick={() => onChange(rows.filter((_, idx) => idx !== entryIdx))}
+            >
+              Remove
+            </button>
+          )}
+        </div>
+      ))}
+      <button
+        type="button"
+        className="text-sm text-purple-700 font-medium"
+        onClick={() => onChange([...rows, ''])}
+      >
+        Add another experience
+      </button>
+    </div>
+  );
+}
+
+function compressImageFile(file, maxEdge = 1600, quality = 0.82) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('Could not read image'));
@@ -688,23 +741,9 @@ const SectionSelectorBase = ({
             looksLikeSectorLabel(stage1.organisationType) ? '' : stage1.organisationType
           );
           const rawStatus = looksLikeSectorLabel(rawStatusCandidate) ? '' : rawStatusCandidate;
-          let normalizedOrg = rawStatus;
-          const statusLower = String(rawStatus).toLowerCase();
-          if (statusLower.includes('sole') || statusLower.includes('proprietor')) {
-            normalizedOrg = 'Proprietorship';
-          } else if (statusLower.includes('partner')) {
-            normalizedOrg = 'Partnership';
-          } else if (statusLower.includes('private') || statusLower.includes('pvt')) {
-            normalizedOrg = 'Private Limited';
-          } else if (statusLower.includes('public')) {
-            normalizedOrg = 'Public Limited';
-          } else if (statusLower.includes('llp')) {
-            normalizedOrg = 'LLP';
-          } else if (rawStatus && !['Proprietorship', 'Partnership', 'Private Limited', 'Public Limited', 'LLP'].includes(rawStatus)) {
-            normalizedOrg = 'Other';
-          }
+          const normalizedOrg = normalizeConstitution(rawStatus);
           setMapped('firm_constitution', 'organisation_type', normalizedOrg);
-          setMapped('firm_constitution', 'constitution', rawStatus || normalizedOrg);
+          setMapped('firm_constitution', 'constitution', normalizedOrg);
 
           const sectorVal = firstFilled(giCell('sector'), stage1.sector);
           setMapped('firm_constitution', 'sector', sectorVal);
@@ -765,10 +804,16 @@ const SectionSelectorBase = ({
                 ? String(ageRaw).trim()
                 : '';
 
+            const constitutionForRole = normalizeConstitution(firstFilled(
+              giCell('status'),
+              stage1.constitution,
+              looksLikeSectorLabel(stage1.organisation_type) ? '' : stage1.organisation_type
+            ));
+            const role = promoterRole({ constitution: constitutionForRole });
             if (!autoMapped[section.id]) autoMapped[section.id] = {};
             autoMapped[section.id]['promoters'] = [{
               name, caste, pan_number: pan, aadhar_number: aadhar, address, education: edu,
-              designation: "Proprietor", share_ratio: "100%", age, experience: ""
+              designation: role, share_ratio: role === 'Proprietor' ? '100%' : '', age, experience: '', experiences: []
             }];
           }
         } else if (section.id === 'product_details') {
@@ -812,7 +857,7 @@ const SectionSelectorBase = ({
         }
       });
 
-      setHiddenFields(newHiddenFields);
+      setHiddenFields(unlockFieldsPresentInSavedDraft(newHiddenFields, stage1));
       setSectionData(prev => {
         const next = JSON.parse(JSON.stringify(prev));
 
@@ -859,11 +904,41 @@ const SectionSelectorBase = ({
         });
 
         if (marketLocationFromProfile) {
-          applyProfileLocationToMarketSections(next, next.location_overview);
+          const place = formatProfileLocation(next.location_overview);
+          MARKET_LOCATION_SECTION_IDS.forEach((id) => {
+            if (savedDraftOwnsField(stage1[id], 'district_and_state')) return;
+            next[id] = {
+              ...(next[id] || {}),
+              district_and_state: place,
+            };
+          });
+        }
+
+        if (next.firm_constitution) {
+          const stage1Constitution = normalizeConstitution(giCell('status'));
+          const savedConstitution = normalizeConstitution(
+            next.firm_constitution.organisation_type || next.firm_constitution.constitution
+          );
+          const constitution = (
+            stage1Constitution
+            && savedConstitution === 'Sole Proprietorship'
+            && stage1Constitution !== 'Sole Proprietorship'
+          ) ? stage1Constitution : (savedConstitution || stage1Constitution);
+          if (constitution) {
+            next.firm_constitution.organisation_type = constitution;
+            next.firm_constitution.constitution = constitution;
+          }
+        }
+        if (Array.isArray(next.promoter_details?.promoters)) {
+          const constitution = next.firm_constitution?.organisation_type || next.firm_constitution?.constitution || '';
+          next.promoter_details.promoters = next.promoter_details.promoters.map((person) => ({
+            ...person,
+            designation: promoterRole({ designation: person?.designation, constitution }) || person?.designation || '',
+          }));
         }
 
         const businessAddress = giCell('address');
-        if (businessAddress) {
+        if (businessAddress && !savedDraftOwnsField(stage1.location_overview, 'location_name')) {
           if (!next.location_overview) next.location_overview = {};
           const currentArea = String(next.location_overview.location_name || '').trim();
           if (!currentArea || currentArea.toLowerCase() === 'as per business operations') {
@@ -1047,6 +1122,9 @@ const SectionSelectorBase = ({
           return subFields.some((subField) => {
             if (subField.readOnly) return false;
             if (subField.required === false) return false;
+            if (['experience', 'experiences', 'experience_details', 'pan_number', 'aadhar_number', 'aadhaar', 'supply', 'demand', 'procurement_strategy', 'description', 'details', 'area', 'land_value'].includes(subField.name)) {
+              return false;
+            }
             return !isValuePresent(item[subField.name]);
           });
         });
@@ -1379,7 +1457,7 @@ const SectionSelectorBase = ({
               <div key={idx} className="relative p-4 bg-gray-50 border border-gray-200 rounded-lg">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mr-8">
                   {field.subFields.map(sub => (
-                    <div key={sub.name} className="space-y-1">
+                    <div key={sub.name} className={`space-y-1 ${sub.type === 'text_list' || sub.type === 'textarea' ? 'md:col-span-2' : ''}`}>
                       <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
                         {sub.label}
                       </label>
@@ -1392,6 +1470,21 @@ const SectionSelectorBase = ({
                              <option value="">Select</option>
                              {sub.options.map(o => <option key={o} value={o}>{o}</option>)}
                           </select>
+                      ) : sub.type === 'text_list' ? (
+                        <ExperienceEntries
+                          entries={experienceEntries(item)}
+                          onChange={(next) => {
+                            const list = [...(sectionData[sectionId]?.[field.name] || [])];
+                            const current = list[idx] && typeof list[idx] === 'object' ? list[idx] : {};
+                            const filled = next.map((entry) => String(entry || '').trim()).filter(Boolean);
+                            list[idx] = {
+                              ...current,
+                              experiences: next,
+                              experience: filled.join('\n\n'),
+                            };
+                            handleFieldChange(sectionId, field.name, list);
+                          }}
+                        />
                       ) : sub.type === 'textarea' ? (
                         <textarea
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 resize-none"
@@ -1497,12 +1590,12 @@ const SectionSelectorBase = ({
         <div key={field.name} className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">{field.label}</label>
           <p className="text-xs text-gray-500">
-            Optional. Up to {maxPhotos} photos are printed in the report after the product description. Service sectors do not use these photos.
+            {field.note || `Optional. Up to ${maxPhotos} photos.`}
           </p>
           <input
             type="file"
             accept="image/*"
-            multiple
+            multiple={maxPhotos > 1}
             disabled={remaining === 0}
             onChange={onPick}
             className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-purple-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-purple-700"
@@ -1558,7 +1651,10 @@ const SectionSelectorBase = ({
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 bg-white"
           >
             <option value="">Select {field.label}</option>
-            {field.options.map(opt => (
+            {(field.options.includes(currentSectionData[field.name]) || !currentSectionData[field.name]
+              ? field.options
+              : [currentSectionData[field.name], ...field.options]
+            ).map(opt => (
               <option key={opt} value={opt}>{opt}</option>
             ))}
           </select>
@@ -1671,7 +1767,12 @@ const SectionSelectorBase = ({
                       />
                       <span className={`text-sm font-medium ${selectedSections[section.id] ? 'text-gray-900' : 'text-gray-600'
                         }`}>
-                        {index + 1}. {section.title}
+                        {index + 1}. {section.id === 'promoter_details'
+                          ? backgroundSectionTitle(
+                            sectionData.promoter_details?.promoters,
+                            sectionData.firm_constitution?.organisation_type || sectionData.firm_constitution?.constitution
+                          )
+                          : section.title}
                       </span>
                     </div>
 

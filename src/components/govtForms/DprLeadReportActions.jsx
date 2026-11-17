@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { Download, Eye, Link2, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api, { apiErrorMessage } from '../../api/apiClient';
+import useAuth from '../../hooks/useAuth';
+import { effectiveUserRole } from '../../utils/normalizeUserRole';
 import { WORKFLOW_KEYS, workflowFromLead } from '../../utils/dprWorkflowStatus';
+import { canShowReportFileButton } from '../../utils/reportDownloadVisibility';
 
 function requestIdFromLead(lead) {
   const nested = lead?.departmentRequestId;
@@ -16,6 +19,14 @@ function paymentLinkFromLead(lead) {
   return r?.payment_link_url || r?.payment?.payment_link_url || null;
 }
 
+function reportHasPdf(report) {
+  return Boolean(report?.has_pdf_file || report?.pdf_file_url);
+}
+
+function reportHasExcel(report) {
+  return Boolean(report?.has_excel_file || report?.excel_file_url);
+}
+
 export function leadHasGeneratedReport(lead) {
   const wf = workflowFromLead(lead);
   if (wf.key === WORKFLOW_KEYS.generated) return true;
@@ -24,7 +35,8 @@ export function leadHasGeneratedReport(lead) {
   if (typeof report === 'object') {
     return (
       report.validation_status === 'approved' ||
-      Boolean(report.pdf_file_url || report.excel_file_url)
+      reportHasPdf(report) ||
+      reportHasExcel(report)
     );
   }
   return true;
@@ -39,11 +51,21 @@ async function fetchReportBlob(requestId, kind, inline = false) {
 
 const DprLeadReportActions = ({ lead }) => {
   const [busy, setBusy] = useState(null);
+  const { user } = useAuth();
+  const keepAdminDownloads = effectiveUserRole(user) === 'admin';
   const requestId = requestIdFromLead(lead);
+  const report = lead?.report || lead?.departmentRequest?.reportId;
   const hasReport = leadHasGeneratedReport(lead) && Boolean(requestId);
+  // Admin: show each file as soon as it exists (before approval). Other roles stay paid+approved+file.
+  const showPdf = keepAdminDownloads
+    ? Boolean(requestId && (reportHasPdf(report) || (hasReport && report?.validation_status === 'approved')))
+    : canShowReportFileButton(report, 'pdf');
+  const showExcel = keepAdminDownloads
+    ? Boolean(requestId && (reportHasExcel(report) || (hasReport && report?.validation_status === 'approved')))
+    : canShowReportFileButton(report, 'excel');
   const payUrl = paymentLinkFromLead(lead);
 
-  if (!hasReport && !payUrl) {
+  if (!payUrl && !showPdf && !showExcel) {
     return <span className="text-xs text-gray-400">—</span>;
   }
 
@@ -115,8 +137,10 @@ const DprLeadReportActions = ({ lead }) => {
           </a>
         </div>
       )}
-      {hasReport && (
+      {(showPdf || showExcel) && (
         <>
+          {showPdf && (
+          <>
           <button
             type="button"
             disabled={!!busy}
@@ -135,6 +159,9 @@ const DprLeadReportActions = ({ lead }) => {
             <Download className="h-3.5 w-3.5" />
             {busy === 'pdf' ? '…' : 'PDF'}
           </button>
+          </>
+          )}
+          {showExcel && (
           <button
             type="button"
             disabled={!!busy}
@@ -144,6 +171,7 @@ const DprLeadReportActions = ({ lead }) => {
             <Download className="h-3.5 w-3.5" />
             {busy === 'excel' ? '…' : 'Excel'}
           </button>
+          )}
         </>
       )}
     </div>

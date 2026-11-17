@@ -16,6 +16,7 @@ import {
 import { Button, Loading } from '../../components/common';
 import { reportAPI } from '../../api/endpoints';
 import { formatDate, formatDateTime, downloadUserReportFile } from '../../utils';
+import { canShowChannelPartnerPayDownload, canShowReportFileButton } from '../../utils/reportDownloadVisibility';
 import toast from 'react-hot-toast';
 import Invoice from '../../components/Invoice';
 
@@ -322,27 +323,36 @@ const AgentReportsPage = () => {
                       {(() => {
                         // pay-at-download reports: locked until approved, then paid once on first download
                         const payLater = report.payment?.collect_on_download === true;
-                        const unpaid = payLater && report.payment?.status !== 'completed';
                         const approved = report.validation_status === 'approved';
-                        const amount = Number(report.payment?.amount || 0);
+                        const showPay = canShowChannelPartnerPayDownload(report);
+                        const payAmount = Number(report.payment?.amount || 0);
+                        const showPdf = canShowReportFileButton(report, 'pdf');
                         return (
                           <>
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(report.validation_status)}`}>
                               {payLater && approved ? 'Ready to Download' : getStatusLabel(report.validation_status)}
                             </span>
-                            {report.pdf_file_url && (!unpaid || approved) && (
+                            {showPay && (
                               <button
                                 onClick={() => handleDownload(report, 'pdf')}
                                 className="px-3 py-1 text-sm text-[#7e22ce] hover:text-purple-800 hover:bg-purple-50 rounded-md transition-colors"
                               >
-                                {unpaid && amount > 0 ? `Pay ₹${amount.toLocaleString('en-IN')} & Download PDF` : 'PDF'}
+                                {payAmount > 0 ? `Pay ₹${payAmount.toLocaleString('en-IN')} & Download PDF` : 'Pay & Download PDF'}
+                              </button>
+                            )}
+                            {showPdf && (
+                              <button
+                                onClick={() => handleDownload(report, 'pdf')}
+                                className="px-3 py-1 text-sm text-[#7e22ce] hover:text-purple-800 hover:bg-purple-50 rounded-md transition-colors"
+                              >
+                                PDF
                               </button>
                             )}
                           </>
                         );
                       })()}
                       <div className="flex space-x-2">
-                        {report.json_file_url && !(report.payment?.collect_on_download && report.payment?.status !== 'completed') && (
+                        {canShowReportFileButton(report, 'json') && (
                           <button
                             onClick={() => handleDownload(report, 'json')}
                             className="px-3 py-1 text-sm text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded-md transition-colors"

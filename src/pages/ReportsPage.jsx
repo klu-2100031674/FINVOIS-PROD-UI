@@ -18,9 +18,11 @@ import {
 import { Button, Loading } from '../components/common';
 import { reportAPI } from '../api/endpoints';
 import { formatDate, formatDateTime, downloadUserReportFile } from '../utils';
+import { canShowChannelPartnerPayDownload } from '../utils/reportDownloadVisibility';
 import toast from 'react-hot-toast';
 import Invoice from '../components/Invoice';
 import { effectiveUserRole } from '../utils/normalizeUserRole';
+import { getTemplateDisplayName } from '../utils/templateSectorConfig';
 
 // PDF generation libraries
 import jsPDF from 'jspdf';
@@ -60,7 +62,13 @@ const ReportsPage = () => {
   const [showDateFilter, setShowDateFilter] = useState(false);
 
   const filteredReports = useMemo(() => {
-    if (dateFilter.preset === 'all') return reports;
+    // Show generated reports for all roles (user / company_user / company_admin / agent).
+    // Include pending + under review so new vehicle templates appear immediately after generation
+    // (same visibility as old templates once submitted; downloads stay gated until approved).
+    const VISIBLE = new Set(['approved', 'pending_validation', 'under_review', 'rejected']);
+    let baseReports = (reports || []).filter((r) => VISIBLE.has(r?.validation_status));
+
+    if (dateFilter.preset === 'all') return baseReports;
 
     let startDate, endDate;
     const now = new Date();
@@ -91,16 +99,16 @@ const ReportsPage = () => {
         endDate = dateFilter.endDate;
         break;
       default:
-        return reports;
+        return baseReports;
     }
 
-    if (!startDate || !endDate) return reports;
+    if (!startDate || !endDate) return baseReports;
 
-    return reports.filter(report => {
+    return baseReports.filter(report => {
       const reportDate = new Date(report.createdAt);
       return reportDate >= startDate && reportDate <= endDate;
     });
-  }, [reports, dateFilter]);
+  }, [reports, dateFilter, navRole]);
 
   const reportTypeOptions = useMemo(() => {
     const set = new Set();
@@ -118,13 +126,15 @@ const ReportsPage = () => {
       const reportDisplayName =
         report.display_name || report.client_name || report.title || `Report ${report.templateId}`;
       const reportType = report.report_type || report.templateId || '';
+      const reportTypeLabel = getTemplateDisplayName(reportType);
       const matchesType = !type || String(reportType) === type;
       const matchesQuery =
         !q ||
         String(reportDisplayName || '').toLowerCase().includes(q) ||
         String(report.title || '').toLowerCase().includes(q) ||
         String(report.client_name || '').toLowerCase().includes(q) ||
-        String(reportType || '').toLowerCase().includes(q);
+        String(reportType || '').toLowerCase().includes(q) ||
+        String(reportTypeLabel || '').toLowerCase().includes(q);
       return matchesType && matchesQuery;
     });
   }, [filteredReports, searchQuery, typeFilter]);
@@ -546,7 +556,7 @@ const ReportsPage = () => {
                   <option value="">All types</option>
                   {reportTypeOptions.map((opt) => (
                     <option key={opt} value={opt}>
-                      {opt}
+                      {getTemplateDisplayName(opt)}
                     </option>
                   ))}
                 </select>
@@ -652,7 +662,12 @@ const ReportsPage = () => {
                             </div>
                           </div>
                         </div>
-                        <div className="shrink-0">
+                        <div className="shrink-0 flex flex-col items-end gap-1">
+                          {(report.content_kind === 'theory' || String(report.templateId || '').startsWith('THEORY_') || report.report_type === 'THEORY') && (
+                            <span className="text-[10px] font-semibold uppercase tracking-wide text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full">
+                              Theory Page
+                            </span>
+                          )}
                           {getStatusBadge(report.validation_status)}
                         </div>
                       </div>
@@ -665,7 +680,9 @@ const ReportsPage = () => {
                         </div>
                         <div>
                           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">Type</span>
-                          <span className="font-semibold text-gray-900 text-sm truncate block" title={report.report_type}>{report.report_type}</span>
+                          <span className="font-semibold text-gray-900 text-sm truncate block" title={report.report_type || report.templateId}>
+                            {getTemplateDisplayName(report.report_type || report.templateId)}
+                          </span>
                         </div>
                         <div className="col-span-2 pt-4 border-t border-gray-50 flex items-center justify-between">
                           <div>
@@ -674,6 +691,16 @@ const ReportsPage = () => {
                               {report.payment?.status === 'completed' ? 'Paid' : 'Unpaid'} • {report.payment ? `₹${report.payment.amount.toLocaleString('en-IN')}` : '₹0'}
                             </span>
                           </div>
+                          {canShowChannelPartnerPayDownload(report) && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDownloadExcel(report, 'pdf'); }}
+                              className="px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-lg text-xs font-semibold text-purple-800 hover:bg-purple-100 transition-colors"
+                            >
+                              {Number(report.payment?.amount || 0) > 0
+                                ? `Pay ₹${Number(report.payment.amount).toLocaleString('en-IN')}`
+                                : 'Pay'}
+                            </button>
+                          )}
                           {report.payment?.status === 'completed' && (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(report); }}
@@ -689,7 +716,7 @@ const ReportsPage = () => {
 
                       {/* Footer Actions */}
                       <div className="mt-auto">
-                        {report.validation_status === 'approved' && (
+                        {report.validation_status === 'approved' && report.payment?.status === 'completed' && (
                           <div className="flex items-center gap-3">
                             {report.pdf_file_url && (
                               <button
@@ -701,13 +728,15 @@ const ReportsPage = () => {
                                 PDF
                               </button>
                             )}
-                            <button
-                              onClick={() => handleDownloadExcel(report,"excel")}
-                              className="flex-[1.5] inline-flex justify-center items-center h-11 border border-transparent text-sm font-bold rounded-xl text-white bg-gray-900 hover:bg-gray-800 shadow-md shadow-gray-200 transition-all"
-                            >
-                              <Download className="w-4 h-4 mr-2" />
-                              Excel
-                            </button>
+                            {report.excel_file_url && !(report.content_kind === 'theory' || String(report.templateId || '').startsWith('THEORY_') || report.report_type === 'THEORY') && (
+                              <button
+                                onClick={() => handleDownloadExcel(report,"excel")}
+                                className="flex-[1.5] inline-flex justify-center items-center h-11 border border-transparent text-sm font-bold rounded-xl text-white bg-gray-900 hover:bg-gray-800 shadow-md shadow-gray-200 transition-all"
+                              >
+                                <Download className="w-4 h-4 mr-2" />
+                                Excel
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>

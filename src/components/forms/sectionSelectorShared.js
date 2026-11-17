@@ -1,3 +1,5 @@
+import { CONSTITUTION_OPTIONS, DESIGNATION_OPTIONS } from '../../utils/promoterTitle';
+
 /**
  * Shared section definitions and configuration for the Stage-2
  * "PROJECT PROFILE AND BUSINESS ANALYSIS" form.
@@ -15,7 +17,7 @@ export const firmConstitutionSection = {
   prompt_ref: "constitution",
   fields: [
     { name: "firm_name", label: "Firm Name", type: "text", required: false },
-    { name: "organisation_type", label: "Constitution / Entity Type", type: "select", options: ["Proprietorship", "Partnership", "Private Limited", "Public Limited", "LLP", "Other"] },
+    { name: "organisation_type", label: "Constitution / Entity Type", type: "select", options: CONSTITUTION_OPTIONS },
     { name: "sector", label: "Sector", type: "text", placeholder: "Prefilled from previous page" },
     { name: "nature_of_business", label: "Nature of Business", type: "text", placeholder: "Prefilled from previous page" },
     { name: "proprietor_name", label: "Name of Authorised person", type: "text", required: true },
@@ -56,24 +58,24 @@ export const accessConnectivitySection = {
 
 export const promoterDetailsSection = {
   id: "promoter_details",
-  title: "Proprietor's Background & Education",
+  title: "Background & Education",
   prompt_ref: "promoter_details",
   fields: [
     {
       name: "promoters",
-      label: "Promoter/Partner Details",
+      label: "Promoter/Partner/Director Details",
       type: "group_list",
       subFields: [
         { name: "name", label: "Name", type: "text" },
-        { name: "designation", label: "Designation", type: "select", options: ["Proprietor", "Partner", "Director", "Member"] },
+        { name: "designation", label: "Designation", type: "select", options: DESIGNATION_OPTIONS },
         { name: "caste", label: "Caste", type: "text", required: false },
-        { name: "share_ratio", label: "Share %", type: "text" },
+        { name: "share_ratio", label: "Sharing Ratio", type: "text" },
         { name: "pan_number", label: "PAN (Optional)", type: "text", required: false },
-        { name: "aadhar_number", label: "Aadhar (Optional)", type: "text", required: false },
-        { name: "address", label: "Res. Address", type: "text", required: false },
+        { name: "aadhar_number", label: "Aadhaar (Optional)", type: "text", required: false },
+        { name: "address", label: "Residential Address", type: "text", required: false },
         { name: "age", label: "Age", type: "text" },
         { name: "education", label: "Qualification", type: "text" },
-        { name: "experience", label: "Experience (Optional)", type: "textarea", required: false }
+        { name: "experiences", label: "Experience (Optional)", type: "text_list", required: false }
       ]
     }
   ]
@@ -216,7 +218,7 @@ export const marketingTechniquesSection = {
   prompt_ref: "marketing_techniques",
   fields: [
     { name: "has_previous_experience", label: "Previous Experience", type: "checkbox" },
-    { name: "experience_details", label: "Experience Details", type: "textarea", dependsOn: { field: "has_previous_experience", value: true } },
+    { name: "experience_details", label: "Experience Details (Optional)", type: "textarea", required: false, dependsOn: { field: "has_previous_experience", value: true } },
     { name: "has_purchase_orders", label: "Have Purchase orders ", type: "checkbox" },
     { name: "purchase_order_government", label: "Government Purchase Orders", type: "checkbox", dependsOn: { field: "has_purchase_orders", value: true } },
     { name: "purchase_order_private", label: "Private Purchase Orders", type: "checkbox", dependsOn: { field: "has_purchase_orders", value: true } },
@@ -288,7 +290,10 @@ export const rawMaterialsSection = {
         { name: "name", label: "Raw Material Name", type: "text" },
         { name: "quantity", label: "Quantity Required Per day/month/year", type: "text" },
         { name: "supplier", label: "Supplier Details (Name, Place)", type: "text" },
-        { name: "description", label: "Description regarding the Raw Materials , Demand , supply , availability nearer to your unit.", type: "textarea", required: false }
+        { name: "supply", label: "Supply", type: "textarea", required: false },
+        { name: "demand", label: "Demand", type: "textarea", required: false },
+        { name: "procurement_strategy", label: "Procurement Strategy", type: "textarea", required: false },
+        { name: "description", label: "Other notes on availability nearer to the unit (Optional)", type: "textarea", required: false }
       ]
     }
   ]
@@ -333,10 +338,18 @@ export const landRequirementsSection = {
       label: "Land Usage Details",
       type: "group_list",
       subFields: [
-        { name: "details", label: "Land Requirement Details", type: "text" },
-        { name: "area", label: "Area (Square Meters)", type: "text" },
+        { name: "details", label: "Land Requirement Details", type: "text", required: false },
+        { name: "area", label: "Area (Square Meters)", type: "text", required: false },
         { name: "land_value", label: "Land Value (₹)", type: "text", required: false }
       ]
+    },
+    {
+      name: "land_photos",
+      label: "Land / Premises Photos",
+      type: "image_list",
+      max: 2,
+      required: false,
+      note: "Optional. Attach up to 2 photos of the land or premises."
     }
   ]
 };

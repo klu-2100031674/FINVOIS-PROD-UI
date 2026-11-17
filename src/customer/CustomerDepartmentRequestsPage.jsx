@@ -4,7 +4,7 @@ import ClientLayout from '../components/layouts/ClientLayout';
 import api, { apiErrorMessage } from '../api/apiClient';
 import toast from 'react-hot-toast';
 import { ChevronRight, ClipboardList, Download, FileQuestion, Plus, Search, X } from 'lucide-react';
-import CustomerPayNowButton, { ForwardToBankManagerButton } from './CustomerPayNowButton';
+import CustomerPayNowButton, { CopyPaymentLinkButton, ForwardToBankManagerButton } from './CustomerPayNowButton';
 import {
   canDownloadPdf,
   needsPayment,
@@ -276,6 +276,7 @@ const CustomerDepartmentRequestsPage = () => {
                                   refresh().catch(() => {});
                                 }}
                               />
+                              <CopyPaymentLinkButton request={req} />
                               <CustomerPayNowButton
                                 request={req}
                                 onPaid={() => {

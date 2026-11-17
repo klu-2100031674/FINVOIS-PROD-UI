@@ -18,7 +18,7 @@ import ClientLayout from "../components/layouts/ClientLayout";
 import AdminLayout from "../components/layouts/AdminLayout";
 import { effectiveUserRole } from "../utils/normalizeUserRole";
 import { hasTableAccess } from "../utils/tableAccess";
-import { generateHubLandingPath } from "../utils/routePaths";
+import { dashboardHomePath, generateHubLandingPath } from "../utils/routePaths";
 
 const Stage1Page = () => {
   const navigate = useNavigate();
@@ -823,7 +823,13 @@ const Stage1Page = () => {
       }
     } catch (error) {
       console.error("❌ Error generating full report:", error);
-      toast.error(error.message || "Failed to generate full AI report");
+      const nonEvVehicle = String(templateId || "").toUpperCase() === "TERM_LOAN_OTHER_THAN_EV_VEHICLE";
+      const responseMessage = error?.response?.data?.message || error?.response?.data?.error;
+      const nonEvReason = (typeof error === "string" && error.trim())
+        || (typeof responseMessage === "string" && responseMessage.trim())
+        || (typeof error?.message === "string" && error.message.trim())
+        || "Failed to generate full AI report";
+      toast.error(nonEvVehicle ? nonEvReason : (error.message || "Failed to generate full AI report"));
       return null;
     } finally {
       setIsGeneratingFullReport(false);
@@ -839,10 +845,8 @@ const Stage1Page = () => {
           onClick={() => {
             if (isAdminMode) {
               navigate("/admin/generate");
-            } else if (user?.role === 'agent') {
-              navigate("/agent/dashboard");
             } else {
-              navigate("/dashboard");
+              navigate(dashboardHomePath(user));
             }
           }}
           variant="secondary"
@@ -912,7 +916,7 @@ const Stage1Page = () => {
                   report again.
                 </p>
                 <Button
-                  onClick={() => user?.role === 'agent' ? navigate("/agent/dashboard") : navigate("/dashboard")}
+                  onClick={() => navigate(dashboardHomePath(user))}
                   variant="primary"
                 >
                   <i className="fas fa-arrow-left mr-2"></i>

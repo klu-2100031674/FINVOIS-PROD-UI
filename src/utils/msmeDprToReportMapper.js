@@ -10,11 +10,11 @@
  * `formData["Means of Finance"]["i13"]`.
  */
 
-import { FRCC_REQUIRED_STAMP_DEFAULT } from './frccFormUi';
+import { FRCC_REQUIRED_STAMP_DEFAULT } from './frccFormUi.js';
 import {
   isGoldLoanType,
   isWorkingCapitalOdLoanType,
-} from './partnerLeadLoanTypes';
+} from './partnerLeadLoanTypes.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -41,7 +41,7 @@ const TERM_LOAN_FORM_SECTOR = {
   serviceWithStock: 'service sector with stock',
 };
 
-function mapMsmeSectorToTermLoan(sector, templateKey) {
+function mapMsmeSectorToTermLoan(sector) {
   const s = String(sector || '').toLowerCase().trim();
   if (!s) return '';
   if (s.includes('manufactur')) return TERM_LOAN_FORM_SECTOR.manufacturing;
@@ -49,9 +49,6 @@ function mapMsmeSectorToTermLoan(sector, templateKey) {
   if (s.includes('with stock') && !s.includes('without')) return TERM_LOAN_FORM_SECTOR.serviceWithStock;
   if (s.includes('without stock')) return TERM_LOAN_FORM_SECTOR.serviceWithoutStock;
   if (s.includes('service') || s.includes('vehicle')) {
-    // A generic Service lead on the with-stock workbook must not land on "without stock",
-    // which blocks that form's preset sector.
-    if (isTermLoanWithStockTemplate(templateKey)) return TERM_LOAN_FORM_SECTOR.serviceWithStock;
     return TERM_LOAN_FORM_SECTOR.serviceWithoutStock;
   }
   return '';
@@ -619,6 +616,57 @@ function resolveFrccGeneralInfoCells(templateKey) {
   return { firm: 'i3', status: 'i4', authPerson: 'i5', address: 'i6', phone: 'i7', sector: 'i8', nature: 'i9' };
 }
 
+function yesNoChartAnswer(value) {
+  const v = String(value || '').trim();
+  return v === 'Yes' || v === 'No' ? v : '';
+}
+
+/**
+ * Locked Cash Credit Yes/No cells follow the customer's type-chart,
+ * including when Customer Service opens a different CC template.
+ * Unanswered questions stay blank instead of taking that template's defaults.
+ */
+function applyCustomerChartMeans(data, lead, templateKey, labels) {
+  const chart = lead?.wcOdTypeChart;
+  if (!chart || typeof chart !== 'object') return;
+  const hasLimit = yesNoChartAnswer(chart.hasWorkingCapitalLimitPresent);
+  const topup = yesNoChartAnswer(chart.wcLimitTopup);
+  const newTermLoan = yesNoChartAnswer(chart.alsoNewTermLoanForAsset);
+  if (!hasLimit && !topup && !newTermLoan) return;
+
+  const k = String(templateKey || '').toLowerCase().trim();
+  const means = { ...(data['Means of Finance'] || {}) };
+  const write = (cell, value) => {
+    means[cell] = value;
+  };
+
+  if (k === 'frcc1' || k === 'format cc1' || k === 'cc1' || k === 'frcc3' || k === 'format cc3' || k === 'cc3') {
+    write('i12', hasLimit);
+  } else if (k === 'frcc2' || k === 'format cc2' || k === 'cc2') {
+    write('i11', hasLimit);
+  } else if (
+    k === 'frcc4' || k === 'format cc4' || k === 'cc4'
+    || k === 'frcc5' || k === 'format cc5' || k === 'cc5'
+  ) {
+    write('i11', hasLimit);
+    write('i12', topup);
+  } else if (k === 'frcc6' || k === 'format cc6' || k === 'cc6') {
+    write('i11', hasLimit);
+    write('i12', topup);
+    write('h17', newTermLoan);
+  } else if (k === 'frcc7' || k === 'format cc7' || k === 'cc7') {
+    write('i11', hasLimit);
+    write('i12', topup);
+    write('i18', newTermLoan);
+  } else {
+    return;
+  }
+
+  data['Means of Finance'] = means;
+  data.meansFromCustomerChart = true;
+  labels.push('Working capital answers');
+}
+
 function buildFrccDefaultStructure(templateKey = '') {
   const k = String(templateKey || '').toLowerCase().trim();
   const fixedMeans = resolveFrccFixedMeansOfFinance(templateKey);
@@ -821,6 +869,8 @@ function mapMsmeLeadToFrccInitialData(lead, templateKey) {
     labels.push('Processing Fee');
   }
 
+  applyCustomerChartMeans(data, lead, templateKey, labels);
+
   // Term Loan Finance Details (FRCC6 / FRCC7) — tenure, moratorium, term ROI/fee
   if (termCells) {
     const term = {};
@@ -936,7 +986,7 @@ function mapMsmeLeadToTermLoanInitialData(lead, templateKey) {
     gi.i14 = TERM_LOAN_FORM_SECTOR.serviceWithoutStock;
     labels.push('Sector');
   } else {
-    const tlSector = mapMsmeSectorToTermLoan(lead.sector, templateKey);
+    const tlSector = mapMsmeSectorToTermLoan(lead.sector);
     if (tlSector) {
       gi.i14 = tlSector;
       labels.push('Sector');
@@ -1076,6 +1126,11 @@ function mapMsmeLeadToGoldLoanInitialData(lead) {
   if (phone10) {
     data['General Information'].i8 = phone10;
     labels.push('Contact No.');
+  }
+  const address = buildAddress(lead);
+  if (address) {
+    data['General Information'].i7 = address;
+    labels.push('Business Address');
   }
 
   applyReferredByBankToPreparedBy(data, lead, labels);

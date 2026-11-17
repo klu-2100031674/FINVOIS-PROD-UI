@@ -162,6 +162,29 @@ const AdminReportsPage = () => {
   const [expandedReport, setExpandedReport] = useState(null);
   const [pagination, setPagination] = useState({ current_page: 1, total_pages: 1, total_count: 0 });
 
+  const openAdminPaymentLink = async (report, force) => {
+    try {
+      const response = await api.post(`/reports/${report._id}/payment-link`, { force });
+      const url = response.data?.data?.payment_link_url;
+      if (response.data?.data?.alreadyPaid) {
+        toast.success('This report is already paid');
+        return;
+      }
+      if (!url) {
+        toast.error(response.data?.error || 'No payment link was created');
+        return;
+      }
+      setReports((prev) => prev.map((item) => (
+        item._id === report._id
+          ? { ...item, payment: { ...(item.payment || {}), payment_link_url: url, status: item.payment?.status || 'pending' } }
+          : item
+      )));
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Could not open the payment link');
+    }
+  };
+
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [companyFilter, setCompanyFilter] = useState('');
@@ -1482,6 +1505,29 @@ const AdminReportsPage = () => {
                                     {report.payment?.status || 'N/A'}
                                   </span>
                                 </p>
+                                {report.payment?.status !== 'completed' && (report.pdf_file_url || report.has_pdf_file) && (
+                                  <div className="flex flex-wrap gap-2 pt-1">
+                                    <button
+                                      type="button"
+                                      className="px-2 py-1 text-xs font-semibold border border-gray-300 rounded hover:bg-gray-50"
+                                      onClick={() => openAdminPaymentLink(report, false)}
+                                    >
+                                      Open payment link
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="px-2 py-1 text-xs font-semibold border border-gray-300 rounded hover:bg-gray-50"
+                                      onClick={() => openAdminPaymentLink(report, true)}
+                                    >
+                                      Regenerate link
+                                    </button>
+                                  </div>
+                                )}
+                                {report.payment?.status !== 'completed' && !(report.pdf_file_url || report.has_pdf_file) && (
+                                  <p className="text-xs text-amber-700 pt-1">
+                                    Payment link is available only after the PDF is generated.
+                                  </p>
+                                )}
                               </div>
                             </div>
 

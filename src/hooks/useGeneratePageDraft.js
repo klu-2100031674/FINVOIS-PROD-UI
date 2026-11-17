@@ -26,6 +26,7 @@ export function useGeneratePageDraft({
   visitKey,
   setTempFormData,
   dispatchSetFormData,
+  onDraftPersisted,
 }) {
   const dispatch = useDispatch();
   const sessionDraftIdRef = useRef(forceNewDraft ? null : draftIdFromUrl);
@@ -108,6 +109,7 @@ export function useGeneratePageDraft({
         const saved = result?.data ?? result;
         if (saved?._id) {
           sessionDraftIdRef.current = saved._id;
+          if (typeof onDraftPersisted === 'function') onDraftPersisted(saved._id);
         }
 
         setStage2Draft(extractStage2FromDraft(merged));
@@ -127,7 +129,7 @@ export function useGeneratePageDraft({
         setSavingDraft(false);
       }
     },
-    [templateId, stage2Draft, dispatch, setTempFormData, dispatchSetFormData]
+    [templateId, stage2Draft, dispatch, setTempFormData, dispatchSetFormData, onDraftPersisted]
   );
 
   return {

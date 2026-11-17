@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   DocumentTextIcon,
   CurrencyRupeeIcon,
@@ -17,6 +17,9 @@ import {
 import SaveDraftButton from '../common/SaveDraftButton';
 import { FRCC_REQUIRED_STAMP_DEFAULT } from '../../utils/frccFormUi';
 import { assetRowIsOpen, readOpenAssetRows, withOpenAssetRow, withoutOpenAssetRow } from '../../utils/assetOpenRows';
+import { mergeReportPrefill } from '../../utils/mergeReportPrefill';
+import { alignNamedCellSchedule } from '../../utils/assetScheduleState';
+import { buildEditableDraftSnapshot, readWizardStep } from '../../utils/draftLifecycle';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -106,6 +109,7 @@ const normalizeGeneralInformation = (generalInfo = {}) => {
 const FRTermLoanWithStockForm = ({
   onSubmit,
   initialData = {},
+  preferSavedValues = false,
   isEditMode = false,
   reportId = null,
   isProcessing = false,
@@ -255,39 +259,20 @@ const FRTermLoanWithStockForm = ({
   };
 
   const [formData, setFormData] = useState(() => {
-    if (initialData && Object.keys(initialData).length > 0) {
-      const merged = { ...defaultFormData };
-      for (const key in initialData) {
-        if (Object.hasOwn(initialData, key)) {
-          if (typeof initialData[key] === 'object' && initialData[key] !== null && typeof merged[key] === 'object' && merged[key] !== null) {
-            merged[key] = { ...merged[key], ...initialData[key] };
-          } else {
-            merged[key] = initialData[key];
-          }
-        }
-      }
-      if (merged['General Information']) {
-        merged['General Information'] = normalizeGeneralInformation(merged['General Information']);
-      }
-      if (presetSector && !(merged['General Information'] && merged['General Information'].i14)) {
-        merged['General Information'] = {
-          ...(merged['General Information'] || {}),
-          i14: presetSector,
-        };
-      }
-      return merged;
+    const merged = mergeReportPrefill(defaultFormData, initialData, { preferSaved: preferSavedValues });
+    if (merged['General Information']) {
+      merged['General Information'] = normalizeGeneralInformation(merged['General Information']);
     }
-    const base = {
-      ...defaultFormData,
-      'General Information': { ...defaultFormData['General Information'] },
-    };
-    if (presetSector) {
-      base['General Information'].i14 = presetSector;
+    if (presetSector && !(merged['General Information'] && merged['General Information'].i14)) {
+      merged['General Information'] = {
+        ...(merged['General Information'] || {}),
+        i14: presetSector,
+      };
     }
-    return base;
+    return merged;
   });
 
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(() => readWizardStep(initialData, 6));
   const [activeAssetTab, setActiveAssetTab] = useState(0);
   const [indirectActiveTab, setIndirectActiveTab] = useState(0);
   const [visitedExpenseCategories, setVisitedExpenseCategories] = useState(new Set([0]));
@@ -349,28 +334,7 @@ const FRTermLoanWithStockForm = ({
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
       setFormData(prevFormData => {
-        const merged = { ...prevFormData };
-        for (const sectionKey in initialData) {
-          if (Object.hasOwn(initialData, sectionKey)) {
-            if (typeof initialData[sectionKey] === 'object' && initialData[sectionKey] !== null &&
-              typeof merged[sectionKey] === 'object' && merged[sectionKey] !== null &&
-              !Array.isArray(initialData[sectionKey])) {
-              if (sectionKey === 'Schedule for Indirect Expenses') {
-                merged[sectionKey] = { ...merged[sectionKey] };
-                for (const cat of Object.keys(initialData[sectionKey])) {
-                  merged[sectionKey][cat] = {
-                    ...(merged[sectionKey][cat] || {}),
-                    ...(initialData[sectionKey][cat] || {}),
-                  };
-                }
-              } else {
-                merged[sectionKey] = { ...merged[sectionKey], ...initialData[sectionKey] };
-              }
-            } else {
-              merged[sectionKey] = initialData[sectionKey];
-            }
-          }
-        }
+        const merged = mergeReportPrefill(prevFormData, initialData, { preferSaved: preferSavedValues });
         if (merged['General Information']) {
           merged['General Information'] = normalizeGeneralInformation(merged['General Information']);
         }
@@ -391,6 +355,29 @@ const FRTermLoanWithStockForm = ({
       }
     }
   }, [initialData, presetSector]);
+
+  const assetTenure = parseInt(formData['Term Loan Details']?.i46, 10);
+  const prevAssetTenureRef = useRef(Number.isFinite(assetTenure) ? assetTenure : null);
+  useEffect(() => {
+    const prevTenure = prevAssetTenureRef.current;
+    const nextTenure = Number.isFinite(assetTenure) ? assetTenure : null;
+    prevAssetTenureRef.current = nextTenure;
+    const prevIsGT7 = prevTenure !== null && prevTenure > 7;
+    const nextIsGT7 = nextTenure !== null && nextTenure > 7;
+    const crossed = prevTenure !== null && nextTenure !== null && prevIsGT7 !== nextIsGT7;
+    const enteredGt7 = prevTenure === null && nextIsGT7;
+    if (!crossed && !enteredGt7) return;
+    setFormData((prev) => {
+      const schedule = prev['Schedule for Assets'];
+      const aligned = alignNamedCellSchedule(
+        schedule,
+        getAssetSections(nextTenure),
+        getAssetSections(prevTenure),
+      );
+      if (aligned === schedule) return prev;
+      return { ...prev, 'Schedule for Assets': aligned };
+    });
+  }, [assetTenure]);
 
   // Calculate loan amount from percentage (for display purposes)
   const calculateLoanAmount = (category, total) => {
@@ -788,12 +775,15 @@ const FRTermLoanWithStockForm = ({
 
   const addAssetItem = useCallback((sectionName) => {
     const section = getAssetSections(formData['Term Loan Details']?.['i46'])[sectionName];
+    if (!section) return;
     const openRows = readOpenAssetRows(formData['Schedule for Assets']);
     let emptyRow = -1;
     for (let i = section.start; i <= section.end; i++) {
       const desc = formData['Schedule for Assets'][`d${i}`];
       const amount = formData['Schedule for Assets'][`e${i}`];
-      if (!openRows.has(i) && (desc === '' || desc === undefined) && (amount === '' || amount === undefined || Number(amount) === 0)) {
+      const descBlank = desc == null || String(desc).trim() === '';
+      const amountBlank = amount == null || String(amount).trim() === '' || Number(amount) === 0;
+      if (!openRows.has(i) && descBlank && amountBlank) {
         emptyRow = i;
         break;
       }
@@ -1256,7 +1246,11 @@ const FRTermLoanWithStockForm = ({
     };
   };
 
-  const getDraftSnapshot = () => buildSubmitPayload();
+  const getDraftSnapshot = () => buildEditableDraftSnapshot(formData, {
+    _wizardStep: currentStep,
+    'Asset Loan Percentages': loanPercentages,
+    'Asset Loan Amounts': loanAmounts,
+  });
 
   const handleSubmit = () => {
     onSubmit(buildSubmitPayload());
@@ -1501,6 +1495,7 @@ const FRTermLoanWithStockForm = ({
                 <option value="">Select Sector</option>
                 <option value="Manufacturing sector">Manufacturing sector</option>
                 <option value="service sector with stock">service sector with stock</option>
+                <option value="service sector without stock">service sector without stock</option>
                 <option value="Trading sector">Trading sector</option>
               </select>
             </div>
@@ -1964,7 +1959,7 @@ const FRTermLoanWithStockForm = ({
                         <div className="relative">
                           <input
                             type="text"
-                            value={loanPercentages[activeCategoryName] || ''}
+                            value={loanPercentages[activeCategoryName] ?? ''}
                             onChange={(e) => handleLoanPercentageChange(activeCategoryName, e.target.value)}
                             className="w-full px-3 py-2 text-sm border-2 border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white"
                             placeholder="Enter loan %"

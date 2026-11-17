@@ -31,7 +31,7 @@ export const TEMPLATE_SECTOR_DEFAULTS = {
     // lockSector: true,
   },
   TERM_LOAN_CC: {
-    presetSector: 'service sector without stock',
+    presetSector: 'Manufacturing sector',
     // lockSector: true,
   },
   TERM_LOAN_EV_VEHICLE: {

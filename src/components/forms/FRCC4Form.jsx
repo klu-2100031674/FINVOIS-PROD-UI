@@ -15,6 +15,7 @@ import {
 import SaveDraftButton from '../common/SaveDraftButton';
 
 import { getAuditedSectionDisplayTitle, isOpeningStockField, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_BANKER_MOBILE_FIELD, PREPARED_BY_CIBIL_FIELD } from '../../utils/frccFormUi';
+import { finishMeansOfFinance, meansFieldDisabled, mergeReportPrefill } from '../../utils/mergeReportPrefill';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -45,6 +46,7 @@ const fixedAssetsMapping = {
 const FRCC4Form = ({
   onSubmit,
   initialData: initialDataProp = null,
+  preferSavedValues = false,
   isEditMode = false,
   reportId = null,
   templateId = 'frcc4',
@@ -53,47 +55,48 @@ const FRCC4Form = ({
 }) => {
   const initialData = initialDataProp || {};
 
-  const [formData, setFormData] = useState({
-    'General Information': initialData['General Information'] || {
-      i3: '', i4: '', i5: '', i6: '', i7: '', i8: '', i9: ''
-    },
-    'Means of Finance': {
-      i13: 0, h14: 0, h15: 0, h16: 0,
-      ...(initialData['Means of Finance'] || {}),
-      i11: 'Yes',
-      i12: 'No',
-    },
-    'Financial Years': initialData['Financial Years'] || {
-      i18: '', i19: '', i20: '', i21: ''
-    },
-    'Financial Statements': initialData['Financial Statements'] || {
-      i23: 0, i24: 0, i25: 0, i26: 0, i27: 0, i28: 0, i29: 0, i30: 0,
-      i31: 0, i32: 0, i33: 0, i34: 0, i35: 0, i37: 0, i38: 0, i39: 0,
-      i40: 0, i41: 0, i44: 0, i45: 0, i46: 0, i47: 0
-    },
-    'Fixed Assets Schedule': initialData['Fixed Assets Schedule'] || {
-      'Plant and Machinery':                         { items: [], total: 0 },
-      'Service Equipment':                           { items: [], total: 0 },
-      'Shed, Construction and Civil works':          { items: [], total: 0 },
-      'Land':                                        { items: [], total: 0 },
-      'Electrical and Plumbing Items':               { items: [], total: 0 },
-      'Electronic Items':                            { items: [], total: 0 },
-      'Furniture and Fittings':                      { items: [], total: 0 },
-      'Vehicles':                                    { items: [], total: 0 },
-      'Live stock':                                  { items: [], total: 0 },
-      'Other Assets (Including Amortisable Assets)': { items: [], total: 0 },
-      'Other Assets (Nil Depreciation)':             { items: [], total: 0 }
-    },
-    'Prepared By': {
-      bank_name: '', branch_name: '',
-      j100: 'PARVEZ AND NARAYANA', j101: 'Chartered Accountants',
-      j102: 'Vijayawada', j103: '9014221011',
-      required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
-      banker_mobile: '',
-      banker_mail_id: '',
-      cibil_score: '',
-      ...(initialData['Prepared By'] || {})
-    }
+  const [formData, setFormData] = useState(() => {
+    const base = {
+      'General Information': {
+        i3: '', i4: '', i5: '', i6: '', i7: '', i8: '', i9: ''
+      },
+      'Means of Finance': {
+        i13: 0, h14: 0, h15: 0, h16: 0, i11: 'Yes', i12: 'No',
+      },
+      'Financial Years': {
+        i18: '', i19: '', i20: '', i21: ''
+      },
+      'Financial Statements': {
+        i23: 0, i24: 0, i25: 0, i26: 0, i27: 0, i28: 0, i29: 0, i30: 0,
+        i31: 0, i32: 0, i33: 0, i34: 0, i35: 0, i37: 0, i38: 0, i39: 0,
+        i40: 0, i41: 0, i44: 0, i45: 0, i46: 0, i47: 0
+      },
+      'Fixed Assets Schedule': {
+        'Plant and Machinery':                         { items: [], total: 0 },
+        'Service Equipment':                           { items: [], total: 0 },
+        'Shed, Construction and Civil works':          { items: [], total: 0 },
+        'Land':                                        { items: [], total: 0 },
+        'Electrical and Plumbing Items':               { items: [], total: 0 },
+        'Electronic Items':                            { items: [], total: 0 },
+        'Furniture and Fittings':                      { items: [], total: 0 },
+        'Vehicles':                                    { items: [], total: 0 },
+        'Live stock':                                  { items: [], total: 0 },
+        'Other Assets (Including Amortisable Assets)': { items: [], total: 0 },
+        'Other Assets (Nil Depreciation)':             { items: [], total: 0 }
+      },
+      'Prepared By': {
+        bank_name: '', branch_name: '',
+        j100: 'PARVEZ AND NARAYANA', j101: 'Chartered Accountants',
+        j102: 'Vijayawada', j103: '9014221011',
+        required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
+        banker_mobile: '',
+        banker_mail_id: '',
+        cibil_score: '',
+      }
+    };
+    const merged = mergeReportPrefill(base, initialData, { preferSaved: preferSavedValues });
+    merged['Means of Finance'] = finishMeansOfFinance(merged['Means of Finance'], initialData, { i11: 'Yes', i12: 'No' });
+    return merged;
   });
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -198,37 +201,17 @@ const FRCC4Form = ({
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
       console.log('📝 [FRCC4Form] Loading initial data:', initialData);
-      setFormData(prev => ({
-        ...prev,
-        ...initialData,
-        'General Information': {
-          ...(prev['General Information'] || {}),
-          ...(initialData['General Information'] || {}),
-        },
-        'Means of Finance': {
-          ...(prev['Means of Finance'] || {}),
-          ...(initialData['Means of Finance'] || {}),
-          i11: 'Yes',
-          i12: 'No',
-        },
-        'Financial Years': {
-          ...(prev['Financial Years'] || {}),
-          ...(initialData['Financial Years'] || {}),
-        },
-        'Financial Statements': {
-          ...(prev['Financial Statements'] || {}),
-          ...(initialData['Financial Statements'] || initialData['Audited Statements'] || {}),
-        },
-        'Fixed Assets Schedule': initialData['Fixed Assets Schedule'] || prev['Fixed Assets Schedule'],
-        'Prepared By': {
-          required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
-          banker_mobile: '',
-          banker_mail_id: '',
-          cibil_score: '',
-          ...(prev['Prepared By'] || {}),
-          ...(initialData['Prepared By'] || {}),
-        },
-      }));
+      setFormData(prev => {
+        const merged = mergeReportPrefill(prev, initialData, { preferSaved: preferSavedValues });
+        if (initialData['Audited Statements'] && !initialData['Financial Statements']) {
+          merged['Financial Statements'] = mergeReportPrefill(
+            merged['Financial Statements'],
+            initialData['Audited Statements']
+          );
+        }
+        merged['Means of Finance'] = finishMeansOfFinance(merged['Means of Finance'], initialData, { i11: 'Yes', i12: 'No' });
+        return merged;
+      });
     }
   }, [initialData]);
 
@@ -487,6 +470,7 @@ const FRCC4Form = ({
 
   const renderField = (field, sectionTitle) => {
     const value = formData[sectionTitle]?.[field.id] ?? '';
+    const disabled = meansFieldDisabled(field.disabled, value, initialData);
 
     if (field.type === 'computed') {
       return (
@@ -515,10 +499,10 @@ const FRCC4Form = ({
           </label>
           <select
             value={value}
-            onChange={(e) => !field.disabled && handleFieldChange(sectionTitle, field.id, e.target.value)}
-            disabled={!!field.disabled}
+            onChange={(e) => !disabled && handleFieldChange(sectionTitle, field.id, e.target.value)}
+            disabled={disabled}
             required={field.required}
-            className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 ${field.disabled ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'bg-white'}`}
+            className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 ${disabled ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'bg-white'}`}
           >
             <option value="">Select...</option>
             {field.options.map(option => (

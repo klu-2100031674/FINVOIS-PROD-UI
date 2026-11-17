@@ -28,6 +28,9 @@ import {
 } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import DepartmentEmailOverlay from './DepartmentEmailOverlay';
+import useAuth from '../../hooks/useAuth';
+import { effectiveUserRole } from '../../utils/normalizeUserRole';
+import { canShowReportFileButton } from '../../utils/reportDownloadVisibility';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -40,7 +43,6 @@ import {
   Legend,
 } from 'chart.js';
 import api, { apiErrorMessage } from '../../api/apiClient';
-import useAuth from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 import finvoisLogo from '../../assets/finvois.png';
 import RequestChatPanel from './RequestChatPanel';
@@ -84,7 +86,7 @@ async function downloadApprovedRequestFile(requestId, kind = 'pdf') {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-function ApprovedReportActions({ requestId }) {
+function ApprovedReportActions({ requestId, showPdf = true, showExcel = true }) {
   const [busy, setBusy] = useState(null);
 
   const run = async (action, fn) => {
@@ -98,48 +100,56 @@ function ApprovedReportActions({ requestId }) {
     }
   };
 
+  if (!showPdf && !showExcel) return null;
+
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
-      <button
-        type="button"
-        disabled={!!busy}
-        onClick={(e) => {
-          e.stopPropagation();
-          run('view', () => viewApprovedRequestPdf(requestId));
-        }}
-        className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 disabled:opacity-50"
-        title="View PDF"
-      >
-        <Eye className="h-4 w-4 shrink-0" />
-        {busy === 'view' ? 'Opening…' : 'View report'}
-      </button>
+      {showPdf && (
+        <button
+          type="button"
+          disabled={!!busy}
+          onClick={(e) => {
+            e.stopPropagation();
+            run('view', () => viewApprovedRequestPdf(requestId));
+          }}
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 disabled:opacity-50"
+          title="View PDF"
+        >
+          <Eye className="h-4 w-4 shrink-0" />
+          {busy === 'view' ? 'Opening…' : 'View report'}
+        </button>
+      )}
       <div className="grid grid-cols-2 gap-2 sm:min-w-[220px]">
-        <button
-          type="button"
-          disabled={!!busy}
-          onClick={(e) => {
-            e.stopPropagation();
-            run('pdf', () => downloadApprovedRequestFile(requestId, 'pdf'));
-          }}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          title="Download PDF"
-        >
-          <Download className="h-4 w-4 shrink-0 text-gray-500" />
-          {busy === 'pdf' ? '…' : 'PDF'}
-        </button>
-        <button
-          type="button"
-          disabled={!!busy}
-          onClick={(e) => {
-            e.stopPropagation();
-            run('excel', () => downloadApprovedRequestFile(requestId, 'excel'));
-          }}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          title="Download Excel"
-        >
-          <FileSpreadsheet className="h-4 w-4 shrink-0 text-emerald-600" />
-          {busy === 'excel' ? '…' : 'Excel'}
-        </button>
+        {showPdf && (
+          <button
+            type="button"
+            disabled={!!busy}
+            onClick={(e) => {
+              e.stopPropagation();
+              run('pdf', () => downloadApprovedRequestFile(requestId, 'pdf'));
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            title="Download PDF"
+          >
+            <Download className="h-4 w-4 shrink-0 text-gray-500" />
+            {busy === 'pdf' ? '…' : 'PDF'}
+          </button>
+        )}
+        {showExcel && (
+          <button
+            type="button"
+            disabled={!!busy}
+            onClick={(e) => {
+              e.stopPropagation();
+              run('excel', () => downloadApprovedRequestFile(requestId, 'excel'));
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            title="Download Excel"
+          >
+            <FileSpreadsheet className="h-4 w-4 shrink-0 text-emerald-600" />
+            {busy === 'excel' ? '…' : 'Excel'}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -273,6 +283,8 @@ function collectFormFileDocs(request) {
 }
 
 function RequestDetailPanel({ request }) {
+  const { user } = useAuth();
+  const keepAdminDownloads = effectiveUserRole(user) === 'admin';
   const fields = request.formId?.fields || [];
   const submittedData = request.submittedData || {};
   const detailFields = fields.filter((f) => !isPrimaryField(f));
@@ -364,11 +376,15 @@ function RequestDetailPanel({ request }) {
         </div>
       </div>
 
-      {reportApproved && requestId ? (
+      {requestId && (keepAdminDownloads ? reportApproved : (canShowReportFileButton(request.reportId, 'pdf') || canShowReportFileButton(request.reportId, 'excel'))) ? (
         <section>
           <h4 className="text-sm font-semibold text-gray-900 mb-2">Generated report</h4>
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
-            <ApprovedReportActions requestId={requestId} />
+            <ApprovedReportActions
+              requestId={requestId}
+              showPdf={keepAdminDownloads || canShowReportFileButton(request.reportId, 'pdf')}
+              showExcel={keepAdminDownloads || canShowReportFileButton(request.reportId, 'excel')}
+            />
           </div>
         </section>
       ) : (

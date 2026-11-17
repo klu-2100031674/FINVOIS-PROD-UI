@@ -17,6 +17,7 @@ import {
 import SaveDraftButton from '../common/SaveDraftButton';
 
 import { FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_BANKER_MOBILE_FIELD, PREPARED_BY_CIBIL_FIELD } from '../../utils/frccFormUi';
+import { finishMeansOfFinance, meansFieldDisabled, mergeReportPrefill } from '../../utils/mergeReportPrefill';
 
 // Generate financial year options in 2024-25 format, current year to +20 years
 const generateFinancialYearOptions = () => {
@@ -142,6 +143,7 @@ const FRCC1Form = ({
   onSubmit,
   templateId = 'frcc1-financial-form',
   initialData = null,
+  preferSavedValues = false,
   isEditMode = false,
   reportId = null,
   isProcessing = false,
@@ -188,18 +190,9 @@ const FRCC1Form = ({
 
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState(() => {
-    const base = buildEmptyState();
-    if (!initialData || Object.keys(initialData).length === 0) return base;
-    return {
-      ...base,
-      ...initialData,
-      "General Information": { ...base["General Information"], ...(initialData["General Information"] || {}) },
-      "Means of Finance": { ...base["Means of Finance"], ...(initialData["Means of Finance"] || {}), "i12": "No" },
-      "Financial Years": { ...base["Financial Years"], ...(initialData["Financial Years"] || {}) },
-      "Indirect Expenses": { ...base["Indirect Expenses"], ...(initialData["Indirect Expenses"] || {}) },
-      "Fixed Assets Schedule": initialData["Fixed Assets Schedule"] || base["Fixed Assets Schedule"],
-      "Prepared By": { ...base["Prepared By"], ...(initialData["Prepared By"] || {}) },
-    };
+    const merged = mergeReportPrefill(buildEmptyState(), initialData, { preferSaved: preferSavedValues });
+    merged['Means of Finance'] = finishMeansOfFinance(merged['Means of Finance'], initialData, { i12: 'No' }, { force: true });
+    return merged;
   });
 
   const [finalJson, setFinalJson] = useState(null);
@@ -210,36 +203,11 @@ const FRCC1Form = ({
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
       console.log('📝 [FRCC1Form] Loading initial data:', initialData);
-      setFormData(prev => ({
-        ...prev,
-        ...initialData,
-        "General Information": {
-          ...(prev["General Information"] || {}),
-          ...(initialData["General Information"] || {})
-        },
-        "Means of Finance": {
-          ...(prev["Means of Finance"] || {}),
-          ...(initialData["Means of Finance"] || {}),
-          "i12": "No",
-        },
-        "Financial Years": {
-          ...(prev["Financial Years"] || {}),
-          ...(initialData["Financial Years"] || {})
-        },
-        "Indirect Expenses": {
-          ...(prev["Indirect Expenses"] || {}),
-          ...(initialData["Indirect Expenses"] || {})
-        },
-        "Fixed Assets Schedule": initialData["Fixed Assets Schedule"] || prev["Fixed Assets Schedule"] || buildEmptyState()["Fixed Assets Schedule"],
-        "Prepared By": {
-          required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
-          banker_mobile: '',
-          banker_mail_id: '',
-          cibil_score: '',
-          ...(prev["Prepared By"] || {}),
-          ...(initialData["Prepared By"] || {}),
-        }
-      }));
+      setFormData(prev => {
+        const merged = mergeReportPrefill(prev, initialData, { preferSaved: preferSavedValues });
+        merged['Means of Finance'] = finishMeansOfFinance(merged['Means of Finance'], initialData, { i12: 'No' }, { force: true });
+        return merged;
+      });
     }
   }, [initialData]);
 
@@ -757,6 +725,7 @@ const FRCC1Form = ({
               />
             ) : (
               <RegularFieldsSection
+                initialData={initialData}
                 section={currentSection}
                 data={formData[currentSection.title]}
                 onUpdate={updateField}
@@ -828,11 +797,13 @@ const FRCC1Form = ({
 };
 
 // Regular fields section component
-const RegularFieldsSection = ({ section, data = {}, onUpdate, fieldErrors = {} }) => {
+const RegularFieldsSection = ({ section, data = {}, onUpdate, fieldErrors = {}, initialData = null }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {section.fields.map(field => {
         const err = fieldErrors[`${section.title}.${field.id}`];
+        const value = data[field.id] || '';
+        const disabled = meansFieldDisabled(field.disabled, value, initialData);
         return (
           <div key={field.id} className="space-y-1.5">
             <label style={{ fontFamily: 'Manrope, sans-serif' }} className="block text-xs font-semibold text-gray-800">
@@ -840,10 +811,10 @@ const RegularFieldsSection = ({ section, data = {}, onUpdate, fieldErrors = {} }
             </label>
             {field.type === 'select' ? (
               <select
-                value={data[field.id] || ''}
-                onChange={(e) => !field.disabled && onUpdate(section.title, field.id, e.target.value)}
-                disabled={!!field.disabled}
-                className={`w-full px-3 py-2 text-sm border ${err ? 'border-red-400' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 ${field.disabled ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'bg-white'}`}
+                value={value}
+                onChange={(e) => !disabled && onUpdate(section.title, field.id, e.target.value)}
+                disabled={disabled}
+                className={`w-full px-3 py-2 text-sm border ${err ? 'border-red-400' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 ${disabled ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'bg-white'}`}
               >
                 <option value="">Select...</option>
                 {field.options.map(opt => (

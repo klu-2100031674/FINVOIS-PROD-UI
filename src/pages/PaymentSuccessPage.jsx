@@ -3,7 +3,7 @@
  * Displayed after successful payment
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   CheckCircleIcon,
@@ -11,21 +11,86 @@ import {
   ArrowRightIcon,
   ReceiptRefundIcon,
 } from '@heroicons/react/24/outline';
+import api from '../api/apiClient';
+import { useAuth } from '../hooks';
+import { effectiveUserRole } from '../utils/normalizeUserRole';
+
+const WIZARD_ROLES = ['user', 'company_user', 'company_admin', 'admin', 'agent', 'customer_service'];
 
 const PaymentSuccessPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const { order, credits, amount, paymentId } = location.state || {};
+  const [openingReport, setOpeningReport] = useState(false);
+  const query = new URLSearchParams(location.search);
+  const reportId = query.get('reportId') || '';
+  const templateId = query.get('templateId') || '';
+  const linkStatus = query.get('razorpay_payment_link_status') || '';
 
-  // If no order data, redirect to dashboard
   useEffect(() => {
+    if (!reportId) return undefined;
+    let cancelled = false;
+
+    const openReport = async () => {
+      setOpeningReport(true);
+      if (linkStatus && linkStatus !== 'paid') {
+        navigate('/payment-failure', { replace: true });
+        return;
+      }
+      try {
+        if (query.get('razorpay_signature')) {
+          await api.post('/reports/payment-link-return', {
+            reportId,
+            razorpay_payment_id: query.get('razorpay_payment_id') || '',
+            razorpay_payment_link_id: query.get('razorpay_payment_link_id') || '',
+            razorpay_payment_link_reference_id: query.get('razorpay_payment_link_reference_id') || '',
+            razorpay_payment_link_status: linkStatus || 'paid',
+            razorpay_signature: query.get('razorpay_signature') || '',
+          });
+        }
+      } catch {
+        // The webhook may already have marked the payment. Opening the report still proceeds.
+      }
+      if (cancelled) return;
+      const role = effectiveUserRole(user);
+      if (templateId && WIZARD_ROLES.includes(role)) {
+        const params = new URLSearchParams({ templateId, paidReportId: reportId });
+        navigate(`/generate?${params.toString()}`, { replace: true });
+        return;
+      }
+      navigate('/reports', { replace: true });
+    };
+
+    openReport();
+    return () => {
+      cancelled = true;
+    };
+  }, [reportId, templateId, linkStatus, navigate, user]);
+
+  // Credit purchases have no report id. Send those visitors back to the dashboard.
+  useEffect(() => {
+    if (reportId) return undefined;
     if (!order && !credits) {
       const timer = setTimeout(() => {
         navigate('/dashboard');
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [order, credits, navigate]);
+    return undefined;
+  }, [order, credits, navigate, reportId]);
+
+  if (reportId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-50 flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 text-center max-w-lg w-full">
+          <CheckCircleIcon className="w-12 h-12 text-green-600 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Payment received</h1>
+          <p className="text-gray-600">{openingReport ? 'Opening your report…' : 'Taking you to the report.'}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-50 flex items-center justify-center px-4 py-12">

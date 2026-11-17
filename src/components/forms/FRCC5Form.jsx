@@ -14,6 +14,7 @@ import {
 import SaveDraftButton from '../common/SaveDraftButton';
 
 import { getAuditedSectionDisplayTitle, isOpeningStockField, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_BANKER_MOBILE_FIELD, PREPARED_BY_CIBIL_FIELD } from '../../utils/frccFormUi';
+import { finishMeansOfFinance, meansFieldDisabled, mergeReportPrefill } from '../../utils/mergeReportPrefill';
 
 // Fixed Assets Mapping - Matches Excel Template CC5 Exactly
 const fixedAssetsMapping = {
@@ -70,45 +71,46 @@ const validateFixedAssetsData = (formData) => {
 const FRCC5Form = ({
   onSubmit,
   initialData = {},
+  preferSavedValues = false,
   isEditMode = false,
   reportId = null,
   isProcessing = false,
   onFormDataChange = null,
   templateId = null
 }) => {
-  const [formData, setFormData] = useState({
-    'General Information': initialData?.['General Information'] || {},
-    'Means of Finance': {
-      ...(initialData?.['Means of Finance'] || {}),
-      i11: 'Yes',
-      i12: 'Yes',
-    },
-    'Financial Years': initialData?.['Financial Years'] || {},
-    'Audited Financial Statements': initialData?.['Audited Financial Statements'] || {},
-    'Fixed Assets Schedule': initialData?.['Fixed Assets Schedule'] || {
-      'Plant and Machinery': { items: [], total: 0 },
-      'Service Equipment': { items: [], total: 0 },
-      'Shed, Construction and Civil works': { items: [], total: 0 },
-      'Land': { items: [], total: 0 },
-      'Electrical and Plumbing Items': { items: [], total: 0 },
-      'Electronic Items': { items: [], total: 0 },
-      'Furniture and Fittings': { items: [], total: 0 },
-      'Vehicles': { items: [], total: 0 },
-      'Live stock': { items: [], total: 0 },
-      'Other Assets (Including Amortisable Assets)': { items: [], total: 0 },
-      'Other Assets (Nil Depreciation)': { items: [], total: 0 }
-    },
-    'Prepared By': {
-      j99: 'PARVEZ AND NARAYANA',
-      j100: 'Chartered Accountants',
-      j101: 'Vijayawada',
-      j102: '9014221011',
-      required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
-      banker_mobile: '',
-      banker_mail_id: '',
-      cibil_score: '',
-      ...(initialData?.['Prepared By'] || {})
-    }
+  const [formData, setFormData] = useState(() => {
+    const base = {
+      'General Information': {},
+      'Means of Finance': { i11: 'Yes', i12: 'Yes' },
+      'Financial Years': {},
+      'Audited Financial Statements': {},
+      'Fixed Assets Schedule': {
+        'Plant and Machinery': { items: [], total: 0 },
+        'Service Equipment': { items: [], total: 0 },
+        'Shed, Construction and Civil works': { items: [], total: 0 },
+        'Land': { items: [], total: 0 },
+        'Electrical and Plumbing Items': { items: [], total: 0 },
+        'Electronic Items': { items: [], total: 0 },
+        'Furniture and Fittings': { items: [], total: 0 },
+        'Vehicles': { items: [], total: 0 },
+        'Live stock': { items: [], total: 0 },
+        'Other Assets (Including Amortisable Assets)': { items: [], total: 0 },
+        'Other Assets (Nil Depreciation)': { items: [], total: 0 }
+      },
+      'Prepared By': {
+        j99: 'PARVEZ AND NARAYANA',
+        j100: 'Chartered Accountants',
+        j101: 'Vijayawada',
+        j102: '9014221011',
+        required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
+        banker_mobile: '',
+        banker_mail_id: '',
+        cibil_score: '',
+      }
+    };
+    const merged = mergeReportPrefill(base, initialData, { preferSaved: preferSavedValues });
+    merged['Means of Finance'] = finishMeansOfFinance(merged['Means of Finance'], initialData, { i11: 'Yes', i12: 'Yes' });
+    return merged;
   });
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -213,28 +215,11 @@ const FRCC5Form = ({
 
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
-      setFormData(prev => ({
-        ...prev,
-        ...initialData,
-        'Means of Finance': {
-          ...(prev['Means of Finance'] || {}),
-          ...(initialData?.['Means of Finance'] || {}),
-          i11: 'Yes',
-          i12: 'Yes',
-        },
-        'Fixed Assets Schedule': {
-          ...(prev['Fixed Assets Schedule'] || {}),
-          ...(initialData?.['Fixed Assets Schedule'] || {}),
-        },
-        'Prepared By': {
-          required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
-          banker_mobile: '',
-          banker_mail_id: '',
-          cibil_score: '',
-          ...(prev['Prepared By'] || {}),
-          ...(initialData?.['Prepared By'] || {}),
-        },
-      }));
+      setFormData(prev => {
+        const merged = mergeReportPrefill(prev, initialData, { preferSaved: preferSavedValues });
+        merged['Means of Finance'] = finishMeansOfFinance(merged['Means of Finance'], initialData, { i11: 'Yes', i12: 'Yes' });
+        return merged;
+      });
     }
   }, [initialData]);
 
@@ -695,6 +680,7 @@ const FRCC5Form = ({
 
   const renderField = (field, sectionTitle) => {
     const value = formData[sectionTitle]?.[field.id] ?? '';
+    const disabled = meansFieldDisabled(field.disabled, value, initialData);
 
     if (field.type === 'computed') {
       return (
@@ -723,10 +709,10 @@ const FRCC5Form = ({
           </label>
           <select
             value={value}
-            onChange={(e) => !field.disabled && handleFieldChange(sectionTitle, field.id, e.target.value)}
-            disabled={!!field.disabled}
+            onChange={(e) => !disabled && handleFieldChange(sectionTitle, field.id, e.target.value)}
+            disabled={disabled}
             required={field.required}
-            className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 ${field.disabled ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'bg-white'}`}
+            className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 ${disabled ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'bg-white'}`}
           >
             <option value="">Select...</option>
             {field.options.map(option => (

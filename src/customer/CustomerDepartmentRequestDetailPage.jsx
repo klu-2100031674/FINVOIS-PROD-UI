@@ -18,7 +18,7 @@ import toast from 'react-hot-toast';
 import useAuth from '../hooks/useAuth';
 import RequestDocumentsPanel from '../components/department/RequestDocumentsPanel';
 import RequestChatPanel from '../components/department/RequestChatPanel';
-import CustomerPayNowButton, { ForwardToBankManagerButton } from './CustomerPayNowButton';
+import CustomerPayNowButton, { CopyPaymentLinkButton, ForwardToBankManagerButton } from './CustomerPayNowButton';
 import {
   canDownloadPdf,
   celebrationStorageKey,
@@ -348,6 +348,7 @@ const CustomerDepartmentRequestDetailPage = () => {
                         request={request}
                         onForwarded={() => loadRequest({ silent: true })}
                       />
+                      <CopyPaymentLinkButton request={request} />
                       <CustomerPayNowButton
                         request={request}
                         onPaid={() => loadRequest({ silent: true })}
@@ -410,6 +411,7 @@ const CustomerDepartmentRequestDetailPage = () => {
               )}
             </div>
             <div className="flex items-center gap-2.5">
+              <CopyPaymentLinkButton request={request} />
               <ForwardToBankManagerButton
                 request={request}
                 onForwarded={() => loadRequest({ silent: true })}
@@ -499,11 +501,12 @@ const CustomerDepartmentRequestDetailPage = () => {
                   request={request}
                   onForwarded={() => loadRequest({ silent: true })}
                 />
-                <CustomerPayNowButton
-                  request={request}
-                  onPaid={() => loadRequest({ silent: true })}
-                  className="inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold text-white bg-yellow-600 hover:bg-yellow-700 rounded-lg disabled:opacity-60 shrink-0"
-                />
+              <CopyPaymentLinkButton request={request} />
+              <CustomerPayNowButton
+                request={request}
+                onPaid={() => loadRequest({ silent: true })}
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold text-white bg-yellow-600 hover:bg-yellow-700 rounded-lg disabled:opacity-60 shrink-0"
+              />
               </div>
             </div>
           ) : (

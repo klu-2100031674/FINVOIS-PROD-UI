@@ -20,6 +20,7 @@ import {
 import toast from 'react-hot-toast';
 import { AgentLayout } from '../../components/layouts';
 import api from '../../api/apiClient';
+import { canShowReportFileButton } from '../../utils/reportDownloadVisibility';
 
 const getStatusBadge = (status) => {
   const statusConfig = {
@@ -351,7 +352,7 @@ const AgentReferralUserReportsPage = () => {
                     <div className="col-span-2">{getStatusBadge(report.validation_status)}</div>
 
                     <div className="col-span-2 flex items-center justify-end gap-2">
-                      {report.pdf_file_url && (
+                      {canShowReportFileButton(report, 'pdf') && (
                         <button
                           type="button"
                           onClick={() => handleViewPdf(report)}
@@ -362,14 +363,16 @@ const AgentReferralUserReportsPage = () => {
                         </button>
                       )}
 
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadExcel(report)}
-                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                        title="Download Excel"
-                      >
-                        <FileSpreadsheet size={18} />
-                      </button>
+                      {canShowReportFileButton(report, 'excel') && (
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadExcel(report)}
+                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                          title="Download Excel"
+                        >
+                          <FileSpreadsheet size={18} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

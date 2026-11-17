@@ -17,6 +17,9 @@ import {
 import SaveDraftButton from '../common/SaveDraftButton';
 import { FRCC_REQUIRED_STAMP_DEFAULT } from '../../utils/frccFormUi';
 import { assetRowIsOpen, readOpenAssetRows, withOpenAssetRow, withoutOpenAssetRow } from '../../utils/assetOpenRows';
+import { indirectScheduleMatches, mergeReportPrefill } from '../../utils/mergeReportPrefill';
+import { alignNamedCellSchedule } from '../../utils/assetScheduleState';
+import { buildEditableDraftSnapshot, readWizardStep } from '../../utils/draftLifecycle';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -54,7 +57,7 @@ const ASSET_SECTIONS_TENURE_GT7 = {
   'Vehicles': { start: 197, end: 206, loanCell: 'k35' },
   'Live stock': { start: 207, end: 215, loanCell: 'k36' },
   'Other Assets (Nil Depreciation)': { start: 216, end: 225, loanCell: 'k37' },
-  'Other Assets(Nil Depreciation)': { start: 226, end: 235, loanCell: 'k38' },
+  'Other Assets (Including Amortisable Assets)': { start: 226, end: 235, loanCell: 'k38' },
   'Non Current Assets (Deposits , Advances etc)': { start: 236, end: 245, loanCell: 'k39' }
 };
 
@@ -248,6 +251,7 @@ const LEGACY_SERVICE_WITHOUT_STOCK_LABEL = 'Service Sector (Without stock)';
 const FRTermLoanForm = ({
   onSubmit,
   initialData = {},
+  preferSavedValues = false,
   isEditMode = false,
   reportId = null,
   isProcessing = false,
@@ -328,8 +332,8 @@ const FRTermLoanForm = ({
         'd275': 'Customer discounts / rebates', 'e275': 0,
         'd276': 'Warranty & after-sales service expenses', 'e276': 0,
         'd277': 'Bad debts written off', 'e277': 0,
-        'd278': 'Business entertainment expenses', 'e278': 0.08,
-        'd279': 'Other Selling and Distribution Expenses', 'e279': 8000
+        'd278': 'Business entertainment expenses', 'e278': 0,
+        'd279': 'Other Selling and Distribution Expenses', 'e279': 0
       },
       'General Overheads': {
         'd280': 'Insurance (office, employee, general liability)', 'e280': 0,
@@ -339,7 +343,7 @@ const FRTermLoanForm = ({
         'd284': 'Fuel & maintenance for delivery vehicles', 'e284': 0,
         'd285': 'Rent, rates, and taxes (non-factory premises)', 'e285': 0,
         'd286': 'AMC (Annual Maintenance Contracts)', 'e286': 0,
-        'd287': 'Other General Overhead expenses', 'e287': 0.1
+        'd287': 'Other General Overhead expenses', 'e287': 0
       },
       'Miscellaneous Expenses': {
         'd288': 'Donation & charity (if not CSR)', 'e288': 0,
@@ -365,28 +369,7 @@ const FRTermLoanForm = ({
     };
 
     if (initialData && Object.keys(initialData).length > 0) {
-      // Merge initialData with default structure
-      const merged = { ...defaultFormData };
-      for (const key in initialData) {
-        if (Object.hasOwn(initialData, key)) {
-          if (typeof initialData[key] === 'object' && initialData[key] !== null && typeof merged[key] === 'object' && merged[key] !== null) {
-            if (key === 'Schedule for Indirect Expenses') {
-              // Deep-merge categories so empty MSME stubs do not wipe e251–e258 defaults
-              merged[key] = { ...merged[key] };
-              for (const category of Object.keys(initialData[key])) {
-                merged[key][category] = {
-                  ...(merged[key][category] || {}),
-                  ...(initialData[key][category] || {}),
-                };
-              }
-            } else {
-              merged[key] = { ...merged[key], ...initialData[key] };
-            }
-          } else {
-            merged[key] = initialData[key];
-          }
-        }
-      }
+      const merged = mergeReportPrefill(defaultFormData, initialData, { preferSaved: preferSavedValues });
       if (merged['General Information']) {
         merged['General Information'] = canonicalizeServiceWithoutStock(merged['General Information']);
       }
@@ -408,7 +391,7 @@ const FRTermLoanForm = ({
     return base;
   });
 
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(() => readWizardStep(initialData, 6));
   const [activeAssetTab, setActiveAssetTab] = useState(0);
   const [indirectActiveTab, setIndirectActiveTab] = useState(0);
   const [visitedExpenseCategories, setVisitedExpenseCategories] = useState(new Set([0]));
@@ -462,8 +445,6 @@ const FRTermLoanForm = ({
 
   // Track categories that have items entered
   const [categoriesWithItems, setCategoriesWithItems] = useState(new Set());
-  // Track rows that should stay visible even if user clears text/amount
-  const [assetVisibleRowsByCategory, setAssetVisibleRowsByCategory] = useState({});
 
   // Error states for validation
   const [assetValidationErrors, setAssetValidationErrors] = useState({});
@@ -479,31 +460,7 @@ const FRTermLoanForm = ({
 
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
-      setFormData(prevFormData => {
-        const merged = { ...prevFormData };
-        for (const sectionKey in initialData) {
-          if (Object.hasOwn(initialData, sectionKey)) {
-            if (typeof initialData[sectionKey] === 'object' && initialData[sectionKey] !== null &&
-              typeof merged[sectionKey] === 'object' && merged[sectionKey] !== null &&
-              !Array.isArray(initialData[sectionKey])) {
-              if (sectionKey === 'Schedule for Indirect Expenses') {
-                merged[sectionKey] = { ...merged[sectionKey] };
-                for (const cat of Object.keys(initialData[sectionKey])) {
-                  merged[sectionKey][cat] = {
-                    ...(merged[sectionKey][cat] || {}),
-                    ...(initialData[sectionKey][cat] || {}),
-                  };
-                }
-              } else {
-                merged[sectionKey] = { ...merged[sectionKey], ...initialData[sectionKey] };
-              }
-            } else {
-              merged[sectionKey] = initialData[sectionKey];
-            }
-          }
-        }
-        return merged;
-      });
+      setFormData(prevFormData => mergeReportPrefill(prevFormData, initialData, { preferSaved: preferSavedValues }));
 
       const newTenure = initialData?.['Term Loan Details']?.i46 !== undefined
         ? parseInt(initialData['Term Loan Details'].i46, 10)
@@ -528,31 +485,6 @@ const FRTermLoanForm = ({
       onFormDataChange(formData);
     }
   }, [formData, onFormDataChange]);
-
-  useEffect(() => {
-    setAssetVisibleRowsByCategory(prev => {
-      const next = { ...prev };
-
-      Object.entries(CURRENT_ASSET_SECTIONS).forEach(([categoryName, section]) => {
-        const rowSet = new Set(next[categoryName] || []);
-
-        for (let i = section.start; i <= section.end; i++) {
-          const desc = formData['Schedule for Assets']?.[`d${i}`] || '';
-          const amount = formData['Schedule for Assets']?.[`e${i}`] || '';
-          const hasAmount = amount !== '' && amount !== null && amount !== undefined && Number(amount) !== 0;
-          const openRows = readOpenAssetRows(formData['Schedule for Assets']);
-
-          if (openRows.has(i) || desc !== '' || hasAmount) {
-            rowSet.add(i);
-          }
-        }
-
-        next[categoryName] = Array.from(rowSet).sort((a, b) => a - b);
-      });
-
-      return next;
-    });
-  }, [CURRENT_ASSET_SECTIONS, formData]);
 
   // Reinitialize indirect expenses when tenure changes
   useEffect(() => {
@@ -591,10 +523,12 @@ const FRTermLoanForm = ({
         sampleCategory: Object.keys(nestedIndirect)[0]
       });
 
-      setFormData(prev => ({
-        ...prev,
-        'Schedule for Indirect Expenses': nestedIndirect
-      }));
+      setFormData(prev => {
+        const nextSchedule = nestedIndirect;
+        const existing = prev['Schedule for Indirect Expenses'];
+        if (indirectScheduleMatches(existing, nextSchedule)) return prev;
+        return { ...prev, 'Schedule for Indirect Expenses': nextSchedule };
+      });
 
       // Mark that expenses have been initialized for GT7 if applicable
       if (currentIsGT7) {
@@ -602,6 +536,22 @@ const FRTermLoanForm = ({
       } else {
         expensesInitializedForGT7Ref.current = false;
       }
+    }
+
+    const assetWindowChanged =
+      (prevTenure === null && currentIsGT7) ||
+      (prevTenure !== null && liveTenure !== null && prevIsGT7 !== currentIsGT7);
+    if (assetWindowChanged) {
+      setFormData((prev) => {
+        const schedule = prev['Schedule for Assets'];
+        const aligned = alignNamedCellSchedule(
+          schedule,
+          getAssetSections(liveTenure),
+          getAssetSections(prevTenure),
+        );
+        if (aligned === schedule) return prev;
+        return { ...prev, 'Schedule for Assets': aligned };
+      });
     }
 
     prevTenureRef.current = liveTenure;
@@ -897,35 +847,30 @@ const FRTermLoanForm = ({
   const getAssetItems = useCallback((categoryName) => {
     const section = CURRENT_ASSET_SECTIONS[categoryName];
     if (!section) return [];
-    const visibleRows = new Set(assetVisibleRowsByCategory[categoryName] || []);
+    const schedule = formData['Schedule for Assets'];
     const items = [];
     for (let i = section.start; i <= section.end; i++) {
-      const desc = formData['Schedule for Assets'][`d${i}`] || '';
-      const amount = formData['Schedule for Assets'][`e${i}`] || '';
-      const hasAmount = amount !== '' && amount !== null && amount !== undefined && Number(amount) !== 0;
-      if (visibleRows.has(i) || assetRowIsOpen(formData['Schedule for Assets'], i, desc, amount)) {
+      const desc = schedule?.[`d${i}`] ?? '';
+      const amount = schedule?.[`e${i}`] ?? '';
+      if (assetRowIsOpen(schedule, i, desc, amount)) {
         items.push({ row: i, description: desc, amount: amount });
       }
     }
     return items;
-  }, [formData, CURRENT_ASSET_SECTIONS, assetVisibleRowsByCategory]);
+  }, [formData, CURRENT_ASSET_SECTIONS]);
 
   // Add asset item to a category
   const addAssetItem = useCallback((categoryName) => {
     const section = CURRENT_ASSET_SECTIONS[categoryName];
-    const visibleRows = new Set(assetVisibleRowsByCategory[categoryName] || []);
+    if (!section) return;
     const openRows = readOpenAssetRows(formData['Schedule for Assets']);
 
     for (let i = section.start; i <= section.end; i++) {
       const desc = formData['Schedule for Assets'][`d${i}`];
       const amount = formData['Schedule for Assets'][`e${i}`];
-      const isEmpty = (desc === '' || desc === undefined) && (amount === '' || amount === undefined || Number(amount) === 0);
-      if (!visibleRows.has(i) && !openRows.has(i) && isEmpty) {
-        setAssetVisibleRowsByCategory(prev => ({
-          ...prev,
-          [categoryName]: [...(prev[categoryName] || []), i].sort((a, b) => a - b)
-        }));
-
+      const descBlank = desc == null || String(desc).trim() === '';
+      const amountBlank = amount == null || String(amount).trim() === '' || Number(amount) === 0;
+      if (!openRows.has(i) && descBlank && amountBlank) {
         setFormData(prev => ({
           ...prev,
           'Schedule for Assets': withOpenAssetRow({
@@ -940,7 +885,7 @@ const FRTermLoanForm = ({
       }
     }
     alert('Maximum items reached for this category.');
-  }, [formData, CURRENT_ASSET_SECTIONS, assetVisibleRowsByCategory]);
+  }, [formData, CURRENT_ASSET_SECTIONS]);
 
   // Update asset item
   const updateAssetItem = useCallback((row, field, value) => {
@@ -951,18 +896,6 @@ const FRTermLoanForm = ({
         categoryName = cat;
         break;
       }
-    }
-
-    if (categoryName) {
-      setAssetVisibleRowsByCategory(prev => {
-        const existing = new Set(prev[categoryName] || []);
-        if (existing.has(row)) return prev;
-        existing.add(row);
-        return {
-          ...prev,
-          [categoryName]: Array.from(existing).sort((a, b) => a - b)
-        };
-      });
     }
 
     setFormData(prev => {
@@ -1011,13 +944,6 @@ const FRTermLoanForm = ({
         categoryName = cat;
         break;
       }
-    }
-
-    if (categoryName) {
-      setAssetVisibleRowsByCategory(prev => ({
-        ...prev,
-        [categoryName]: (prev[categoryName] || []).filter((r) => r !== row)
-      }));
     }
 
     setFormData(prev => {
@@ -1345,7 +1271,7 @@ const FRTermLoanForm = ({
           >
             <option value="">Select Sector</option>
             <option value="Manufacturing sector">Manufacturing sector</option>
-            {/* <option value="Service Sector (With stock)">Service Sector (With stock)</option> */}
+            <option value="service sector with stock">service sector with stock</option>
             <option value="service sector without stock">service sector without stock</option>
             <option value="Trading sector">Trading sector</option>
           </select>
@@ -1999,7 +1925,7 @@ const FRTermLoanForm = ({
                     <div className="relative">
                       <input
                         type="text"
-                        value={loanPercentages[activeCategoryName] || ''}
+                        value={loanPercentages[activeCategoryName] ?? ''}
                         onChange={(e) => handleLoanPercentageChange(activeCategoryName, e.target.value)}
                         className="w-full px-3 py-2 text-sm border-2 border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white"
                         placeholder="Enter loan %"
@@ -2530,7 +2456,11 @@ const FRTermLoanForm = ({
     };
   };
 
-  const getDraftSnapshot = () => buildSubmitPayload();
+  const getDraftSnapshot = () => buildEditableDraftSnapshot(formData, {
+    _wizardStep: currentStep,
+    'Asset Loan Percentages': loanPercentages,
+    'Asset Loan Amounts': loanAmounts,
+  });
 
   const handleSubmit = () => {
     onSubmit(buildSubmitPayload());

@@ -22,6 +22,9 @@ import {
 import toast from 'react-hot-toast';
 import { AdminLayout } from '../../components/layouts';
 import api from '../../api/apiClient';
+import { useAuth } from '../../hooks';
+import { effectiveUserRole } from '../../utils/normalizeUserRole';
+import { canShowReportFileButton } from '../../utils/reportDownloadVisibility';
 
 const normalizeId = (v) => String(v || '').trim();
 
@@ -59,6 +62,8 @@ const getStatusBadge = (status) => {
 };
 
 const CompanyUserReportsByPersonPage = () => {
+  const { user } = useAuth();
+  const keepAdminDownloads = effectiveUserRole(user) === 'admin';
   const navigate = useNavigate();
   const location = useLocation();
   const { userId } = useParams();
@@ -378,7 +383,7 @@ const CompanyUserReportsByPersonPage = () => {
                     <div className="col-span-2">{getStatusBadge(report.validation_status)}</div>
 
                     <div className="col-span-2 flex items-center justify-end gap-2">
-                      {report.pdf_file_url && (
+                      {(keepAdminDownloads ? report.pdf_file_url : canShowReportFileButton(report, 'pdf')) && (
                         <button
                           type="button"
                           onClick={() => handleViewPdf(report)}
@@ -389,14 +394,16 @@ const CompanyUserReportsByPersonPage = () => {
                         </button>
                       )}
 
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadExcel(report)}
-                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                        title="Download Excel"
-                      >
-                        <FileSpreadsheet size={18} />
-                      </button>
+                      {(keepAdminDownloads || canShowReportFileButton(report, 'excel')) && (
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadExcel(report)}
+                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                          title="Download Excel"
+                        >
+                          <FileSpreadsheet size={18} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

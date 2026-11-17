@@ -16,6 +16,7 @@ import {
 import SaveDraftButton from '../common/SaveDraftButton';
 
 import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_BANKER_MOBILE_FIELD, PREPARED_BY_CIBIL_FIELD } from '../../utils/frccFormUi';
+import { finishMeansOfFinance, meansFieldDisabled, mergeReportPrefill } from '../../utils/mergeReportPrefill';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -148,6 +149,7 @@ const FRCC3Form = ({
   onSubmit,
   templateId = 'frcc3',
   initialData = null,
+  preferSavedValues = false,
   isEditMode = false,
   reportId = null,
   isProcessing = false,
@@ -198,18 +200,9 @@ const FRCC3Form = ({
 
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState(() => {
-    const base = buildEmptyState();
-    if (!initialData || Object.keys(initialData).length === 0) return base;
-    return {
-      ...base,
-      ...initialData,
-      'General Information': { ...base['General Information'], ...(initialData['General Information'] || {}) },
-      'Means of Finance': { ...base['Means of Finance'], ...(initialData['Means of Finance'] || {}), 'i12': 'No' },
-      'Financial Years': { ...base['Financial Years'], ...(initialData['Financial Years'] || {}) },
-      'Financial Statements': { ...base['Financial Statements'], ...(initialData['Financial Statements'] || {}) },
-      'Fixed Assets Schedule': initialData['Fixed Assets Schedule'] || base['Fixed Assets Schedule'],
-      'Prepared By': { ...base['Prepared By'], ...(initialData['Prepared By'] || {}) },
-    };
+    const merged = mergeReportPrefill(buildEmptyState(), initialData, { preferSaved: preferSavedValues });
+    merged['Means of Finance'] = finishMeansOfFinance(merged['Means of Finance'], initialData, { i12: 'No' }, { force: true });
+    return merged;
   });
 
   const [activeAssetTab, setActiveAssetTab] = useState(0);
@@ -217,36 +210,11 @@ const FRCC3Form = ({
 
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
-      setFormData(prev => ({
-        ...prev,
-        ...initialData,
-        'General Information': {
-          ...(prev['General Information'] || {}),
-          ...(initialData['General Information'] || {})
-        },
-        'Means of Finance': {
-          ...(prev['Means of Finance'] || {}),
-          ...(initialData['Means of Finance'] || {}),
-          'i12': 'No',
-        },
-        'Financial Years': {
-          ...(prev['Financial Years'] || {}),
-          ...(initialData['Financial Years'] || {})
-        },
-        'Financial Statements': {
-          ...(prev['Financial Statements'] || {}),
-          ...(initialData['Financial Statements'] || {})
-        },
-        'Fixed Assets Schedule': initialData['Fixed Assets Schedule'] || prev['Fixed Assets Schedule'] || buildEmptyState()['Fixed Assets Schedule'],
-        'Prepared By': {
-          required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
-          banker_mobile: '',
-          banker_mail_id: '',
-          cibil_score: '',
-          ...(prev['Prepared By'] || {}),
-          ...(initialData['Prepared By'] || {}),
-        },
-      }));
+      setFormData(prev => {
+        const merged = mergeReportPrefill(prev, initialData, { preferSaved: preferSavedValues });
+        merged['Means of Finance'] = finishMeansOfFinance(merged['Means of Finance'], initialData, { i12: 'No' }, { force: true });
+        return merged;
+      });
     }
   }, [initialData]);
 
@@ -486,6 +454,7 @@ const FRCC3Form = ({
 
   const renderField = (field, sectionTitle) => {
     const value = formData[sectionTitle]?.[field.id] ?? '';
+    const disabled = meansFieldDisabled(field.disabled, value, initialData);
 
     if (field.type === 'select') {
       const err = fieldErrors[`${sectionTitle}.${field.id}`];
@@ -496,10 +465,10 @@ const FRCC3Form = ({
           </label>
           <select
             value={value}
-            onChange={(e) => !field.disabled && handleFieldChange(sectionTitle, field.id, e.target.value)}
-            disabled={!!field.disabled}
+            onChange={(e) => !disabled && handleFieldChange(sectionTitle, field.id, e.target.value)}
+            disabled={disabled}
             required={field.required}
-            className={`w-full px-3 py-2 text-sm border ${err ? 'border-red-400' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 ${field.disabled ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'bg-white'}`}
+            className={`w-full px-3 py-2 text-sm border ${err ? 'border-red-400' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 ${disabled ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'bg-white'}`}
           >
             <option value="">Select...</option>
             {field.options.map(option => (

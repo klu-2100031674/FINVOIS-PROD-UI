@@ -19,6 +19,7 @@ import SaveDraftButton from '../common/SaveDraftButton';
 
 import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_BANKER_MOBILE_FIELD, PREPARED_BY_CIBIL_FIELD } from '../../utils/frccFormUi';
 import { normalizeCc6GiCells } from '../../utils/cc6GeneralInfo';
+import { finishMeansOfFinance, meansFieldDisabled, mergeReportPrefill } from '../../utils/mergeReportPrefill';
 
 const parseNumberInput = (val) => val === '' ? '' : (val.endsWith('.') || val.endsWith('.0') ? val : (isNaN(parseFloat(val)) ? val : parseFloat(val)));
 
@@ -61,6 +62,7 @@ const grossAssetMapping = {
 const FRCC6Form = ({
   onSubmit,
   initialData = {},
+  preferSavedValues = false,
   isEditMode = false,
   reportId = null,
   isProcessing = false,
@@ -94,45 +96,12 @@ const FRCC6Form = ({
   });
 
   const [formData, setFormData] = useState(() => {
-    const empty = buildEmptyState();
-    if (initialData && Object.keys(initialData).length > 0) {
-      return {
-        ...empty,
-        ...initialData,
-        'General Information': normalizeCc6GiCells({
-          ...(empty['General Information'] || {}),
-          ...(initialData['General Information'] || {}),
-        }),
-        'Means of Finance': {
-          ...(empty['Means of Finance'] || {}),
-          ...(initialData['Means of Finance'] || {}),
-          i11: 'Yes',
-          i12: 'No',
-          h17: 'Yes',
-        },
-        'New Asset Schedule': {
-          ...(empty['New Asset Schedule'] || {}),
-          ...(initialData['New Asset Schedule'] || {}),
-        },
-        'Gross Assets Opening Balance': {
-          ...(empty['Gross Assets Opening Balance'] || {}),
-          ...(initialData['Gross Assets Opening Balance'] || {}),
-        },
-        'Financial Statements': {
-          ...(empty['Financial Statements'] || {}),
-          ...(initialData['Financial Statements'] || {}),
-        },
-        'Term Loan Finance Details': {
-          ...(empty['Term Loan Finance Details'] || {}),
-          ...(initialData['Term Loan Finance Details'] || {}),
-        },
-        'Prepared By': {
-          ...(empty['Prepared By'] || {}),
-          ...(initialData['Prepared By'] || {}),
-        },
-      };
+    const merged = mergeReportPrefill(buildEmptyState(), initialData, { preferSaved: preferSavedValues });
+    if (merged['General Information']) {
+      merged['General Information'] = normalizeCc6GiCells(merged['General Information']);
     }
-    return empty;
+    merged['Means of Finance'] = finishMeansOfFinance(merged['Means of Finance'], initialData, { i11: 'Yes', i12: 'No', h17: 'Yes' });
+    return merged;
   });
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -267,53 +236,11 @@ const FRCC6Form = ({
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
       setFormData(prev => {
-        const merged = { ...prev };
-        for (const sectionKey in initialData) {
-          if (!Object.prototype.hasOwnProperty.call(initialData, sectionKey)) continue;
-
-          const incoming = initialData[sectionKey];
-          const isPlainObject = incoming && typeof incoming === 'object' && !Array.isArray(incoming);
-
-          // Schedules need a category-level merge so `items` arrays are preserved/cloned.
-          if (sectionKey === 'New Asset Schedule' || sectionKey === 'Gross Assets Opening Balance') {
-            const scheduleIncoming = isPlainObject ? incoming : {};
-            merged[sectionKey] = { ...(merged[sectionKey] || {}) };
-
-            for (const cat in scheduleIncoming) {
-              if (!Object.prototype.hasOwnProperty.call(scheduleIncoming, cat)) continue;
-              merged[sectionKey][cat] = {
-                ...(merged[sectionKey][cat] || {}),
-                ...scheduleIncoming[cat],
-                items: Array.isArray(scheduleIncoming[cat]?.items) ? [...scheduleIncoming[cat].items] : []
-              };
-            }
-          } else if (sectionKey === 'Fixed Assets Schedule') {
-            const fixedIncoming = isPlainObject ? incoming : {};
-            merged['Fixed Assets Schedule'] = { ...(merged['Fixed Assets Schedule'] || {}) };
-
-            for (const category in fixedIncoming) {
-              if (!Object.prototype.hasOwnProperty.call(fixedIncoming, category)) continue;
-              merged['Fixed Assets Schedule'][category] = {
-                ...(merged['Fixed Assets Schedule'][category] || {}),
-                ...fixedIncoming[category],
-                items: Array.isArray(fixedIncoming[category]?.items) ? [...fixedIncoming[category].items] : []
-              };
-            }
-          } else if (isPlainObject) {
-            merged[sectionKey] = { ...(merged[sectionKey] || {}), ...incoming };
-          } else {
-            merged[sectionKey] = incoming;
-          }
-        }
+        const merged = mergeReportPrefill(prev, initialData, { preferSaved: preferSavedValues });
         if (merged['General Information']) {
           merged['General Information'] = normalizeCc6GiCells(merged['General Information']);
         }
-        merged['Means of Finance'] = {
-          ...(merged['Means of Finance'] || {}),
-          i11: 'Yes',
-          i12: 'No',
-          h17: 'Yes',
-        };
+        merged['Means of Finance'] = finishMeansOfFinance(merged['Means of Finance'], initialData, { i11: 'Yes', i12: 'No', h17: 'Yes' });
         return merged;
       });
     }
@@ -544,7 +471,8 @@ const FRCC6Form = ({
       for (const categoryName of Object.keys(newAssetMapping)) {
         const cat = scheduleData[categoryName];
         if (cat && cat.total > 0) {
-          const hasPct = parseFloat(cat.loanPct) > 0;
+          const parsedPct = parseFloat(cat.loanPct);
+          const hasPct = !Number.isNaN(parsedPct) && parsedPct >= 0;
           const hasAmt = loanAmounts[categoryName] && parseFloat(loanAmounts[categoryName]) > 0;
           if (!hasPct && !hasAmt) return false;
         }
@@ -580,6 +508,7 @@ const FRCC6Form = ({
 
   const renderField = (field, sectionTitle) => {
     const value = formData[sectionTitle]?.[field.id] ?? '';
+    const disabled = meansFieldDisabled(field.disabled, value, initialData);
 
     return (
       <div key={field.id} className="space-y-1.5">
@@ -589,10 +518,10 @@ const FRCC6Form = ({
         {field.type === 'select' ? (
           <select
             value={value}
-            onChange={(e) => !field.disabled && handleFieldChange(sectionTitle, field.id, e.target.value)}
-            disabled={!!field.disabled}
+            onChange={(e) => !disabled && handleFieldChange(sectionTitle, field.id, e.target.value)}
+            disabled={disabled}
             required={field.required}
-            className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 ${field.disabled ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'bg-white'}`}
+            className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 ${disabled ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'bg-white'}`}
           >
             <option value="">Select...</option>
             {field.options.map(option => (

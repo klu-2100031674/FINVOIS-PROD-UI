@@ -9,6 +9,7 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
+import { normalizeCc6GiCells } from '../../utils/cc6GeneralInfo';
 import {
   FileText,
   Eye,
@@ -31,12 +32,58 @@ import {
 } from 'lucide-react';
 import { AdminLayout } from '../../components/layouts';
 import { useAuth } from '../../hooks';
+import { effectiveUserRole } from '../../utils/normalizeUserRole';
+import { canShowReportFileButton } from '../../utils/reportDownloadVisibility';
 import api from '../../api/apiClient';
 import toast from 'react-hot-toast';
 import { reportRequiresCaStamp } from '../../utils/frccFormUi';
+import { getTemplateDisplayName } from '../../utils/templateSectorConfig';
+
+const getReportNatureOfBusiness = (report) => {
+  if (report?.nature_of_business) return report.nature_of_business;
+
+  const fd = report?.form_data || {};
+  const prompts = fd?.prompts_data || {};
+  const general = normalizeCc6GiCells(fd?.['General Information'] || {});
+
+  const NATURE_CELL_BY_TEMPLATE = {
+    'CC1': 'i10', 'GOLD_LOAN': 'i10', 'CC2': 'i9', 'CC3': 'i10', 'CC4': 'i9', 'CC5': 'i9', 'CC6': 'i8', 'CC7': 'i9',
+    'TERM_LOAN_CC': 'i15',
+    'TERM_LOAN_SERVICE_WITHOUT_STOCK': 'i15',
+    'TERM_LOAN_MANUFACTURING_SERVICE_WITH_STOCK': 'i15',
+    'TERM_LOAN_EV_VEHICLE': 'i15',
+    'TERM_LOAN_OTHER_THAN_EV_VEHICLE': 'i15',
+    'TERM_LOAN_JCB_VEHICLE': 'i15',
+    'TERM_LOAN_TRACTOR_VEHICLE': 'i15',
+    'TERM_LOAN_TIPPER_VEHICLE': 'i15',
+    'TERM_LOAN_DRONE_VEHICLE': 'i15',
+  };
+
+  const rawId = (report?.templateId || report?.report_type || '').toUpperCase();
+  const ccMatch = rawId.match(/CC(\d+)/);
+  const normalizedTemplateId = ccMatch
+    ? `CC${ccMatch[1]}`
+    : Object.keys(NATURE_CELL_BY_TEMPLATE).find((key) => rawId.startsWith(key)) || rawId;
+  const natureCellKey = NATURE_CELL_BY_TEMPLATE[normalizedTemplateId];
+
+  return (
+    prompts?.firm_constitution?.nature_of_business ||
+    prompts?.product_details?.main_product ||
+    (natureCellKey && general[natureCellKey]) ||
+    fd?.natureOfFirm ||
+    fd?.natureOfBusiness ||
+    fd?.nature_of_business ||
+    fd?.lineOfActivity ||
+    fd?.businessActivity ||
+    fd?.industryType ||
+    report?.report_metadata?.nature_of_business ||
+    'N/A'
+  );
+};
 
 const CompanyAdminReportsPage = () => {
   const { user } = useAuth();
+  const keepAdminDownloads = effectiveUserRole(user) === 'admin';
   const [reports, setReports] = useState([]);
   const [stats, setStats] = useState({
     pending: 0,
@@ -258,9 +305,8 @@ const CompanyAdminReportsPage = () => {
           <button
             type="button"
             onClick={() => setActiveTab('pending_validation')}
-            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all text-left ${
-              activeTab === 'pending_validation' ? 'border-yellow-500' : 'border-transparent hover:border-yellow-200'
-            }`}
+            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all text-left ${activeTab === 'pending_validation' ? 'border-yellow-500' : 'border-transparent hover:border-yellow-200'
+              }`}
           >
             <div className="flex items-center justify-between">
               <Clock className="text-yellow-500" size={24} />
@@ -272,9 +318,8 @@ const CompanyAdminReportsPage = () => {
           <button
             type="button"
             onClick={() => setActiveTab('under_review')}
-            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all text-left ${
-              activeTab === 'under_review' ? 'border-[#7e22ce]' : 'border-transparent hover:border-purple-200'
-            }`}
+            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all text-left ${activeTab === 'under_review' ? 'border-[#7e22ce]' : 'border-transparent hover:border-purple-200'
+              }`}
           >
             <div className="flex items-center justify-between">
               <AlertCircle className="text-purple-500" size={24} />
@@ -286,9 +331,8 @@ const CompanyAdminReportsPage = () => {
           <button
             type="button"
             onClick={() => setActiveTab('approved')}
-            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all text-left ${
-              activeTab === 'approved' ? 'border-green-500' : 'border-transparent hover:border-green-200'
-            }`}
+            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all text-left ${activeTab === 'approved' ? 'border-green-500' : 'border-transparent hover:border-green-200'
+              }`}
           >
             <div className="flex items-center justify-between">
               <CheckCircle className="text-green-500" size={24} />
@@ -300,9 +344,8 @@ const CompanyAdminReportsPage = () => {
           <button
             type="button"
             onClick={() => setActiveTab('rejected')}
-            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all text-left ${
-              activeTab === 'rejected' ? 'border-red-500' : 'border-transparent hover:border-red-200'
-            }`}
+            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all text-left ${activeTab === 'rejected' ? 'border-red-500' : 'border-transparent hover:border-red-200'
+              }`}
           >
             <div className="flex items-center justify-between">
               <XCircle className="text-red-500" size={24} />
@@ -314,9 +357,8 @@ const CompanyAdminReportsPage = () => {
           <button
             type="button"
             onClick={() => setActiveTab('')}
-            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all text-left ${
-              activeTab === '' ? 'border-purple-500' : 'border-transparent hover:border-purple-200'
-            }`}
+            className={`bg-white rounded-xl p-4 shadow-sm border-2 cursor-pointer transition-all text-left ${activeTab === '' ? 'border-purple-500' : 'border-transparent hover:border-purple-200'
+              }`}
           >
             <div className="flex items-center justify-between">
               <FileText className="text-purple-500" size={24} />
@@ -442,7 +484,7 @@ const CompanyAdminReportsPage = () => {
                           className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full truncate"
                           title={report.templateId || report.report_type}
                         >
-                          {report.templateId || report.report_type}
+                          {getTemplateDisplayName(report.templateId || report.report_type)}
                         </span>
                         {report.client_name && (
                           <span className="text-xs text-gray-500 truncate" title={report.client_name}>
@@ -479,7 +521,7 @@ const CompanyAdminReportsPage = () => {
 
                     {/* Actions — VIEW ONLY */}
                     <div className="col-span-2 flex items-center justify-end gap-2">
-                      {report.pdf_file_url && (
+                      {(keepAdminDownloads ? report.pdf_file_url : canShowReportFileButton(report, 'pdf')) && (
                         <button
                           type="button"
                           onClick={() => handleViewPdf(report)}
@@ -490,14 +532,16 @@ const CompanyAdminReportsPage = () => {
                         </button>
                       )}
 
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadExcel(report)}
-                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                        title="Download Excel"
-                      >
-                        <FileSpreadsheet size={18} />
-                      </button>
+                      {(keepAdminDownloads || canShowReportFileButton(report, 'excel')) && (
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadExcel(report)}
+                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                          title="Download Excel"
+                        >
+                          <FileSpreadsheet size={18} />
+                        </button>
+                      )}
 
                       <button
                         type="button"
@@ -513,7 +557,7 @@ const CompanyAdminReportsPage = () => {
                   {/* Expanded Details */}
                   {expandedReport === report._id && (
                     <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                      <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+                      <div className={`grid grid-cols-1 gap-6 ${report.user_comment ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
                         <div>
                           <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
                             <User size={16} className="mr-2" />
@@ -533,7 +577,7 @@ const CompanyAdminReportsPage = () => {
                             Report Details
                           </h4>
                           <div className="space-y-1 text-sm">
-                            <p><span className="text-gray-500">Nature of Business:</span> {report.nature_of_business || 'N/A'}</p>
+                            <p><span className="text-gray-500">Nature of Business:</span> {report.nature_of_business || getReportNatureOfBusiness(report)}</p>
                             <p><span className="text-gray-500">Project Cost:</span> {report.project_cost || 'N/A'}</p>
                             <p><span className="text-gray-500">Term Period:</span> {report.term_period || 'N/A'}</p>
                             <p><span className="text-gray-500">Mobile No:</span> {report.mobile_no || report.user_id?.mobile || report.user_id?.phone || 'N/A'}</p>
@@ -581,22 +625,20 @@ const CompanyAdminReportsPage = () => {
                         </div>
 
                         {/* User Comment */}
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                            <MessageSquare size={16} className="mr-2" />
-                            User Comment
-                          </h4>
-                          <div className="space-y-1 text-sm bg-white p-3 rounded-lg border border-gray-200 min-h-[80px]">
-                            {report.user_comment ? (
+                        {report.user_comment && (
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                              <MessageSquare size={16} className="mr-2" />
+                              User Comment
+                            </h4>
+                            <div className="space-y-1 text-sm bg-white p-3 rounded-lg border border-gray-200 min-h-[80px]">
                               <p className="text-gray-700 whitespace-pre-wrap">{report.user_comment}</p>
-                            ) : (
-                              <p className="text-gray-400 italic">No notes entered by user during generation</p>
-                            )}
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         {(report.requested_sheets?.length > 0 || report.analysis_options) && (
-                          <div className="col-span-1 mt-4 pt-4 border-t border-gray-200 md:col-span-4">
+                          <div className={`col-span-1 mt-4 pt-4 border-t border-gray-200 ${report.user_comment ? 'md:col-span-4' : 'md:col-span-3'}`}>
                             <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
                               <Settings size={16} className="mr-2" />
                               Requested Analysis &amp; Parameters

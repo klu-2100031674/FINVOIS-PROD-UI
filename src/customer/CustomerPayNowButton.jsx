@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { CreditCard, Share2 } from 'lucide-react';
+import { CreditCard, Link2, Share2 } from 'lucide-react';
 import api, { apiErrorMessage } from '../api/apiClient';
 import { reportAPI } from '../api/endpoints';
 import useAuth from '../hooks/useAuth';
+import { canCreateOrSharePaymentLink, reportHasGeneratedPdf, shareablePaymentLink } from '../utils/reportDownloadVisibility';
 
 const RAZORPAY_CHECKOUT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
 
@@ -63,7 +64,7 @@ export function ForwardToBankManagerButton({ request, onForwarded, className = '
 
   // Bank Managers do not forward to themselves
   if (user?.role === 'bank_manager') return null;
-  if (!pending) return null;
+  if (!pending || !reportHasGeneratedPdf(request)) return null;
 
   const existingPhone = findReferralPhone(request);
   const submitted = request?.submittedData || {};
@@ -211,7 +212,7 @@ export default function CustomerPayNowButton({ request, onPaid, className = '' }
   const amount = Number(request?.reportId?.payment?.amount || 0);
   const reportId = request?.reportId?._id || request?.reportId;
 
-  if (!pending) return null;
+  if (!pending || !reportHasGeneratedPdf(request)) return null;
 
   // Rule #3: If bank manager, can only pay if forwarded to bank manager
   const isBankManager = user?.role === 'bank_manager';
@@ -300,5 +301,35 @@ export default function CustomerPayNowButton({ request, onPaid, className = '' }
         {loading ? 'Opening...' : `Pay now${amount ? ` ₹${amount.toLocaleString('en-IN')}` : ''}`}
       </button>
     </span>
+  );
+}
+
+export function CopyPaymentLinkButton({ request, className }) {
+  const url = shareablePaymentLink(request);
+  if (!url || !canCreateOrSharePaymentLink(request)) return null;
+
+  const copy = async (event) => {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Payment link copied');
+    } catch {
+      toast.error('Could not copy payment link');
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      className={
+        className ||
+        'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-yellow-800 bg-white border border-yellow-300 hover:bg-yellow-50 rounded-lg'
+      }
+    >
+      <Link2 className="h-3.5 w-3.5" />
+      Copy payment link
+    </button>
   );
 }

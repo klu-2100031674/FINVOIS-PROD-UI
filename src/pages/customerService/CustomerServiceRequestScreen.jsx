@@ -15,6 +15,7 @@ import {
   claimExpiresAt,
   getDprWorkflowStatus,
 } from '../../utils/dprWorkflowStatus';
+import { canCreateOrSharePaymentLink, isPayableAmountReady, reportHasGeneratedPdf } from '../../utils/reportDownloadVisibility';
 import { displayMsmeLoanType } from '../../utils/msmeLoanTypeDisplay';
 import { isGoldLoanType, isWorkingCapitalOdLoanType, reportTemplatesForLoanType } from '../../utils/partnerLeadLoanTypes';
 import {
@@ -784,12 +785,17 @@ const CustomerServiceRequestScreen = () => {
   const reportStatusMeta = request?.reportId ? getReportStatusMeta(reportValidationStatus) : null;
   const paymentCompleted = request?.reportId?.payment?.status === 'completed';
   const canSendReport = isOwner() && request?.reportId && isReportApproved && paymentCompleted;
-  const isPaymentPending = Boolean(request?.reportId) && !paymentCompleted;
+  const isPaymentPending = isPayableAmountReady(request);
+  const canSharePaymentLink = canCreateOrSharePaymentLink(request);
+  const pdfReadyForPaymentLink = reportHasGeneratedPdf(request);
   const billedToCustomer = request?.reportId?.payment?.billed_to === 'customer';
   const generationComplete = Boolean(
     request?.reportId?.excel_file_url ||
     request?.reportId?.pdf_file_url ||
     request?.reportId?.status === 'completed'
+  );
+  const reportFileReady = Boolean(
+    request?.reportId?.excel_file_url || request?.reportId?.pdf_file_url
   );
   const canContinueGeneration = isOwner() && (paymentCompleted || billedToCustomer) && !generationComplete;
   const workflow = getDprWorkflowStatus(request, request?.reportId);
@@ -1129,17 +1135,27 @@ const CustomerServiceRequestScreen = () => {
                     Last updated: {new Date(request.reportId.updatedAt).toLocaleString()}
                   </p>
                 )}
-                {isReportApproved && paymentCompleted && (
+                {isReportApproved && paymentCompleted && reportFileReady && (
                   <div className="pt-2 border-t border-purple-100">
                     <CsApprovedReportActions requestId={id} showDownload />
                   </div>
+                )}
+                {isReportApproved && paymentCompleted && !reportFileReady && (
+                  <p className="text-xs text-amber-800 pt-2">
+                    Payment is complete, but the PDF is not saved yet. Use Continue generation before downloading.
+                  </p>
                 )}
                 {isOwner() && isPaymentPending && (
                   <div className="pt-3 border-t border-yellow-100 space-y-2">
                     <p className="text-xs text-yellow-800">
                       Amount due: ₹{Number(request.reportId?.payment?.amount || 0).toLocaleString('en-IN')}
                     </p>
-                    {request.reportId?.payment?.payment_link_url && (
+                    {!pdfReadyForPaymentLink && (
+                      <p className="text-xs text-amber-800">
+                        Payment link is available only after the PDF is generated.
+                      </p>
+                    )}
+                    {canSharePaymentLink && request.reportId?.payment?.payment_link_url && (
                       <button
                         type="button"
                         onClick={handleCopyPaymentLink}
@@ -1148,14 +1164,16 @@ const CustomerServiceRequestScreen = () => {
                         <Copy size={14} /> Copy payment link
                       </button>
                     )}
-                    <button
-                      type="button"
-                      disabled={sendingPaymentRequest}
-                      onClick={handleResendPaymentRequest}
-                      className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-yellow-600 hover:bg-yellow-700 rounded-lg disabled:opacity-60"
-                    >
-                      <Link2 size={14} /> {sendingPaymentRequest ? 'Sending...' : 'Send / resend payment request'}
-                    </button>
+                    {canSharePaymentLink && (
+                      <button
+                        type="button"
+                        disabled={sendingPaymentRequest}
+                        onClick={handleResendPaymentRequest}
+                        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-yellow-600 hover:bg-yellow-700 rounded-lg disabled:opacity-60"
+                      >
+                        <Link2 size={14} /> {sendingPaymentRequest ? 'Sending...' : 'Send / resend payment request'}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={handlePayOnBehalf}

@@ -1,6 +1,7 @@
 /**
  * Customer department-request UX helpers (Testing).
  */
+import { isPayableAmountReady, reportHasGeneratedPdf } from '../utils/reportDownloadVisibility';
 
 export function formatRelativeTime(dateLike) {
   if (!dateLike) return { relative: '—', absolute: '' };
@@ -39,16 +40,18 @@ export function submittedLabel(dateLike) {
 }
 
 export function canDownloadPdf(req) {
+  const report = req?.reportId;
   return (
-    req?.reportId?.validation_status === 'approved' &&
-    req?.reportId?.payment?.status === 'completed'
+    report?.validation_status === 'approved' &&
+    report?.payment?.status === 'completed' &&
+    Boolean(report?.has_pdf_file || report?.pdf_file_url)
   );
 }
 
 export function needsPayment(req) {
   const report = req?.reportId;
   if (!report) return false;
-  return report?.payment?.status !== 'completed';
+  return isPayableAmountReady(req) && reportHasGeneratedPdf(req);
 }
 
 /** @returns {{ key: string, text: string, badgeClass: string, railClass: string, tip: string | null }} */
@@ -67,6 +70,8 @@ export function requestStatusMeta(req) {
 
   const vs = report.validation_status;
   const unpaid = report.payment?.status && report.payment.status !== 'completed';
+  const amountReady = isPayableAmountReady(req);
+  const waitingForAmount = unpaid && !amountReady;
 
   if (vs === 'approved' && !unpaid) {
     return {
@@ -80,10 +85,12 @@ export function requestStatusMeta(req) {
   if (vs === 'approved' && unpaid) {
     return {
       key: 'pay',
-      text: 'Payment Pending',
+      text: waitingForAmount ? 'Amount pending' : 'Payment Pending',
       badgeClass: 'bg-yellow-100 text-yellow-800',
       railClass: 'bg-amber-400',
-      tip: 'Your report is ready — complete payment to unlock the PDF.',
+      tip: waitingForAmount
+        ? 'The payment amount is not ready yet. It appears after an admin sets it.'
+        : 'Your report is ready — complete payment to unlock the PDF.',
     };
   }
   if (vs === 'rejected') {
@@ -99,10 +106,12 @@ export function requestStatusMeta(req) {
     if (unpaid) {
       return {
         key: 'pay',
-        text: 'Payment Pending',
+        text: waitingForAmount ? 'Amount pending' : 'Payment Pending',
         badgeClass: 'bg-yellow-100 text-yellow-800',
         railClass: 'bg-amber-400',
-        tip: 'Pay now so your report unlocks as soon as CA validation finishes.',
+        tip: waitingForAmount
+          ? 'The payment amount is not ready yet. It appears after an admin sets it.'
+          : 'Pay now so your report unlocks as soon as CA validation finishes.',
       };
     }
     return {
@@ -116,10 +125,12 @@ export function requestStatusMeta(req) {
   if (vs === 'pending_payment' || unpaid) {
     return {
       key: 'pay',
-      text: 'Payment Pending',
+      text: waitingForAmount ? 'Amount pending' : 'Payment Pending',
       badgeClass: 'bg-yellow-100 text-yellow-800',
       railClass: 'bg-amber-400',
-      tip: 'Complete payment to unlock your report when it’s ready.',
+      tip: waitingForAmount
+        ? 'The payment amount is not ready yet. It appears after an admin sets it.'
+        : 'Complete payment to unlock your report when it’s ready.',
     };
   }
   return {

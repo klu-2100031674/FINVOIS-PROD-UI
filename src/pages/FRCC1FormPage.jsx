@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { selectFormData, applyFormData, setFormData, clearGeneratedExcel } from '../store/slices/reportSlice';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import ClientLayout from '../components/layouts/ClientLayout';
+import { dashboardHomePath } from '../utils/routePaths';
 
 const FRCC1FormPage = () => {
   const navigate = useNavigate();
@@ -59,11 +60,7 @@ const FRCC1FormPage = () => {
   };
 
   const handleBackToDashboard = () => {
-    if (user?.role === 'agent') {
-      navigate('/agent/dashboard');
-    } else {
-      navigate('/dashboard');
-    }
+    navigate(dashboardHomePath(user));
   };
 
   return (

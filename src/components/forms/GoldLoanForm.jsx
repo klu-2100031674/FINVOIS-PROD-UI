@@ -17,6 +17,7 @@ import {
 import SaveDraftButton from '../common/SaveDraftButton';
 
 import { FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_BANKER_MOBILE_FIELD, PREPARED_BY_CIBIL_FIELD } from '../../utils/frccFormUi';
+import { mergeReportPrefill } from '../../utils/mergeReportPrefill';
 
 // Generate financial year options in 2024-25 format, current year to +20 years
 const generateFinancialYearOptions = () => {
@@ -142,6 +143,7 @@ const GoldLoanForm = ({
   onSubmit,
   templateId = 'GOLD_LOAN',
   initialData = null,
+  preferSavedValues = false,
   isEditMode = false,
   reportId = null,
   isProcessing = false,
@@ -188,18 +190,9 @@ const GoldLoanForm = ({
 
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState(() => {
-    const base = buildEmptyState();
-    if (!initialData || Object.keys(initialData).length === 0) return base;
-    return {
-      ...base,
-      ...initialData,
-      "General Information": { ...base["General Information"], ...(initialData["General Information"] || {}) },
-      "Means of Finance": { ...base["Means of Finance"], ...(initialData["Means of Finance"] || {}), "i12": "No" },
-      "Financial Years": { ...base["Financial Years"], ...(initialData["Financial Years"] || {}) },
-      "Indirect Expenses": { ...base["Indirect Expenses"], ...(initialData["Indirect Expenses"] || {}) },
-      "Fixed Assets Schedule": initialData["Fixed Assets Schedule"] || base["Fixed Assets Schedule"],
-      "Prepared By": { ...base["Prepared By"], ...(initialData["Prepared By"] || {}) },
-    };
+    const merged = mergeReportPrefill(buildEmptyState(), initialData, { preferSaved: preferSavedValues });
+    merged['Means of Finance'] = { ...(merged['Means of Finance'] || {}), i12: 'No' };
+    return merged;
   });
 
   const [finalJson, setFinalJson] = useState(null);
@@ -210,36 +203,11 @@ const GoldLoanForm = ({
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
       console.log('📝 [GoldLoanForm] Loading initial data:', initialData);
-      setFormData(prev => ({
-        ...prev,
-        ...initialData,
-        "General Information": {
-          ...(prev["General Information"] || {}),
-          ...(initialData["General Information"] || {})
-        },
-        "Means of Finance": {
-          ...(prev["Means of Finance"] || {}),
-          ...(initialData["Means of Finance"] || {}),
-          "i12": "No",
-        },
-        "Financial Years": {
-          ...(prev["Financial Years"] || {}),
-          ...(initialData["Financial Years"] || {})
-        },
-        "Indirect Expenses": {
-          ...(prev["Indirect Expenses"] || {}),
-          ...(initialData["Indirect Expenses"] || {})
-        },
-        "Fixed Assets Schedule": initialData["Fixed Assets Schedule"] || prev["Fixed Assets Schedule"] || buildEmptyState()["Fixed Assets Schedule"],
-        "Prepared By": {
-          required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
-          banker_mobile: '',
-          banker_mail_id: '',
-          cibil_score: '',
-          ...(prev["Prepared By"] || {}),
-          ...(initialData["Prepared By"] || {}),
-        }
-      }));
+      setFormData(prev => {
+        const merged = mergeReportPrefill(prev, initialData, { preferSaved: preferSavedValues });
+        merged['Means of Finance'] = { ...(merged['Means of Finance'] || {}), i12: 'No' };
+        return merged;
+      });
     }
   }, [initialData]);
 

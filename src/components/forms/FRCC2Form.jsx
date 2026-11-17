@@ -16,6 +16,7 @@ import {
 import SaveDraftButton from '../common/SaveDraftButton';
 
 import { getAuditedSectionDisplayTitle, FRCC_REQUIRED_STAMP_DEFAULT, FRCC_REQUIRED_STAMP_FIELD, PREPARED_BY_BANKER_MAIL_FIELD, PREPARED_BY_BANKER_MOBILE_FIELD, PREPARED_BY_CIBIL_FIELD } from '../../utils/frccFormUi';
+import { finishMeansOfFinance, meansFieldDisabled, mergeReportPrefill } from '../../utils/mergeReportPrefill';
 
 // Generate financial year options in 2024-25 format, current year to +20 years
 const generateFinancialYearOptions = () => {
@@ -209,6 +210,7 @@ const FRCC2Form = ({
   onSubmit,
   templateId = 'frcc2',
   initialData = null,
+  preferSavedValues = false,
   isEditMode = false,
   reportId = null,
   isProcessing = false,
@@ -265,20 +267,9 @@ const FRCC2Form = ({
 
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState(() => {
-    const base = buildEmptyState();
-    if (!initialData || Object.keys(initialData).length === 0) return base;
-    return {
-      ...base,
-      ...initialData,
-      "General Information": { ...base["General Information"], ...(initialData["General Information"] || {}) },
-      "Means of Finance": { ...base["Means of Finance"], ...(initialData["Means of Finance"] || {}), "i11": "No" },
-      "Financial Years": { ...base["Financial Years"], ...(initialData["Financial Years"] || {}) },
-      "Audited Financial Statements": { ...base["Audited Financial Statements"], ...(initialData["Audited Financial Statements"] || {}) },
-      "Provisional Financial Statements": { ...base["Provisional Financial Statements"], ...(initialData["Provisional Financial Statements"] || {}) },
-      "Projection Assumptions": { ...base["Projection Assumptions"], ...(initialData["Projection Assumptions"] || {}) },
-      "Fixed Assets Schedule": initialData["Fixed Assets Schedule"] || base["Fixed Assets Schedule"],
-      "Prepared By": { ...base["Prepared By"], ...(initialData["Prepared By"] || {}) },
-    };
+    const merged = mergeReportPrefill(buildEmptyState(), initialData, { preferSaved: preferSavedValues });
+    merged['Means of Finance'] = finishMeansOfFinance(merged['Means of Finance'], initialData, { i11: 'No' }, { force: true });
+    return merged;
   });
 
   const [showResult, setShowResult] = useState(false);
@@ -288,45 +279,15 @@ const FRCC2Form = ({
 
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
-      setFormData(prev => ({
-        ...prev,
-        ...initialData,
-        "General Information": {
-          ...(prev["General Information"] || {}),
-          ...(initialData["General Information"] || {}),
-        },
-        "Means of Finance": {
-          ...(prev["Means of Finance"] || {}),
-          ...(initialData["Means of Finance"] || {}),
-          "i11": "No",
-        },
-        "Financial Years": {
-          ...(prev["Financial Years"] || {}),
-          ...(initialData["Financial Years"] || {})
-        },
-        "Audited Financial Statements": {
-          ...(prev["Audited Financial Statements"] || {}),
-          ...(initialData["Audited Financial Statements"] || {})
-        },
-        "Provisional Financial Statements": {
-          ...(prev["Provisional Financial Statements"] || {}),
-          ...(initialData["Provisional Financial Statements"] || {})
-        },
-        "Projection Assumptions": {
+      setFormData(prev => {
+        const merged = mergeReportPrefill(prev, initialData, { preferSaved: preferSavedValues });
+        merged['Means of Finance'] = finishMeansOfFinance(merged['Means of Finance'], initialData, { i11: 'No' }, { force: true });
+        merged['Projection Assumptions'] = {
           ...DEFAULT_ASSUMPTIONS,
-          ...(prev["Projection Assumptions"] || {}),
-          ...(initialData["Projection Assumptions"] || {}),
-        },
-        "Fixed Assets Schedule": initialData["Fixed Assets Schedule"] || prev["Fixed Assets Schedule"] || buildEmptyState()["Fixed Assets Schedule"],
-        "Prepared By": {
-          required_stamp: FRCC_REQUIRED_STAMP_DEFAULT,
-          banker_mobile: '',
-          banker_mail_id: '',
-          cibil_score: '',
-          ...(prev["Prepared By"] || {}),
-          ...(initialData["Prepared By"] || {}),
-        },
-      }));
+          ...(merged['Projection Assumptions'] || {}),
+        };
+        return merged;
+      });
     }
   }, [initialData]);
 
@@ -682,6 +643,7 @@ const FRCC2Form = ({
 
   const renderField = (field, sectionTitle) => {
     const value = formData[sectionTitle]?.[field.id] ?? '';
+    const disabled = meansFieldDisabled(field.disabled, value, initialData);
 
     if (field.type === 'months-display') {
       return (
@@ -761,10 +723,10 @@ const FRCC2Form = ({
           </label>
           <select
             value={value}
-            onChange={(e) => !field.disabled && updateField(sectionTitle, field.id, e.target.value)}
-            disabled={!!field.disabled}
+            onChange={(e) => !disabled && updateField(sectionTitle, field.id, e.target.value)}
+            disabled={disabled}
             required={field.required}
-            className={`w-full px-3 py-2 text-sm border ${err ? 'border-red-400' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 ${field.disabled ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'bg-white'}`}
+            className={`w-full px-3 py-2 text-sm border ${err ? 'border-red-400' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 ${disabled ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'bg-white'}`}
           >
             <option value="">Select...</option>
             {field.options.map(option => (

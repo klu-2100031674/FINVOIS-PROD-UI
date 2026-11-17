@@ -53,7 +53,7 @@ import { normalizeUserRole, effectiveUserRole } from '../utils/normalizeUserRole
 import { hasTableAccess } from '../utils/tableAccess';
 import { resolveReportTitle } from '../utils/reportTitle';
 import { deductAICredits } from '../store/slices/walletSlice';
-import { dashboardHomePath, generateHubLandingPath, myReportsPathForRole } from '../utils/routePaths';
+import { dashboardHomePath, myReportsPathForRole } from '../utils/routePaths';
 import {
   hasStage2DraftData,
   stripStage2FromDraft,
@@ -62,6 +62,7 @@ import {
   mergeStage1Preserving,
   extractStage2FromDraft,
 } from '../utils/draftPayload';
+import { editableDraftForm, searchWithDraftId } from '../utils/draftLifecycle';
 import { useGeneratePageDraft } from '../hooks/useGeneratePageDraft';
 import { resolveTemplateSector } from '../utils/templateSectorConfig';
 import { fetchMsmeDprLeadById } from '../api/msmeDprLeadsAPI';
@@ -265,6 +266,15 @@ const GeneratePage = () => {
 
   const isAiTermLoanTemplate = AI_TERM_LOAN_TEMPLATES.includes(templateId) || AI_TERM_LOAN_TEMPLATES.includes(activeTemplateKey);
 
+  const persistedDraftIdRef = useRef(draftId || '');
+  const onDraftPersisted = useCallback((id) => {
+    persistedDraftIdRef.current = id || '';
+    const next = searchWithDraftId(window.location.search, id);
+    const current = window.location.search.replace(/^\?/, '');
+    if (next === current) return;
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}?${next}`);
+  }, []);
+
   const {
     savingDraft,
     stage2Draft,
@@ -279,6 +289,7 @@ const GeneratePage = () => {
     visitKey,
     setTempFormData,
     dispatchSetFormData: (data) => dispatch(setFormData(data)),
+    onDraftPersisted,
   });
 
   // Drop the previous client's fields before paint when the visit changes.
@@ -487,9 +498,15 @@ const GeneratePage = () => {
           dispatch(setFormData(data));
           hydrateFromLoadedDraft(data);
           // Always resume on Stage 1 form; pre-mount profile selector if stage2 exists
-          setShowSectionSelector(false);
-          if (hasStage2DraftData(data, draftObj?.currentStep || draft?.currentStep)) {
+          const savedStep = draftObj?.currentStep || draft?.currentStep;
+          if (savedStep === 'section_selector') {
+            setShowSectionSelector(true);
             setSectionSelectorMounted(true);
+          } else {
+            setShowSectionSelector(false);
+            if (hasStage2DraftData(data, savedStep)) {
+              setSectionSelectorMounted(true);
+            }
           }
         }
       })
@@ -661,7 +678,8 @@ const GeneratePage = () => {
         if (mepmaLeadId) stageParams.set('mepmaLeadId', mepmaLeadId);
         if (dprRequestLeadId) stageParams.set('dprRequestLeadId', dprRequestLeadId);
         if (reportSession) stageParams.set('reportSession', reportSession);
-        if (draftId) stageParams.set('draftId', draftId);
+        const activeDraftId = persistedDraftIdRef.current || draftId;
+        if (activeDraftId) stageParams.set('draftId', activeDraftId);
         navigate(`/stage1?${stageParams.toString()}`);
         generationRequestedRef.current = false;
         setIsProcessing(false);
@@ -768,7 +786,13 @@ const GeneratePage = () => {
       throw new Error('Full report generation failed');
     } catch (error) {
       console.error('Error generating full report:', error);
-      toast.error(error.message || 'Failed to generate full AI report');
+      const nonEvVehicle = activeTemplateKey === 'TERM_LOAN_OTHER_THAN_EV_VEHICLE';
+      const responseMessage = error?.response?.data?.message || error?.response?.data?.error;
+      const nonEvReason = (typeof error === 'string' && error.trim())
+        || (typeof responseMessage === 'string' && responseMessage.trim())
+        || (typeof error?.message === 'string' && error.message.trim())
+        || 'Failed to generate full AI report';
+      toast.error(nonEvVehicle ? nonEvReason : (error.message || 'Failed to generate full AI report'));
       return null;
     } finally {
       setIsGeneratingFullReport(false);
@@ -945,16 +969,12 @@ const GeneratePage = () => {
   }, [dispatch, isAiTermLoanTemplate, mergeStage1IntoTemp]);
 
   const stage1InitialData = useMemo(
-    () => (formSeed ? stripStage2FromDraft(formSeed) : null),
+    () => (formSeed ? editableDraftForm(stripStage2FromDraft(formSeed)) : null),
     [formSeed]
   );
 
   const handleBackToDashboard = () => {
-    if (isAdminMode) {
-      navigate('/admin/generate');
-    } else {
-      navigate(generateHubLandingPath(user));
-    }
+    navigate(dashboardHomePath(user));
   };
 
   if (!templateId) {
@@ -969,7 +989,7 @@ const GeneratePage = () => {
             <p className="text-gray-600 mb-4">
               Please select a template from the dashboard first.
             </p>
-            <Button onClick={() => navigate(generateHubLandingPath(user))} variant="primary">
+            <Button onClick={() => navigate(dashboardHomePath(user))} variant="primary">
               <ArrowLeftIcon className="w-4 h-4 inline mr-2" />
               Back to Dashboard
             </Button>
@@ -1180,6 +1200,7 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={stage1InitialData}
+                preferSavedValues={Boolean(draftId)}
               />
             )}
             {(activeTemplateKey === 'GOLD_LOAN') && (
@@ -1189,6 +1210,7 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={stage1InitialData}
+                preferSavedValues={Boolean(draftId)}
               />
             )}
             {(activeTemplateKey === 'frcc2') && (
@@ -1198,6 +1220,7 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={stage1InitialData}
+                preferSavedValues={Boolean(draftId)}
               />
             )}
             {(activeTemplateKey === 'frcc3') && (
@@ -1207,6 +1230,7 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={stage1InitialData}
+                preferSavedValues={Boolean(draftId)}
               />
             )}
             {(activeTemplateKey === 'frcc4') && (
@@ -1216,6 +1240,7 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={stage1InitialData}
+                preferSavedValues={Boolean(draftId)}
               />
             )}
             {(activeTemplateKey === 'frcc5') && (
@@ -1225,6 +1250,7 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={stage1InitialData}
+                preferSavedValues={Boolean(draftId)}
               />
             )}
             {(activeTemplateKey === 'frcc6') && (
@@ -1234,6 +1260,7 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={stage1InitialData}
+                preferSavedValues={Boolean(draftId)}
               />
             )}
             {(activeTemplateKey === 'frcc7') && (
@@ -1243,6 +1270,7 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={stage1InitialData}
+                preferSavedValues={Boolean(draftId)}
               />
             )}
             {(activeTemplateKey === 'TERM_LOAN_SERVICE_WITHOUT_STOCK') && (
@@ -1252,6 +1280,7 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={stage1InitialData}
+                preferSavedValues={Boolean(draftId)}
                 presetSector={presetSector}
                 lockSector={lockSector}
                 onSaveDraft={handleSaveDraftFromForm}
@@ -1265,6 +1294,7 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={stage1InitialData}
+                preferSavedValues={Boolean(draftId)}
                 presetSector={presetSector}
                 lockSector={lockSector}
                 onSaveDraft={handleSaveDraftFromForm}
@@ -1278,6 +1308,7 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={stage1InitialData}
+                preferSavedValues={Boolean(draftId)}
                 presetSector={presetSector}
                 lockSector={lockSector}
                 onSaveDraft={handleSaveDraftFromForm}
@@ -1291,6 +1322,7 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={stage1InitialData}
+                preferSavedValues={Boolean(draftId)}
                 presetSector={presetSector}
                 lockSector={lockSector}
                 onSaveDraft={handleSaveDraftFromForm}
@@ -1304,6 +1336,7 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={stage1InitialData}
+                preferSavedValues={Boolean(draftId)}
                 presetSector={presetSector}
                 lockSector={lockSector}
                 onSaveDraft={handleSaveDraftFromForm}
@@ -1317,6 +1350,7 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={stage1InitialData}
+                preferSavedValues={Boolean(draftId)}
                 presetSector={presetSector}
                 lockSector={lockSector}
                 onSaveDraft={handleSaveDraftFromForm}
@@ -1330,6 +1364,7 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={stage1InitialData}
+                preferSavedValues={Boolean(draftId)}
                 presetSector={presetSector}
                 lockSector={lockSector}
                 onSaveDraft={handleSaveDraftFromForm}
@@ -1343,6 +1378,7 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={stage1InitialData}
+                preferSavedValues={Boolean(draftId)}
                 presetSector={presetSector}
                 lockSector={lockSector}
                 onSaveDraft={handleSaveDraftFromForm}
@@ -1356,6 +1392,7 @@ const GeneratePage = () => {
                 onFormDataChange={handleFormDataChange}
                 isProcessing={isProcessing}
                 initialData={stage1InitialData}
+                preferSavedValues={Boolean(draftId)}
                 presetSector={presetSector}
                 lockSector={lockSector}
                 onSaveDraft={handleSaveDraftFromForm}
@@ -1397,7 +1434,7 @@ const GeneratePage = () => {
                   <p className="text-gray-600 mb-4">
                     Please select a template from the dashboard first.
                   </p>
-                  <Button onClick={() => navigate(generateHubLandingPath(user))} variant="primary">
+                  <Button onClick={() => navigate(dashboardHomePath(user))} variant="primary">
                     <ArrowLeftIcon className="w-4 h-4 inline mr-2" />
                     Back to Dashboard
                   </Button>

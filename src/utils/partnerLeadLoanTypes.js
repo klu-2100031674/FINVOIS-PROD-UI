@@ -1,6 +1,6 @@
 /** Loan-type helpers shared by MSME / MEPMA / DPR-request public forms and report autofill. */
 
-import { WC_OD_CC_TEMPLATE_IDS } from './wcOdTypeChart';
+import { WC_OD_CC_TEMPLATE_IDS } from './wcOdTypeChart.js';
 
 export const GOLD_LOAN_TYPE = 'Gold Loan';
 export const WC_OD_LOAN_TYPE = 'Working capital or OD Loan';

@@ -16,6 +16,9 @@ import {
 
 import SaveDraftButton from '../common/SaveDraftButton';
 import { FRCC_REQUIRED_STAMP_DEFAULT } from '../../utils/frccFormUi';
+import { indirectScheduleMatches, mergeReportPrefill } from '../../utils/mergeReportPrefill';
+import { alignCategoryRowSchedule, countOccupiedCategoryRows, keepRowsInActiveWindows, preserveFilledAssetRows, rowItemIsVisible } from '../../utils/assetScheduleState';
+import { buildEditableDraftSnapshot, readWizardStep } from '../../utils/draftLifecycle';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -52,8 +55,8 @@ const ASSET_SECTIONS_DEFAULT = {
 const ASSET_SECTIONS_TENURE_GT7 = {
   'Plant and Machinery': { start: 148, end: 157, loanCell: 'k28' },
   'Service Equipment': { start: 158, end: 167, loanCell: 'k29' },
-  'Shed Construction and Civil works': { start: 168, end: 177, loanCell: 'k30' },
-  'Land': { start: 178, end: 180, loanCell: 'k31' },
+  'Shed Construction and Civil works': { start: 168, end: 170, loanCell: 'k30' },
+  'Land': { start: 171, end: 180, loanCell: 'k31' },
   'Electrical Items & plumbing items': { start: 181, end: 190, loanCell: 'k32' },
   'Electronic Items': { start: 191, end: 200, loanCell: 'k33' },
   'Furniture and Fittings': { start: 201, end: 210, loanCell: 'k34' },
@@ -261,6 +264,7 @@ const normalizeSectorValue = (generalInfo = {}) => {
 const FRTermLoanCCForm = ({
   onSubmit,
   initialData = DEFAULT_INITIAL_DATA,
+  preferSavedValues = false,
   isEditMode = false,
   reportId = null,
   isProcessing = false,
@@ -286,7 +290,7 @@ const FRTermLoanCCForm = ({
   const defaultFormData = useMemo(() => ({
     'General Information': {
       'i7': '', 'i8': '', 'i9': '', 'i10': '', 'i11': '', 'i12': '', 'i13': '',
-      'i14': 'service sector without stock', 'i15': '', 'i16': '', 'residential_address': '', 'i17': '', 'i18': '', 'i19': '', 'i20': '',
+      'i14': '', 'i15': '', 'i16': '', 'residential_address': '', 'i17': '', 'i18': '', 'i19': '', 'i20': '',
       'i21': '', 'i22': '', 'i23': ''
     },
     'Prepared By': {
@@ -327,20 +331,12 @@ const FRTermLoanCCForm = ({
       initialIndirect[item.e] = 0;
     });
 
-    const mergedData = {
+    const mergedData = mergeReportPrefill({
       ...defaultFormData,
       'Schedule for Indirect Expenses': initialIndirect,
-      ...initialData
-    };
-
-    if (initialData && initialData['Schedule for Indirect Expenses']) {
-      mergedData['Schedule for Indirect Expenses'] = {
-        ...initialIndirect,
-        ...initialData['Schedule for Indirect Expenses']
-      };
-    }
+    }, initialData, { preferSaved: preferSavedValues });
     mergedData['General Information'] = normalizeSectorValue(mergedData['General Information']);
-    if (presetSector) {
+    if (presetSector && !String(mergedData['General Information']?.i14 || '').trim()) {
       mergedData['General Information'] = {
         ...(mergedData['General Information'] || {}),
         i14: presetSector,
@@ -349,7 +345,7 @@ const FRTermLoanCCForm = ({
     return mergedData;
   });
 
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(() => readWizardStep(initialData, 7));
   const [assetActiveTab, setAssetActiveTab] = useState(0);
   const [indirectActiveTab, setIndirectActiveTab] = useState(0);
   const [visitedExpenseCategories, setVisitedExpenseCategories] = useState(new Set([0]));
@@ -460,14 +456,16 @@ const FRTermLoanCCForm = ({
             }
           });
         }
-        setAssetItems(convertedAssets);
+        if (!assetsHydratedRef.current) {
+          assetsHydratedRef.current = true;
+          setAssetItems(convertedAssets);
+        } else {
+          setAssetItems((prev) => preserveFilledAssetRows(prev, convertedAssets));
+        }
       }
 
       setFormData(prev => {
-        const newData = { ...prev, ...initialData };
-        if (initialData['Schedule for Indirect Expenses']) {
-          newData['Schedule for Indirect Expenses'] = initialData['Schedule for Indirect Expenses'];
-        }
+        const newData = mergeReportPrefill(prev, initialData, { preferSaved: preferSavedValues });
         newData['General Information'] = normalizeSectorValue(newData['General Information']);
         if (presetSector && !(newData['General Information'] && newData['General Information'].i14)) {
           newData['General Information'] = {
@@ -496,6 +494,7 @@ const FRTermLoanCCForm = ({
 
   // Track previous tenure to detect when it crosses the threshold
   const prevTenureRef = useRef(liveTenure);
+  const assetsHydratedRef = useRef(false);
   // Track if expenses have been initialized for the current tenure range
   const expensesInitializedForGT7Ref = useRef(false);
 
@@ -558,13 +557,27 @@ const FRTermLoanCCForm = ({
         lastCells: Object.keys(newIndirect).filter(k => k.startsWith('d')).slice(-5)
       });
 
-      setFormData(prev => ({
-        ...prev,
-        'Schedule for Indirect Expenses': newIndirect
-      }));
+      setFormData(prev => {
+        const nextSchedule = newIndirect;
+        const existing = prev['Schedule for Indirect Expenses'];
+        if (indirectScheduleMatches(existing, nextSchedule)) return prev;
+        return { ...prev, 'Schedule for Indirect Expenses': nextSchedule };
+      });
 
       // Track that we've initialized for GT7 or reset if not GT7
       expensesInitializedForGT7Ref.current = currentIsGT7;
+    }
+
+    const assetWindowChanged =
+      (prevTenure === null && currentIsGT7) ||
+      (prevTenure !== null && liveTenure !== null && prevIsGT7 !== currentIsGT7);
+    if (assetWindowChanged) {
+      const activeSections = getAssetSections(liveTenure);
+      const previousSections = getAssetSections(prevTenure);
+      setAssetItems((items) => keepRowsInActiveWindows(
+        alignCategoryRowSchedule(items, activeSections, previousSections),
+        activeSections,
+      ));
     }
 
     prevTenureRef.current = liveTenure;
@@ -798,10 +811,15 @@ const FRTermLoanCCForm = ({
   /** Working capital requirement + sum of all category totals (step 3: cost of the project). */
   const totalProjectCostFormatted = useMemo(() => {
     const sumCostOfProjectTotals = Object.keys(CURRENT_ASSET_SECTIONS).reduce((sum, categoryName) => {
-      const categoryTotal = Object.values(assetItems[categoryName] || {}).reduce(
-        (acc, item) => acc + (parseFloat(item.amount) || 0),
-        0
-      );
+      const section = CURRENT_ASSET_SECTIONS[categoryName];
+      const categoryItems = assetItems[categoryName] || {};
+      let categoryTotal = 0;
+      if (section) {
+        for (let row = section.start; row <= section.end; row += 1) {
+          const item = categoryItems[row] ?? categoryItems[String(row)];
+          categoryTotal += parseFloat(item?.amount) || 0;
+        }
+      }
       return sum + categoryTotal;
     }, 0);
 
@@ -830,34 +848,21 @@ const FRTermLoanCCForm = ({
 
   const addAssetItem = (category) => {
     const section = CURRENT_ASSET_SECTIONS[category];
+    if (!section) return;
     const categoryItems = assetItems[category] || {};
     const maxItems = section.end - section.start + 1;
-    const currentFilled = Object.values(categoryItems).filter(item => {
-      const hasData = item?.description?.trim() !== '' || (
-        item?.amount !== undefined &&
-        item?.amount !== null &&
-        String(item.amount).trim() !== '' &&
-        Number(item.amount) !== 0
-      );
-      return item?.isActive || hasData;
-    }).length;
+    // Only rows inside the active tenure window count. Blank placeholders and
+    // rows left behind on the other window do not fill the category.
+    const currentFilled = countOccupiedCategoryRows(categoryItems, section);
 
     if (currentFilled >= maxItems) {
       alert(`Maximum ${maxItems} items allowed for ${category}`);
       return;
     }
 
-    // Find the first empty row
     for (let row = section.start; row <= section.end; row++) {
-      const currentRow = categoryItems[row];
-      const hasData = currentRow?.description?.trim() !== '' || (
-        currentRow?.amount !== undefined &&
-        currentRow?.amount !== null &&
-        String(currentRow.amount).trim() !== '' &&
-        Number(currentRow.amount) !== 0
-      );
-      const isInactive = !currentRow || currentRow.isActive !== true;
-      if (isInactive && !hasData) {
+      const currentRow = categoryItems[row] ?? categoryItems[String(row)];
+      if (!rowItemIsVisible(currentRow)) {
         setAssetItems(prev => ({
           ...prev,
           [category]: {
@@ -865,7 +870,6 @@ const FRTermLoanCCForm = ({
             [row]: { description: '', amount: '', isActive: true }
           }
         }));
-        // Track that this category now has items
         setCategoriesWithItems(prev => new Set([...prev, category]));
         break;
       }
@@ -958,11 +962,13 @@ const FRTermLoanCCForm = ({
 
       convertedAssets[category] = {};
 
+      if (!categoryItems || typeof categoryItems !== 'object') return;
       Object.keys(categoryItems)
         .sort((a, b) => a - b)
         .forEach(row => {
           const rowNum = parseInt(row);
           const item = categoryItems[row];
+          if (!item || typeof item !== 'object') return;
 
           if (item.description || item.amount) {
             let targetRow = rowNum;
@@ -1059,7 +1065,12 @@ const FRTermLoanCCForm = ({
     };
   };
 
-  const getDraftSnapshot = () => buildSubmitPayload();
+  const getDraftSnapshot = () => buildEditableDraftSnapshot(formData, {
+    _wizardStep: currentStep,
+    'Fixed Assets Schedule': assetItems,
+    'Asset Loan Percentages': loanPercentages,
+    'Asset Loan Amounts': loanAmounts,
+  });
 
   const handleSubmit = () => {
     onSubmit(buildSubmitPayload());
@@ -1380,10 +1391,18 @@ const FRTermLoanCCForm = ({
 
       const categoriesMissingLoanPercentage = assetCategories.filter((categoryName) => {
         const categoryItems = assetItems[categoryName] || {};
-        const hasAmountEntered = Object.values(categoryItems).some((item) => {
-          const amount = item?.amount;
-          return amount !== undefined && amount !== null && String(amount).trim() !== '' && Number(amount) > 0;
-        });
+        const section = CURRENT_ASSET_SECTIONS[categoryName];
+        let hasAmountEntered = false;
+        if (section) {
+          for (let row = section.start; row <= section.end; row += 1) {
+            const item = categoryItems[row] ?? categoryItems[String(row)];
+            const amount = item?.amount;
+            if (amount !== undefined && amount !== null && String(amount).trim() !== '' && Number(amount) > 0) {
+              hasAmountEntered = true;
+              break;
+            }
+          }
+        }
 
         if (!hasAmountEntered) return false;
 
@@ -1515,7 +1534,7 @@ const FRTermLoanCCForm = ({
         'i7': 'Sole Proprietorship', 'i8': 'Pratap', 'i9': '9876543210', 'i10': '123456789012',
         'bank_name': 'ICICI Bank', 'branch_name': 'Industrial Branch',
         'i11': 'ABCDE1234F', 'i12': '35', 'i13': 'Male',
-        'i14': presetSector && lockSector ? presetSector : 'service sector without stock', 'i15': 'Textile Manufacturing', 'i16': '17-3-47,thadepalli center, Vijayawada', 'residential_address': '12-5-30, Brodipet, Guntur', 'i17': 'Pratap', 'i18': 'ABCDE1234F', 'i19': 'Graduate', 'i20': 'PMEGP',
+        'i14': presetSector && lockSector ? presetSector : 'Manufacturing sector', 'i15': 'Textile Manufacturing', 'i16': '17-3-47,thadepalli center, Vijayawada', 'residential_address': '12-5-30, Brodipet, Guntur', 'i17': 'Pratap', 'i18': 'ABCDE1234F', 'i19': 'Graduate', 'i20': 'PMEGP',
         'i21': 'OC', 'i22': 'Urban(Other than Panchayat)', 'i23': ''
       },
       'Expected Employment Generation': {
@@ -1582,7 +1601,7 @@ const FRTermLoanCCForm = ({
     const currentItems = assetItems[currentCategoryName] || {};
     const hasItems = Object.keys(currentItems).some(row => {
       const item = currentItems[row];
-      return (item?.description?.trim() !== '') || (item?.amount && item.amount !== 0);
+      return (String(item?.description ?? '').trim() !== '') || (item?.amount && item.amount !== 0);
     });
 
     // If current category has items, validate loan percentage (0% is allowed)
@@ -1653,7 +1672,7 @@ const FRTermLoanCCForm = ({
                 'i14',
                 'Sector',
                 'text',
-                ['Manufacturing sector', 'service sector with stock', 'Trading sector', 'service sector without stock'],
+                ['Manufacturing sector', 'service sector with stock', 'service sector without stock', 'Trading sector'],
                 null,
                 null,
                 false,
@@ -1810,23 +1829,19 @@ const FRTermLoanCCForm = ({
         const assetCategories = Object.keys(CURRENT_ASSET_SECTIONS);
         const activeCategoryName = assetCategories[assetActiveTab] || assetCategories[0];
         const activeItems = assetItems[activeCategoryName] || {};
-        const filledActiveRows = Object.keys(activeItems)
-          .sort((a, b) => a - b)
-          .filter((row) => {
-            const item = activeItems[row];
-            const hasData = item?.description?.trim() !== '' || (
-              item?.amount !== undefined &&
-              item?.amount !== null &&
-              String(item.amount).trim() !== '' &&
-              Number(item.amount) !== 0
-            );
-            return item?.isActive || hasData;
-          });
         const sectionConfig = CURRENT_ASSET_SECTIONS[activeCategoryName];
+        if (!sectionConfig) {
+          return <p className="text-sm text-gray-600">Asset categories are still loading.</p>;
+        }
         const maxItems = sectionConfig.end - sectionConfig.start + 1;
-
-        // Calculate total for the current category
-        const categoryTotal = Object.values(activeItems).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+        const occupiedCount = countOccupiedCategoryRows(activeItems, sectionConfig);
+        const filledActiveRows = [];
+        let categoryTotal = 0;
+        for (let row = sectionConfig.start; row <= sectionConfig.end; row += 1) {
+          const item = activeItems[row] ?? activeItems[String(row)];
+          categoryTotal += parseFloat(item?.amount) || 0;
+          if (rowItemIsVisible(item)) filledActiveRows.push(row);
+        }
 
         return (
           <div className="space-y-6">
@@ -1898,7 +1913,7 @@ const FRTermLoanCCForm = ({
                       <input
                         type="text"
                         placeholder="Asset name or description"
-                        value={item.description}
+                        value={item?.description ?? ''}
                         onChange={(e) => updateAssetItem(activeCategoryName, row, 'description', e.target.value)}
                         className="col-span-6 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
                       />
@@ -1906,7 +1921,7 @@ const FRTermLoanCCForm = ({
                         type="number" onWheel={(e) => e.target.blur()}
                         placeholder="Amount"
                         min="0"
-                        value={item.amount}
+                        value={item?.amount ?? ''}
                         onChange={(e) => updateAssetItem(activeCategoryName, row, 'amount', e.target.value)}
 
                         className="col-span-5 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 bg-white"
@@ -1926,38 +1941,14 @@ const FRTermLoanCCForm = ({
               <button
                 type="button"
                 onClick={() => addAssetItem(activeCategoryName)}
-                disabled={Object.values(activeItems).filter(item => {
-                  const hasData = item?.description?.trim() !== '' || (
-                    item?.amount !== undefined &&
-                    item?.amount !== null &&
-                    String(item.amount).trim() !== '' &&
-                    Number(item.amount) !== 0
-                  );
-                  return item?.isActive || hasData;
-                }).length >= maxItems}
-                className={`mt-3 px-4 py-2 text-xs rounded-lg font-medium transition-all duration-300 flex items-center gap-1.5 ${Object.values(activeItems).filter(item => {
-                  const hasData = item?.description?.trim() !== '' || (
-                    item?.amount !== undefined &&
-                    item?.amount !== null &&
-                    String(item.amount).trim() !== '' &&
-                    Number(item.amount) !== 0
-                  );
-                  return item?.isActive || hasData;
-                }).length >= maxItems
+                disabled={occupiedCount >= maxItems}
+                className={`mt-3 px-4 py-2 text-xs rounded-lg font-medium transition-all duration-300 flex items-center gap-1.5 ${occupiedCount >= maxItems
                   ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
                   : 'border-2 border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white'
                   }`}
               >
                 <PlusIcon className="w-4 h-4" />
-                Add Item ({Object.values(activeItems).filter(item => {
-                  const hasData = item?.description?.trim() !== '' || (
-                    item?.amount !== undefined &&
-                    item?.amount !== null &&
-                    String(item.amount).trim() !== '' &&
-                    Number(item.amount) !== 0
-                  );
-                  return item?.isActive || hasData;
-                }).length}/{maxItems})
+                Add Item ({occupiedCount}/{maxItems})
               </button>
 
               {/* Loan Requirement Section */}
@@ -1977,7 +1968,7 @@ const FRTermLoanCCForm = ({
                         <div className="relative">
                           <input
                             type="text"
-                            value={loanPercentages[activeCategoryName] || ''}
+                            value={loanPercentages[activeCategoryName] ?? ''}
                             onChange={(e) => handleLoanPercentageChange(activeCategoryName, e.target.value)}
                             className="w-full px-3 py-2 text-sm border-2 border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white"
                             placeholder="Enter loan %"

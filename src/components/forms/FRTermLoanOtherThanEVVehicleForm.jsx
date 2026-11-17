@@ -17,6 +17,9 @@ import {
 import SaveDraftButton from '../common/SaveDraftButton';
 import { FRCC_REQUIRED_STAMP_DEFAULT } from '../../utils/frccFormUi';
 import { assetRowIsOpen, readOpenAssetRows, withOpenAssetRow, withoutOpenAssetRow } from '../../utils/assetOpenRows';
+import { indirectScheduleMatches, mergeReportPrefill } from '../../utils/mergeReportPrefill';
+import { alignNamedCellSchedule } from '../../utils/assetScheduleState';
+import { buildEditableDraftSnapshot, readWizardStep } from '../../utils/draftLifecycle';
 
 const generateFinancialYearOptions = () => {
   const options = [];
@@ -91,6 +94,7 @@ const OTHER_EV_SECTOR_LABEL = 'service sector without stock';
 const FRTermLoanOtherThanEVVehicleForm = ({
   onSubmit,
   initialData = {},
+  preferSavedValues = false,
   isEditMode = false,
   reportId = null,
   isProcessing = false,
@@ -158,16 +162,7 @@ const FRTermLoanOtherThanEVVehicleForm = ({
 
     if (initialData && Object.keys(initialData).length > 0) {
       // Merge initialData with default structure
-      const merged = { ...defaultFormData };
-      for (const key in initialData) {
-        if (Object.hasOwn(initialData, key)) {
-          if (typeof initialData[key] === 'object' && initialData[key] !== null && typeof merged[key] === 'object' && merged[key] !== null) {
-            merged[key] = { ...merged[key], ...initialData[key] };
-          } else {
-            merged[key] = initialData[key];
-          }
-        }
-      }
+      const merged = mergeReportPrefill(defaultFormData, initialData, { preferSaved: preferSavedValues });
       merged['General Information'] = ensureSector(merged['General Information'] || {});
       return merged;
     }
@@ -179,7 +174,7 @@ const FRTermLoanOtherThanEVVehicleForm = ({
     return base;
   });
 
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(() => readWizardStep(initialData, 7));
   const [activeAssetTab, setActiveAssetTab] = useState(0);
   const [indirectActiveTab, setIndirectActiveTab] = useState(0);
   const [visitedExpenseCategories, setVisitedExpenseCategories] = useState(new Set([0]));
@@ -252,28 +247,7 @@ const FRTermLoanOtherThanEVVehicleForm = ({
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
       setFormData(prevFormData => {
-        const merged = { ...prevFormData };
-        for (const sectionKey in initialData) {
-          if (Object.hasOwn(initialData, sectionKey)) {
-            if (typeof initialData[sectionKey] === 'object' && initialData[sectionKey] !== null &&
-              typeof merged[sectionKey] === 'object' && merged[sectionKey] !== null &&
-              !Array.isArray(initialData[sectionKey])) {
-              if (sectionKey === 'Schedule for Indirect Expenses') {
-                merged[sectionKey] = { ...merged[sectionKey] };
-                for (const cat of Object.keys(initialData[sectionKey])) {
-                  merged[sectionKey][cat] = {
-                    ...(merged[sectionKey][cat] || {}),
-                    ...(initialData[sectionKey][cat] || {}),
-                  };
-                }
-              } else {
-                merged[sectionKey] = { ...merged[sectionKey], ...initialData[sectionKey] };
-              }
-            } else {
-              merged[sectionKey] = initialData[sectionKey];
-            }
-          }
-        }
+        const merged = mergeReportPrefill(prevFormData, initialData, { preferSaved: preferSavedValues });
         // initialData arrives as a NEW object on every parent render (stripStage2FromDraft), and
         // formData flows back to the parent via onFormDataChange. Returning a new reference here
         // every time creates an endless update loop (React error #185). Keep the previous state
@@ -368,10 +342,12 @@ const FRTermLoanOtherThanEVVehicleForm = ({
         sampleCategory: Object.keys(nestedIndirect)[0]
       });
 
-      setFormData(prev => ({
-        ...prev,
-        'Schedule for Indirect Expenses': nestedIndirect
-      }));
+      setFormData(prev => {
+        const nextSchedule = nestedIndirect;
+        const existing = prev['Schedule for Indirect Expenses'];
+        if (indirectScheduleMatches(existing, nextSchedule)) return prev;
+        return { ...prev, 'Schedule for Indirect Expenses': nextSchedule };
+      });
 
       // Mark that expenses have been initialized for GT7 if applicable
       if (currentIsGT7) {
@@ -379,6 +355,19 @@ const FRTermLoanOtherThanEVVehicleForm = ({
       } else {
         expensesInitializedForGT7Ref.current = false;
       }
+    }
+
+    if (prevTenure !== null && liveTenure !== null && prevIsGT7 !== currentIsGT7) {
+      setFormData((prev) => {
+        const schedule = prev['Schedule for Assets'];
+        const aligned = alignNamedCellSchedule(
+          schedule,
+          getAssetSections(liveTenure),
+          getAssetSections(prevTenure),
+        );
+        if (aligned === schedule) return prev;
+        return { ...prev, 'Schedule for Assets': aligned };
+      });
     }
 
     prevTenureRef.current = liveTenure;
@@ -1734,7 +1723,7 @@ const FRTermLoanOtherThanEVVehicleForm = ({
                     <div className="relative">
                       <input
                         type="text"
-                        value={loanPercentages[activeCategoryName] || ''}
+                        value={loanPercentages[activeCategoryName] ?? ''}
                         onChange={(e) => handleLoanPercentageChange(activeCategoryName, e.target.value)}
                         className="w-full px-3 py-2 text-sm border-2 border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white"
                         placeholder="Enter loan %"
@@ -2316,7 +2305,11 @@ const FRTermLoanOtherThanEVVehicleForm = ({
     };
   };
 
-  const getDraftSnapshot = () => buildSubmitPayload();
+  const getDraftSnapshot = () => buildEditableDraftSnapshot(formData, {
+    _wizardStep: currentStep,
+    'Asset Loan Percentages': loanPercentages,
+    'Asset Loan Amounts': loanAmounts,
+  });
 
   const handleSubmit = () => {
     onSubmit(buildSubmitPayload());
