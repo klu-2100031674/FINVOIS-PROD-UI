@@ -3,7 +3,7 @@
  * View and manage all registered leads
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAllLeads, toggleLeadStatus, resendLeadCredentials, assignLeadCredits } from '@/store/slices/leadSlice';
@@ -24,18 +24,43 @@ import {
   CreditCard,
   RefreshCw,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AdminLayout } from '@/components/layouts';
 
+// Leads are paged, searched and sorted on the server (GET /leads), so every
+// lead is reachable however many there are.
+const PAGE_SIZE = 50;
+
 const AdminLeadsPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { leads, loading, error } = useSelector((state) => state.lead);
+  const { leads, pagination, stats, loading, error } = useSelector((state) => state.lead);
   const [searchTerm, setSearchTerm] = useState('');
+  const [search, setSearch] = useState(''); // searchTerm, applied after typing pauses
+  const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
   const [resendingId, setResendingId] = useState(null);
+
+  const loadLeads = useCallback(
+    () => dispatch(fetchAllLeads({ page, limit: PAGE_SIZE, search, sortBy, order: sortOrder })),
+    [dispatch, page, search, sortBy, sortOrder]
+  );
+
+  useEffect(() => {
+    loadLeads();
+  }, [loadLeads]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchTerm.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Credits modal
   const [creditModal, setCreditModal]   = useState(null); // { id, name, current }
@@ -58,17 +83,13 @@ const AdminLeadsPage = () => {
       await dispatch(assignLeadCredits({ id: creditModal.id, credits: val, action: creditAction })).unwrap();
       toast.success(`Credits updated for ${creditModal.name}`);
       setCreditModal(null);
-      dispatch(fetchAllLeads({ limit: 200 }));
+      loadLeads();
     } catch (err) {
       toast.error(err || 'Failed to update credits');
     } finally {
       setCreditSaving(false);
     }
   };
-
-  useEffect(() => {
-    dispatch(fetchAllLeads({ limit: 200 }));
-  }, [dispatch]);
 
   const handleResendCredentials = async (lead) => {
     setResendingId(lead._id);
@@ -89,6 +110,7 @@ const AdminLeadsPage = () => {
     try {
       await dispatch(toggleLeadStatus({ id: lead._id, isActive: newStatus })).unwrap();
       toast.success(`Lead ${newStatus ? 'activated' : 'deactivated'} — notification email sent.`);
+      loadLeads(); // refresh the active / inactive counts
     } catch {
       toast.error('Failed to update lead status');
     }
@@ -101,25 +123,14 @@ const AdminLeadsPage = () => {
       setSortBy(field);
       setSortOrder('asc');
     }
+    setPage(1);
   };
 
-  const filtered = leads.filter(
-    (l) =>
-      l.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      l.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      l.services?.some((s) =>
-        (s.name || s).toLowerCase().includes(searchTerm.toLowerCase())
-      )
-  );
-
-  const sorted = [...filtered].sort((a, b) => {
-    let aVal = sortBy === 'createdAt' ? new Date(a.createdAt) : (a[sortBy] || '');
-    let bVal = sortBy === 'createdAt' ? new Date(b.createdAt) : (b[sortBy] || '');
-    if (typeof aVal === 'string') {
-      return sortOrder === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-    }
-    return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
-  });
+  const sorted = leads;
+  const matchCount = pagination?.total ?? leads.length;
+  const pageCount = pagination?.pages || 1;
+  const firstShown = matchCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const lastShown = Math.min(page * PAGE_SIZE, matchCount);
 
   return (
     <AdminLayout>
@@ -147,7 +158,7 @@ const AdminLeadsPage = () => {
             <AlertCircle className="h-5 w-5 text-red-600" />
             <p className="text-red-600 font-medium">{error}</p>
             <button
-              onClick={() => dispatch(fetchAllLeads({ limit: 200 }))}
+              onClick={loadLeads}
               className="ml-auto px-3 py-1 text-sm border border-red-300 rounded-lg hover:bg-red-100"
             >
               Retry
@@ -161,7 +172,7 @@ const AdminLeadsPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Leads</p>
-                <p className="text-3xl font-bold mt-1">{leads.length}</p>
+                <p className="text-3xl font-bold mt-1">{stats?.total ?? '—'}</p>
               </div>
               <div className="p-3 bg-purple-100 rounded-full">
                 <UserCheck className="h-6 w-6 text-[#7e22ce]" />
@@ -173,7 +184,7 @@ const AdminLeadsPage = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Active Leads</p>
                 <p className="text-3xl font-bold mt-1">
-                  {leads.filter((l) => l.isActive !== false).length}
+                  {stats?.active ?? '—'}
                 </p>
               </div>
               <div className="p-3 bg-green-100 rounded-full">
@@ -186,7 +197,7 @@ const AdminLeadsPage = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Inactive Leads</p>
                 <p className="text-3xl font-bold mt-1">
-                  {leads.filter((l) => l.isActive === false).length}
+                  {stats?.inactive ?? '—'}
                 </p>
               </div>
               <div className="p-3 bg-red-100 rounded-full">
@@ -213,7 +224,9 @@ const AdminLeadsPage = () => {
         {/* Table */}
         <div className="bg-white rounded-lg border">
           <div className="px-6 py-4 border-b">
-            <h2 className="text-lg font-semibold">All Leads ({sorted.length})</h2>
+            <h2 className="text-lg font-semibold">
+              {search ? 'Matching Leads' : 'All Leads'} ({matchCount})
+            </h2>
           </div>
 
           {loading ? (
@@ -227,9 +240,9 @@ const AdminLeadsPage = () => {
             <div className="text-center py-12">
               <UserCheck className="h-12 w-12 text-gray-300 mx-auto mb-3" />
               <p className="text-muted-foreground mb-4">
-                {searchTerm ? 'No leads match your search' : 'No leads registered yet'}
+                {search ? 'No leads match your search' : 'No leads registered yet'}
               </p>
-              {!searchTerm && (
+              {!search && (
                 <button
                   onClick={() => navigate('/admin/leads/register')}
                   className="px-4 py-2 bg-[#7e22ce] text-white rounded-lg hover:bg-[#6b21a8]"
@@ -370,6 +383,37 @@ const AdminLeadsPage = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {matchCount > 0 && (
+            <div className="flex flex-col gap-3 border-t px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-gray-600">
+                Showing <span className="font-medium">{firstShown}</span>–<span className="font-medium">{lastShown}</span> of{' '}
+                <span className="font-medium">{matchCount}</span>
+              </p>
+              {pageCount > 1 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1 || loading}
+                    className="flex items-center gap-1 px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="h-4 w-4" /> Previous
+                  </button>
+                  <span className="text-sm text-gray-600">
+                    Page {page} of {pageCount}
+                  </span>
+                  <button
+                    onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                    disabled={page >= pageCount || loading}
+                    className="flex items-center gap-1 px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
