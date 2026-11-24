@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   AlertCircle,
+  BarChart3,
   FlaskConical,
   Loader2,
   Mail,
@@ -147,6 +148,12 @@ export default function AdminGenieSchemesPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Link
+              to="/admin/schemes/activity"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-purple-300 bg-purple-50 px-3 py-2 text-sm font-semibold text-purple-800 hover:bg-purple-100"
+            >
+              <BarChart3 className="h-4 w-4" /> Activity report
+            </Link>
             <Link
               to="/admin/client-screening/emails"
               className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"

@@ -26,7 +26,7 @@ const AdminLeadRegisterPage = () => {
   const { loading, error } = useSelector((state) => state.lead);
   const { services } = useSelector((state) => state.adminService);
 
-  const [form, setForm] = useState({ name: '', email: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const [selectedServices, setSelectedServices] = useState([]);
   const [customKeywords, setCustomKeywords] = useState('');
   const [generatedPassword, setGeneratedPassword] = useState(null);
@@ -50,6 +50,10 @@ const AdminLeadRegisterPage = () => {
       toast.error('Name and email are required');
       return;
     }
+    if (form.phone && form.phone.length !== 10) {
+      toast.error('Mobile number must be 10 digits');
+      return;
+    }
 
     const keywords = customKeywords
       .split(',')
@@ -61,6 +65,7 @@ const AdminLeadRegisterPage = () => {
         createLead({
           name: form.name.trim(),
           email: form.email.trim(),
+          phone: form.phone,
           services: selectedServices,
           customKeywords: keywords,
         })
@@ -144,7 +149,7 @@ const AdminLeadRegisterPage = () => {
               <button
                 onClick={() => {
                   setGeneratedPassword(null);
-                  setForm({ name: '', email: '' });
+                  setForm({ name: '', email: '', phone: '' });
                   setSelectedServices([]);
                   setCustomKeywords('');
                 }}
@@ -226,6 +231,18 @@ const AdminLeadRegisterPage = () => {
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-[#7e22ce]"
                   required
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                  placeholder="10-digit mobile"
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-[#7e22ce]"
+                />
+                <p className="text-xs text-gray-500 mt-1">Shown to visitors in the service's partner list.</p>
               </div>
             </div>
 

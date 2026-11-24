@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchServiceById, selectCurrentService, selectServicesLoading, selectServicesError, clearCurrentService } from '@/store/slices/serviceSlice';
 import { submitServiceForm, resetFormState, selectFormSubmitting, selectFormSubmitSuccess, selectFormError } from '@/store/slices/formSlice';
+import { Users } from 'lucide-react';
 import ServiceContentRenderer from '@/components/services/ServiceContentRenderer';
+import ServicePartnersModal from '@/components/services/ServicePartnersModal';
 
 const ServiceDetailPage = () => {
   const { id } = useParams();
@@ -19,6 +21,7 @@ const ServiceDetailPage = () => {
 
   const [formData, setFormData] = useState({ name: '', email: '' });
   const [additionalFields, setAdditionalFields] = useState({});
+  const [showPartners, setShowPartners] = useState(false);
 
   useEffect(() => {
     dispatch(fetchServiceById(id));
@@ -71,9 +74,17 @@ const ServiceDetailPage = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <button onClick={() => navigate('/services')} className="mb-6 text-[#7e22ce] hover:underline flex items-center gap-2">
-        ← Back to Services
-      </button>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <button onClick={() => navigate('/services')} className="text-[#7e22ce] hover:underline flex items-center gap-2">
+          ← Back to Services
+        </button>
+        <button
+          onClick={() => setShowPartners(true)}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[#7e22ce] rounded-lg hover:bg-[#6b21a8]"
+        >
+          <Users className="h-4 w-4" /> View All Business Partners
+        </button>
+      </div>
 
       {/* Service Content */}
       <div className="mb-12">
@@ -178,6 +189,14 @@ const ServiceDetailPage = () => {
             </form>
           )}
         </div>
+      )}
+
+      {showPartners && (
+        <ServicePartnersModal
+          serviceId={currentService.uuid || id}
+          serviceName={currentService.name}
+          onClose={() => setShowPartners(false)}
+        />
       )}
     </div>
   );

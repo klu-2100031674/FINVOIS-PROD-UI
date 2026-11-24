@@ -62,6 +62,7 @@ import {
   AdminSchemeAiKnowledgePage,
   AdminGenieSchemesPage,
   AdminGenieSchemeEditorPage,
+  AdminGenieSchemeActivityPage,
   SchemeMailManagePage,
   AdminFranchisesPage,
   AdminFranchiseNewPage,
@@ -1432,6 +1433,14 @@ function App() {
           element={
             <AdminOnlyRoute>
               <AdminGenieSchemesPage />
+            </AdminOnlyRoute>
+          }
+        />
+        <Route
+          path="/admin/schemes/activity"
+          element={
+            <AdminOnlyRoute>
+              <AdminGenieSchemeActivityPage />
             </AdminOnlyRoute>
           }
         />

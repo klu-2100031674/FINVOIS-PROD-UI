@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   ArrowLeft,
@@ -27,6 +27,7 @@ import {
   listGenieSchemes,
   streamAdminGenieMessage,
   streamGenieMessage,
+  trackGenieView,
 } from '../../api/genieAPI';
 import { saveSchemeFormProgress } from '../../api/schemeFormsAPI';
 import {
@@ -220,7 +221,7 @@ function SchemePicker() {
           {schemes.length > 1 && !query.trim() && (
             <button
               type="button"
-              onClick={() => navigate(`/genie/${ALL_SCHEMES_SLUG}`)}
+              onClick={() => navigate(`/genie/${ALL_SCHEMES_SLUG}?src=picker`)}
               className="group mt-10 flex w-full flex-col overflow-hidden rounded-2xl bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-600 text-left text-white shadow-lg shadow-purple-500/20 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus-visible:ring-4 focus-visible:ring-purple-300 sm:flex-row sm:items-center"
             >
               <SchemeBanner
@@ -247,7 +248,7 @@ function SchemePicker() {
               <button
                 key={scheme.slug}
                 type="button"
-                onClick={() => navigate(`/genie/${scheme.slug}`)}
+                onClick={() => navigate(`/genie/${scheme.slug}?src=picker`)}
                 className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white text-left shadow-sm transition hover:-translate-y-1 hover:border-purple-300 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
               >
                 <SchemeBanner bannerUrl={scheme.bannerUrl} name={scheme.name} rounded="rounded-none" />
@@ -318,6 +319,23 @@ function SchemeSession({ slug, previewId = null }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Scheme activity report: one view per page open (the API skips repeats from
+  // the same browser within 30 minutes). `?src=` says where the visitor came
+  // from; it is removed afterwards so a refresh or shared link counts as direct.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewSourceRef = useRef(searchParams.get('src') || 'direct');
+  const trackedRef = useRef(false);
+  useEffect(() => {
+    if (preview || !scheme || trackedRef.current) return;
+    trackedRef.current = true;
+    trackGenieView(slug, viewSourceRef.current);
+    if (searchParams.has('src')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('src');
+      setSearchParams(next, { replace: true });
+    }
+  }, [preview, scheme, slug, searchParams, setSearchParams]);
 
   useEffect(() => () => requestRef.current?.abort(), []);
 
