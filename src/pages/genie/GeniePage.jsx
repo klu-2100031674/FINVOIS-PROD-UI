@@ -174,6 +174,9 @@ function SchemePicker() {
     return schemes.filter((s) => `${s.name} ${s.shortDescription}`.toLowerCase().includes(q));
   }, [schemes, query]);
 
+  // Admin-promoted scheme (Admin → Schemes → Promote): takes the big banner in place of Xplore.
+  const promoted = schemes?.find((s) => s.promotion) || null;
+
   return (
     <GenieShell>
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-10 sm:px-6">
@@ -218,27 +221,38 @@ function SchemePicker() {
           </p>
         ) : (
           <>
-          {schemes.length > 1 && !query.trim() && (
+          {(promoted || schemes.length > 1) && !query.trim() && (
             <button
               type="button"
-              onClick={() => navigate(`/genie/${ALL_SCHEMES_SLUG}?src=picker`)}
+              onClick={() => navigate(`/genie/${promoted ? promoted.slug : ALL_SCHEMES_SLUG}?src=picker`)}
               className="group mt-10 flex w-full flex-col overflow-hidden rounded-2xl bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-600 text-left text-white shadow-lg shadow-purple-500/20 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus-visible:ring-4 focus-visible:ring-purple-300 sm:flex-row sm:items-center"
             >
               <SchemeBanner
-                bannerUrl={XPLORE_BANNER_URL}
-                name="Xplore"
+                bannerUrl={promoted ? promoted.bannerUrl : XPLORE_BANNER_URL}
+                name={promoted ? promoted.name : 'Xplore'}
                 rounded="rounded-none"
                 className="w-full shrink-0 sm:w-80"
               />
               <div className="flex flex-1 flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-                <div>
-                  <p className="font-['Manrope'] text-lg font-bold">Xplore: not sure which scheme? Ask about all of them</p>
-                  <p className="mt-1 text-sm text-purple-100">
-                    Compare benefits, eligibility and documents across all {schemes.length} schemes in one chat.
-                  </p>
-                </div>
+                {promoted ? (
+                  <div>
+                    <p className="font-['Manrope'] text-lg font-bold">{promoted.promotion.title || promoted.name}</p>
+                    {(promoted.promotion.subtitle || promoted.shortDescription) && (
+                      <p className="mt-1 text-sm text-purple-100">
+                        {promoted.promotion.subtitle || promoted.shortDescription}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <p className="font-['Manrope'] text-lg font-bold">Xplore: not sure which scheme? Ask about all of them</p>
+                    <p className="mt-1 text-sm text-purple-100">
+                      Compare benefits, eligibility and documents across all {schemes.length} schemes in one chat.
+                    </p>
+                  </div>
+                )}
                 <span className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-purple-800 transition group-hover:bg-purple-50">
-                  Xplore <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                  {promoted ? 'Ask Genie' : 'Xplore'} <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
                 </span>
               </div>
             </button>

@@ -215,6 +215,9 @@ export default function AdminGenieSchemesPage() {
                       <span className="font-semibold text-red-600">{scheme.failedCount} failed</span>
                     )}
                     {scheme.legacyKey && <span className="text-purple-700">Built-in</span>}
+                    {scheme.promotion?.enabled && (
+                      <span className="rounded-full bg-purple-700 px-2 py-0.5 font-semibold text-white">Promoted</span>
+                    )}
                   </div>
                 </div>
               </button>
