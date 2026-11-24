@@ -16,6 +16,7 @@ import {
   Copy,
   CheckCircle,
   AlertCircle,
+  Search,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AdminLayout } from '@/components/layouts';
@@ -28,10 +29,19 @@ const AdminLeadRegisterPage = () => {
 
   const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const [selectedServices, setSelectedServices] = useState([]);
+  const [serviceSearch, setServiceSearch] = useState('');
   const [customKeywords, setCustomKeywords] = useState('');
   const [generatedPassword, setGeneratedPassword] = useState(null);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const serviceQuery = serviceSearch.trim().toLowerCase();
+  const filteredServices = services.filter(
+    (s) =>
+      !serviceQuery ||
+      s.name?.toLowerCase().includes(serviceQuery) ||
+      s.keywords?.some((k) => k.toLowerCase().includes(serviceQuery))
+  );
 
   useEffect(() => {
     dispatch(fetchAllServices());
@@ -151,6 +161,7 @@ const AdminLeadRegisterPage = () => {
                   setGeneratedPassword(null);
                   setForm({ name: '', email: '', phone: '' });
                   setSelectedServices([]);
+                  setServiceSearch('');
                   setCustomKeywords('');
                 }}
                 className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50 font-medium"
@@ -273,11 +284,27 @@ const AdminLeadRegisterPage = () => {
               </p>
             </div>
 
+            {/* Search (same as the edit lead page) */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search services..."
+                value={serviceSearch}
+                onChange={(e) => setServiceSearch(e.target.value)}
+                // Enter here filters; it must not submit the registration form.
+                onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
+                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#7e22ce] focus:border-[#7e22ce] outline-none"
+              />
+            </div>
+
             {services.length === 0 ? (
               <p className="text-sm text-gray-400 py-4 text-center">No services available</p>
+            ) : filteredServices.length === 0 ? (
+              <p className="text-sm text-gray-400 py-4 text-center">No services match "{serviceSearch}"</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-1">
-                {services.map((service) => {
+                {filteredServices.map((service) => {
                   const isSelected = selectedServices.includes(service._id);
                   return (
                     <button
