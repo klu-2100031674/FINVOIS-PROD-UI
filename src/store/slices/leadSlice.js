@@ -6,9 +6,11 @@ export const fetchAllLeads = createAsyncThunk(
   'lead/fetchAll',
   async (params = {}, { rejectWithValue }) => {
     try {
-      const { page = 1, limit = 100, search } = params;
+      const { page = 1, limit = 100, search, sortBy, order } = params;
       const query = new URLSearchParams({ page, limit });
       if (search) query.set('search', search);
+      if (sortBy) query.set('sortBy', sortBy);
+      if (order) query.set('order', order);
       const response = await apiClient.get(`/leads?${query.toString()}`);
       return response.data;
     } catch (error) {
@@ -111,6 +113,9 @@ const leadSlice = createSlice({
   name: 'lead',
   initialState: {
     leads: [],
+    // From GET /leads: the current page's position, and counts over all leads.
+    pagination: null,
+    stats: null,
     currentLead: null,
     loading: false,
     error: null,
@@ -134,6 +139,8 @@ const leadSlice = createSlice({
       .addCase(fetchAllLeads.fulfilled, (state, action) => {
         state.loading = false;
         state.leads = action.payload?.data || action.payload || [];
+        state.pagination = action.payload?.pagination || null;
+        state.stats = action.payload?.stats || null;
       })
       .addCase(fetchAllLeads.rejected, (state, action) => {
         state.loading = false;
