@@ -278,6 +278,8 @@ const AdminLeadEditPage = () => {
                 placeholder="Search services..."
                 value={serviceSearch}
                 onChange={(e) => setServiceSearch(e.target.value)}
+                // Enter here filters; it must not submit (save) the form.
+                onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                 className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#7e22ce] focus:border-[#7e22ce] outline-none"
               />
             </div>
