@@ -84,11 +84,46 @@ export async function getGenieScheme(slug) {
   return data.scheme;
 }
 
+const VISITOR_KEY = 'finvois_genie_visitor';
+
+/**
+ * Random id kept in this browser so the admin scheme activity report can count
+ * unique visitors and skip repeat views. Not linked to any personal data.
+ */
+export function getGenieVisitorId() {
+  try {
+    let id = localStorage.getItem(VISITOR_KEY);
+    if (!id || !/^[A-Za-z0-9_-]{8,64}$/.test(id)) {
+      id = (crypto.randomUUID?.() || `${Date.now()}${Math.random()}`).replace(/[^A-Za-z0-9]/g, '').slice(0, 32);
+      localStorage.setItem(VISITOR_KEY, id);
+    }
+    return id;
+  } catch {
+    return ''; // storage blocked: the view still counts, just not as a unique visitor
+  }
+}
+
+/** Where a scheme page was opened from, for the activity report. */
+export const GENIE_VIEW_SOURCES = ['picker', 'navbar', 'direct'];
+
+/** Records that a scheme page was opened. Best effort: never throws. */
+export async function trackGenieView(slug, source) {
+  try {
+    await publicRequest(`/genie/schemes/${encodeURIComponent(slug)}/view`, {
+      method: 'POST',
+      body: { source: GENIE_VIEW_SOURCES.includes(source) ? source : 'direct', visitorId: getGenieVisitorId() },
+      fallback: 'Could not record view',
+    });
+  } catch {
+    // Tracking must never get in the visitor's way.
+  }
+}
+
 /** history: [{ role: 'user'|'assistant', content }]; answers: { [questionKey]: value } */
 export async function sendGenieMessage(slug, { message, history, answers, promptIndex }, signal) {
   const data = await publicRequest(`/genie/schemes/${encodeURIComponent(slug)}/chat`, {
     method: 'POST',
-    body: { message, history, answers, promptIndex },
+    body: { message, history, answers, promptIndex, visitorId: getGenieVisitorId() },
     signal,
     fallback: 'Failed to get an answer. Please try again.',
   });
@@ -123,7 +158,8 @@ async function streamChat(path, { message, history, answers, promptIndex }, { si
       method: 'POST',
       credentials: admin ? 'include' : 'omit',
       headers,
-      body: JSON.stringify({ message, history, answers, promptIndex }),
+      // visitorId only for public chats (admin test mode is not counted in the report)
+      body: JSON.stringify({ message, history, answers, promptIndex, ...(admin ? {} : { visitorId: getGenieVisitorId() }) }),
       signal,
     });
   } catch (err) {
@@ -191,6 +227,12 @@ export const adminGenieAPI = {
   update: (id, payload) =>
     adminCall(apiClient.put(`/admin/genie-schemes/${id}`, payload), 'Could not save scheme').then((d) => d.scheme),
   remove: (id) => adminCall(apiClient.delete(`/admin/genie-schemes/${id}`), 'Could not delete scheme'),
+  /** Scheme activity report (views, visitors, questions) for IST dates YYYY-MM-DD. */
+  activity: ({ from, to } = {}) =>
+    adminCall(
+      apiClient.get('/admin/genie-schemes/analytics', { params: { from, to } }),
+      'Could not load scheme activity'
+    ).then((d) => d.report),
   uploadBanner: (id, blob) => {
     const form = new FormData();
     form.append('banner', blob, 'banner.jpg');

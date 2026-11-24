@@ -36,7 +36,8 @@ const Navbar = () => {
         return {
             ...link,
             dropdown: [
-                ...genieSchemes.map((scheme) => ({ label: scheme.name, href: `/genie/${scheme.slug}` })),
+                // ?src=navbar: the admin scheme activity report shows views by source
+                ...genieSchemes.map((scheme) => ({ label: scheme.name, href: `/genie/${scheme.slug}?src=navbar` })),
                 { label: "All schemes", href: "/genie" },
             ],
         };

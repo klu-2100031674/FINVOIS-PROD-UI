@@ -33,6 +33,7 @@ export { default as AdminSchemePdfPage } from './AdminSchemePdfPage';
 export { default as AdminSchemeAiKnowledgePage } from './AdminSchemeAiKnowledgePage';
 export { default as AdminGenieSchemesPage } from './genie/AdminGenieSchemesPage';
 export { default as AdminGenieSchemeEditorPage } from './genie/AdminGenieSchemeEditorPage';
+export { default as AdminGenieSchemeActivityPage } from './genie/AdminGenieSchemeActivityPage';
 export { default as SchemeMailManagePage } from './SchemeMailManagePage';
 export { default as AdminFranchisesPage } from './AdminFranchisesPage';
 export { default as AdminFranchiseNewPage } from './AdminFranchiseNewPage';

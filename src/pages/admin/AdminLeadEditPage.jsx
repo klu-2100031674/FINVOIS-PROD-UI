@@ -31,6 +31,7 @@ const AdminLeadEditPage = () => {
   const { services } = useSelector((state) => state.adminService);
 
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [selectedServices, setSelectedServices] = useState([]);
   const [isActive, setIsActive] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -46,6 +47,7 @@ const AdminLeadEditPage = () => {
   useEffect(() => {
     if (currentLead) {
       setName(currentLead.name || '');
+      setPhone(currentLead.phone || '');
       setIsActive(currentLead.isActive !== false);
       const linked = (currentLead.services || []).map((s) => s._id || s);
       setSelectedServices(linked);
@@ -64,12 +66,17 @@ const AdminLeadEditPage = () => {
       toast.error('Name is required');
       return;
     }
+    if (phone && phone.length !== 10) {
+      toast.error('Mobile number must be 10 digits');
+      return;
+    }
     setSaving(true);
     try {
       await dispatch(
         updateLead({
           id,
           name: name.trim(),
+          phone,
           services: selectedServices,
           isActive,
         })
@@ -209,6 +216,18 @@ const AdminLeadEditPage = () => {
                   className="w-full px-3 py-2 border rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
                 />
                 <p className="text-xs text-gray-400 mt-1">Email cannot be changed</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder="10-digit mobile"
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#7e22ce] focus:border-[#7e22ce]"
+                />
+                <p className="text-xs text-gray-400 mt-1">Shown to visitors in the service's partner list</p>
               </div>
             </div>
 
