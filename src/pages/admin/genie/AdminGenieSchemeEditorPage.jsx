@@ -9,6 +9,7 @@ import {
   ImagePlus,
   ListChecks,
   Loader2,
+  Megaphone,
   MessageSquareText,
   Save,
   Settings2,
@@ -39,6 +40,11 @@ const toDraft = (scheme) => ({
   shortDescription: scheme.shortDescription || '',
   description: scheme.description || '',
   sortOrder: scheme.sortOrder ?? 100,
+  promotion: {
+    enabled: !!scheme.promotion?.enabled,
+    title: scheme.promotion?.title || '',
+    subtitle: scheme.promotion?.subtitle || '',
+  },
   intakeQuestions: scheme.intakeQuestions || [],
   suggestedPrompts: scheme.suggestedPrompts || [],
 });
@@ -327,6 +333,13 @@ export default function AdminGenieSchemeEditorPage() {
                 />
                 <span className="mt-1 block text-xs text-gray-500">Lower numbers show first.</span>
               </label>
+              <PromotionSettings
+                promotion={draft.promotion}
+                published={published}
+                schemeName={draft.name || scheme.name}
+                shortDescription={draft.shortDescription}
+                onChange={(value) => setField('promotion', value)}
+              />
               {scheme.legacyKey && (
                 <div className="rounded-xl border border-purple-100 bg-purple-50/60 px-4 py-3 text-sm text-purple-900">
                   Built-in scheme: answers to its questions are also saved for the client-screening team, and Genie
@@ -424,5 +437,77 @@ export default function AdminGenieSchemeEditorPage() {
 
       <BannerCropper open={cropperOpen} onClose={() => setCropperOpen(false)} onSave={saveBanner} />
     </AdminLayout>
+  );
+}
+
+/**
+ * "Promote on Genie page": the promoted scheme replaces the Xplore banner at the top of /genie,
+ * with its own title and subtitle (empty = scheme name / one-line description).
+ * Only one scheme is promoted at a time; saving this one switches the others off.
+ */
+function PromotionSettings({ promotion, published, schemeName, shortDescription, onChange }) {
+  const set = (field, value) => onChange({ ...promotion, [field]: value });
+  return (
+    <div className="rounded-xl border border-purple-200 bg-purple-50/40 p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
+            <Megaphone className="h-4 w-4 text-purple-700" /> Promote on Genie page
+          </p>
+          <p className="mt-1 text-xs text-gray-600">
+            Shows this scheme as the big banner at the top of /genie, in place of Xplore. Only one scheme can be
+            promoted: turning this on turns it off for any other scheme when you save.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={promotion.enabled}
+          aria-label="Promote on Genie page"
+          onClick={() => set('enabled', !promotion.enabled)}
+          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 ${
+            promotion.enabled ? 'bg-purple-700' : 'bg-gray-300'
+          }`}
+        >
+          <span
+            className={`inline-block h-5 w-5 rounded-full bg-white shadow transition ${
+              promotion.enabled ? 'translate-x-5' : 'translate-x-0.5'
+            }`}
+          />
+        </button>
+      </div>
+
+      {promotion.enabled && (
+        <div className="mt-4 space-y-3">
+          {!published && (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              This scheme is a draft. The banner shows on /genie only after you publish it.
+            </p>
+          )}
+          <label className="block">
+            <span className="text-sm font-semibold text-gray-800">Banner title</span>
+            <input
+              value={promotion.title}
+              onChange={(e) => set('title', e.target.value)}
+              maxLength={120}
+              placeholder={schemeName}
+              className={`mt-1 ${inputClass}`}
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm font-semibold text-gray-800">Banner subtitle</span>
+            <textarea
+              rows={2}
+              value={promotion.subtitle}
+              onChange={(e) => set('subtitle', e.target.value)}
+              maxLength={300}
+              placeholder={shortDescription || 'One line under the title'}
+              className={`mt-1 ${inputClass}`}
+            />
+          </label>
+          <p className="text-xs text-gray-500">Left empty, the scheme name and one-line description are used.</p>
+        </div>
+      )}
+    </div>
   );
 }
