@@ -1,0 +1,17 @@
+node_modules/
+dist/
+dist-*/
+.expo/
+test-results/
+playwright-report/
+app/e2e/screenshots/
+.env
+.env.*
+!.env.example
+*.log
+*.keystore
+*.jks
+google-services.json
+GoogleService-Info.plist
+# The web repo's root .gitignore ignores lib/; the app keeps source there.
+!app/src/lib/
