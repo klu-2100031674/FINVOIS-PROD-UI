@@ -1,0 +1,28 @@
+{
+  "cli": { "appVersionSource": "remote" },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://finvois.centralindia.cloudapp.azure.com/dev/api",
+        "EXPO_PUBLIC_VM_START_URL": "https://vm-start-fn-afg5f0fpgpakcpe6.centralindia-01.azurewebsites.net/api/StartVm"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://finvois.centralindia.cloudapp.azure.com/dev/api",
+        "EXPO_PUBLIC_VM_START_URL": "https://vm-start-fn-afg5f0fpgpakcpe6.centralindia-01.azurewebsites.net/api/StartVm"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://finvois.centralindia.cloudapp.azure.com/prod/api",
+        "EXPO_PUBLIC_VM_START_URL": "https://vm-start-fn-afg5f0fpgpakcpe6.centralindia-01.azurewebsites.net/api/StartVm"
+      }
+    }
+  },
+  "submit": { "production": {} }
+}
